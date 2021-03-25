@@ -18,10 +18,11 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+// Package polaris contains code to interact with the Polaris platform on a
+// high level. Relies on the graphql package for low level queries.
 package polaris
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,57 +30,21 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// taskChainID represents the identity of a Polaris task chain. A Polaris task
-// chain is a collection of sequential tasks that all must complete for the task
-// chain to be considered complete.
-type taskChainID string
-
-// taskChainState represents the state of a Polaris task chain.
-type taskChainState string
-
 const (
-	taskChainInvalid   taskChainState = ""
-	taskChainCanceled  taskChainState = "CANCELED"
-	taskChainCanceling taskChainState = "CANCELING"
-	taskChainFailed    taskChainState = "FAILED"
-	taskChainReady     taskChainState = "READY"
-	taskChainRunning   taskChainState = "RUNNING"
-	taskChainSucceeded taskChainState = "SUCCEEDED"
-	taskChainUndoing   taskChainState = "UNDOING"
-)
-
-// toTaskChainState returns the task chain state that match the given string,
-// if no match is found taskChainInvalid is returned.
-func toTaskChainState(status string) taskChainState {
-	switch status {
-	case "CANCELED":
-		return taskChainCanceled
-	case "CANCELING":
-		return taskChainCanceling
-	case "FAILED":
-		return taskChainFailed
-	case "READY":
-		return taskChainReady
-	case "RUNNING":
-		return taskChainRunning
-	case "SUCCEEDED":
-		return taskChainSucceeded
-	case "UNDOING":
-		return taskChainUndoing
-	default:
-		return taskChainInvalid
-	}
-}
-
-const (
-	// DefaultConfigFile path to where SDK configuration files should be stored
-	// by default.
+	// DefaultConfigFile path to where SDK configuration files are stored by
+	// default.
 	DefaultConfigFile = "~/.rubrik/polaris-accounts.json"
+)
+
+var (
+	// ErrAccountNotFound signals that the specified account could not be
+	// found.
+	ErrAccountNotFound = errors.New("polaris: account not found")
 )
 
 // Config holds the Client configuration.
@@ -105,11 +70,11 @@ type Config struct {
 
 // ConfigFromEnv returns a new Client configuration from the user's environment
 // variables. Environment variables must have the same name as the Config
-// variables but be all upper case and prepended with RUBRIK_POLARIS, e.g.
+// fields but be all upper case and prepended with RUBRIK_POLARIS, e.g.
 // RUBRIK_POLARIS_USERNAME.
 func ConfigFromEnv() (Config, error) {
 	account := os.Getenv("RUBRIK_POLARIS_ACCOUNT")
-	if account != "" {
+	if account == "" {
 		return Config{}, errors.New("polaris: missing environment variable: RUBRIK_POLARIS_ACCOUNT")
 	}
 
@@ -125,25 +90,24 @@ func ConfigFromEnv() (Config, error) {
 
 	// Optional environment variables.
 	url := os.Getenv("RUBRIK_POLARIS_URL")
-
 	logLevel := os.Getenv("RUBRIK_POLARIS_LOGLEVEL")
 
-	return Config{URL: url, Username: username, Password: password, LogLevel: logLevel}, nil
+	return Config{URL: url, Account: account, Username: username, Password: password, LogLevel: logLevel}, nil
 }
 
 // ConfigFromFile returns a new Client configuration read from the specified
 // path. Configuration files must be in JSON format and the attributes must
-// have the same name as the Config variables but be all lower case.
+// have the same name as the Config fields but be all lower case. Note that the
+// Account field is used as a key for the JSON object. E.g:
 //
-// Example configuration file:
 //   {
-//     "default": {
-//       "username": "gopher",
-//       "password": "mcgopherface",
+//     "account-1": {
+//       "username": "username-1",
+//       "password": "password-1",
 //     },
-//     "test": {
-//       "username": "testie",
-//       "password": "mctestieface",
+//     "account-2": {
+//       "username": "username-2",
+//       "password": "password-2",
 //       "loglevel": "debug"
 //     }
 //   }
@@ -168,7 +132,7 @@ func ConfigFromFile(path, account string) (Config, error) {
 
 	config, ok := configs[account]
 	if !ok {
-		return Config{}, errors.New("polaris: account not found in configuration")
+		return Config{}, fmt.Errorf("polaris: account %q not found in configuration", account)
 	}
 	config.Account = account
 
@@ -185,15 +149,55 @@ func ConfigFromFile(path, account string) (Config, error) {
 	return config, nil
 }
 
+// DefaultConfig returns a new Client configuration read from the default
+// config path. Environment variables can be used to override configuration
+// information in the configuration file. See ConfigFromEnv and ConfigFromFile
+// for details. Note that the environment variable POLARIS_RUBRIK_ACCOUNT will
+// override the account parameter passed in.
+func DefaultConfig(account string) (Config, error) {
+	if envAccount := os.Getenv("RUBRIK_POLARIS_ACCOUNT"); envAccount != "" {
+		account = envAccount
+	}
+
+	config, err := ConfigFromFile(DefaultConfigFile, account)
+	if err != nil {
+		return Config{}, err
+	}
+
+	username := os.Getenv("RUBRIK_POLARIS_USERNAME")
+	if username != "" {
+		config.Username = username
+	}
+
+	password := os.Getenv("RUBRIK_POLARIS_PASSWORD")
+	if password != "" {
+		config.Password = password
+	}
+
+	url := os.Getenv("RUBRIK_POLARIS_URL")
+	if url != "" {
+		config.URL = url
+	}
+
+	logLevel := os.Getenv("RUBRIK_POLARIS_LOGLEVEL")
+	if logLevel != "" {
+		config.LogLevel = logLevel
+	}
+
+	return config, nil
+}
+
 // Client is used to make calls to the Polaris platform.
 type Client struct {
 	url string
 	gql *graphql.Client
-	log Logger
+	log log.Logger
 }
 
-// NewClient returns a new Client with the specified configuration.
-func NewClient(config Config, log Logger) (*Client, error) {
+// NewClient returns a new Client with the specified configuration. Note that
+// when Config.Log is set to false the logger given to NewClient is silently
+//replaced by a DiscardLogger.
+func NewClient(config Config, logger log.Logger) (*Client, error) {
 	// Apply default values.
 	apiURL := config.URL
 	if apiURL == "" {
@@ -219,75 +223,26 @@ func NewClient(config Config, log Logger) (*Client, error) {
 	}
 
 	if strings.ToLower(logLevel) != "off" {
-		level, err := parseLogLevel(logLevel)
+		level, err := log.ParseLogLevel(logLevel)
 		if err != nil {
 			return nil, err
 		}
-		log.SetLogLevel(level)
+		logger.SetLogLevel(level)
 	} else {
-		log = &DiscardLogger{}
+		logger = &log.DiscardLogger{}
 	}
 
 	client := &Client{
 		url: apiURL,
-		gql: graphql.NewClient(apiURL, config.Username, config.Password),
-		log: log,
+		gql: graphql.NewClient(apiURL, config.Username, config.Password, logger),
+		log: logger,
 	}
 
 	return client, nil
 }
 
-// taskChainState returns the state of the Polaris task chain with the specified
-// task chain identity.
-func (c *Client) taskChainState(ctx context.Context, id taskChainID) (taskChainState, error) {
-	c.log.Print(Trace, "Client.taskChainState")
-
-	buf, err := c.gql.Request(ctx, graphql.CoreTaskchainStatusQuery, struct {
-		Filter string `json:"filter,omitempty"`
-	}{Filter: string(id)})
-	if err != nil {
-		return taskChainInvalid, err
-	}
-
-	var payload struct {
-		Data struct {
-			Query struct {
-				TaskChain struct {
-					ID            int64     `json:"id"`
-					TaskchainUUID string    `json:"taskchainUuid"`
-					State         string    `json:"state"`
-					ProgressedAt  time.Time `json:"progressedAt"`
-				} `json:"taskchain"`
-			} `json:"getKorgTaskchainStatus"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return taskChainInvalid, err
-	}
-
-	return toTaskChainState(payload.Data.Query.TaskChain.State), nil
-}
-
-// taskChainWaitFor blocks until the Polaris task chain with the specified task
-// chain identity has completed. When the task chain completes the final state
-// of the task chain is returned.
-func (c *Client) taskChainWaitFor(ctx context.Context, id taskChainID) (taskChainState, error) {
-	c.log.Print(Trace, "Client.taskChainWaitFor")
-
-	for {
-		status, err := c.taskChainState(ctx, id)
-		if err != nil {
-			return taskChainInvalid, err
-		}
-
-		if status == taskChainCanceled || status == taskChainFailed || status == taskChainSucceeded {
-			return status, nil
-		}
-
-		select {
-		case <-time.After(10 * time.Second):
-		case <-ctx.Done():
-			return taskChainInvalid, ctx.Err()
-		}
-	}
+// GQLClient returns the underlaying GraphQL client. Can be used to execute low
+// level and raw GraphQL queries against the Polaris platform.
+func (c *Client) GQLClient() *graphql.Client {
+	return c.gql
 }

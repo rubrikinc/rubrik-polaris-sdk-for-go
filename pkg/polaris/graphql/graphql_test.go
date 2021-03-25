@@ -32,7 +32,7 @@ func TestErrorResponseWithNoError(t *testing.T) {
 		}
 	}`)
 
-	var errRes ErrorResponse
+	var errRes errorResponse
 	if err := json.Unmarshal(buf, &errRes); err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestErrorResponseWithError(t *testing.T) {
 		"message": "message"
 	}`)
 
-	var errRes ErrorResponse
+	var errRes errorResponse
 	if err := json.Unmarshal(buf, &errRes); err != nil {
 		t.Fatal(err)
 	}

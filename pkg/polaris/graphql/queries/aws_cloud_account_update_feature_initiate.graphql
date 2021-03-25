@@ -1,0 +1,6 @@
+mutation RubrikPolarisSDKRequest($polarisAccountId: UUID!) {
+    awsCloudAccountUpdateFeatureInitiate(cloudAccountUuid: $polarisAccountId, features: [CLOUD_NATIVE_PROTECTION]) {
+        cloudFormationUrl
+        templateUrl
+    }
+}

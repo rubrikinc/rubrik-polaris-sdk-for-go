@@ -22,13 +22,13 @@ package polaris
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
@@ -37,27 +37,20 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
-// SLAAssignment -
-type SLAAssignment string
-
-// SLADomain -
-type SLADomain struct {
-	ID   string
-	Name string
-}
-
-// AwsProtectionFeature -
+// AwsProtectionFeature represents the protection features of an AWS cloud
+// account.
 type AwsProtectionFeature string
 
 const (
-	// AwsEC2 -
+	// AwsEC2 AWS EC2.
 	AwsEC2 AwsProtectionFeature = "EC2"
 
-	// AwsRDS -
+	// AwsRDS AWS RDS.
 	AwsRDS AwsProtectionFeature = "RDS"
 )
 
-type AccountFeature struct {
+// AwsAccountFeature AWS account features.
+type AwsAccountFeature struct {
 	Feature    string
 	AwsRegions []string
 	RoleArn    string
@@ -65,31 +58,20 @@ type AccountFeature struct {
 	Status     string
 }
 
-// AwsCloudAccount -
+// AwsCloudAccount AWS cloud account.
 type AwsCloudAccount struct {
 	ID       string
 	NativeID string
 	Name     string
 	Message  string
-	Features []AccountFeature
-}
-
-// AwsAccount -
-type AwsAccount struct {
-	ID         string
-	Regions    []string
-	Status     string
-	Name       string
-	Assignment SLAAssignment
-	Configured SLADomain
-	Effective  SLADomain
+	Features []AwsAccountFeature
 }
 
 // awsAccountID returns the AWS account id and account name. Note that if the
 // AWS user does not have permissions for Organizations the account name will
 // be empty.
 func (c *Client) awsAccountID(ctx context.Context, config aws.Config) (string, string, error) {
-	c.log.Print(Trace, "Client.awsAccountID")
+	c.log.Print(log.Trace, "polaris.Client.awsAccountID")
 
 	stsClient := sts.NewFromConfig(config)
 	id, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
@@ -102,18 +84,37 @@ func (c *Client) awsAccountID(ctx context.Context, config aws.Config) (string, s
 	orgClient := organizations.NewFromConfig(config)
 	info, err := orgClient.DescribeAccount(ctx, &organizations.DescribeAccountInput{AccountId: id.Account})
 	if err != nil {
-		c.log.Print(Debug, "Failed to access Organizations")
+		c.log.Print(log.Info, "Failed to obtain account name from AWS Organizations")
 		return *id.Account, "", nil
 	}
 
 	return *id.Account, *info.Account.Name, nil
 }
 
-// awsCFMCreateStackWaitFor blocks until the CloudFormation stack create/delete
-// has completed. When the stack create/delete completes the final state of the
+// awsStackExist returns true if a CloudFormation stack with the specified name
+// exists, false otherwise.
+func (c *Client) awsStackExist(ctx context.Context, config aws.Config, stackName string) (bool, error) {
+	c.log.Print(log.Trace, "polaris.Client.awsStackExist")
+
+	client := cloudformation.NewFromConfig(config)
+	_, err := client.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{StackName: &stackName})
+	if err == nil {
+		return true, nil
+	}
+
+	doesNotExist := fmt.Sprintf("Stack with id %s does not exist", stackName)
+	if strings.HasSuffix(err.Error(), doesNotExist) {
+		return false, nil
+	}
+
+	return false, err
+}
+
+// awsWaitForStack blocks until the CloudFormation stack create/update/delete
+// has completed. When the stack operation completes the final state of the
 // operation is returned.
-func (c *Client) awsCFMCreateStackWaitFor(ctx context.Context, config aws.Config, stackName string) (types.StackStatus, error) {
-	c.log.Print(Trace, "Client.awsCFMCreateStackWaitFor")
+func (c *Client) awsWaitForStack(ctx context.Context, config aws.Config, stackName string) (types.StackStatus, error) {
+	c.log.Print(log.Trace, "polaris.Client.awsWaitForStack")
 
 	client := cloudformation.NewFromConfig(config)
 	for {
@@ -131,6 +132,8 @@ func (c *Client) awsCFMCreateStackWaitFor(ctx context.Context, config aws.Config
 			return stack.StackStatus, nil
 		}
 
+		c.log.Print(log.Debug, "Waiting for AWS stack")
+
 		select {
 		case <-time.After(10 * time.Second):
 		case <-ctx.Done():
@@ -139,366 +142,282 @@ func (c *Client) awsCFMCreateStackWaitFor(ctx context.Context, config aws.Config
 	}
 }
 
-// ListAwsAccounts lists the AWS accounts added to Polaris. The filter
-// parameter can be used to filter the result on a substring of the account
-// name.
-func (c *Client) ListAwsAccounts(ctx context.Context, feature AwsProtectionFeature, filter string) ([]AwsAccount, error) {
-	c.log.Print(Trace, "Client.ListAwsAccounts")
+// AwsAccounts returns all cloud accounts with cloud native protection under
+// the current Polaris account.
+func (c *Client) AwsAccounts(ctx context.Context) ([]AwsCloudAccount, error) {
+	gqlAccounts, err := c.gql.AwsCloudAccounts(ctx, "")
+	if err != nil {
+		return nil, err
+	}
 
-	accounts := make([]AwsAccount, 0, 5)
-
-	var endCursor string
-	for {
-		buf, err := c.gql.Request(ctx, graphql.AwsAccountsQuery, struct {
-			After   string `json:"after,omitempty"`
-			Feature string `json:"awsNativeProtectionFeature,omitempty"`
-			Filter  string `json:"filter,omitempty"`
-		}{After: endCursor, Feature: string(feature), Filter: filter})
-		if err != nil {
-			return nil, err
-		}
-
-		var payload struct {
-			Data struct {
-				Query struct {
-					Count int `json:"count"`
-					Edges []struct {
-						Node graphql.AwsNativeAccount `json:"node"`
-					} `json:"edges"`
-					PageInfo struct {
-						EndCursor   string `json:"endCursor"`
-						HasNextPage bool   `json:"hasNextPage"`
-					} `json:"pageInfo"`
-				} `json:"awsNativeAccountConnection"`
-			} `json:"data"`
-		}
-		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, err
-		}
-
-		for _, edge := range payload.Data.Query.Edges {
-			configured := SLADomain{
-				ID:   edge.Node.ConfiguredSLADomain.ID,
-				Name: edge.Node.ConfiguredSLADomain.Name,
-			}
-			effective := SLADomain{
-				ID:   edge.Node.EffectiveSLADomain.ID,
-				Name: edge.Node.EffectiveSLADomain.Name,
-			}
-			accounts = append(accounts, AwsAccount{
-				ID:         edge.Node.ID,
-				Regions:    edge.Node.Regions,
-				Status:     edge.Node.Status,
-				Name:       edge.Node.Name,
-				Assignment: SLAAssignment(edge.Node.SLAAssignment),
-				Configured: configured,
-				Effective:  effective,
+	accounts := make([]AwsCloudAccount, 0, len(gqlAccounts))
+	for _, gqlAccount := range gqlAccounts {
+		features := make([]AwsAccountFeature, 0, len(gqlAccount.FeatureDetails))
+		for _, gqlFeature := range gqlAccount.FeatureDetails {
+			features = append(features, AwsAccountFeature{
+				Feature:    gqlFeature.Feature,
+				AwsRegions: gqlFeature.AwsRegions,
+				RoleArn:    gqlFeature.RoleArn,
+				StackArn:   gqlFeature.StackArn,
+				Status:     gqlFeature.Status,
 			})
 		}
 
-		if !payload.Data.Query.PageInfo.HasNextPage {
-			break
-		}
-		endCursor = payload.Data.Query.PageInfo.EndCursor
+		accounts = append(accounts, AwsCloudAccount{
+			ID:       gqlAccount.AwsCloudAccount.ID,
+			NativeID: gqlAccount.AwsCloudAccount.NativeID,
+			Name:     gqlAccount.AwsCloudAccount.AccountName,
+			Message:  gqlAccount.AwsCloudAccount.Message,
+			Features: features,
+		})
 	}
 
 	return accounts, nil
 }
 
-// AwsAccountsDetail -
-func (c *Client) AwsAccountsDetail(ctx context.Context, filter string) ([]AwsCloudAccount, error) {
-	c.log.Print(Trace, "Client.AwsAccountsDetail")
+// AwsAccounts returns the cloud account with cloud native protection for the
+// specified AWS account ID.
+func (c *Client) AwsAccountFromID(ctx context.Context, awsAccountID string) (AwsCloudAccount, error) {
+	c.log.Print(log.Trace, "polaris.Client.AwsAccountFromID")
 
-	accounts := make([]AwsCloudAccount, 0, 5)
-
-	buf, err := c.gql.Request(ctx, graphql.AwsAccountsDetailQuery, struct {
-		Filter string `json:"filter,omitempty"`
-	}{Filter: filter})
+	gqlAccounts, err := c.gql.AwsCloudAccounts(ctx, awsAccountID)
 	if err != nil {
-		return nil, err
+		return AwsCloudAccount{}, err
+	}
+	if len(gqlAccounts) < 1 {
+		return AwsCloudAccount{}, ErrAccountNotFound
+	}
+	if len(gqlAccounts) > 1 {
+		return AwsCloudAccount{}, errors.New("polaris: aws account id refers to multiple cloud accounts")
+	}
+	gqlAccount := gqlAccounts[0]
+
+	features := make([]AwsAccountFeature, 0, len(gqlAccount.FeatureDetails))
+	for _, gqlFeature := range gqlAccount.FeatureDetails {
+		features = append(features, AwsAccountFeature{
+			Feature:    gqlFeature.Feature,
+			AwsRegions: gqlFeature.AwsRegions,
+			RoleArn:    gqlFeature.RoleArn,
+			StackArn:   gqlFeature.StackArn,
+			Status:     gqlFeature.Status,
+		})
 	}
 
-	var payload struct {
-		Data struct {
-			Query struct {
-				Accounts []graphql.AwsCloudAccount `json:"awsCloudAccounts"`
-			} `json:"awsCloudAccounts"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, err
+	account := AwsCloudAccount{
+		ID:       gqlAccount.AwsCloudAccount.ID,
+		NativeID: gqlAccount.AwsCloudAccount.NativeID,
+		Name:     gqlAccount.AwsCloudAccount.AccountName,
+		Message:  gqlAccount.AwsCloudAccount.Message,
+		Features: features,
 	}
 
-	for _, internal := range payload.Data.Query.Accounts {
-		account := AwsCloudAccount{
-			ID:       internal.AwsCloudAccount.ID,
-			NativeID: internal.AwsCloudAccount.NativeID,
-			Name:     internal.AwsCloudAccount.AccountName,
-			Message:  internal.AwsCloudAccount.Message,
-		}
-		for _, feature := range internal.FeatureDetails {
-			account.Features = append(account.Features, AccountFeature{
-				Feature:    feature.Feature,
-				AwsRegions: feature.AwsRegions,
-				RoleArn:    feature.RoleArn,
-				StackArn:   feature.StackArn,
-				Status:     feature.Status,
-			})
-		}
-		accounts = append(accounts, account)
-	}
-
-	return accounts, nil
+	return account, nil
 }
 
-// AddAwsAccount -
-func (c *Client) AddAwsAccount(ctx context.Context, config aws.Config) error {
-	c.log.Print(Trace, "Client.AddAwsAccount")
-
-	// Lookup AWS account id and name
-	awsAccountID, awsAccountName, err := c.awsAccountID(ctx, config)
-	if err != nil {
-		return err
-	}
-	if awsAccountName == "" {
-		awsAccountName = "Trinity-TPM-DevOps"
-	}
-
-	buf, err := c.gql.Request(ctx, graphql.AwsAccountsAddQuery, struct {
-		AccountID string   `json:"account_id,omitempty"`
-		Name      string   `json:"account_name,omitempty"`
-		Regions   []string `json:"regions,omitempty"`
-	}{AccountID: awsAccountID, Name: awsAccountName, Regions: []string{config.Region}})
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(buf))
-
-	var payload struct {
-		Data struct {
-			Query struct {
-				CloudFormationName        string `json:"cloudFormationName"`
-				CloudFormationTemplateURL string `json:"cloudFormationTemplateUrl"`
-				CloudFormationURL         string `json:"cloudFormationUrl"`
-				ErrorMessage              string `json:"errorMessage"`
-			} `json:"awsNativeProtectionAccountAdd"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return err
-	}
-	if payload.Data.Query.ErrorMessage != "" {
-		return fmt.Errorf("polaris: %s", payload.Data.Query.ErrorMessage)
-	}
-	if payload.Data.Query.CloudFormationName == "" {
-		return fmt.Errorf("polaris: invalid CloudFormation stack name: %q", payload.Data.Query.CloudFormationName)
-	}
-
-	c.log.Printf(Debug, "CloudFormation stack name: %q", payload.Data.Query.CloudFormationName)
-
-	// Create CloudFormation stack.
-	client3 := cloudformation.NewFromConfig(config)
-	stack, err := client3.CreateStack(ctx, &cloudformation.CreateStackInput{
-		StackName:    &payload.Data.Query.CloudFormationName,
-		TemplateURL:  &payload.Data.Query.CloudFormationTemplateURL,
-		Capabilities: []types.Capability{types.CapabilityCapabilityIam},
-	})
-	if err != nil {
-		return err
-	}
-
-	stackStatus, err := c.awsCFMCreateStackWaitFor(ctx, config, *stack.StackId)
-	if err != nil {
-		return err
-	}
-	if stackStatus != types.StackStatusCreateComplete {
-		return fmt.Errorf("polaris: failed to create CloudFormation stack: %v", *stack.StackId)
-	}
-
-	return nil
-}
-
-// UpdateAwsAccount -
-func (c *Client) UpdateAwsAccount(ctx context.Context, config aws.Config) error {
-	c.log.Print(Trace, "Client.UpdateAwsAccount")
+// AwsAccounts returns the cloud account with cloud native protection for the
+// specified AWS config.
+func (c *Client) AwsAccountFromConfig(ctx context.Context, config aws.Config) (AwsCloudAccount, error) {
+	c.log.Print(log.Trace, "polaris.Client.AwsAccountDetails")
 
 	// Lookup AWS account id
 	awsAccountID, _, err := c.awsAccountID(ctx, config)
 	if err != nil {
-		return err
+		return AwsCloudAccount{}, err
 	}
 
-	// Lookup Polaris cloud account from AWS account id
-	accounts, err := c.AwsAccountsDetail(ctx, awsAccountID)
+	return c.AwsAccountFromID(ctx, awsAccountID)
+}
+
+// AwsAccountAdd adds the AWS account referred to by the given AWS config.
+func (c *Client) AwsAccountAdd(ctx context.Context, config aws.Config, awsRegions []string) error {
+	c.log.Print(log.Trace, "polaris.Client.AwsAccountAdd")
+
+	// Lookup AWS account id and name.
+	awsAccountID, awsAccountName, err := c.awsAccountID(ctx, config)
 	if err != nil {
 		return err
 	}
-	if len(accounts) > 1 {
-		return errors.New("account id refers to multiple accounts")
+
+	// Temporary, AWS Organizations fail to return the account name.
+	if awsAccountName == "" {
+		awsAccountName = "Trinity-TPM-DevOps"
 	}
-	account := accounts[0]
 
-	// Iterate over the cloud native protection features.
-	for _, feature := range account.Features {
-		if feature.Feature != "CLOUD_NATIVE_PROTECTION" {
-			continue
-		}
-		c.log.Printf(Debug, "Account: %s/%s - %s\n", account.Name, account.ID, feature.Status)
+	cfmName, _, cfmTemplateURL, err := c.gql.AwsNativeProtectionAccountAdd(ctx, awsAccountID, awsAccountName, awsRegions)
+	if err != nil {
+		return err
+	}
 
-		if feature.Status != "MISSING_PERMISSIONS" {
-			continue
-		}
-		buf, err := c.gql.Request(ctx, graphql.AwsAccountsUpdateInitiateQuery, struct {
-			AccountID string `json:"polaris_account_id,omitempty"`
-			Feature   string `json:"aws_native_protection_feature"`
-		}{AccountID: account.ID, Feature: feature.Feature})
+	exist, err := c.awsStackExist(ctx, config, cfmName)
+	if err != nil {
+		return err
+	}
+
+	// Create/Update the CloudFormation stack.
+	client := cloudformation.NewFromConfig(config)
+	if exist {
+		c.log.Printf(log.Info, "Updating CloudFormation stack: %s", cfmName)
+
+		stack, err := client.UpdateStack(ctx, &cloudformation.UpdateStackInput{
+			StackName:    &cfmName,
+			TemplateURL:  &cfmTemplateURL,
+			Capabilities: []types.Capability{types.CapabilityCapabilityIam},
+		})
 		if err != nil {
 			return err
 		}
 
-		// TODO: setup CloudFormation stack?
-		var payload struct {
-			Data struct {
-				Query struct {
-					CloudFormationURL string `json:"cloudFormationUrl"`
-					TemplateURL       string `json:"templateUrl"`
-				} `json:"awsCloudAccountUpdateFeatureInitiate"`
-			} `json:"data"`
+		stackStatus, err := c.awsWaitForStack(ctx, config, *stack.StackId)
+		if err != nil {
+			return err
 		}
-		if err := json.Unmarshal(buf, &payload); err != nil {
+		if stackStatus != types.StackStatusUpdateComplete {
+			return fmt.Errorf("polaris: failed to update CloudFormation stack: %v", *stack.StackId)
+		}
+	} else {
+		c.log.Printf(log.Info, "Creating CloudFormation stack: %s", cfmName)
+
+		stack, err := client.CreateStack(ctx, &cloudformation.CreateStackInput{
+			StackName:    &cfmName,
+			TemplateURL:  &cfmTemplateURL,
+			Capabilities: []types.Capability{types.CapabilityCapabilityIam},
+		})
+		if err != nil {
 			return err
 		}
 
-		c.log.Print(Info, "Account updated")
+		stackStatus, err := c.awsWaitForStack(ctx, config, *stack.StackId)
+		if err != nil {
+			return err
+		}
+		if stackStatus != types.StackStatusCreateComplete {
+			return fmt.Errorf("polaris: failed to create CloudFormation stack: %v", *stack.StackId)
+		}
 	}
 
 	return nil
 }
 
-// DeleteAwsAccount -
-func (c *Client) DeleteAwsAccount(ctx context.Context, config aws.Config) error {
-	c.log.Print(Trace, "Client.DeleteAwsAccount")
+// AwsAccountSetRegions updates the AWS regions for the AWS account with
+// specified account ID.
+func (c *Client) AwsAccountSetRegions(ctx context.Context, awsAccountID string, awsRegions []string) error {
+	c.log.Print(log.Trace, "polaris.Client.AwsAccountAddRegions")
 
-	// Lookup AWS account id.
-	awsAccountID, _, err := c.awsAccountID(ctx, config)
+	account, err := c.AwsAccountFromID(ctx, awsAccountID)
+	if err != nil {
+		return err
+	}
+	if n := len(account.Features); n != 1 {
+		return fmt.Errorf("polaris: invalid number of features: %d", n)
+	}
+
+	regions := make([]string, 0, len(awsRegions))
+	for _, region := range awsRegions {
+		regions = append(regions, strings.ReplaceAll(strings.ToUpper(region), "-", "_"))
+	}
+
+	if err := c.gql.AwsCloudAccountSave(ctx, account.ID, regions); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AwsAccountRemove removes the AWS account with specified account ID from the
+// Polaris account. If awsAccountID is empty the account ID of the AWS config
+// will be used instead.
+func (c *Client) AwsAccountRemove(ctx context.Context, config aws.Config, awsAccountID string) error {
+	c.log.Print(log.Trace, "polaris.Client.AwsAccountDelete")
+
+	// Lookup Polaris cloud account from AWS account id
+	var account AwsCloudAccount
+	var err error
+	if awsAccountID != "" {
+		account, err = c.AwsAccountFromID(ctx, awsAccountID)
+	} else {
+		account, err = c.AwsAccountFromConfig(ctx, config)
+	}
 	if err != nil {
 		return err
 	}
 
-	// Lookup Polaris cloud account from AWS account id.
-	accounts, err := c.AwsAccountsDetail(ctx, awsAccountID)
-	if err != nil {
-		return err
-	}
-	if len(accounts) < 1 {
-		return fmt.Errorf("polaris: no account matching account id found")
-	}
-	if len(accounts) > 1 {
-		return fmt.Errorf("polaris: account id refers to multiple accounts")
-	}
-	account := accounts[0]
-
-	// Disable account.
-	buf, err := c.gql.Request(ctx, graphql.AwsAccountsDisableQuery, struct {
-		AccountID string `json:"polaris_account_id,omitempty"`
-	}{AccountID: account.ID})
+	taskChainID, err := c.gql.AwsDeleteNativeAccount(ctx, account.ID, graphql.AwsEC2, false)
 	if err != nil {
 		return err
 	}
 
-	var payload1 struct {
-		Data struct {
-			Query struct {
-				TaskChainID string `json:"taskchainUuid"`
-			} `json:"deleteAwsNativeAccount"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload1); err != nil {
-		return err
-	}
-
-	status, err := c.taskChainWaitFor(ctx, taskChainID(payload1.Data.Query.TaskChainID))
+	state, err := c.gql.WaitForTaskChain(ctx, taskChainID)
 	if err != nil {
 		return err
 	}
-	if status != taskChainSucceeded {
-		return fmt.Errorf("polaris: taskchain failed: taskChainUUID=%v, taskStatus=%v", payload1.Data.Query.TaskChainID, status)
+	if state != graphql.TaskChainSucceeded {
+		return fmt.Errorf("polaris: taskchain failed: taskChainUUID=%v, state=%v", taskChainID, state)
 	}
 
-	// Initiate delete.
-	buf, err = c.gql.Request(ctx, graphql.AwsAccountsDeleteInitiateQuery, struct {
-		AccountID string `json:"polaris_account_id,omitempty"`
-	}{AccountID: account.ID})
+	cfmURL, err := c.gql.AwsCloudAccountDeleteInitiate(ctx, account.ID)
 	if err != nil {
 		return err
 	}
 
-	var payload2 struct {
-		Data struct {
-			Query struct {
-				CloudFormationURL string `json:"cloudFormationUrl"`
-			} `json:"awsCloudAccountDeleteInitiate"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload2); err != nil {
-		return err
-	}
+	c.log.Printf(log.Debug, "cfmURL: %s", cfmURL)
 
-	// Remove CloudFormation stack.
+	// Check if there are more features than cloud native protection and get
+	// the stack Arn/ID.
+	var stackArn string
+	var protRDS bool
 	for _, feature := range account.Features {
-		if feature.Feature != "CLOUD_NATIVE_PROTECTION" {
-			continue
+		switch feature.Feature {
+		case "CLOUD_NATIVE_PROTECTION":
+			stackArn = feature.StackArn
+		case "RDS_PROTECTION":
+			protRDS = true
 		}
+	}
 
-		stackName := feature.StackArn
-		if strings.Count(stackName, "/") < 2 || len(stackName) < 2 {
-			return fmt.Errorf("polaris: invalid stack arn: stackArn=%v", feature.StackArn)
-		}
-		stackName = stackName[strings.Index(stackName, "/")+1 : strings.LastIndex(stackName, "/")]
+	// Remove/Update CloudFormation stack.
+	client := cloudformation.NewFromConfig(config)
+	if protRDS {
+		c.log.Printf(log.Info, "Updating CloudFormation stack: %s", stackArn)
 
-		// TODO: handle multiple regions?
-		client := cloudformation.NewFromConfig(config)
-		stacks, err := client.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{StackName: &stackName})
+		usePrevious := true
+		_, err := client.UpdateStack(ctx, &cloudformation.UpdateStackInput{
+			StackName:           &stackArn,
+			UsePreviousTemplate: &usePrevious,
+			Capabilities:        []types.Capability{types.CapabilityCapabilityIam},
+		})
 		if err != nil {
 			return err
 		}
-		stack := stacks.Stacks[0]
 
-		_, err = client.DeleteStack(ctx, &cloudformation.DeleteStackInput{StackName: stack.StackId})
+		stackStatus, err := c.awsWaitForStack(ctx, config, stackArn)
+		if err != nil {
+			return err
+		}
+		if stackStatus != types.StackStatusUpdateComplete {
+			return fmt.Errorf("polaris: failed to update CloudFormation stack: %v", stackArn)
+		}
+	} else {
+		c.log.Printf(log.Info, "Deleting CloudFormation stack: %s", stackArn)
+
+		_, err = client.DeleteStack(ctx, &cloudformation.DeleteStackInput{
+			StackName: &stackArn,
+		})
 		if err != nil {
 			return err
 		}
 
-		stackStatus, err := c.awsCFMCreateStackWaitFor(ctx, config, *stack.StackId)
+		stackStatus, err := c.awsWaitForStack(ctx, config, stackArn)
 		if err != nil {
 			return err
 		}
 		if stackStatus != types.StackStatusDeleteComplete {
-			return fmt.Errorf("polaris: failed to delete CloudFormation stack: %v", stackName)
+			return fmt.Errorf("polaris: failed to delete CloudFormation stack: %v", stackArn)
 		}
 	}
 
-	// Process delete.
-	buf, err = c.gql.Request(ctx, graphql.AwsAccountsDeleteCommitQuery, struct {
-		AccountID string `json:"polaris_account_id,omitempty"`
-	}{AccountID: account.ID})
-	if err != nil {
+	if err := c.gql.AwsCloudAccountDeleteProcess(ctx, account.ID); err != nil {
 		return err
 	}
-
-	var payload3 struct {
-		Data struct {
-			Query struct {
-				Message string `json:"message"`
-			} `json:"awsCloudAccountDeleteProcess"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload3); err != nil {
-		return err
-	}
-
-	fmt.Println(payload3.Data.Query.Message)
 
 	return nil
 }

@@ -19,3 +19,66 @@
 // DEALINGS IN THE SOFTWARE.
 
 package polaris
+
+import (
+	"os"
+	"testing"
+)
+
+func TestConfigFromEnv(t *testing.T) {
+	config, err := ConfigFromEnv()
+	if err == nil {
+		t.Fatal("expected ConfigFromEnv to fail")
+	}
+
+	if err := os.Setenv("RUBRIK_POLARIS_ACCOUNT", "account"); err != nil {
+		t.Fatal(err)
+	}
+	config, err = ConfigFromEnv()
+	if err == nil {
+		t.Fatal("expected ConfigFromEnv to fail")
+	}
+
+	if err := os.Setenv("RUBRIK_POLARIS_USERNAME", "username"); err != nil {
+		t.Fatal(err)
+	}
+	config, err = ConfigFromEnv()
+	if err == nil {
+		t.Fatal("expected ConfigFromEnv to fail")
+	}
+
+	if err := os.Setenv("RUBRIK_POLARIS_PASSWORD", "password"); err != nil {
+		t.Fatal(err)
+	}
+	config, err = ConfigFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Account == "" {
+		t.Error("invalid account")
+	}
+	if config.Username == "" {
+		t.Error("invalid username")
+	}
+	if config.Password == "" {
+		t.Error("invalid password")
+	}
+
+	if err := os.Setenv("RUBRIK_POLARIS_URL", "url"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Setenv("RUBRIK_POLARIS_LOGLEVEL", "logLevel"); err != nil {
+		t.Fatal(err)
+	}
+
+	config, err = ConfigFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.URL == "" {
+		t.Error("invalid url")
+	}
+	if config.LogLevel == "" {
+		t.Error("invalid log level")
+	}
+}

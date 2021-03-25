@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($polarisAccountId: UUID!, $awsRegions: [AwsCloudAccountRegionEnum!]!) {
+  awsCloudAccountSave(cloudAccountUuid: $polarisAccountId, awsCloudAccountSaveArg: {action: UPDATE_REGIONS, feature: CLOUD_NATIVE_PROTECTION, awsRegions: $awsRegions}) {
+    message
+  }
+}

@@ -18,7 +18,9 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package polaris
+// Package log contains the Logger interface used by the Polaris SDK. The
+// interface can be used to implement adapters for existing log frameworks.
+package log
 
 import (
 	"errors"
@@ -44,22 +46,22 @@ const (
 func formatLogLevel(level LogLevel) string {
 	switch level {
 	case Trace:
-		return "TRACE"
+		return "[TRACE]"
 	case Debug:
-		return "DEBUG"
+		return "[DEBUG]"
 	case Info:
-		return "INFO"
+		return "[INFO]"
 	case Warn:
-		return "WARN"
+		return "[WARN]"
 	case Error:
-		return "ERROR"
+		return "[ERROR]"
 	default:
-		return "FATAL"
+		return "[FATAL]"
 	}
 }
 
-// parseLogLevel parses the given string as a LogLevel.
-func parseLogLevel(level string) (LogLevel, error) {
+// ParseLogLevel parses the given string as a LogLevel.
+func ParseLogLevel(level string) (LogLevel, error) {
 	switch strings.ToLower(level) {
 	case "trace":
 		return Trace, nil
@@ -78,8 +80,7 @@ func parseLogLevel(level string) (LogLevel, error) {
 	}
 }
 
-// Logger used by the SDK. Specify the implementation to use when creating the
-// Client with NewClient. The SDK provides two implementations: DiscardLogger
+// Logger used by the SDK. The SDK provides two implementations: DiscardLogger
 // and StandardLogger.
 type Logger interface {
 	// SetLogLevel sets the log level to the specified level.
@@ -93,19 +94,18 @@ type Logger interface {
 }
 
 // DiscardLogger discards everything written. Note that this logger never
-// panics. When Config.Log is set to false the logger given to NewClient is
-// silently replaced by a DiscardLogger.
+// panics.
 type DiscardLogger struct{}
 
 // SetLogLevel discards the log level.
 func (l DiscardLogger) SetLogLevel(level LogLevel) {
 }
 
-// Print discards the specified arguments.
+// Print discards the given arguments.
 func (l DiscardLogger) Print(level LogLevel, args ...interface{}) {
 }
 
-// Printf discards the specified arguments.
+// Printf discards the given arguments.
 func (l DiscardLogger) Printf(level LogLevel, format string, args ...interface{}) {
 }
 
@@ -128,7 +128,7 @@ func (l StandardLogger) Print(level LogLevel, args ...interface{}) {
 		return
 	}
 
-	args = append([]interface{}{formatLogLevel(level), " - "}, args...)
+	args = append([]interface{}{formatLogLevel(level), " "}, args...)
 	switch level {
 	case Fatal:
 		log.Fatal(args...)
@@ -148,16 +148,15 @@ func (l StandardLogger) Printf(level LogLevel, format string, args ...interface{
 		return
 	}
 
-	format = "%s - " + format
 	args = append([]interface{}{formatLogLevel(level)}, args...)
 	switch level {
 	case Fatal:
-		log.Fatalf(format, args...)
+		log.Fatalf("%s "+format, args...)
 
 	case Error:
-		log.Panicf(format, args...)
+		log.Panicf("%s "+format, args...)
 
 	default:
-		log.Printf(format, args...)
+		log.Printf("%s "+format, args...)
 	}
 }

@@ -68,13 +68,18 @@ var {{ $name }}Query = {{ $value }}
 
 // variableName creates a Golang variable name from the query file name by
 // trimming the file suffix removing underscore characters and capitalizing
-// the character after.
+// the character after. The first character is not capitalized to prevent the
+// name from being exported.
 func variableName(fileName string) string {
 	var sb strings.Builder
 
 	name := strings.TrimSuffix(strings.ToLower(fileName), ".graphql")
-	for _, part := range strings.Split(name, "_") {
-		sb.WriteString(strings.Title(part))
+	for i, part := range strings.Split(name, "_") {
+		if i == 0 {
+			sb.WriteString(part)
+		} else {
+			sb.WriteString(strings.Title(part))
+		}
 	}
 
 	return sb.String()
@@ -95,7 +100,7 @@ func main() {
 		}
 
 		name := variableName(info.Name())
-		query := strings.Replace(strings.TrimSpace(string(buf)), "RubrikPolarisSDKRequest", "SdkGolang"+name, 1)
+		query := strings.Replace(strings.TrimSpace(string(buf)), "RubrikPolarisSDKRequest", "SdkGolang_"+name, 1)
 		queries[name] = "`" + query + "`"
 		return nil
 	})

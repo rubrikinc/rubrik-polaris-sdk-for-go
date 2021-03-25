@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($polarisAccountId: UUID!) {
+    awsCloudAccountDeleteProcess(cloudAccountUuid: $polarisAccountId, awsCloudAccountDeleteProcessArg: {feature: CLOUD_NATIVE_PROTECTION}) {
+        message
+    }
+}
