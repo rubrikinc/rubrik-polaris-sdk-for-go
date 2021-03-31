@@ -40,6 +40,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -49,75 +50,89 @@ import (
 	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// errorResponse returned by Polaris when an error occurs in a GraphQL query.
-type errorResponse struct {
+// jsonError is returned by Polaris in the body of a response as a JSON
+// document when certain types of errors occur.
+type jsonError struct {
 	Code    int    `json:"code"`
+	URI     string `json:"uri"`
 	Message string `json:"message"`
 }
 
-// ToError converts the ErrorResponse to a standard Go error or nil if the
-// ErrorResponse isn't an error.
-func (e errorResponse) ToError() error {
-	if e.Code == 0 && e.Message == "" {
-		return nil
-	}
-
-	return fmt.Errorf("polaris: remote responded with code %d: %q", e.Code, e.Message)
+// isError determines if the jsonError unmarshallad from a JSON document
+// represents an error or not.
+func (e jsonError) isError() bool {
+	return e.Code != 0 || e.Message != ""
 }
 
-type errorLocation struct {
+func (e jsonError) Error() string {
+	return fmt.Sprintf("polaris: code %d: %s", e.Code, e.Message)
+}
+
+type gqlLocation struct {
 	Line   int `json:"line"`
 	Column int `json:"column"`
 }
 
-type errorDetail struct {
-	Message   string          `json:"message"`
-	Path      []string        `json:"path"`
-	Locations []errorLocation `json:"locations"`
+type gqlDetails struct {
+	Message   string        `json:"message"`
+	Path      []string      `json:"path"`
+	Locations []gqlLocation `json:"locations"`
 }
 
-// errorResponseWithDetails returned by Polaris when an error occurs in a
-// GraphQL query.
-type errorResponseWithDetails struct {
-	Data   interface{}   `json:"data"`
-	Errors []errorDetail `json:"errors"`
+// gqlError is returned by Polaris in the body of a response as a JSON document
+// when certain types of GraphQL errors occur.
+type gqlError struct {
+	Data   interface{}  `json:"data"`
+	Errors []gqlDetails `json:"errors"`
 }
 
-// ToError converts the errorResponseWithDetails to a standard Go error or nil
-// if the errorResponseWithDetails isn't an error.
-func (e errorResponseWithDetails) ToError() error {
-	if len(e.Errors) == 0 {
-		return nil
-	}
+// isError determines if the gqlError unmarshallad from a JSON document
+// represents an error or not.
+func (e gqlError) isError() bool {
+	return len(e.Errors) > 0
+}
 
-	return fmt.Errorf("polaris: remote responded with: %q", e.Errors[0].Message)
+func (e gqlError) Error() string {
+	return fmt.Sprintf("polaris: %s", e.Errors[0].Message)
 }
 
 // Client is used to make GraphQL calls to the Polaris platform.
 type Client struct {
-	gqlURL     string
-	httpClient *http.Client
-	log        log.Logger
+	gqlURL string
+	client *http.Client
+	log    log.Logger
 }
 
 // NewClient returns a new Client with the specified configuration.
 func NewClient(apiURL, username, password string, logger log.Logger) *Client {
-	src := tokenSource{
-		tokenURL: fmt.Sprintf("%s/session", apiURL),
-		username: username,
-		password: password,
-	}
-
 	return &Client{
 		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
-		httpClient: &http.Client{
-			Transport: &transport{
+		client: &http.Client{
+			Transport: &tokenTransport{
 				next: http.DefaultTransport,
+				src:  newTokenSource(apiURL, username, password),
+			},
+		},
+		log: logger,
+	}
+}
+
+// NewTestClient - Intended to be used by unit tests.
+func NewTestClient(username, password string, logger log.Logger) (*Client, *TestListener) {
+	src, lis := newTestTokenSource(username, password)
+
+	client := &Client{
+		gqlURL: "http://test/api/graphql",
+		client: &http.Client{
+			Transport: &tokenTransport{
+				next: src.client.Transport,
 				src:  src,
 			},
 		},
 		log: logger,
 	}
+
+	return client, lis
 }
 
 // Request posts the specified GraphQL query with the given variables to the
@@ -125,6 +140,7 @@ func NewClient(apiURL, username, password string, logger log.Logger) *Client {
 func (c *Client) Request(ctx context.Context, query string, variables interface{}) ([]byte, error) {
 	c.log.Print(log.Trace, "graphql.Request")
 
+	// Prepare the query request body.
 	buf, err := json.Marshal(struct {
 		Query     string      `json:"query"`
 		Variables interface{} `json:"variables,omitempty"`
@@ -133,20 +149,33 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 		return nil, err
 	}
 
+	// Send the query to the remote API endpoint.
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.gqlURL, bytes.NewReader(buf))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("Accept", "application/json")
-	res, err := c.httpClient.Do(req)
+	res, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer res.Body.Close()
+
+	// Remote responded without a body. For status code 200 this means we are
+	// missing the GraphQL response. For an error we have no additional details.
+	if res.ContentLength == 0 {
+		if res.StatusCode != 200 {
+			return nil, fmt.Errorf("polaris: %s", res.Status)
+		} else {
+			return nil, errors.New("polaris: no body")
+		}
+	}
+
+	// Verify that the content type of the body is JSON.
 	contentType := res.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
-		return nil, fmt.Errorf("error: wrong content type for response: %s", contentType)
+		return nil, fmt.Errorf("polaris: wrong content-type: %s", contentType)
 	}
 
 	buf, err = io.ReadAll(res.Body)
@@ -154,21 +183,26 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 		return nil, err
 	}
 
-	// Check if the response matches one of the two error responses.
-	var errRes errorResponse
-	if err := json.Unmarshal(buf, &errRes); err != nil {
+	// Remote responded with a JSON document. Try to parse it as both known
+	// error message formats.
+	var jsonErr jsonError
+	if err := json.Unmarshal(buf, &jsonErr); err != nil {
 		return nil, err
 	}
-	if err := errRes.ToError(); err != nil {
-		return nil, err
+	if jsonErr.isError() {
+		return nil, jsonErr
 	}
 
-	var errResWithDetails errorResponseWithDetails
-	if err := json.Unmarshal(buf, &errResWithDetails); err != nil {
+	var gqlErr gqlError
+	if err := json.Unmarshal(buf, &gqlErr); err != nil {
 		return nil, err
 	}
-	if err := errResWithDetails.ToError(); err != nil {
-		return nil, err
+	if gqlErr.isError() {
+		return nil, gqlErr
+	}
+
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf("polaris: %s", res.Status)
 	}
 
 	return buf, nil

@@ -1,0 +1,25 @@
+{
+    "data": null,
+    "errors": [
+        {
+            "message": "INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING",
+            "path": [
+                "awsNativeProtectionAccountAdd"
+            ],
+            "locations": [
+                {
+                    "line": 2,
+                    "column": 5
+                }
+            ],
+            "extensions": {
+                "code": 500,
+                "trace": {
+                    "operation": "/api/graphql",
+                    "traceId": "9D7LJciYbUSaTTaLQuJcMA==",
+                    "spanId": "+oIjDLvf/Ow="
+                }
+            }
+        }
+    ]
+}

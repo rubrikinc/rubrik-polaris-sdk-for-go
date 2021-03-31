@@ -21,8 +21,12 @@
 package graphql
 
 import (
+	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
+	"text/template"
 	"time"
 )
 
@@ -57,5 +61,85 @@ func TestTokenSetAsHeader(t *testing.T) {
 
 	if auth := req.Header.Get("Authorization"); auth != "Bearer token" {
 		t.Errorf("invalid Authorization header, auth=%s", auth)
+	}
+}
+
+func TestTokenSource(t *testing.T) {
+	tmpl, err := template.ParseFiles("testdata/session.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	src, lis := newTestTokenSource("john", "doe")
+
+	// Respond with status code 200 and a token created by concatenating the
+	// username and password.
+	srv := serveJSON(lis, func(w http.ResponseWriter, req *http.Request) {
+		buf, err := io.ReadAll(req.Body)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		var payload struct {
+			Username string
+			Password string
+		}
+		if err := json.Unmarshal(buf, &payload); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		if err := tmpl.Execute(w, payload); err != nil {
+			panic(err)
+		}
+	})
+	defer srv.Shutdown(context.Background())
+
+	token, err := src.token()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if token.token != "john:doe" {
+		t.Fatalf("invalid token, token=%v", token.token)
+	}
+	if token.expired() {
+		t.Fatal("invalid token, already expired")
+	}
+}
+
+func TestTokenSourceWithBadCredentials(t *testing.T) {
+	tmpl, err := template.ParseFiles("testdata/error_json_from_polaris.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	src, lis := newTestTokenSource("john", "doe")
+
+	// Respond with status code 401 and additional details in the body.
+	srv := serveJSON(lis, func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(401)
+		if err := tmpl.Execute(w, nil); err != nil {
+			panic(err)
+		}
+	})
+	defer srv.Shutdown(context.Background())
+
+	if _, err := src.token(); err == nil {
+		t.Fatal("expected the token request to fail")
+	}
+}
+
+func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
+	src, lis := newTestTokenSource("john", "doe")
+
+	// Respond with status code 500 and no additional details.
+	srv := serve(lis, func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(500)
+	})
+	defer srv.Shutdown(context.Background())
+
+	if _, err := src.token(); err == nil {
+		t.Fatal("expected the token request to fail")
 	}
 }

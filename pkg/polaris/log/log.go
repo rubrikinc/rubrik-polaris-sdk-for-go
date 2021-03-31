@@ -117,7 +117,7 @@ type StandardLogger struct {
 }
 
 // SetLogLevel sets the log level to the specified level.
-func (l StandardLogger) SetLogLevel(level LogLevel) {
+func (l *StandardLogger) SetLogLevel(level LogLevel) {
 	l.level = level
 }
 

@@ -1,0 +1,4 @@
+{
+    "access_token": "{{ .Username }}:{{ .Password }}",
+    "is_eula_accepted": true
+}
