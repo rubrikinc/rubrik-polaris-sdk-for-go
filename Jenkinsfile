@@ -25,9 +25,6 @@ pipeline {
     tools {
         go 'go-1.16.2'
     }
-    environment {
-        CGO_ENABLED = 0
-    }
     triggers {
         cron(env.BRANCH_NAME == 'main' ? '@midnight' : '')
     }
@@ -39,16 +36,16 @@ pipeline {
         }
         stage('Build') {
             steps {
-                sh 'go build ./...'
+                sh 'CGO_ENABLED=0 go build ./...'
             }
         }
         stage('Test') {
             environment {
-                INTEGRATION = currentBuild.getBuildCauses('jenkins.branch.BranchEventCause').size()
+                // Run integration tests with the nightly build.
+                SDK_INTEGRATION = currentBuild.getBuildCauses('jenkins.branch.BranchEventCause').isEmpty()
             }
             steps {
-                sh 'echo "Integration build: ${INTEGRATION}"'
-                sh 'go test -cover -timeout=1m ./...'
+                sh 'CGO_ENABLED=0 go test -cover ./...'
             }
         }
     }
