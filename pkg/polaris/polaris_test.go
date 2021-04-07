@@ -29,10 +29,19 @@ import (
 // requireEnv skips the current test if specified environment variable is not
 // defined or false according to the definition given by strconv.ParseBool.
 func requireEnv(t *testing.T, env string) {
-	ok, err := strconv.ParseBool(os.Getenv(env))
-	if err != nil || !ok {
-		t.Skipf("skip due to %q", env)
+	val := os.Getenv(env)
+
+	n, err := strconv.ParseInt(val, 10, 64)
+	if err == nil && n > 0 {
+		return
 	}
+
+	b, err := strconv.ParseBool(val)
+	if err == nil && b {
+		return
+	}
+
+	t.Skipf("skip due to %q", env)
 }
 
 func TestConfigFromEnv(t *testing.T) {

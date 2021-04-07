@@ -42,7 +42,7 @@ pipeline {
         stage('Test') {
             environment {
                 // Run integration tests with the nightly build.
-                SDK_INTEGRATION = currentBuild.getBuildCauses('jenkins.branch.BranchEventCause').size() != 0
+                SDK_INTEGRATION = currentBuild.getBuildCauses('jenkins.branch.BranchEventCause').size()
             }
             steps {
                 sh 'CGO_ENABLED=0 go test -cover ./...'
