@@ -26,7 +26,7 @@ pipeline {
         go 'go-1.16.2'
     }
     triggers {
-        cron(env.BRANCH_NAME == 'main' ? '@midnight' : '')
+        cron(env.BRANCH_NAME == 'aws-accounts' ? '@midnight' : '')
     }
     stages {
         stage('Lint') {
@@ -46,7 +46,7 @@ pipeline {
                 SDK_POLARIS_ACCOUNT = credentials('polaris-account')
 
                 // Run integration tests with the nightly build.
-                SDK_INTEGRATION = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause').size()
+                SDK_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
             }
             steps {
                 sh 'mkdir -p ~/.aws'
