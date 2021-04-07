@@ -41,11 +41,19 @@ pipeline {
         }
         stage('Test') {
             environment {
+                // Accounts to use for integration tests.
+                SDK_AWS_ACCOUNT     = credentials('aws-account')
+                SDK_POLARIS_ACCOUNT = credentials('polaris-account')
+
                 // Run integration tests with the nightly build.
-                SDK_INTEGRATION = currentBuild.getBuildCauses('jenkins.branch.BranchEventCause').size()
+                SDK_INTEGRATION = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause').size()
             }
             steps {
-                sh 'CGO_ENABLED=0 go test -cover ./...'
+                sh 'mkdir -p ~/.aws'
+                sh 'cp ${SDK_AWS_ACCOUNT} ~/.aws/credentials'
+                sh 'mkdir -p ~/.rubrik'
+                sh 'cp ${SDK_POLARIS_ACCOUNT} ~/.rubrik/polaris-accounts.json'
+                sh 'CGO_ENABLED=0 go test -cover -v ./...'
             }
         }
     }
