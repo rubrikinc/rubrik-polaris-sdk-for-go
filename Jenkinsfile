@@ -27,12 +27,9 @@ pipeline {
     }
     environment {
         CGO_ENABLED = 0
-
-        // Schedule a run at midnight for the main branch.
-        NIGHTLY = sh(script: 'if [[ $BRANCH_NAME == "main" ]]; then echo "@midnight"; fi', returnStdout: true).trim()
     }
     triggers {
-        cron(env.NIGHTLY)
+        cron(env.BRANCH_NAME == 'main' ? '@midnight' : '')
     }
     stages {
         stage('Lint') {
