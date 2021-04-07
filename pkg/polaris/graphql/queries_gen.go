@@ -100,7 +100,7 @@ func main() {
 		}
 
 		name := variableName(info.Name())
-		query := strings.Replace(strings.TrimSpace(string(buf)), "RubrikPolarisSDKRequest", "SdkGolang_"+name, 1)
+		query := strings.Replace(strings.TrimSpace(string(buf)), "RubrikPolarisSDKRequest", "SdkGolang"+strings.Title(name), 1)
 		queries[name] = "`" + query + "`"
 		return nil
 	})

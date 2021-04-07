@@ -25,28 +25,28 @@
 package graphql
 
 // awsCloudAccountDeleteInitiate GraphQL query
-var awsCloudAccountDeleteInitiateQuery = `mutation SdkGolang_awsCloudAccountDeleteInitiate($polarisAccountId: UUID!) {
+var awsCloudAccountDeleteInitiateQuery = `mutation SdkGolangAwsCloudAccountDeleteInitiate($polarisAccountId: UUID!) {
     awsCloudAccountDeleteInitiate(cloudAccountUuid: $polarisAccountId, awsCloudAccountDeleteInitiateArg: {feature: CLOUD_NATIVE_PROTECTION}) {
         cloudFormationUrl
     }
 }`
 
 // awsCloudAccountDeleteProcess GraphQL query
-var awsCloudAccountDeleteProcessQuery = `mutation SdkGolang_awsCloudAccountDeleteProcess($polarisAccountId: UUID!) {
+var awsCloudAccountDeleteProcessQuery = `mutation SdkGolangAwsCloudAccountDeleteProcess($polarisAccountId: UUID!) {
     awsCloudAccountDeleteProcess(cloudAccountUuid: $polarisAccountId, awsCloudAccountDeleteProcessArg: {feature: CLOUD_NATIVE_PROTECTION}) {
         message
     }
 }`
 
 // awsCloudAccountSave GraphQL query
-var awsCloudAccountSaveQuery = `mutation SdkGolang_awsCloudAccountSave($polarisAccountId: UUID!, $awsRegions: [AwsCloudAccountRegionEnum!]!) {
+var awsCloudAccountSaveQuery = `mutation SdkGolangAwsCloudAccountSave($polarisAccountId: UUID!, $awsRegions: [AwsCloudAccountRegionEnum!]!) {
   awsCloudAccountSave(cloudAccountUuid: $polarisAccountId, awsCloudAccountSaveArg: {action: UPDATE_REGIONS, feature: CLOUD_NATIVE_PROTECTION, awsRegions: $awsRegions}) {
     message
   }
 }`
 
 // awsCloudAccountUpdateFeatureInitiate GraphQL query
-var awsCloudAccountUpdateFeatureInitiateQuery = `mutation SdkGolang_awsCloudAccountUpdateFeatureInitiate($polarisAccountId: UUID!) {
+var awsCloudAccountUpdateFeatureInitiateQuery = `mutation SdkGolangAwsCloudAccountUpdateFeatureInitiate($polarisAccountId: UUID!) {
     awsCloudAccountUpdateFeatureInitiate(cloudAccountUuid: $polarisAccountId, features: [CLOUD_NATIVE_PROTECTION]) {
         cloudFormationUrl
         templateUrl
@@ -54,7 +54,7 @@ var awsCloudAccountUpdateFeatureInitiateQuery = `mutation SdkGolang_awsCloudAcco
 }`
 
 // awsCloudAccounts GraphQL query
-var awsCloudAccountsQuery = `query SdkGolang_awsCloudAccounts($columnFilter: String = "") {
+var awsCloudAccountsQuery = `query SdkGolangAwsCloudAccounts($columnFilter: String = "") {
     awsCloudAccounts(awsCloudAccountsArg: {columnSearchFilter: $columnFilter, statusFilters: [], feature: CLOUD_NATIVE_PROTECTION}) {
         awsCloudAccounts {
             awsCloudAccount {
@@ -75,14 +75,14 @@ var awsCloudAccountsQuery = `query SdkGolang_awsCloudAccounts($columnFilter: Str
 }`
 
 // awsDeleteNativeAccount GraphQL query
-var awsDeleteNativeAccountQuery = `mutation SdkGolang_awsDeleteNativeAccount($polarisAccountId: UUID!, $deleteNativeSnapshots: Boolean = false, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2) {
+var awsDeleteNativeAccountQuery = `mutation SdkGolangAwsDeleteNativeAccount($polarisAccountId: UUID!, $deleteNativeSnapshots: Boolean = false, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2) {
     deleteAwsNativeAccount(awsNativeAccountId: $polarisAccountId, deleteNativeSnapshots: $deleteNativeSnapshots, awsNativeProtectionFeature: $awsNativeProtectionFeature) {
         taskchainUuid
     }
 }`
 
 // awsNativeAccountConnection GraphQL query
-var awsNativeAccountConnectionQuery = `query SdkGolang_awsNativeAccountConnection($awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2, $nameFilter: String = "") {
+var awsNativeAccountConnectionQuery = `query SdkGolangAwsNativeAccountConnection($awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2, $nameFilter: String = "") {
 	awsNativeAccountConnection(awsNativeProtectionFeature: $awsNativeProtectionFeature, accountFilters: {nameSubstringFilter: {nameSubstring: $nameFilter}}) {
 		count
 		edges {
@@ -110,7 +110,7 @@ var awsNativeAccountConnectionQuery = `query SdkGolang_awsNativeAccountConnectio
 }`
 
 // awsNativeProtectionAccountAdd GraphQL query
-var awsNativeProtectionAccountAddQuery = `mutation SdkGolang_awsNativeProtectionAccountAdd($accountId: String!, $accountName: String!, $regions: [String!]!) {
+var awsNativeProtectionAccountAddQuery = `mutation SdkGolangAwsNativeProtectionAccountAdd($accountId: String!, $accountName: String!, $regions: [String!]!) {
     awsNativeProtectionAccountAdd(awsNativeProtectionAccountAddArg: {accountId: $accountId, name: $accountName, regions: $regions}) {
        cloudFormationName
        cloudFormationUrl
@@ -120,7 +120,7 @@ var awsNativeProtectionAccountAddQuery = `mutation SdkGolang_awsNativeProtection
 }`
 
 // coreTaskchainStatus GraphQL query
-var coreTaskchainStatusQuery = `query SdkGolang_coreTaskchainStatus($taskchainId: String!){
+var coreTaskchainStatusQuery = `query SdkGolangCoreTaskchainStatus($taskchainId: String!){
     getKorgTaskchainStatus(taskchainId: $taskchainId){
         taskchain {
             id
