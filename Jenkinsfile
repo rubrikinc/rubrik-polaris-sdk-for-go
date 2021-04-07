@@ -32,7 +32,7 @@ pipeline {
         NIGHTLY = sh(script: 'if [[ $BRANCH_NAME == "main" ]]; then echo "@midnight"; fi', returnStdout: true).trim()
     }
     triggers {
-        cron($NIGHTLY)
+        cron(env.NIGHTLY)
     }
     stages {
         stage('Lint') {
