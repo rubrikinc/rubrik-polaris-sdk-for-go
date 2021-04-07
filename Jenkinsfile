@@ -50,9 +50,9 @@ pipeline {
             }
             steps {
                 sh 'mkdir -p ~/.aws'
-                sh 'cp ${SDK_AWS_ACCOUNT} ~/.aws/credentials'
+                sh 'cp -f ${SDK_AWS_ACCOUNT} ~/.aws/credentials'
                 sh 'mkdir -p ~/.rubrik'
-                sh 'cp ${SDK_POLARIS_ACCOUNT} ~/.rubrik/polaris-accounts.json'
+                sh 'cp -f ${SDK_POLARIS_ACCOUNT} ~/.rubrik/polaris-accounts.json'
                 sh 'CGO_ENABLED=0 go test -cover -v ./...'
             }
         }
