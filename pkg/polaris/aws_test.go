@@ -9,6 +9,30 @@ import (
 	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+func TestAwsFromPolarisRegionNames(t *testing.T) {
+	names := awsFromPolarisRegionNames([]string{"us-east-1", "us-west-1"})
+	if !reflect.DeepEqual(names, []string{"us-east-1", "us-west-1"}) {
+		t.Errorf("invalid region names: %v", names)
+	}
+
+	names = awsFromPolarisRegionNames([]string{"US_EAST_1", "US_WEST_1"})
+	if !reflect.DeepEqual(names, []string{"us-east-1", "us-west-1"}) {
+		t.Errorf("invalid region name: %v", names)
+	}
+}
+
+func TestAwsToPolarisRegionNames(t *testing.T) {
+	names := awsToPolarisRegionNames([]string{"us-east-1", "us-west-1"})
+	if !reflect.DeepEqual(names, []string{"US_EAST_1", "US_WEST_1"}) {
+		t.Errorf("invalid region names: %v", names)
+	}
+
+	names = awsToPolarisRegionNames([]string{"US_EAST_1", "US_WEST_1"})
+	if !reflect.DeepEqual(names, []string{"US_EAST_1", "US_WEST_1"}) {
+		t.Errorf("invalid region name: %v", names)
+	}
+}
+
 // Between the account has been added and it has been removed we never fail
 // fatally to allow the account to be removed in case of an error.
 func TestAwsAccountAddAndRemove(t *testing.T) {
@@ -40,23 +64,23 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if name := account.Name; name != "Trinity-TPM-DevOps" {
-		t.Errorf("invalid name, name=%v", name)
+	if account.Name != "Trinity-TPM-DevOps" {
+		t.Errorf("invalid name: %v", account.Name)
 	}
-	if id := account.NativeID; id != "627297623784" {
-		t.Errorf("invalid native id, id=%v", id)
+	if account.NativeID != "627297623784" {
+		t.Errorf("invalid native id: %v", account.NativeID)
 	}
 	if n := len(account.Features); n != 1 {
-		t.Errorf("invalid number of features, n=%v", n)
+		t.Errorf("invalid number of features: %v", n)
 	}
-	if name := account.Features[0].Feature; name != "CLOUD_NATIVE_PROTECTION" {
-		t.Errorf("invalid feature name, name=%v", name)
+	if account.Features[0].Feature != "CLOUD_NATIVE_PROTECTION" {
+		t.Errorf("invalid feature name: %v", account.Features[0].Feature)
 	}
-	if regions := account.Features[0].AwsRegions; reflect.DeepEqual(regions, []string{"us-east-2"}) {
-		t.Errorf("invalid feature regions, regions=%v", regions)
+	if regions := account.Features[0].AwsRegions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+		t.Errorf("invalid feature regions: %v", regions)
 	}
-	if status := account.Features[0].Status; status != "CONNECTED" {
-		t.Errorf("invalid feature status, status=%v", status)
+	if account.Features[0].Status != "CONNECTED" {
+		t.Errorf("invalid feature status: %v", account.Features[0].Status)
 	}
 
 	// Set and verify regions for AWS account.
@@ -68,10 +92,10 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 		t.Error(err)
 	}
 	if n := len(account.Features); n != 1 {
-		t.Errorf("invalid number of features, n=%v", n)
+		t.Errorf("invalid number of features: %v", n)
 	}
-	if regions := account.Features[0].AwsRegions; reflect.DeepEqual(regions, []string{"us-west-2"}) {
-		t.Errorf("invalid feature regions, regions=%v", regions)
+	if regions := account.Features[0].AwsRegions; !reflect.DeepEqual(regions, []string{"us-west-2"}) {
+		t.Errorf("invalid feature regions: %v", regions)
 	}
 
 	// Remove AWS account and verify that it's gone.

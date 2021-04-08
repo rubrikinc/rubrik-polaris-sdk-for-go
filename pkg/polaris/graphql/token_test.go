@@ -60,7 +60,7 @@ func TestTokenSetAsHeader(t *testing.T) {
 	tok.setAsAuthHeader(req)
 
 	if auth := req.Header.Get("Authorization"); auth != "Bearer token" {
-		t.Errorf("invalid Authorization header, auth=%s", auth)
+		t.Errorf("invalid Authorization header: %s", auth)
 	}
 }
 
@@ -101,7 +101,7 @@ func TestTokenSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	if token.token != "john:doe" {
-		t.Fatalf("invalid token, token=%v", token.token)
+		t.Fatalf("invalid token: %v", token.token)
 	}
 	if token.expired() {
 		t.Fatal("invalid token, already expired")
@@ -126,7 +126,7 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 	defer srv.Shutdown(context.Background())
 
 	if _, err := src.token(); err == nil {
-		t.Fatal("expected the token request to fail")
+		t.Fatal("token request should fail")
 	}
 }
 
@@ -140,6 +140,6 @@ func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
 	defer srv.Shutdown(context.Background())
 
 	if _, err := src.token(); err == nil {
-		t.Fatal("expected the token request to fail")
+		t.Fatal("token request should fail")
 	}
 }

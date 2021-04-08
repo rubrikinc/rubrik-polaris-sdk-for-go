@@ -24,22 +24,22 @@ func nextLine(buf *bytes.Buffer) (string, error) {
 
 func TestFormatLogLevel(t *testing.T) {
 	if level := formatLogLevel(Trace); level != "[TRACE]" {
-		t.Errorf("invalid log level, level=%v", level)
+		t.Errorf("invalid log level: %v", level)
 	}
 	if level := formatLogLevel(Debug); level != "[DEBUG]" {
-		t.Errorf("invalid log level, level=%v", level)
+		t.Errorf("invalid log level: %v", level)
 	}
 	if level := formatLogLevel(Info); level != "[INFO]" {
-		t.Errorf("invalid log level, level=%v", level)
+		t.Errorf("invalid log level: %v", level)
 	}
 	if level := formatLogLevel(Warn); level != "[WARN]" {
-		t.Errorf("invalid log level, level=%v", level)
+		t.Errorf("invalid log level: %v", level)
 	}
 	if level := formatLogLevel(Error); level != "[ERROR]" {
-		t.Errorf("invalid log level, level=%v", level)
+		t.Errorf("invalid log level: %v", level)
 	}
 	if level := formatLogLevel(Fatal); level != "[FATAL]" {
-		t.Errorf("invalid log level, level=%v", level)
+		t.Errorf("invalid log level: %v", level)
 	}
 }
 
@@ -49,7 +49,7 @@ func TestParseLogLevel(t *testing.T) {
 		t.Error(err)
 	}
 	if level != Trace {
-		t.Errorf("invalid log level, level=%v", level)
+		t.Errorf("invalid log level: %v", level)
 	}
 
 	level, err = ParseLogLevel("DEBUG")
@@ -57,7 +57,7 @@ func TestParseLogLevel(t *testing.T) {
 		t.Error(err)
 	}
 	if level != Debug {
-		t.Errorf("invalid log level, level=%v", level)
+		t.Errorf("invalid log level: %v", level)
 	}
 
 	level, err = ParseLogLevel("Info")
@@ -65,7 +65,7 @@ func TestParseLogLevel(t *testing.T) {
 		t.Error(err)
 	}
 	if level != Info {
-		t.Errorf("invalid log level, level=%v", level)
+		t.Errorf("invalid log level: %v", level)
 	}
 
 	level, err = ParseLogLevel("wArN")
@@ -73,7 +73,7 @@ func TestParseLogLevel(t *testing.T) {
 		t.Error(err)
 	}
 	if level != Warn {
-		t.Errorf("invalid log level, level=%v", level)
+		t.Errorf("invalid log level: %v", level)
 	}
 
 	level, err = ParseLogLevel("ErRoR")
@@ -81,7 +81,7 @@ func TestParseLogLevel(t *testing.T) {
 		t.Error(err)
 	}
 	if level != Error {
-		t.Errorf("invalid log level, level=%v", level)
+		t.Errorf("invalid log level: %v", level)
 	}
 
 	level, err = ParseLogLevel("fatal")
@@ -89,12 +89,12 @@ func TestParseLogLevel(t *testing.T) {
 		t.Error(err)
 	}
 	if level != Fatal {
-		t.Errorf("invalid log level, level=%v", level)
+		t.Errorf("invalid log level: %v", level)
 	}
 
 	_, err = ParseLogLevel("")
 	if err == nil {
-		t.Error("expected ParseLogLevel to fail")
+		t.Error("ParseLogLevel should fail with empty string")
 	}
 }
 

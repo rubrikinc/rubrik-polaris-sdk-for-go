@@ -30,6 +30,7 @@ import (
 	"strings"
 	"testing"
 	"text/template"
+	"time"
 
 	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -86,7 +87,7 @@ func TestErrorsWithNoError(t *testing.T) {
 		t.Fatal(err)
 	}
 	if jsonErr.isError() {
-		t.Error("expected jsonErr to not represent an error")
+		t.Error("jsonErr should not represent an error")
 	}
 
 	var gqlErr gqlError
@@ -94,7 +95,7 @@ func TestErrorsWithNoError(t *testing.T) {
 		t.Fatal(err)
 	}
 	if gqlErr.isError() {
-		t.Error("expected gqlErr to not represent an error")
+		t.Error("gqlErr should not represent an error")
 	}
 }
 
@@ -109,11 +110,11 @@ func TestJsonError(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !jsonErr1.isError() {
-		t.Error("expected jsonErr to represent an error")
+		t.Error("jsonErr should represent an error")
 	}
 	expected := "polaris: code 16: JWT validation failed: Missing or invalid credentials"
 	if msg := jsonErr1.Error(); msg != expected {
-		t.Errorf("invalid error message returned by Error, msg=%v", msg)
+		t.Errorf("invalid error message: %v", msg)
 	}
 
 	buf, err = os.ReadFile("testdata/error_json_from_polaris.json")
@@ -126,11 +127,11 @@ func TestJsonError(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !jsonErr2.isError() {
-		t.Error("expected jsonErr to represent an error")
+		t.Error("jsonErr should represent an error")
 	}
 	expected = "polaris: code 401: UNAUTHENTICATED: wrong username or password"
 	if msg := jsonErr2.Error(); msg != expected {
-		t.Errorf("invalid error message returned by Error, msg=%v", msg)
+		t.Errorf("invalid error message: %v", msg)
 	}
 }
 
@@ -145,11 +146,11 @@ func TestGqlError(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !gqlErr.isError() {
-		t.Error("expected gqlErr to represent an error")
+		t.Error("gqlErr should represent an error")
 	}
 	expected := "polaris: INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING"
 	if msg := gqlErr.Error(); msg != expected {
-		t.Fatalf("invalid error message returned by Error, msg=%v", msg)
+		t.Fatalf("invalid error message: %v", msg)
 	}
 }
 
@@ -172,7 +173,7 @@ func TestRequestUnauthenticated(t *testing.T) {
 
 	_, err = client.Request(context.Background(), "me { name }", nil)
 	if err == nil {
-		t.Fatal("expected the graphql request to fail")
+		t.Fatal("graphql request should fail")
 	}
 	if !strings.HasPrefix(err.Error(), "polaris: code 16: JWT validation failed") {
 		t.Fatal(err)
@@ -198,7 +199,7 @@ func TestRequestWithInternalServerError(t *testing.T) {
 
 	_, err = client.Request(context.Background(), "me { name }", nil)
 	if err == nil {
-		t.Fatal("expected the graphql request to fail")
+		t.Fatal("graphql request should fail")
 	}
 	if !strings.HasPrefix(err.Error(), "polaris: INTERNAL: invalid status transition") {
 		t.Fatal(err)
@@ -216,7 +217,7 @@ func TestRequestWithInternalServerErrorNoBody(t *testing.T) {
 
 	_, err := client.Request(context.Background(), "me { name }", nil)
 	if err == nil {
-		t.Fatal("expected the graphql request to fail")
+		t.Fatal("graphql request should fail")
 	}
 	if !strings.HasSuffix(err.Error(), "polaris: 500 Internal Server Error") {
 		t.Fatal(err)
@@ -249,11 +250,11 @@ func TestKorgTaskChainStatus(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		chain := struct {
+		err = tmpl.Execute(w, struct {
 			ChainState string
 			ChainUUID  string
-		}{ChainState: "RUNNING", ChainUUID: payload.Variables.TaskChainID}
-		if err := tmpl.Execute(w, chain); err != nil {
+		}{ChainState: "RUNNING", ChainUUID: payload.Variables.TaskChainID})
+		if err != nil {
 			panic(err)
 		}
 	})
@@ -264,13 +265,66 @@ func TestKorgTaskChainStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if id := taskChain.ID; id != 12761540 {
-		t.Errorf("invalid task chain id, id=%v", id)
+	if taskChain.ID != 12761540 {
+		t.Errorf("invalid task chain id: %v", taskChain.ID)
 	}
-	if uuid := taskChain.TaskChainUUID; uuid != chainUUID {
-		t.Errorf("invalid task chain uuid, uuid=%v", uuid)
+	if taskChain.TaskChainUUID != chainUUID {
+		t.Errorf("invalid task chain uuid: %v", taskChain.TaskChainUUID)
 	}
-	if state := taskChain.State; state != TaskChainRunning {
-		t.Errorf("invalid task chain state, state=%v", state)
+	if taskChain.State != TaskChainRunning {
+		t.Errorf("invalid task chain state: %v", taskChain.State)
+	}
+}
+
+func TestWaitForTaskChain(t *testing.T) {
+	tmpl, err := template.ParseFiles("testdata/korgtaskchainstatus.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
+
+	// Respond with status code 200 and a valid body. First 2 reponses have
+	// state RUNNING. Third response is SUCCEEDED.
+	reqCount := 3
+	srv := serveJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+		buf, err := io.ReadAll(req.Body)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		var payload struct {
+			Query     string `json:"query"`
+			Variables struct {
+				TaskChainID string `json:"taskchainId,omitempty"`
+			} `json:"variables,omitempty"`
+		}
+		if err := json.Unmarshal(buf, &payload); err != nil {
+			t.Fatal(err)
+		}
+
+		reqCount--
+		chainState := "RUNNING"
+		if reqCount == 0 {
+			chainState = "SUCCEEDED"
+		}
+		tmpl.Execute(w, struct {
+			ChainState string
+			ChainUUID  string
+		}{ChainState: chainState, ChainUUID: payload.Variables.TaskChainID})
+		if err != nil {
+			panic(err)
+		}
+	})
+	defer srv.Shutdown(context.Background())
+
+	chainUUID := TaskChainUUID("b48e7ad0-7b86-4c96-b6ba-97eb6a82f765")
+	chainState, err := client.WaitForTaskChain(context.Background(), chainUUID, 5*time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if chainState != "SUCCEEDED" {
+		t.Errorf("nvalid task chain state: %v", chainState)
 	}
 }

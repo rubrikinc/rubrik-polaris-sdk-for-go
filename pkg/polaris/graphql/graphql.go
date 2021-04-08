@@ -264,8 +264,9 @@ func (c *Client) KorgTaskChainStatus(ctx context.Context, taskChainID TaskChainU
 
 // WaitForTaskChain blocks until the Polaris task chain with the specified task
 // chain ID has completed. When the task chain completes the final state of the
-// task chain is returned.
-func (c *Client) WaitForTaskChain(ctx context.Context, taskChainID TaskChainUUID) (TaskChainState, error) {
+// task chain is returned. The wait parameter specifies the amount of time to
+// wait before requesting another task status update.
+func (c *Client) WaitForTaskChain(ctx context.Context, taskChainID TaskChainUUID, wait time.Duration) (TaskChainState, error) {
 	c.log.Print(log.Trace, "graphql.Client.WaitForTaskChain")
 
 	for {
@@ -281,7 +282,7 @@ func (c *Client) WaitForTaskChain(ctx context.Context, taskChainID TaskChainUUID
 		c.log.Print(log.Debug, "Waiting for Polaris task chain")
 
 		select {
-		case <-time.After(10 * time.Second):
+		case <-time.After(wait):
 		case <-ctx.Done():
 			return TaskChainInvalid, ctx.Err()
 		}

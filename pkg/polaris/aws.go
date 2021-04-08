@@ -67,6 +67,24 @@ type AwsCloudAccount struct {
 	Features []AwsAccountFeature
 }
 
+func awsFromPolarisRegionNames(polarisNames []string) []string {
+	names := make([]string, 0, len(polarisNames))
+	for _, name := range polarisNames {
+		names = append(names, strings.ReplaceAll(strings.ToLower(name), "_", "-"))
+	}
+
+	return names
+}
+
+func awsToPolarisRegionNames(names []string) []string {
+	polarisNames := make([]string, 0, len(names))
+	for _, name := range names {
+		polarisNames = append(polarisNames, strings.ReplaceAll(strings.ToUpper(name), "-", "_"))
+	}
+
+	return polarisNames
+}
+
 // awsAccountID returns the AWS account id and account name. Note that if the
 // AWS user does not have permissions for Organizations the account name will
 // be empty.
@@ -156,7 +174,7 @@ func (c *Client) AwsAccounts(ctx context.Context) ([]AwsCloudAccount, error) {
 		for _, gqlFeature := range gqlAccount.FeatureDetails {
 			features = append(features, AwsAccountFeature{
 				Feature:    gqlFeature.Feature,
-				AwsRegions: gqlFeature.AwsRegions,
+				AwsRegions: awsFromPolarisRegionNames(gqlFeature.AwsRegions),
 				RoleArn:    gqlFeature.RoleArn,
 				StackArn:   gqlFeature.StackArn,
 				Status:     gqlFeature.Status,
@@ -196,7 +214,7 @@ func (c *Client) AwsAccountFromID(ctx context.Context, awsAccountID string) (Aws
 	for _, gqlFeature := range gqlAccount.FeatureDetails {
 		features = append(features, AwsAccountFeature{
 			Feature:    gqlFeature.Feature,
-			AwsRegions: gqlFeature.AwsRegions,
+			AwsRegions: awsFromPolarisRegionNames(gqlFeature.AwsRegions),
 			RoleArn:    gqlFeature.RoleArn,
 			StackArn:   gqlFeature.StackArn,
 			Status:     gqlFeature.Status,
@@ -311,11 +329,7 @@ func (c *Client) AwsAccountSetRegions(ctx context.Context, awsAccountID string, 
 		return fmt.Errorf("polaris: invalid number of features: %d", n)
 	}
 
-	regions := make([]string, 0, len(awsRegions))
-	for _, region := range awsRegions {
-		regions = append(regions, strings.ReplaceAll(strings.ToUpper(region), "-", "_"))
-	}
-
+	regions := awsToPolarisRegionNames(awsRegions)
 	if err := c.gql.AwsCloudAccountSave(ctx, account.ID, regions); err != nil {
 		return err
 	}
@@ -346,7 +360,7 @@ func (c *Client) AwsAccountRemove(ctx context.Context, config aws.Config, awsAcc
 		return err
 	}
 
-	state, err := c.gql.WaitForTaskChain(ctx, taskChainID)
+	state, err := c.gql.WaitForTaskChain(ctx, taskChainID, 10*time.Second)
 	if err != nil {
 		return err
 	}

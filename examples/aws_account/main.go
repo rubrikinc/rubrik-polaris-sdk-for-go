@@ -35,9 +35,9 @@ import (
 //
 //   {
 //     "default": {
-//       "account": "<your-polaris-account-name>",
 //       "username": "<your-polaris-username>",
 //       "password": "<your-polaris-password>",
+//       "url": "<your-polaris-url>",
 //       "loglevel": "trace"
 //     }
 //   }
