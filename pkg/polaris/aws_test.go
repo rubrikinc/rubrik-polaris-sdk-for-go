@@ -24,7 +24,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	awsConfig, err := config.LoadDefaultConfig(ctx, config.WithRegion("us-east-2"))
+	awsConfig, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

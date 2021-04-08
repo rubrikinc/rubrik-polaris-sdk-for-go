@@ -68,50 +68,19 @@ type Config struct {
 	LogLevel string
 }
 
-// ConfigFromEnv returns a new Client configuration from the user's environment
-// variables. Environment variables must have the same name as the Config
-// fields but be all upper case and prepended with RUBRIK_POLARIS, e.g.
-// RUBRIK_POLARIS_USERNAME.
-func ConfigFromEnv() (Config, error) {
-	account := os.Getenv("RUBRIK_POLARIS_ACCOUNT")
-	if account == "" {
-		return Config{}, errors.New("polaris: missing environment variable: RUBRIK_POLARIS_ACCOUNT")
+// configFromEnv returns a Config from the current environment variables.
+func configFromEnv() Config {
+	return Config{
+		Account:  os.Getenv("RUBRIK_POLARIS_ACCOUNT"),
+		Username: os.Getenv("RUBRIK_POLARIS_USERNAME"),
+		Password: os.Getenv("RUBRIK_POLARIS_PASSWORD"),
+		URL:      os.Getenv("RUBRIK_POLARIS_URL"),
+		LogLevel: os.Getenv("RUBRIK_POLARIS_LOGLEVEL"),
 	}
-
-	username := os.Getenv("RUBRIK_POLARIS_USERNAME")
-	if username == "" {
-		return Config{}, errors.New("polaris: missing environment variable: RUBRIK_POLARIS_USERNAME")
-	}
-
-	password := os.Getenv("RUBRIK_POLARIS_PASSWORD")
-	if password == "" {
-		return Config{}, errors.New("polaris: missing environment variable: RUBRIK_POLARIS_PASSWORD")
-	}
-
-	// Optional environment variables.
-	url := os.Getenv("RUBRIK_POLARIS_URL")
-	logLevel := os.Getenv("RUBRIK_POLARIS_LOGLEVEL")
-
-	return Config{URL: url, Account: account, Username: username, Password: password, LogLevel: logLevel}, nil
 }
 
-// ConfigFromFile returns a new Client configuration read from the specified
-// path. Configuration files must be in JSON format and the attributes must
-// have the same name as the Config fields but be all lower case. Note that the
-// Account field is used as a key for the JSON object. E.g:
-//
-//   {
-//     "account-1": {
-//       "username": "username-1",
-//       "password": "password-1",
-//     },
-//     "account-2": {
-//       "username": "username-2",
-//       "password": "password-2",
-//       "loglevel": "debug"
-//     }
-//   }
-func ConfigFromFile(path, account string) (Config, error) {
+// configFromFile returns a Config from the specified file and account name.
+func configFromFile(path, account string) (Config, error) {
 	if strings.HasPrefix(path, "~/") {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -130,11 +99,96 @@ func ConfigFromFile(path, account string) (Config, error) {
 		return Config{}, err
 	}
 
+	// Override the given account with the corresponding environment variable.
+	if envAccount := os.Getenv("RUBRIK_POLARIS_ACCOUNT"); envAccount != "" {
+		account = envAccount
+	}
+
 	config, ok := configs[account]
 	if !ok {
 		return Config{}, fmt.Errorf("polaris: account %q not found in configuration", account)
 	}
 	config.Account = account
+
+	return config, nil
+}
+
+// mergeConfig merges the src configuration with the dest configuration and
+// returns the resulting configuration.
+func mergeConfig(dest, src Config) (Config, error) {
+	if src.Account != "" {
+		dest.Account = src.Account
+	}
+	if src.Username != "" {
+		dest.Username = src.Username
+	}
+	if src.Password != "" {
+		dest.Password = src.Password
+	}
+	if src.URL != "" {
+		dest.URL = src.URL
+	}
+	if src.LogLevel != "" {
+		dest.LogLevel = src.LogLevel
+	}
+
+	if dest.Account == "" {
+		return Config{}, errors.New("polaris: missing required field: account")
+	}
+	if dest.Username == "" {
+		return Config{}, errors.New("polaris: missing required field: username")
+	}
+	if dest.Password == "" {
+		return Config{}, errors.New("polaris: missing required field: password")
+	}
+
+	return dest, nil
+}
+
+// ConfigFromEnv returns a new Client configuration from the user's environment
+// variables. Environment variables must have the same name as the Config
+// fields but be all upper case and prepended with RUBRIK_POLARIS, e.g.
+// RUBRIK_POLARIS_USERNAME.
+func ConfigFromEnv() (Config, error) {
+	config := configFromEnv()
+
+	if config.Account == "" {
+		return Config{}, errors.New("polaris: missing environment variable: RUBRIK_POLARIS_ACCOUNT")
+	}
+	if config.Username == "" {
+		return Config{}, errors.New("polaris: missing environment variable: RUBRIK_POLARIS_USERNAME")
+	}
+	if config.Password == "" {
+		return Config{}, errors.New("polaris: missing environment variable: RUBRIK_POLARIS_PASSWORD")
+	}
+
+	return config, nil
+}
+
+// ConfigFromFile returns a new Client configuration read from the specified
+// path. Configuration files must be in JSON format and the attributes must
+// have the same name as the Config fields but be all lower case. Note that the
+// Account field is used as a key for the JSON object. E.g:
+//
+//   {
+//     "account-1": {
+//       "username": "username-1",
+//       "password": "password-1",
+//     },
+//     "account-2": {
+//       "username": "username-2",
+//       "password": "password-2",
+//       "loglevel": "debug"
+//     }
+//   }
+//
+// The account parameter can be overridden using the RUBRIK_POLARIS_ACCOUNT
+// environment variable.
+func ConfigFromFile(path, account string) (Config, error) {
+	config, err := configFromFile(path, account)
+	if err != nil {
+		return Config{}, err
+	}
 
 	if config.Account == "" {
 		return Config{}, errors.New("polaris: missing JSON attribute: account")
@@ -155,36 +209,8 @@ func ConfigFromFile(path, account string) (Config, error) {
 // for details. Note that the environment variable POLARIS_RUBRIK_ACCOUNT will
 // override the account parameter passed in.
 func DefaultConfig(account string) (Config, error) {
-	if envAccount := os.Getenv("RUBRIK_POLARIS_ACCOUNT"); envAccount != "" {
-		account = envAccount
-	}
-
-	config, err := ConfigFromFile(DefaultConfigFile, account)
-	if err != nil {
-		return Config{}, err
-	}
-
-	username := os.Getenv("RUBRIK_POLARIS_USERNAME")
-	if username != "" {
-		config.Username = username
-	}
-
-	password := os.Getenv("RUBRIK_POLARIS_PASSWORD")
-	if password != "" {
-		config.Password = password
-	}
-
-	url := os.Getenv("RUBRIK_POLARIS_URL")
-	if url != "" {
-		config.URL = url
-	}
-
-	logLevel := os.Getenv("RUBRIK_POLARIS_LOGLEVEL")
-	if logLevel != "" {
-		config.LogLevel = logLevel
-	}
-
-	return config, nil
+	config, _ := configFromFile(DefaultConfigFile, account)
+	return mergeConfig(config, configFromEnv())
 }
 
 // Client is used to make calls to the Polaris platform.

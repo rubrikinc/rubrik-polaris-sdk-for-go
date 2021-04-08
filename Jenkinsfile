@@ -41,18 +41,21 @@ pipeline {
         }
         stage('Test') {
             environment {
-                // Accounts to use for integration tests.
-                SDK_AWS_ACCOUNT     = credentials('aws-account')
-                SDK_POLARIS_ACCOUNT = credentials('polaris-account')
+                // AWS credentials.
+                AWS_ACCESS_KEY_ID     = credentials('sdk-aws-access-key')
+                AWS_SECRET_ACCESS_KEY = credentials('sdk-aws-secret-key')
+                AWS_DEFAULT_REGION    = "us-east-2"
+
+                // Polaris credentials.
+                RUBRIK_POLARIS_ACCOUNT  = "rubrik-trinity-lab"
+                RUBRIK_POLARIS_USERNAME = credentials('sdk-polaris-username')
+                RUBRIK_POLARIS_PASSWORD = credentials('sdk-polaris-password')
+                RUBRIK_POLARIS_URL      = "https://rubrik-trinity-lab.dev.my.rubrik-lab.com/api"
 
                 // Run integration tests with the nightly build.
-                SDK_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
+                SDK_INTEGRATION = 1 //currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
             }
             steps {
-                sh 'mkdir -p ~/.aws'
-                sh 'cp -f ${SDK_AWS_ACCOUNT} ~/.aws/credentials'
-                sh 'mkdir -p ~/.rubrik'
-                sh 'cp -f ${SDK_POLARIS_ACCOUNT} ~/.rubrik/polaris-accounts.json'
                 sh 'CGO_ENABLED=0 go test -cover -v ./...'
             }
         }
