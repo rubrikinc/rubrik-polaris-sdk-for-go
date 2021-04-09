@@ -57,7 +57,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	}
 
 	// Add and verify AWS account.
-	if err := client.AwsAccountAdd(ctx, awsConfig, []string{"us-east-2"}); err != nil {
+	if err := client.AwsAccountAdd(ctx, awsConfig, "Trinity-TPM-DevOps", []string{"us-east-2"}); err != nil {
 		t.Fatal(err)
 	}
 	account, err := client.AwsAccountFromConfig(ctx, awsConfig)

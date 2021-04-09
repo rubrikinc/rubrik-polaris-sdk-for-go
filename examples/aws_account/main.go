@@ -63,7 +63,7 @@ func main() {
 	}
 
 	// Add the AWS account to Polaris.
-	if err := client.AwsAccountAdd(ctx, awsConfig, []string{"us-east-2", "us-west-2"}); err != nil {
+	if err := client.AwsAccountAdd(ctx, awsConfig, "Trinity-TPM-DevOps", []string{"us-east-2", "us-west-2"}); err != nil {
 		log.Fatal(err)
 	}
 

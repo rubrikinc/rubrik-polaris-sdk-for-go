@@ -247,7 +247,10 @@ func (c *Client) AwsAccountFromConfig(ctx context.Context, config aws.Config) (A
 }
 
 // AwsAccountAdd adds the AWS account referred to by the given AWS config.
-func (c *Client) AwsAccountAdd(ctx context.Context, config aws.Config, awsRegions []string) error {
+// The altName parameter specifies an alternative name for the account in case
+// the AWS Organizations lookup of the account name fails to due to missing
+// permissions.
+func (c *Client) AwsAccountAdd(ctx context.Context, config aws.Config, altName string, awsRegions []string) error {
 	c.log.Print(log.Trace, "polaris.Client.AwsAccountAdd")
 
 	// Lookup AWS account id and name.
@@ -255,10 +258,8 @@ func (c *Client) AwsAccountAdd(ctx context.Context, config aws.Config, awsRegion
 	if err != nil {
 		return err
 	}
-
-	// Temporary, AWS Organizations fail to return the account name.
 	if awsAccountName == "" {
-		awsAccountName = "Trinity-TPM-DevOps"
+		awsAccountName = altName
 	}
 
 	cfmName, _, cfmTemplateURL, err := c.gql.AwsNativeProtectionAccountAdd(ctx, awsAccountID, awsAccountName, awsRegions)
