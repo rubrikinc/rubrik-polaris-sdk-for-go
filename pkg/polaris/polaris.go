@@ -222,8 +222,16 @@ type Client struct {
 
 // NewClient returns a new Client with the specified configuration. Note that
 // when Config.Log is set to false the logger given to NewClient is silently
-//replaced by a DiscardLogger.
+// replaced by a DiscardLogger.
 func NewClient(config Config, logger log.Logger) (*Client, error) {
+	return NewClientForApp("custom", config, logger)
+}
+
+// NewClientForApp returns a new Client with the specified configuration
+// intended to be used in the named application. Note that when Config.Log is
+// set to false the logger given to NewClient is silently replaced by a
+// DiscardLogger.
+func NewClientForApp(app string, config Config, logger log.Logger) (*Client, error) {
 	// Apply default values.
 	apiURL := config.URL
 	if apiURL == "" {
@@ -260,11 +268,12 @@ func NewClient(config Config, logger log.Logger) (*Client, error) {
 
 	client := &Client{
 		url: apiURL,
-		gql: graphql.NewClient(apiURL, config.Username, config.Password, logger),
+		gql: graphql.NewClient(app, apiURL, config.Username, config.Password, logger),
 		log: logger,
 	}
 
 	return client, nil
+
 }
 
 // GQLClient returns the underlaying GraphQL client. Can be used to execute low

@@ -98,14 +98,16 @@ func (e gqlError) Error() string {
 
 // Client is used to make GraphQL calls to the Polaris platform.
 type Client struct {
+	app    string
 	gqlURL string
 	client *http.Client
 	log    log.Logger
 }
 
 // NewClient returns a new Client with the specified configuration.
-func NewClient(apiURL, username, password string, logger log.Logger) *Client {
+func NewClient(app, apiURL, username, password string, logger log.Logger) *Client {
 	return &Client{
+		app:    app,
 		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
 		client: &http.Client{
 			Transport: &tokenTransport{
