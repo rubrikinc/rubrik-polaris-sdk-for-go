@@ -23,6 +23,7 @@ package polaris
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"testing"
 )
@@ -230,5 +231,29 @@ func TestMergeConfig(t *testing.T) {
 	}
 	if config.LogLevel != "error" {
 		t.Errorf("invalid log level: %v", config.LogLevel)
+	}
+}
+
+func TestAwsFromPolarisRegionNames(t *testing.T) {
+	names := fromPolarisRegionNames([]string{"us-east-1", "us-west-1"})
+	if !reflect.DeepEqual(names, []string{"us-east-1", "us-west-1"}) {
+		t.Errorf("invalid region names: %v", names)
+	}
+
+	names = fromPolarisRegionNames([]string{"US_EAST_1", "US_WEST_1"})
+	if !reflect.DeepEqual(names, []string{"us-east-1", "us-west-1"}) {
+		t.Errorf("invalid region name: %v", names)
+	}
+}
+
+func TestAwsToPolarisRegionNames(t *testing.T) {
+	names := toPolarisRegionNames("us-east-1", "us-west-1")
+	if !reflect.DeepEqual(names, []string{"US_EAST_1", "US_WEST_1"}) {
+		t.Errorf("invalid region names: %v", names)
+	}
+
+	names = toPolarisRegionNames("US_EAST_1", "US_WEST_1")
+	if !reflect.DeepEqual(names, []string{"US_EAST_1", "US_WEST_1"}) {
+		t.Errorf("invalid region name: %v", names)
 	}
 }

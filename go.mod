@@ -8,4 +8,5 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.1.2
 	github.com/aws/aws-sdk-go-v2/service/organizations v1.1.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.2.0
+	github.com/google/uuid v1.2.0
 )

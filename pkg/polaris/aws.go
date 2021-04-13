@@ -33,8 +33,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
-	"github.com/aws/aws-sdk-go-v2/service/organizations"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 // AwsProtectionFeature represents the protection features of an AWS cloud
@@ -67,53 +65,9 @@ type AwsCloudAccount struct {
 	Features []AwsAccountFeature
 }
 
-func awsFromPolarisRegionNames(polarisNames []string) []string {
-	names := make([]string, 0, len(polarisNames))
-	for _, name := range polarisNames {
-		names = append(names, strings.ReplaceAll(strings.ToLower(name), "_", "-"))
-	}
-
-	return names
-}
-
-func awsToPolarisRegionNames(names []string) []string {
-	polarisNames := make([]string, 0, len(names))
-	for _, name := range names {
-		polarisNames = append(polarisNames, strings.ReplaceAll(strings.ToUpper(name), "-", "_"))
-	}
-
-	return polarisNames
-}
-
-// awsAccountID returns the AWS account id and account name. Note that if the
-// AWS user does not have permissions for Organizations the account name will
-// be empty.
-func (c *Client) awsAccountID(ctx context.Context, config aws.Config) (string, string, error) {
-	c.log.Print(log.Trace, "polaris.Client.awsAccountID")
-
-	stsClient := sts.NewFromConfig(config)
-	id, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
-	if err != nil {
-		return "", "", err
-	}
-
-	// Organizations calls might fail due to missing permissions, in that case
-	// we skip the account name.
-	orgClient := organizations.NewFromConfig(config)
-	info, err := orgClient.DescribeAccount(ctx, &organizations.DescribeAccountInput{AccountId: id.Account})
-	if err != nil {
-		c.log.Print(log.Info, "Failed to obtain account name from AWS Organizations")
-		return *id.Account, "", nil
-	}
-
-	return *id.Account, *info.Account.Name, nil
-}
-
 // awsStackExist returns true if a CloudFormation stack with the specified name
 // exists, false otherwise.
-func (c *Client) awsStackExist(ctx context.Context, config aws.Config, stackName string) (bool, error) {
-	c.log.Print(log.Trace, "polaris.Client.awsStackExist")
-
+func awsStackExist(ctx context.Context, config aws.Config, stackName string) (bool, error) {
 	client := cloudformation.NewFromConfig(config)
 	_, err := client.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{StackName: &stackName})
 	if err == nil {
@@ -131,9 +85,7 @@ func (c *Client) awsStackExist(ctx context.Context, config aws.Config, stackName
 // awsWaitForStack blocks until the CloudFormation stack create/update/delete
 // has completed. When the stack operation completes the final state of the
 // operation is returned.
-func (c *Client) awsWaitForStack(ctx context.Context, config aws.Config, stackName string) (types.StackStatus, error) {
-	c.log.Print(log.Trace, "polaris.Client.awsWaitForStack")
-
+func awsWaitForStack(ctx context.Context, config aws.Config, stackName string) (types.StackStatus, error) {
 	client := cloudformation.NewFromConfig(config)
 	for {
 		stacks, err := client.DescribeStacks(ctx, &cloudformation.DescribeStacksInput{
@@ -150,8 +102,6 @@ func (c *Client) awsWaitForStack(ctx context.Context, config aws.Config, stackNa
 			return stack.StackStatus, nil
 		}
 
-		c.log.Print(log.Debug, "Waiting for AWS stack")
-
 		select {
 		case <-time.After(10 * time.Second):
 		case <-ctx.Done():
@@ -160,10 +110,42 @@ func (c *Client) awsWaitForStack(ctx context.Context, config aws.Config, stackNa
 	}
 }
 
-// AwsAccounts returns all cloud accounts with cloud native protection under
-// the current Polaris account.
-func (c *Client) AwsAccounts(ctx context.Context) ([]AwsCloudAccount, error) {
-	gqlAccounts, err := c.gql.AwsCloudAccounts(ctx, "")
+// AwsAccount returns cloud accounts the same way as AwsAccounts but expects
+// only a single account to be returned, returns an error otherwise.
+func (c *Client) AwsAccount(ctx context.Context, fromWithOpt FromAwsOrWithOption) (AwsCloudAccount, error) {
+	c.log.Print(log.Trace, "polaris.Client.AwsAccount")
+
+	accounts, err := c.AwsAccounts(ctx, fromWithOpt)
+	if err != nil {
+		return AwsCloudAccount{}, err
+	}
+	if len(accounts) < 1 {
+		return AwsCloudAccount{}, ErrAccountNotFound
+	}
+	if len(accounts) > 1 {
+		return AwsCloudAccount{}, errors.New("polaris: multiple cloud accounts")
+	}
+
+	return accounts[0], nil
+}
+
+// AwsAccounts returns all cloud accounts with cloud native protection matching
+// the given options. Accepts FromAwsConfig, FromAwsProfile, WithID and WithName.
+func (c *Client) AwsAccounts(ctx context.Context, fromWithOpts ...FromAwsOrWithOption) ([]AwsCloudAccount, error) {
+	c.log.Print(log.Trace, "polaris.Client.AwsAccounts")
+
+	opts := options{}
+	for _, opt := range fromWithOpts {
+		if err := opt.parse(ctx, &opts); err != nil {
+			return nil, err
+		}
+	}
+
+	filter := opts.awsID
+	if filter == "" {
+		filter = opts.name
+	}
+	gqlAccounts, err := c.gql.AwsCloudAccounts(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +156,7 @@ func (c *Client) AwsAccounts(ctx context.Context) ([]AwsCloudAccount, error) {
 		for _, gqlFeature := range gqlAccount.FeatureDetails {
 			features = append(features, AwsAccountFeature{
 				Feature:    gqlFeature.Feature,
-				AwsRegions: awsFromPolarisRegionNames(gqlFeature.AwsRegions),
+				AwsRegions: fromPolarisRegionNames(gqlFeature.AwsRegions),
 				RoleArn:    gqlFeature.RoleArn,
 				StackArn:   gqlFeature.StackArn,
 				Status:     gqlFeature.Status,
@@ -193,100 +175,65 @@ func (c *Client) AwsAccounts(ctx context.Context) ([]AwsCloudAccount, error) {
 	return accounts, nil
 }
 
-// AwsAccounts returns the cloud account with cloud native protection for the
-// specified AWS account ID.
-func (c *Client) AwsAccountFromID(ctx context.Context, awsAccountID string) (AwsCloudAccount, error) {
-	c.log.Print(log.Trace, "polaris.Client.AwsAccountFromID")
-
-	gqlAccounts, err := c.gql.AwsCloudAccounts(ctx, awsAccountID)
-	if err != nil {
-		return AwsCloudAccount{}, err
-	}
-	if len(gqlAccounts) < 1 {
-		return AwsCloudAccount{}, ErrAccountNotFound
-	}
-	if len(gqlAccounts) > 1 {
-		return AwsCloudAccount{}, errors.New("polaris: aws account id refers to multiple cloud accounts")
-	}
-	gqlAccount := gqlAccounts[0]
-
-	features := make([]AwsAccountFeature, 0, len(gqlAccount.FeatureDetails))
-	for _, gqlFeature := range gqlAccount.FeatureDetails {
-		features = append(features, AwsAccountFeature{
-			Feature:    gqlFeature.Feature,
-			AwsRegions: awsFromPolarisRegionNames(gqlFeature.AwsRegions),
-			RoleArn:    gqlFeature.RoleArn,
-			StackArn:   gqlFeature.StackArn,
-			Status:     gqlFeature.Status,
-		})
-	}
-
-	account := AwsCloudAccount{
-		ID:       gqlAccount.AwsCloudAccount.ID,
-		NativeID: gqlAccount.AwsCloudAccount.NativeID,
-		Name:     gqlAccount.AwsCloudAccount.AccountName,
-		Message:  gqlAccount.AwsCloudAccount.Message,
-		Features: features,
-	}
-
-	return account, nil
-}
-
-// AwsAccounts returns the cloud account with cloud native protection for the
-// specified AWS config.
-func (c *Client) AwsAccountFromConfig(ctx context.Context, config aws.Config) (AwsCloudAccount, error) {
-	c.log.Print(log.Trace, "polaris.Client.AwsAccountDetails")
-
-	// Lookup AWS account id
-	awsAccountID, _, err := c.awsAccountID(ctx, config)
-	if err != nil {
-		return AwsCloudAccount{}, err
-	}
-
-	return c.AwsAccountFromID(ctx, awsAccountID)
-}
-
-// AwsAccountAdd adds the AWS account referred to by the given AWS config.
-// The altName parameter specifies an alternative name for the account in case
-// the AWS Organizations lookup of the account name fails to due to missing
-// permissions.
-func (c *Client) AwsAccountAdd(ctx context.Context, config aws.Config, altName string, awsRegions []string) error {
+// AwsAccountAdd adds the AWS account identified by the FromAwsOption to
+// Polaris. The optional WithOptions can be used to specify name and regions.
+// If no name is explicitly given AWS Organizations will be used to lookup the
+// AWS account name. If that fails the name will be derived from the AWS account
+// id and, if available, the profile name. If no regions are given the default
+//region for the AWS configuration will be used.
+func (c *Client) AwsAccountAdd(ctx context.Context, fromOpt *FromAwsOption, withOpts ...*WithOption) error {
 	c.log.Print(log.Trace, "polaris.Client.AwsAccountAdd")
 
-	// Lookup AWS account id and name.
-	awsAccountID, awsAccountName, err := c.awsAccountID(ctx, config)
+	opts := options{}
+	if fromOpt == nil {
+		return errors.New("polaris: option not allowed to be nil")
+	}
+	if err := fromOpt.parse(ctx, &opts); err != nil {
+		return err
+	}
+	for _, opt := range withOpts {
+		if err := opt.parse(ctx, &opts); err != nil {
+			return err
+		}
+	}
+	if opts.awsConfig == nil {
+		return errors.New("polaris: missing aws configuration")
+	}
+	if opts.name == "" {
+		opts.name = opts.awsID
+		if opts.awsProfile != "" {
+			opts.name += " : " + opts.awsProfile
+		}
+	}
+	if len(opts.regions) == 0 {
+		opts.regions = append(opts.regions, opts.awsConfig.Region)
+	}
+
+	cfmName, _, cfmTmplURL, err := c.gql.AwsNativeProtectionAccountAdd(ctx, opts.awsID, opts.name, opts.regions)
 	if err != nil {
 		return err
 	}
-	if awsAccountName == "" {
-		awsAccountName = altName
-	}
 
-	cfmName, _, cfmTemplateURL, err := c.gql.AwsNativeProtectionAccountAdd(ctx, awsAccountID, awsAccountName, awsRegions)
-	if err != nil {
-		return err
-	}
-
-	exist, err := c.awsStackExist(ctx, config, cfmName)
+	exist, err := awsStackExist(ctx, *opts.awsConfig, cfmName)
 	if err != nil {
 		return err
 	}
 
 	// Create/Update the CloudFormation stack.
-	client := cloudformation.NewFromConfig(config)
+	client := cloudformation.NewFromConfig(*opts.awsConfig)
 	if exist {
 		c.log.Printf(log.Info, "Updating CloudFormation stack: %s", cfmName)
 
 		stack, err := client.UpdateStack(ctx, &cloudformation.UpdateStackInput{
 			StackName:    &cfmName,
-			TemplateURL:  &cfmTemplateURL,
+			TemplateURL:  &cfmTmplURL,
 			Capabilities: []types.Capability{types.CapabilityCapabilityIam},
 		})
 		if err != nil {
 			return err
 		}
 
-		stackStatus, err := c.awsWaitForStack(ctx, config, *stack.StackId)
+		stackStatus, err := awsWaitForStack(ctx, *opts.awsConfig, *stack.StackId)
 		if err != nil {
 			return err
 		}
@@ -298,14 +245,14 @@ func (c *Client) AwsAccountAdd(ctx context.Context, config aws.Config, altName s
 
 		stack, err := client.CreateStack(ctx, &cloudformation.CreateStackInput{
 			StackName:    &cfmName,
-			TemplateURL:  &cfmTemplateURL,
+			TemplateURL:  &cfmTmplURL,
 			Capabilities: []types.Capability{types.CapabilityCapabilityIam},
 		})
 		if err != nil {
 			return err
 		}
 
-		stackStatus, err := c.awsWaitForStack(ctx, config, *stack.StackId)
+		stackStatus, err := awsWaitForStack(ctx, *opts.awsConfig, *stack.StackId)
 		if err != nil {
 			return err
 		}
@@ -317,41 +264,61 @@ func (c *Client) AwsAccountAdd(ctx context.Context, config aws.Config, altName s
 	return nil
 }
 
-// AwsAccountSetRegions updates the AWS regions for the AWS account with
-// specified account ID.
-func (c *Client) AwsAccountSetRegions(ctx context.Context, awsAccountID string, awsRegions []string) error {
-	c.log.Print(log.Trace, "polaris.Client.AwsAccountAddRegions")
+// AwsAccountSetRegions updates the AWS regions for the AWS account identified
+// by the FromAwsOrWithOption. Accepts FromAwsConfig, FromAwsProfile, WithAwsID
+// and WithUUID.
+func (c *Client) AwsAccountSetRegions(ctx context.Context, opt FromAwsOrWithOption, regions ...string) error {
+	c.log.Print(log.Trace, "polaris.Client.AwsAccountSetRegions")
 
-	account, err := c.AwsAccountFromID(ctx, awsAccountID)
-	if err != nil {
+	opts := options{}
+	if opt == nil {
+		return errors.New("polaris: option not allowed to be nil")
+	}
+	if err := opt.parse(ctx, &opts); err != nil {
 		return err
 	}
-	if n := len(account.Features); n != 1 {
-		return fmt.Errorf("polaris: invalid number of features: %d", n)
+
+	if opts.id == "" {
+		if opts.awsID == "" {
+			return errors.New("polaris: missing account id")
+		}
+
+		account, err := c.AwsAccount(ctx, WithAwsID(opts.awsID))
+		if err != nil {
+			return err
+		}
+
+		opts.id = account.ID
 	}
 
-	regions := awsToPolarisRegionNames(awsRegions)
-	if err := c.gql.AwsCloudAccountSave(ctx, account.ID, regions); err != nil {
+	if len(regions) == 0 {
+		return errors.New("polaris: missing regions")
+	}
+
+	if err := c.gql.AwsCloudAccountSave(ctx, opts.id, toPolarisRegionNames(regions...)); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// AwsAccountRemove removes the AWS account with specified account ID from the
-// Polaris account. If awsAccountID is empty the account ID of the AWS config
-// will be used instead.
-func (c *Client) AwsAccountRemove(ctx context.Context, config aws.Config, awsAccountID string) error {
-	c.log.Print(log.Trace, "polaris.Client.AwsAccountDelete")
+// AwsAccountRemove removes the AWS account identified by the FromAwsOption
+// from Polaris.
+func (c *Client) AwsAccountRemove(ctx context.Context, opt *FromAwsOption) error {
+	c.log.Print(log.Trace, "polaris.Client.AwsAccountRemove")
 
-	// Lookup Polaris cloud account from AWS account id
-	var account AwsCloudAccount
-	var err error
-	if awsAccountID != "" {
-		account, err = c.AwsAccountFromID(ctx, awsAccountID)
-	} else {
-		account, err = c.AwsAccountFromConfig(ctx, config)
+	opts := options{}
+	if opt == nil {
+		return errors.New("polaris: option not allowed to be nil")
 	}
+	if err := opt.parse(ctx, &opts); err != nil {
+		return err
+	}
+	if opts.awsConfig == nil {
+		return errors.New("polaris: missing aws configuration")
+	}
+
+	account, err := c.AwsAccount(ctx, opt)
 	if err != nil {
 		return err
 	}
@@ -390,7 +357,7 @@ func (c *Client) AwsAccountRemove(ctx context.Context, config aws.Config, awsAcc
 	}
 
 	// Remove/Update CloudFormation stack.
-	client := cloudformation.NewFromConfig(config)
+	client := cloudformation.NewFromConfig(*opts.awsConfig)
 	if protRDS {
 		c.log.Printf(log.Info, "Updating CloudFormation stack: %s", stackArn)
 
@@ -404,7 +371,7 @@ func (c *Client) AwsAccountRemove(ctx context.Context, config aws.Config, awsAcc
 			return err
 		}
 
-		stackStatus, err := c.awsWaitForStack(ctx, config, stackArn)
+		stackStatus, err := awsWaitForStack(ctx, *opts.awsConfig, stackArn)
 		if err != nil {
 			return err
 		}
@@ -421,7 +388,7 @@ func (c *Client) AwsAccountRemove(ctx context.Context, config aws.Config, awsAcc
 			return err
 		}
 
-		stackStatus, err := c.awsWaitForStack(ctx, config, stackArn)
+		stackStatus, err := awsWaitForStack(ctx, *opts.awsConfig, stackArn)
 		if err != nil {
 			return err
 		}

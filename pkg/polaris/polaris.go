@@ -281,3 +281,21 @@ func NewClientForApp(app string, config Config, logger log.Logger) (*Client, err
 func (c *Client) GQLClient() *graphql.Client {
 	return c.gql
 }
+
+func fromPolarisRegionNames(polarisNames []string) []string {
+	names := make([]string, 0, len(polarisNames))
+	for _, name := range polarisNames {
+		names = append(names, strings.ReplaceAll(strings.ToLower(name), "_", "-"))
+	}
+
+	return names
+}
+
+func toPolarisRegionNames(names ...string) []string {
+	polarisNames := make([]string, 0, len(names))
+	for _, name := range names {
+		polarisNames = append(polarisNames, strings.ReplaceAll(strings.ToUpper(name), "-", "_"))
+	}
+
+	return polarisNames
+}

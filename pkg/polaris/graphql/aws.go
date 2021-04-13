@@ -133,8 +133,8 @@ func (c *Client) AwsNativeAccountConnection(ctx context.Context, protectionFeatu
 }
 
 // AwsCloudAccounts returns the cloud accounts matching the specified filters.
-// The columnFilter can be used to search for AWS account ID, Polaris account
-// name and role arn. Note that this call is locked to the cloud native
+// The columnFilter can be used to search for AWS account ID, account name and
+// role arn. Note that this call is locked to the cloud native
 // protection feature.
 func (c *Client) AwsCloudAccounts(ctx context.Context, columnFilter string) ([]AwsCloudAccount, error) {
 	c.log.Print(log.Trace, "graphql.Client.AwsCloudAccounts")

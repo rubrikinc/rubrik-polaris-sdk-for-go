@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris"
 	polaris_log "github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -45,30 +44,26 @@ func main() {
 	ctx := context.Background()
 
 	// Load Polaris configuration.
-	polConfig, err := polaris.DefaultConfig("default")
+	config, err := polaris.DefaultConfig("default")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Create Polaris client.
-	client, err := polaris.NewClient(polConfig, &polaris_log.StandardLogger{})
+	client, err := polaris.NewClient(config, &polaris_log.StandardLogger{})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Load AWS configuration.
-	awsConfig, err := config.LoadDefaultConfig(ctx)
+	// Add the AWS account using the default profile to Polaris.
+	err = client.AwsAccountAdd(ctx, polaris.FromAwsProfile("default"),
+		polaris.WithName("Trinity-TPM-DevOps"), polaris.WithRegions("us-east-2", "us-west-2"))
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Add the AWS account to Polaris.
-	if err := client.AwsAccountAdd(ctx, awsConfig, "Trinity-TPM-DevOps", []string{"us-east-2", "us-west-2"}); err != nil {
 		log.Fatal(err)
 	}
 
 	// List the newly added account.
-	account, err := client.AwsAccountFromConfig(ctx, awsConfig)
+	account, err := client.AwsAccount(ctx, polaris.FromAwsProfile("default"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -79,7 +74,7 @@ func main() {
 	}
 
 	// Delete the AWS account from Polaris.
-	if err := client.AwsAccountRemove(ctx, awsConfig, ""); err != nil {
+	if err := client.AwsAccountRemove(ctx, polaris.FromAwsProfile("default")); err != nil {
 		log.Fatal(err)
 	}
 }

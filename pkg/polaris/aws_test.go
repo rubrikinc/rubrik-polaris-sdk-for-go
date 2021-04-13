@@ -5,33 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
-
-func TestAwsFromPolarisRegionNames(t *testing.T) {
-	names := awsFromPolarisRegionNames([]string{"us-east-1", "us-west-1"})
-	if !reflect.DeepEqual(names, []string{"us-east-1", "us-west-1"}) {
-		t.Errorf("invalid region names: %v", names)
-	}
-
-	names = awsFromPolarisRegionNames([]string{"US_EAST_1", "US_WEST_1"})
-	if !reflect.DeepEqual(names, []string{"us-east-1", "us-west-1"}) {
-		t.Errorf("invalid region name: %v", names)
-	}
-}
-
-func TestAwsToPolarisRegionNames(t *testing.T) {
-	names := awsToPolarisRegionNames([]string{"us-east-1", "us-west-1"})
-	if !reflect.DeepEqual(names, []string{"US_EAST_1", "US_WEST_1"}) {
-		t.Errorf("invalid region names: %v", names)
-	}
-
-	names = awsToPolarisRegionNames([]string{"US_EAST_1", "US_WEST_1"})
-	if !reflect.DeepEqual(names, []string{"US_EAST_1", "US_WEST_1"}) {
-		t.Errorf("invalid region name: %v", names)
-	}
-}
 
 // Between the account has been added and it has been removed we never fail
 // fatally to allow the account to be removed in case of an error.
@@ -41,26 +16,22 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	ctx := context.Background()
 
 	// Polaris client.
-	polConfig, err := DefaultConfig("default")
+	config, err := DefaultConfig("default")
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClient(polConfig, &log.DiscardLogger{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// AWS config.
-	awsConfig, err := config.LoadDefaultConfig(ctx)
+	client, err := NewClient(config, &log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Add and verify AWS account.
-	if err := client.AwsAccountAdd(ctx, awsConfig, "Trinity-TPM-DevOps", []string{"us-east-2"}); err != nil {
+	// Add and verify AWS account using the default profile.
+	err = client.AwsAccountAdd(ctx, FromAwsProfile("default"), WithName("Trinity-TPM-DevOps"),
+		WithRegions("us-east-2"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	account, err := client.AwsAccountFromConfig(ctx, awsConfig)
+	account, err := client.AwsAccount(ctx, FromAwsProfile("default"))
 	if err != nil {
 		t.Error(err)
 	}
@@ -84,10 +55,10 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	}
 
 	// Set and verify regions for AWS account.
-	if err := client.AwsAccountSetRegions(ctx, account.NativeID, []string{"us-west-2"}); err != nil {
+	if err := client.AwsAccountSetRegions(ctx, WithUUID(account.ID), "us-west-2"); err != nil {
 		t.Error(err)
 	}
-	account, err = client.AwsAccountFromID(ctx, account.NativeID)
+	account, err = client.AwsAccount(ctx, WithAwsID(account.NativeID))
 	if err != nil {
 		t.Error(err)
 	}
@@ -99,10 +70,10 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	}
 
 	// Remove AWS account and verify that it's gone.
-	if err := client.AwsAccountRemove(ctx, awsConfig, ""); err != nil {
+	if err := client.AwsAccountRemove(ctx, FromAwsProfile("default")); err != nil {
 		t.Fatal(err)
 	}
-	account, err = client.AwsAccountFromConfig(ctx, awsConfig)
+	account, err = client.AwsAccount(ctx, FromAwsProfile("default"))
 	if err != ErrAccountNotFound {
 		t.Error(err)
 	}
