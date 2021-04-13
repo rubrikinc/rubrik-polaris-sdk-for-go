@@ -3,7 +3,6 @@ package polaris
 import (
 	"context"
 	"errors"
-	"sort"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -155,22 +154,40 @@ func WithName(name string) *WithOption {
 	}}
 }
 
+// WithRegion passes the specified region as an option to a function accepting
+// WithOption as argument. When given multiple times to a variadic function all
+// regions will be used.
+func WithRegion(region string) *WithOption {
+	return &WithOption{func(ctx context.Context, opts *options) error {
+		for _, r := range opts.regions {
+			if region == r {
+				return nil
+			}
+		}
+
+		opts.regions = append(opts.regions, region)
+		return nil
+	}}
+}
+
 // WithRegions passes the specified set of regions as an option to a function
 // accepting WithOption as argument. When given multiple times to a variadic
-// function the last set of regions will be used.
+// function all regions will be used.
 func WithRegions(regions ...string) *WithOption {
 	return &WithOption{func(ctx context.Context, opts *options) error {
-		set := make(map[string]struct{}, len(regions))
-		for _, region := range regions {
+		set := make(map[string]struct{}, len(regions)+len(opts.regions))
+		for _, region := range opts.regions {
 			set[region] = struct{}{}
 		}
 
-		opts.regions = make([]string, 0, len(set))
-		for region := range set {
-			opts.regions = append(opts.regions, region)
+		// Add regions not already in the set.
+		for _, region := range regions {
+			if _, ok := set[region]; !ok {
+				opts.regions = append(opts.regions, region)
+				set[region] = struct{}{}
+			}
 		}
 
-		sort.Strings(opts.regions)
 		return nil
 	}}
 }

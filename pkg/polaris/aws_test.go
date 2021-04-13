@@ -27,7 +27,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 
 	// Add and verify AWS account using the default profile.
 	err = client.AwsAccountAdd(ctx, FromAwsProfile("default"), WithName("Trinity-TPM-DevOps"),
-		WithRegions("us-east-2"))
+		WithRegion("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
