@@ -56,7 +56,7 @@ pipeline {
                 SDK_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
             }
             steps {
-                sh 'CGO_ENABLED=0 go test -cover -v ./...'
+                sh 'CGO_ENABLED=0 go test -count=1 -cover -v ./...'
             }
         }
     }
