@@ -56,7 +56,7 @@ pipeline {
                 SDK_INTEGRATION = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause').size()
             }
             steps {
-                sh 'CGO_ENABLED=0 go test -count=1 -cover -v ./...'
+                sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -v ./...'
             }
         }
         stage('Coverage') {
