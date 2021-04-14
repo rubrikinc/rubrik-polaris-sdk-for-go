@@ -59,5 +59,15 @@ pipeline {
                 sh 'CGO_ENABLED=0 go test -count=1 -cover -v ./...'
             }
         }
+        stage('Coverage') {
+            environment {
+                GOPATH = "/tmp/go"
+            }
+            steps {
+                sh 'go get github.com/t-yuki/gocover-cobertura'
+                sh '${GOPATH}/bin/gocover-cobertura < coverage.txt > coverage.xml'
+                cobertura coberturaReportFile: 'coverage.xml'
+            }
+        }
     }
 }
