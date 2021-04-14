@@ -25,13 +25,15 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Add and verify AWS account using the default profile.
-	err = client.AwsAccountAdd(ctx, FromAwsProfile("default"), WithName("Trinity-TPM-DevOps"),
+	// Add and verify AWS account using the default profile. Note that for the
+	// Trinity lab we must use the name specified name since accounts cannot be
+	// renamed.
+	err = client.AwsAccountAdd(ctx, FromAwsProfile(""), WithName("Trinity-TPM-DevOps"),
 		WithRegion("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	account, err := client.AwsAccount(ctx, FromAwsProfile("default"))
+	account, err := client.AwsAccount(ctx, FromAwsProfile(""))
 	if err != nil {
 		t.Error(err)
 	}
@@ -70,10 +72,10 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	}
 
 	// Remove AWS account and verify that it's gone.
-	if err := client.AwsAccountRemove(ctx, FromAwsProfile("default")); err != nil {
+	if err := client.AwsAccountRemove(ctx, FromAwsProfile("")); err != nil {
 		t.Fatal(err)
 	}
-	account, err = client.AwsAccount(ctx, FromAwsProfile("default"))
+	account, err = client.AwsAccount(ctx, FromAwsProfile(""))
 	if err != ErrAccountNotFound {
 		t.Error(err)
 	}

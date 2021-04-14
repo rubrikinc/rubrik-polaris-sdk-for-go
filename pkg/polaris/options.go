@@ -89,8 +89,9 @@ func FromAwsConfig(config aws.Config) *FromAwsOption {
 
 // FromAwsProfile passes the AWS configuration identified by the given
 // profile as an option to a function accepting FromAwsOption as an argument.
-// When given multiple times to a variadic function the last name given will
-// be used.
+// Specifying an empty string allows the configuration to be read from
+// environment variables. When given multiple times to a variadic function the
+// last name given will be used.
 func FromAwsProfile(profile string) *FromAwsOption {
 	return &FromAwsOption{func(ctx context.Context, opts *options) error {
 		config, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profile))
