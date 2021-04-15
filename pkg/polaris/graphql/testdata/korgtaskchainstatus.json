@@ -1,0 +1,12 @@
+{
+    "data": {
+        "getKorgTaskchainStatus": {
+            "taskchain": {
+                "id": 12761540,
+                "state": "{{ .ChainState }}",
+                "taskchainUuid": "{{ .ChainUUID }}",
+                "progressedAt": null
+            }
+        }
+    }
+}

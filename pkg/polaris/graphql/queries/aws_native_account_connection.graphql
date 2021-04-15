@@ -1,0 +1,26 @@
+query RubrikPolarisSDKRequest($awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2, $nameFilter: String = "") {
+	awsNativeAccountConnection(awsNativeProtectionFeature: $awsNativeProtectionFeature, accountFilters: {nameSubstringFilter: {nameSubstring: $nameFilter}}) {
+		count
+		edges {
+			node {
+				id
+				regions
+				status
+				name
+				slaAssignment
+				configuredSlaDomain {
+					id
+					name
+				}
+				effectiveSlaDomain {
+					id
+					name
+				}
+			}
+		}
+		pageInfo {
+			endCursor
+			hasNextPage
+		}
+	}
+}

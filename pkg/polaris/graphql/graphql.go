@@ -1,0 +1,292 @@
+//go:generate go run queries_gen.go
+
+// Copyright 2021 Rubrik, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
+// Package graphql contains code to interact directly with the Polaris GraphQL
+// API. Can be used to execute both raw queries and prepared low level queries
+// used by the high level part of the SDK.
+//
+// The graphql package tries to stay as close as possible to the GraphQL API:
+//
+// - Get as a prefix is dropped.
+//
+// - Names are turned into CamelCase.
+//
+// - CSP ackronyms (e.g. aws) that are part of names are turned into prefixes.
+//
+// - Query parameters with values in a well defined range are turned into
+// types.
+package graphql
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+)
+
+// jsonError is returned by Polaris in the body of a response as a JSON
+// document when certain types of errors occur.
+type jsonError struct {
+	Code    int    `json:"code"`
+	URI     string `json:"uri"`
+	Message string `json:"message"`
+}
+
+// isError determines if the jsonError unmarshallad from a JSON document
+// represents an error or not.
+func (e jsonError) isError() bool {
+	return e.Code != 0 || e.Message != ""
+}
+
+func (e jsonError) Error() string {
+	return fmt.Sprintf("polaris: code %d: %s", e.Code, e.Message)
+}
+
+type gqlLocation struct {
+	Line   int `json:"line"`
+	Column int `json:"column"`
+}
+
+type gqlDetails struct {
+	Message   string        `json:"message"`
+	Path      []string      `json:"path"`
+	Locations []gqlLocation `json:"locations"`
+}
+
+// gqlError is returned by Polaris in the body of a response as a JSON document
+// when certain types of GraphQL errors occur.
+type gqlError struct {
+	Data   interface{}  `json:"data"`
+	Errors []gqlDetails `json:"errors"`
+}
+
+// isError determines if the gqlError unmarshallad from a JSON document
+// represents an error or not.
+func (e gqlError) isError() bool {
+	return len(e.Errors) > 0
+}
+
+func (e gqlError) Error() string {
+	return fmt.Sprintf("polaris: %s", e.Errors[0].Message)
+}
+
+// Client is used to make GraphQL calls to the Polaris platform.
+type Client struct {
+	app    string
+	gqlURL string
+	client *http.Client
+	log    log.Logger
+}
+
+// NewClient returns a new Client with the specified configuration.
+func NewClient(app, apiURL, username, password string, logger log.Logger) *Client {
+	return &Client{
+		app:    app,
+		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
+		client: &http.Client{
+			Transport: &tokenTransport{
+				next: http.DefaultTransport,
+				src:  newTokenSource(apiURL, username, password),
+			},
+		},
+		log: logger,
+	}
+}
+
+// NewTestClient - Intended to be used by unit tests.
+func NewTestClient(username, password string, logger log.Logger) (*Client, *TestListener) {
+	src, lis := newTestTokenSource(username, password)
+
+	client := &Client{
+		gqlURL: "http://test/api/graphql",
+		client: &http.Client{
+			Transport: &tokenTransport{
+				next: src.client.Transport,
+				src:  src,
+			},
+		},
+		log: logger,
+	}
+
+	return client, lis
+}
+
+// Request posts the specified GraphQL query with the given variables to the
+// Polaris platform. Returns the response JSON text as is.
+func (c *Client) Request(ctx context.Context, query string, variables interface{}) ([]byte, error) {
+	c.log.Print(log.Trace, "graphql.Request")
+
+	// Prepare the query request body.
+	buf, err := json.Marshal(struct {
+		Query     string      `json:"query"`
+		Variables interface{} `json:"variables,omitempty"`
+	}{Query: query, Variables: variables})
+	if err != nil {
+		return nil, err
+	}
+
+	// Send the query to the remote API endpoint.
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.gqlURL, bytes.NewReader(buf))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Add("Accept", "application/json")
+	res, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	// Remote responded without a body. For status code 200 this means we are
+	// missing the GraphQL response. For an error we have no additional details.
+	if res.ContentLength == 0 {
+		if res.StatusCode != 200 {
+			return nil, fmt.Errorf("polaris: %s", res.Status)
+		} else {
+			return nil, errors.New("polaris: no body")
+		}
+	}
+
+	// Verify that the content type of the body is JSON.
+	contentType := res.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "application/json") {
+		return nil, fmt.Errorf("polaris: wrong content-type: %s", contentType)
+	}
+
+	buf, err = io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Remote responded with a JSON document. Try to parse it as both known
+	// error message formats.
+	var jsonErr jsonError
+	if err := json.Unmarshal(buf, &jsonErr); err != nil {
+		return nil, err
+	}
+	if jsonErr.isError() {
+		return nil, jsonErr
+	}
+
+	var gqlErr gqlError
+	if err := json.Unmarshal(buf, &gqlErr); err != nil {
+		return nil, err
+	}
+	if gqlErr.isError() {
+		return nil, gqlErr
+	}
+
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf("polaris: %s", res.Status)
+	}
+
+	return buf, nil
+}
+
+// TaskChain is a collection of sequential tasks that all must complete for the
+// task chain to be considered complete.
+type TaskChain struct {
+	ID            int64          `json:"id"`
+	TaskChainUUID TaskChainUUID  `json:"taskchainUuid"`
+	State         TaskChainState `json:"state"`
+	ProgressedAt  time.Time      `json:"progressedAt"`
+}
+
+// TaskChainState represents the state of a Polaris task chain.
+type TaskChainState string
+
+const (
+	TaskChainInvalid   TaskChainState = ""
+	TaskChainCanceled  TaskChainState = "CANCELED"
+	TaskChainCanceling TaskChainState = "CANCELING"
+	TaskChainFailed    TaskChainState = "FAILED"
+	TaskChainReady     TaskChainState = "READY"
+	TaskChainRunning   TaskChainState = "RUNNING"
+	TaskChainSucceeded TaskChainState = "SUCCEEDED"
+	TaskChainUndoing   TaskChainState = "UNDOING"
+)
+
+// TaskChainUUID represents the identity of a Polaris task chain.
+type TaskChainUUID string
+
+// KorgTaskChainStatus returns the task chain for the specified task chain
+// UUID.
+func (c *Client) KorgTaskChainStatus(ctx context.Context, taskChainID TaskChainUUID) (TaskChain, error) {
+	c.log.Print(log.Trace, "graphql.Client.KorgTaskChainStatus")
+
+	buf, err := c.Request(ctx, coreTaskchainStatusQuery, struct {
+		TaskChainID string `json:"taskchainId,omitempty"`
+	}{TaskChainID: string(taskChainID)})
+	if err != nil {
+		return TaskChain{}, err
+	}
+
+	c.log.Printf(log.Debug, "KorgTaskChainStatus(%q): %s", string(taskChainID), string(buf))
+
+	var payload struct {
+		Data struct {
+			Query struct {
+				TaskChain TaskChain `json:"taskchain"`
+			} `json:"getKorgTaskchainStatus"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return TaskChain{}, err
+	}
+
+	return payload.Data.Query.TaskChain, nil
+}
+
+// WaitForTaskChain blocks until the Polaris task chain with the specified task
+// chain ID has completed. When the task chain completes the final state of the
+// task chain is returned. The wait parameter specifies the amount of time to
+// wait before requesting another task status update.
+func (c *Client) WaitForTaskChain(ctx context.Context, taskChainID TaskChainUUID, wait time.Duration) (TaskChainState, error) {
+	c.log.Print(log.Trace, "graphql.Client.WaitForTaskChain")
+
+	for {
+		taskChain, err := c.KorgTaskChainStatus(ctx, taskChainID)
+		if err != nil {
+			return TaskChainInvalid, err
+		}
+
+		if taskChain.State == TaskChainSucceeded || taskChain.State == TaskChainCanceled || taskChain.State == TaskChainFailed {
+			return taskChain.State, nil
+		}
+
+		c.log.Print(log.Debug, "Waiting for Polaris task chain")
+
+		select {
+		case <-time.After(wait):
+		case <-ctx.Done():
+			return TaskChainInvalid, ctx.Err()
+		}
+	}
+}

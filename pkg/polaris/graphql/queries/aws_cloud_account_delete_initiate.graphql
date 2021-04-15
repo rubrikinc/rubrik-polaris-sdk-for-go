@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($polarisAccountId: UUID!) {
+    awsCloudAccountDeleteInitiate(cloudAccountUuid: $polarisAccountId, awsCloudAccountDeleteInitiateArg: {feature: CLOUD_NATIVE_PROTECTION}) {
+        cloudFormationUrl
+    }
+}

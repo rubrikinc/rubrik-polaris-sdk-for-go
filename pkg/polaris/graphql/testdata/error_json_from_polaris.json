@@ -1,0 +1,10 @@
+{
+    "code": 401,
+    "uri": "/api/session",
+    "traceSpan": {
+        "traceId": "n2jJpBU8qkEy3k09s9JNkg==",
+        "operation": "/api/session",
+        "spanId": "eV6DX7svnls="
+    },
+    "message": "UNAUTHENTICATED: wrong username or password"
+}
