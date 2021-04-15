@@ -26,7 +26,7 @@ pipeline {
         go 'go-1.16.2'
     }
     triggers {
-        cron(env.BRANCH_NAME == 'aws-accounts' ? '@midnight' : '')
+        cron(env.BRANCH_NAME == 'main' ? '@midnight' : '')
     }
     stages {
         stage('Lint') {
@@ -53,7 +53,7 @@ pipeline {
                 RUBRIK_POLARIS_URL      = "https://rubrik-trinity-lab.dev.my.rubrik-lab.com/api"
 
                 // Run integration tests with the nightly build.
-                SDK_INTEGRATION = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause').size()
+                SDK_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
             }
             steps {
                 sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -v ./...'
