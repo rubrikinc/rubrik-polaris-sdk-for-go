@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"reflect"
@@ -70,5 +71,67 @@ func TestAwsCloudAccounts(t *testing.T) {
 	}
 	if accounts[0].FeatureDetails[0].Status != "CONNECTED" {
 		t.Errorf("invalid feature status: %v", accounts[0].FeatureDetails[0].Status)
+	}
+}
+
+func TestAwsStartNativeAccountDisableJob(t *testing.T) {
+	tmpl, err := template.ParseFiles("testdata/aws_startnativeaccountdisablejob.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
+
+	srv := serveJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+		buf, err := io.ReadAll(req.Body)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		var payload struct {
+			Query     string `json:"query"`
+			Variables struct {
+				AccountID         string `json:"polarisAccountId,omitempty"`
+				ProtectionFeature string `json:"awsNativeProtectionFeature"`
+				DeleteSnapshots   bool   `json:"deleteNativeSnapshots"`
+			} `json:"variables,omitempty"`
+		}
+		if err := json.Unmarshal(buf, &payload); err != nil {
+			t.Fatal(err)
+		}
+
+		var msg string
+		if payload.Variables.AccountID != "627297623784" {
+			msg = fmt.Sprintf("invalid account id: %s", payload.Variables.AccountID)
+		}
+		if payload.Variables.ProtectionFeature != "EC2" {
+			msg = fmt.Sprintf("invalid protection feature: %s", payload.Variables.ProtectionFeature)
+		}
+		if payload.Variables.DeleteSnapshots != true {
+			msg = fmt.Sprintf("invalid delete snapshots: %t", payload.Variables.DeleteSnapshots)
+		}
+
+		err = tmpl.Execute(w, struct {
+			JobID string
+			Error string
+		}{JobID: "b7945260-e39f-40bb-9dad-c20d93129686", Error: msg})
+		if err != nil {
+			panic(err)
+		}
+	})
+	defer srv.Shutdown(context.Background())
+
+	jobID, err := client.AwsStartNativeAccountDisableJob(context.Background(), "627297623784", AwsEC2, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if jobID != "b7945260-e39f-40bb-9dad-c20d93129686" {
+		t.Fatal("")
+	}
+
+	_, err = client.AwsStartNativeAccountDisableJob(context.Background(), "fail", AwsEC2, true)
+	if err == nil {
+		t.Fatal("request should fail")
 	}
 }

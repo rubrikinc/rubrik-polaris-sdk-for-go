@@ -251,7 +251,7 @@ func (c *Client) AwsStartNativeAccountDisableJob(ctx context.Context, accountID 
 			Query struct {
 				Error string        `json:"error"`
 				JobID TaskChainUUID `json:"jobId"`
-			} `json:"deleteAwsNativeAccount"`
+			} `json:"startAwsNativeAccountDisableJob"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
