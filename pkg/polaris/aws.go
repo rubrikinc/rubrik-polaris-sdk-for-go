@@ -111,11 +111,11 @@ func awsWaitForStack(ctx context.Context, config aws.Config, stackName string) (
 }
 
 // AwsAccount returns cloud accounts the same way as AwsAccounts but expects
-// only a single account to be returned, returns an error otherwise.
-func (c *Client) AwsAccount(ctx context.Context, fromWithOpt FromAwsOrWithOption) (AwsCloudAccount, error) {
+// to return only a single account, otherwise it returns an error.
+func (c *Client) AwsAccount(ctx context.Context, queryOpt QueryOption) (AwsCloudAccount, error) {
 	c.log.Print(log.Trace, "polaris.Client.AwsAccount")
 
-	accounts, err := c.AwsAccounts(ctx, fromWithOpt)
+	accounts, err := c.AwsAccounts(ctx, queryOpt)
 	if err != nil {
 		return AwsCloudAccount{}, err
 	}
@@ -130,15 +130,13 @@ func (c *Client) AwsAccount(ctx context.Context, fromWithOpt FromAwsOrWithOption
 }
 
 // AwsAccounts returns all cloud accounts with cloud native protection matching
-// the given options. Accepts FromAwsConfig, FromAwsProfile, WithID and WithName.
-func (c *Client) AwsAccounts(ctx context.Context, fromWithOpts ...FromAwsOrWithOption) ([]AwsCloudAccount, error) {
+// the given query option.
+func (c *Client) AwsAccounts(ctx context.Context, queryOpt QueryOption) ([]AwsCloudAccount, error) {
 	c.log.Print(log.Trace, "polaris.Client.AwsAccounts")
 
 	opts := options{}
-	for _, opt := range fromWithOpts {
-		if err := opt.parse(ctx, &opts); err != nil {
-			return nil, err
-		}
+	if err := queryOpt.query(ctx, &opts); err != nil {
+		return nil, err
 	}
 
 	filter := opts.awsID
@@ -175,24 +173,24 @@ func (c *Client) AwsAccounts(ctx context.Context, fromWithOpts ...FromAwsOrWithO
 	return accounts, nil
 }
 
-// AwsAccountAdd adds the AWS account identified by the FromAwsOption to
-// Polaris. The optional WithOptions can be used to specify name and regions.
-// If no name is explicitly given AWS Organizations will be used to lookup the
+// AwsAccountAdd adds the AWS account identified by the AwsConfigOption to
+// Polaris. The optional AddOptions can be used to specify name and regions.
+// If name isn't explicitly given AWS Organizations will be used to lookup the
 // AWS account name. If that fails the name will be derived from the AWS account
 // id and, if available, the profile name. If no regions are given the default
-//region for the AWS configuration will be used.
-func (c *Client) AwsAccountAdd(ctx context.Context, fromOpt *FromAwsOption, withOpts ...*WithOption) error {
+// region for the AWS configuration will be used.
+func (c *Client) AwsAccountAdd(ctx context.Context, awsOpt AwsConfigOption, addOpts ...AddOption) error {
 	c.log.Print(log.Trace, "polaris.Client.AwsAccountAdd")
 
 	opts := options{}
-	if fromOpt == nil {
+	if awsOpt == nil {
 		return errors.New("polaris: option not allowed to be nil")
 	}
-	if err := fromOpt.parse(ctx, &opts); err != nil {
+	if err := awsOpt.awsConfig(ctx, &opts); err != nil {
 		return err
 	}
-	for _, opt := range withOpts {
-		if err := opt.parse(ctx, &opts); err != nil {
+	for _, opt := range addOpts {
+		if err := opt.add(ctx, &opts); err != nil {
 			return err
 		}
 	}
@@ -265,16 +263,15 @@ func (c *Client) AwsAccountAdd(ctx context.Context, fromOpt *FromAwsOption, with
 }
 
 // AwsAccountSetRegions updates the AWS regions for the AWS account identified
-// by the FromAwsOrWithOption. Accepts FromAwsConfig, FromAwsProfile, WithAwsID
-// and WithUUID.
-func (c *Client) AwsAccountSetRegions(ctx context.Context, opt FromAwsOrWithOption, regions ...string) error {
+// by the ID option.
+func (c *Client) AwsAccountSetRegions(ctx context.Context, idOpts IDOption, regions ...string) error {
 	c.log.Print(log.Trace, "polaris.Client.AwsAccountSetRegions")
 
 	opts := options{}
-	if opt == nil {
+	if idOpts == nil {
 		return errors.New("polaris: option not allowed to be nil")
 	}
-	if err := opt.parse(ctx, &opts); err != nil {
+	if err := idOpts.id(ctx, &opts); err != nil {
 		return err
 	}
 
@@ -302,28 +299,29 @@ func (c *Client) AwsAccountSetRegions(ctx context.Context, opt FromAwsOrWithOpti
 	return nil
 }
 
-// AwsAccountRemove removes the AWS account identified by the FromAwsOption
-// from Polaris.
-func (c *Client) AwsAccountRemove(ctx context.Context, opt *FromAwsOption) error {
+// AwsAccountRemove removes the AWS account identified by the AwsConfigOption
+// from Polaris. If deleteSnapshots are true the snapshots are deleted otherwise
+// they are kept.
+func (c *Client) AwsAccountRemove(ctx context.Context, awsOpt AwsConfigOption, deleteSnapshots bool) error {
 	c.log.Print(log.Trace, "polaris.Client.AwsAccountRemove")
 
 	opts := options{}
-	if opt == nil {
+	if awsOpt == nil {
 		return errors.New("polaris: option not allowed to be nil")
 	}
-	if err := opt.parse(ctx, &opts); err != nil {
+	if err := awsOpt.awsConfig(ctx, &opts); err != nil {
 		return err
 	}
 	if opts.awsConfig == nil {
 		return errors.New("polaris: missing aws configuration")
 	}
 
-	account, err := c.AwsAccount(ctx, opt)
+	account, err := c.AwsAccount(ctx, WithAwsID(opts.awsID))
 	if err != nil {
 		return err
 	}
 
-	taskChainID, err := c.gql.AwsDeleteNativeAccount(ctx, account.ID, graphql.AwsEC2, false)
+	taskChainID, err := c.gql.AwsDeleteNativeAccount(ctx, account.ID, graphql.AwsEC2, deleteSnapshots)
 	if err != nil {
 		return err
 	}

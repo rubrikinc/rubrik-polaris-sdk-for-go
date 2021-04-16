@@ -43,27 +43,25 @@ import (
 func main() {
 	ctx := context.Background()
 
-	// Load Polaris configuration.
+	// Load configuration and create client.
 	config, err := polaris.DefaultConfig("default")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// Create Polaris client.
 	client, err := polaris.NewClient(config, &polaris_log.StandardLogger{})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Add the AWS account using the default profile to Polaris.
-	err = client.AwsAccountAdd(ctx, polaris.FromAwsProfile("default"),
-		polaris.WithName("Trinity-TPM-DevOps"), polaris.WithRegions("us-east-2", "us-west-2"))
+	// Add the AWS default account to Polaris.
+	err = client.AwsAccountAdd(ctx, polaris.FromAwsDefault(),
+		polaris.WithName("Trinity-TPM-DevOps"), polaris.WithRegion("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// List the newly added account.
-	account, err := client.AwsAccount(ctx, polaris.FromAwsProfile("default"))
+	account, err := client.AwsAccount(ctx, polaris.FromAwsDefault())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,8 +71,8 @@ func main() {
 		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Feature, feature.AwsRegions, feature.Status)
 	}
 
-	// Delete the AWS account from Polaris.
-	if err := client.AwsAccountRemove(ctx, polaris.FromAwsProfile("default")); err != nil {
+	// Remove the AWS account from Polaris.
+	if err := client.AwsAccountRemove(ctx, polaris.FromAwsDefault(), false); err != nil {
 		log.Fatal(err)
 	}
 }
