@@ -74,16 +74,9 @@ var awsCloudAccountsQuery = `query SdkGolangAwsCloudAccounts($columnFilter: Stri
     }
 }`
 
-// awsDeleteNativeAccount GraphQL query
-var awsDeleteNativeAccountQuery = `mutation SdkGolangAwsDeleteNativeAccount($polarisAccountId: UUID!, $deleteNativeSnapshots: Boolean = false, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2) {
-    deleteAwsNativeAccount(awsNativeAccountId: $polarisAccountId, deleteNativeSnapshots: $deleteNativeSnapshots, awsNativeProtectionFeature: $awsNativeProtectionFeature) {
-        taskchainUuid
-    }
-}`
-
-// awsNativeAccountConnection GraphQL query
-var awsNativeAccountConnectionQuery = `query SdkGolangAwsNativeAccountConnection($awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2, $nameFilter: String = "") {
-	awsNativeAccountConnection(awsNativeProtectionFeature: $awsNativeProtectionFeature, accountFilters: {nameSubstringFilter: {nameSubstring: $nameFilter}}) {
+// awsNativeAccounts GraphQL query
+var awsNativeAccountsQuery = `query SdkGolangAwsNativeAccounts($awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2, $nameFilter: String = "") {
+	awsNativeAccounts(awsNativeProtectionFeature: $awsNativeProtectionFeature, accountFilters: {nameSubstringFilter: {nameSubstring: $nameFilter}}) {
 		count
 		edges {
 			node {
@@ -130,5 +123,13 @@ var coreTaskchainStatusQuery = `query SdkGolangCoreTaskchainStatus($taskchainId:
                 progressedAt
             }
         }
+    }
+}`
+
+// startAwsNativeAccountDisableJob GraphQL query
+var startAwsNativeAccountDisableJobQuery = `mutation SdkGolangStartAwsNativeAccountDisableJob($polarisAccountId: UUID!, $deleteNativeSnapshots: Boolean = false, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2) {
+    startAwsNativeAccountDisableJob(input: {awsNativeAccountId: $polarisAccountId, shouldDeleteNativeSnapshots: $deleteNativeSnapshots, awsNativeProtectionFeature: $awsNativeProtectionFeature}) {
+        error
+        jobId
     }
 }`

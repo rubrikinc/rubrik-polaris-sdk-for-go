@@ -321,17 +321,17 @@ func (c *Client) AwsAccountRemove(ctx context.Context, awsOpt AwsConfigOption, d
 		return err
 	}
 
-	taskChainID, err := c.gql.AwsDeleteNativeAccount(ctx, account.ID, graphql.AwsEC2, deleteSnapshots)
+	jobID, err := c.gql.AwsStartNativeAccountDisableJob(ctx, account.ID, graphql.AwsEC2, deleteSnapshots)
 	if err != nil {
 		return err
 	}
 
-	state, err := c.gql.WaitForTaskChain(ctx, taskChainID, 10*time.Second)
+	state, err := c.gql.WaitForTaskChain(ctx, jobID, 10*time.Second)
 	if err != nil {
 		return err
 	}
 	if state != graphql.TaskChainSucceeded {
-		return fmt.Errorf("polaris: taskchain failed: taskChainUUID=%v, state=%v", taskChainID, state)
+		return fmt.Errorf("polaris: taskchain failed: jobID=%v, state=%v", jobID, state)
 	}
 
 	cfmURL, err := c.gql.AwsCloudAccountDeleteInitiate(ctx, account.ID)
