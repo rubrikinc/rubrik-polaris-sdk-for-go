@@ -1,5 +1,0 @@
-mutation RubrikPolarisSDKRequest($polarisAccountId: UUID!, $deleteNativeSnapshots: Boolean = false, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2) {
-    deleteAwsNativeAccount(awsNativeAccountId: $polarisAccountId, deleteNativeSnapshots: $deleteNativeSnapshots, awsNativeProtectionFeature: $awsNativeProtectionFeature) {
-        taskchainUuid
-    }
-}

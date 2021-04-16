@@ -323,7 +323,7 @@ func (c *Client) AwsAccountRemove(ctx context.Context, opt *FromAwsOption) error
 		return err
 	}
 
-	taskChainID, err := c.gql.AwsDeleteNativeAccount(ctx, account.ID, graphql.AwsEC2, false)
+	taskChainID, err := c.gql.AwsStartNativeAccountDisableJob(ctx, account.ID, graphql.AwsEC2, false)
 	if err != nil {
 		return err
 	}
