@@ -55,7 +55,7 @@ func main() {
 
 	// Add the AWS default account to Polaris.
 	err = client.AwsAccountAdd(ctx, polaris.FromAwsDefault(),
-		polaris.WithName("Trinity-TPM-DevOps"), polaris.WithRegion("us-east-2"))
+		polaris.WithName("Trinity-AWS-FDSE"), polaris.WithRegion("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
