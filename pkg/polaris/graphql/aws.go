@@ -81,16 +81,15 @@ type AwsNativeAccount struct {
 	} `json:"effectiveSlaDomain"`
 }
 
-// AwsNativeAccountConnection returns the native account matching the specified
-// filters.
-func (c *Client) AwsNativeAccountConnection(ctx context.Context, protectionFeature AwsProtectionFeature, nameFilter string) ([]AwsNativeAccount, error) {
-	c.log.Print(log.Trace, "graphql.Client.AwsNativeAccountConnection")
+// AwsNativeAccounts returns the native account matching the specified filters.
+func (c *Client) AwsNativeAccounts(ctx context.Context, protectionFeature AwsProtectionFeature, nameFilter string) ([]AwsNativeAccount, error) {
+	c.log.Print(log.Trace, "graphql.Client.AwsNativeAccounts")
 
 	accounts := make([]AwsNativeAccount, 0, 10)
 
 	var endCursor string
 	for {
-		buf, err := c.Request(ctx, awsNativeAccountConnectionQuery, struct {
+		buf, err := c.Request(ctx, awsNativeAccountsQuery, struct {
 			After             string `json:"after,omitempty"`
 			ProtectionFeature string `json:"awsNativeProtectionFeature,omitempty"`
 			NameFilter        string `json:"filter,omitempty"`
@@ -99,7 +98,7 @@ func (c *Client) AwsNativeAccountConnection(ctx context.Context, protectionFeatu
 			return nil, err
 		}
 
-		c.log.Printf(log.Debug, "AwsNativeAccountConnection(%q, %q): %s", protectionFeature, nameFilter, string(buf))
+		c.log.Printf(log.Debug, "AwsNativeAccounts(%q, %q): %s", protectionFeature, nameFilter, string(buf))
 
 		var payload struct {
 			Data struct {
@@ -112,7 +111,7 @@ func (c *Client) AwsNativeAccountConnection(ctx context.Context, protectionFeatu
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`
 					} `json:"pageInfo"`
-				} `json:"awsNativeAccountConnection"`
+				} `json:"awsNativeAccounts"`
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
@@ -231,12 +230,12 @@ func (c *Client) AwsCloudAccountUpdateFeatureInitiate(ctx context.Context, accou
 	return payload.Data.Query.URL, payload.Data.Query.TemplateURL, nil
 }
 
-// AwsDeleteNativeAccount deletes the native account. After being deleted the
-// account will have the status disabled.
-func (c *Client) AwsDeleteNativeAccount(ctx context.Context, accountID string, protectionFeature AwsProtectionFeature, deleteSnapshots bool) (TaskChainUUID, error) {
-	c.log.Print(log.Trace, "graphql.Client.AwsDeleteNativeAccount")
+// AwsStartNativeAccountDisableJob deletes the native account. After being
+// deleted the account will have the status disabled.
+func (c *Client) AwsStartNativeAccountDisableJob(ctx context.Context, accountID string, protectionFeature AwsProtectionFeature, deleteSnapshots bool) (TaskChainUUID, error) {
+	c.log.Print(log.Trace, "graphql.Client.AwsStartNativeAccountDisableJob")
 
-	buf, err := c.Request(ctx, awsDeleteNativeAccountQuery, struct {
+	buf, err := c.Request(ctx, startAwsNativeAccountDisableJobQuery, struct {
 		AccountID         string `json:"polarisAccountId,omitempty"`
 		ProtectionFeature string `json:"awsNativeProtectionFeature"`
 		DeleteSnapshots   bool   `json:"deleteNativeSnapshots"`
@@ -245,20 +244,24 @@ func (c *Client) AwsDeleteNativeAccount(ctx context.Context, accountID string, p
 		return "", err
 	}
 
-	c.log.Printf(log.Debug, "AwsDeleteNativeAccount(%q, %q, %t): %s", accountID, protectionFeature, deleteSnapshots, string(buf))
+	c.log.Printf(log.Debug, "AwsStartNativeAccountDisableJob(%q, %q, %t): %s", accountID, protectionFeature, deleteSnapshots, string(buf))
 
 	var payload struct {
 		Data struct {
 			Query struct {
-				TaskChainID TaskChainUUID `json:"taskchainUuid"`
-			} `json:"deleteAwsNativeAccount"`
+				Error string        `json:"error"`
+				JobID TaskChainUUID `json:"jobId"`
+			} `json:"startAwsNativeAccountDisableJob"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return "", err
 	}
+	if payload.Data.Query.Error != "" {
+		return "", fmt.Errorf("polaris: %s", payload.Data.Query.Error)
+	}
 
-	return payload.Data.Query.TaskChainID, nil
+	return payload.Data.Query.JobID, nil
 }
 
 // AwsCloudAccountDeleteInitiate initiates the deletion of a cloud account.
