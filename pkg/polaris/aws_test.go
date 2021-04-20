@@ -15,7 +15,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Polaris client.
+	// Load configuration and create client.
 	config, err := DefaultConfig("default")
 	if err != nil {
 		t.Fatal(err)
@@ -25,15 +25,15 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Add and verify AWS account using the default profile. Note that for the
-	// Trinity lab we must use the name specified name since accounts cannot be
-	// renamed.
-	err = client.AwsAccountAdd(ctx, FromAwsProfile(""), WithName("Trinity-TPM-DevOps"),
+	// Add and verify AWS account using the default AWS account. Note that for
+	// the Trinity lab we must use the name specified name since accounts cannot
+	// be renamed.
+	err = client.AwsAccountAdd(ctx, FromAwsDefault(), WithName("Trinity-TPM-DevOps"),
 		WithRegion("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	account, err := client.AwsAccount(ctx, FromAwsProfile(""))
+	account, err := client.AwsAccount(ctx, FromAwsDefault())
 	if err != nil {
 		t.Error(err)
 	}
@@ -72,10 +72,10 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	}
 
 	// Remove AWS account and verify that it's gone.
-	if err := client.AwsAccountRemove(ctx, FromAwsProfile("")); err != nil {
+	if err := client.AwsAccountRemove(ctx, FromAwsDefault(), false); err != nil {
 		t.Fatal(err)
 	}
-	account, err = client.AwsAccount(ctx, FromAwsProfile(""))
+	account, err = client.AwsAccount(ctx, FromAwsDefault())
 	if err != ErrAccountNotFound {
 		t.Error(err)
 	}
