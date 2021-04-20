@@ -28,7 +28,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	// Add and verify AWS account using the default AWS account. Note that for
 	// the Trinity lab we must use the name specified name since accounts cannot
 	// be renamed.
-	err = client.AwsAccountAdd(ctx, FromAwsDefault(), WithName("Trinity-TPM-DevOps"),
+	err = client.AwsAccountAdd(ctx, FromAwsDefault(), WithName("Trinity-AWS-FDSE"),
 		WithRegion("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
@@ -37,10 +37,10 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if account.Name != "Trinity-TPM-DevOps" {
+	if account.Name != "Trinity-AWS-FDSE" {
 		t.Errorf("invalid name: %v", account.Name)
 	}
-	if account.NativeID != "627297623784" {
+	if account.NativeID != "311033699123" {
 		t.Errorf("invalid native id: %v", account.NativeID)
 	}
 	if n := len(account.Features); n != 1 {
