@@ -29,7 +29,7 @@ import (
 	polaris_log "github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Example showing how to manage an AWS account with the Polaris Go SDK. The
+// Example showing how to manage a GCP project with the Polaris Go SDK. The
 // configuration file should contain:
 //
 //   {
@@ -53,28 +53,27 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Add the AWS default account to Polaris. Usually resolved using the
-	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
-	// AWS_DEFAULT_REGION.
-	err = client.AwsAccountAdd(ctx, polaris.FromAwsDefault(),
-		polaris.WithName("Trinity-TPM-DevOps"), polaris.WithRegion("us-east-2"))
+	// Add the GCP default project to Polaris. Usually resolved using the
+	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
+	err = client.GcpProjectAdd(ctx, polaris.FromGcpDefault())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Lookup the newly added account.
-	account, err := client.AwsAccount(ctx, polaris.FromAwsDefault())
+	// Lookup the newly added project.
+	project, err := client.GcpProject(ctx, polaris.FromGcpDefault())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
-	for _, feature := range account.Features {
-		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Feature, feature.AwsRegions, feature.Status)
+	fmt.Printf("Name: %v, ProjectID: %v, ProjectNumber: %v\n", project.Name, project.ProjectID,
+		project.ProjectNumber)
+	for _, feature := range project.Features {
+		fmt.Printf("Feature: %v, Status: %v\n", feature.Feature, feature.Status)
 	}
 
-	// Remove the AWS account from Polaris.
-	if err := client.AwsAccountRemove(ctx, polaris.FromAwsDefault(), false); err != nil {
+	// Remove the GCP account from Polaris.
+	if err := client.GcpProjectRemove(ctx, polaris.FromGcpDefault(), false); err != nil {
 		log.Fatal(err)
 	}
 }

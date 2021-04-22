@@ -120,10 +120,10 @@ func (c *Client) AwsAccount(ctx context.Context, queryOpt QueryOption) (AwsCloud
 		return AwsCloudAccount{}, err
 	}
 	if len(accounts) < 1 {
-		return AwsCloudAccount{}, ErrAccountNotFound
+		return AwsCloudAccount{}, fmt.Errorf("polaris: account %w", ErrNotFound)
 	}
 	if len(accounts) > 1 {
-		return AwsCloudAccount{}, errors.New("polaris: multiple cloud accounts")
+		return AwsCloudAccount{}, fmt.Errorf("polaris: account %w", ErrNotUnique)
 	}
 
 	return accounts[0], nil

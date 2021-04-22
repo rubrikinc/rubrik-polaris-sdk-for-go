@@ -5,6 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/google/uuid"
+	"golang.org/x/oauth2/google"
 )
 
 // options hold the combined result of all options passed as arguments to a
@@ -18,6 +19,13 @@ type options struct {
 	awsID      string
 	awsProfile string
 	awsConfig  *aws.Config
+
+	// GCP specific options.
+	gcpName    string
+	gcpID      string
+	gcpNumber  int64
+	gcpOrgName string
+	gcpCreds   *google.Credentials
 }
 
 // AddOption accept options valid for an add operation.
@@ -101,6 +109,14 @@ func WithUUID(id string) *idOption {
 		opts.id = id
 		return nil
 	}}
+}
+
+type queryOption struct {
+	parse func(ctx context.Context, opts *options) error
+}
+
+func (o *queryOption) query(ctx context.Context, opts *options) error {
+	return o.parse(ctx, opts)
 }
 
 type addAndQueryOption struct {
