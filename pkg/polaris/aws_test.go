@@ -41,10 +41,10 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if account.Name != "Trinity-TPM-DevOps" {
+	if account.Name != "Trinity-AWS-FDSE" {
 		t.Errorf("invalid name: %v", account.Name)
 	}
-	if account.NativeID != "627297623784" {
+	if account.NativeID != "311033699123" {
 		t.Errorf("invalid native id: %v", account.NativeID)
 	}
 	if n := len(account.Features); n != 1 {
