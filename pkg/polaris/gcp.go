@@ -202,14 +202,14 @@ func (c *Client) GcpProjectAdd(ctx context.Context, opt GcpConfigOption) error {
 // GcpProjectRemove removes the GCP project identified by the GcpConfigOption
 // from Polaris. If deleteSnapshots are true the snapshots are deleted otherwise
 // they are kept.
-func (c *Client) GcpProjectRemove(ctx context.Context, opt GcpConfigOption, deleteSnapshots bool) error {
+func (c *Client) GcpProjectRemove(ctx context.Context, opt QueryOption, deleteSnapshots bool) error {
 	c.log.Print(log.Trace, "polaris.Client.GcpProjectRemove")
 
 	opts := options{}
 	if opt == nil {
 		return errors.New("polaris: option not allowed to be nil")
 	}
-	if err := opt.gcpConfig(ctx, &opts); err != nil {
+	if err := opt.query(ctx, &opts); err != nil {
 		return err
 	}
 
