@@ -46,6 +46,9 @@ pipeline {
                 AWS_SECRET_ACCESS_KEY = credentials('sdk-aws-secret-key')
                 AWS_DEFAULT_REGION    = "us-east-2"
 
+                // GCP credentials.
+                GOOGLE_APPLICATION_CREDENTIALS = credentials('sdk-gcp-service-account')
+
                 // Polaris credentials.
                 RUBRIK_POLARIS_ACCOUNT  = "rubrik-trinity-lab"
                 RUBRIK_POLARIS_USERNAME = credentials('sdk-polaris-username')
@@ -53,7 +56,7 @@ pipeline {
                 RUBRIK_POLARIS_URL      = "https://rubrik-trinity-lab.dev.my.rubrik-lab.com/api"
 
                 // Run integration tests with the nightly build.
-                SDK_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
+                SDK_INTEGRATION = 1 //currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
             }
             steps {
                 sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -v ./...'
