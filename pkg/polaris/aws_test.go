@@ -2,6 +2,7 @@ package polaris
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -25,14 +26,17 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Add and verify AWS account using the default AWS account. Note that for
-	// the Trinity lab we must use the name specified name since accounts cannot
-	// be renamed.
-	err = client.AwsAccountAdd(ctx, FromAwsDefault(), WithName("Trinity-AWS-FDSE"),
+	// Add the default AWS account to Polaris. Usually resolved using the
+	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
+	// AWS_DEFAULT_REGION. Note that for the Trinity lab we must use the name
+	// specified name since accounts cannot be renamed.
+	err = client.AwsAccountAdd(ctx, FromAwsDefault(), WithName("Trinity-TPM-DevOps"),
 		WithRegion("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// Verify that the account was successfully added.
 	account, err := client.AwsAccount(ctx, FromAwsDefault())
 	if err != nil {
 		t.Error(err)
@@ -71,12 +75,14 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 		t.Errorf("invalid feature regions: %v", regions)
 	}
 
-	// Remove AWS account and verify that it's gone.
+	// Remove AWS account from Polaris.
 	if err := client.AwsAccountRemove(ctx, FromAwsDefault(), false); err != nil {
 		t.Fatal(err)
 	}
+
+	// Verify that the account was successfully removed.
 	account, err = client.AwsAccount(ctx, FromAwsDefault())
-	if err != ErrAccountNotFound {
+	if !errors.Is(err, ErrNotFound) {
 		t.Error(err)
 	}
 }

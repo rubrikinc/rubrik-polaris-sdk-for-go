@@ -126,6 +126,88 @@ var coreTaskchainStatusQuery = `query SdkGolangCoreTaskchainStatus($taskchainId:
     }
 }`
 
+// gcpCloudAccountAddManualAuthProject GraphQL query
+var gcpCloudAccountAddManualAuthProjectQuery = `mutation SdkGolangGcpCloudAccountAddManualAuthProject($gcp_native_project_id: String!, $gcp_native_project_name: String!, $gcp_native_project_number: Long!, $organization_name: String, $service_account_auth_key: String)
+{
+    gcpCloudAccountAddManualAuthProject(
+        gcpNativeProjectId: $gcp_native_project_id,
+        gcpProjectName: $gcp_native_project_name,
+        gcpProjectNumber: $gcp_native_project_number,
+        organizationName: $organization_name,
+        serviceAccountJwtConfigOptional: $service_account_auth_key,
+        features: [CLOUD_NATIVE_PROTECTION]
+    )
+}`
+
+// gcpCloudAccountDeleteProjects GraphQL query
+var gcpCloudAccountDeleteProjectsQuery = `mutation SdkGolangGcpCloudAccountDeleteProjects($native_protection_ids: [UUID!]!, $shared_vpc_host_project_ids: [UUID!]!, $cloud_account_project_ids: [UUID!]!) {
+  gcpCloudAccountDeleteProjects(nativeProtectionProjectUuids: $native_protection_ids, sharedVpcHostProjectUuids: $shared_vpc_host_project_ids, cloudAccountsProjectUuids: $cloud_account_project_ids, skipResourceDeletion: true) {
+    projectUuid
+    success
+    error
+  }
+}`
+
+// gcpCloudAccountListPermissions GraphQL query
+var gcpCloudAccountListPermissionsQuery = `query SdkGolangGcpCloudAccountListPermissions($feature: CloudAccountFeatureEnum = CLOUD_NATIVE_PROTECTION) {
+    gcpCloudAccountListPermissions(feature: $feature){
+        permission
+    }
+}`
+
+// gcpCloudAccountListProjects GraphQL query
+var gcpCloudAccountListProjectsQuery = `query SdkGolangGcpCloudAccountListProjects($feature: CloudAccountFeatureEnum = CLOUD_NATIVE_PROTECTION, $search_text: String!, $status_filters: [CloudAccountStatusEnum!]!) {
+    gcpCloudAccountListProjects(feature: $feature, projectStatusFilters: $status_filters, projectSearchText: $search_text){
+        project{
+            projectId,
+            projectNumber,
+            name,
+            id
+        }
+        featureDetail{
+            feature
+            status
+        }
+    }
+}`
+
+// gcpNativeDisableProject GraphQL query
+var gcpNativeDisableProjectQuery = `mutation SdkGolangGcpNativeDisableProject($rubrik_project_id: UUID!, $delete_snapshots: Boolean!) {
+  gcpNativeDisableProject(projectId: $rubrik_project_id, shouldDeleteNativeSnapshots: $delete_snapshots) {
+    taskchainUuid
+  }
+}`
+
+// gcpNativeProjectConnection GraphQL query
+var gcpNativeProjectConnectionQuery = `query SdkGolangGcpNativeProjectConnection($filter: String = "") {
+    gcpNativeProjectConnection(projectFilters: {nameOrNumberSubstringFilter: {nameOrNumberSubstring: $filter}}){
+        count
+        edges {
+            node {
+                id
+                name
+                nativeName
+                nativeId
+                projectNumber
+                organizationName
+                slaAssignment
+                configuredSlaDomain{
+                    id
+                    name
+                }
+                effectiveSlaDomain{
+                    id
+                    name
+                }
+            }
+        }
+   		pageInfo {
+			endCursor
+			hasNextPage
+		}
+    }
+}`
+
 // startAwsNativeAccountDisableJob GraphQL query
 var startAwsNativeAccountDisableJobQuery = `mutation SdkGolangStartAwsNativeAccountDisableJob($polarisAccountId: UUID!, $deleteNativeSnapshots: Boolean = false, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2) {
     startAwsNativeAccountDisableJob(input: {awsNativeAccountId: $polarisAccountId, shouldDeleteNativeSnapshots: $deleteNativeSnapshots, awsNativeProtectionFeature: $awsNativeProtectionFeature}) {

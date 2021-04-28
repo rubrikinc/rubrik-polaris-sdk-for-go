@@ -237,7 +237,9 @@ const (
 type TaskChainUUID string
 
 // KorgTaskChainStatus returns the task chain for the specified task chain
-// UUID.
+// UUID. If the task chain UUID refers to a task chain that was just created
+// it's state might not have reached ready yet. This can be detected by state
+// being TaskChainInvalid and error is nil.
 func (c *Client) KorgTaskChainStatus(ctx context.Context, taskChainID TaskChainUUID) (TaskChain, error) {
 	c.log.Print(log.Trace, "graphql.Client.KorgTaskChainStatus")
 
