@@ -46,6 +46,9 @@ pipeline {
                 AWS_SECRET_ACCESS_KEY = credentials('sdk-aws-secret-key')
                 AWS_DEFAULT_REGION    = "us-east-2"
 
+                // GCP credentials.
+                GOOGLE_APPLICATION_CREDENTIALS = credentials('sdk-gcp-service-account')
+
                 // Polaris credentials.
                 RUBRIK_POLARIS_ACCOUNT  = "rubrik-trinity-lab"
                 RUBRIK_POLARIS_USERNAME = credentials('sdk-polaris-username')

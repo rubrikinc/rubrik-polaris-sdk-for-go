@@ -30,7 +30,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION. Note that for the Trinity lab we must use the name
 	// specified name since accounts cannot be renamed.
-	err = client.AwsAccountAdd(ctx, FromAwsDefault(), WithName("Trinity-TPM-DevOps"),
+	err = client.AwsAccountAdd(ctx, FromAwsDefault(), WithName("Trinity-AWS-FDSE"),
 		WithRegion("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
