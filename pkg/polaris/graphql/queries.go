@@ -24,53 +24,71 @@
 
 package graphql
 
-// awsCloudAccountDeleteInitiate GraphQL query
-var awsCloudAccountDeleteInitiateQuery = `mutation SdkGolangAwsCloudAccountDeleteInitiate($polarisAccountId: UUID!) {
-    awsCloudAccountDeleteInitiate(cloudAccountUuid: $polarisAccountId, awsCloudAccountDeleteInitiateArg: {feature: CLOUD_NATIVE_PROTECTION}) {
-        cloudFormationUrl
+// awsAllCloudAccounts GraphQL query
+var awsAllCloudAccountsQuery = `query SdkGolangAwsAllCloudAccounts($column_filter: String = "") {
+    allAwsCloudAccounts(awsCloudAccountsArg: {columnSearchFilter: $column_filter, statusFilters: [], feature: CLOUD_NATIVE_PROTECTION}) {
+        awsCloudAccount {
+            id
+            nativeId
+            message
+            accountName
+        }
+        featureDetails {
+            feature
+            roleArn
+            stackArn
+            status
+            awsRegions
+        }
     }
 }`
 
-// awsCloudAccountDeleteProcess GraphQL query
-var awsCloudAccountDeleteProcessQuery = `mutation SdkGolangAwsCloudAccountDeleteProcess($polarisAccountId: UUID!) {
-    awsCloudAccountDeleteProcess(cloudAccountUuid: $polarisAccountId, awsCloudAccountDeleteProcessArg: {feature: CLOUD_NATIVE_PROTECTION}) {
+// awsCloudAccountSelector GraphQL query
+var awsCloudAccountSelectorQuery = `query SdkGolangAwsCloudAccountSelector($cloud_account_uuid: String!) {
+    awsCloudAccountSelector(awsCloudAccountsArg: {features: [CLOUD_NATIVE_PROTECTION], cloudAccountUuid: $cloud_account_uuid}) {
+        awsCloudAccount {
+            id
+            nativeId
+            message
+            accountName
+        }
+        featureDetails {
+            feature
+            roleArn
+            stackArn
+            status
+            awsRegions
+        }
+    }
+}`
+
+// awsFinalizeCloudAccountDeletion GraphQL query
+var awsFinalizeCloudAccountDeletionQuery = `mutation SdkGolangAwsFinalizeCloudAccountDeletion($cloud_account_uuid: UUID!) {
+    finalizeAwsCloudAccountDeletion(input: {cloudAccountId: $cloud_account_uuid, feature: CLOUD_NATIVE_PROTECTION}) {
         message
     }
 }`
 
-// awsCloudAccountSave GraphQL query
-var awsCloudAccountSaveQuery = `mutation SdkGolangAwsCloudAccountSave($polarisAccountId: UUID!, $awsRegions: [AwsCloudAccountRegionEnum!]!) {
-  awsCloudAccountSave(cloudAccountUuid: $polarisAccountId, awsCloudAccountSaveArg: {action: UPDATE_REGIONS, feature: CLOUD_NATIVE_PROTECTION, awsRegions: $awsRegions}) {
-    message
-  }
-}`
-
-// awsCloudAccountUpdateFeatureInitiate GraphQL query
-var awsCloudAccountUpdateFeatureInitiateQuery = `mutation SdkGolangAwsCloudAccountUpdateFeatureInitiate($polarisAccountId: UUID!) {
-    awsCloudAccountUpdateFeatureInitiate(cloudAccountUuid: $polarisAccountId, features: [CLOUD_NATIVE_PROTECTION]) {
-        cloudFormationUrl
-        templateUrl
-    }
-}`
-
-// awsCloudAccounts GraphQL query
-var awsCloudAccountsQuery = `query SdkGolangAwsCloudAccounts($columnFilter: String = "") {
-    awsCloudAccounts(awsCloudAccountsArg: {columnSearchFilter: $columnFilter, statusFilters: [], feature: CLOUD_NATIVE_PROTECTION}) {
-        awsCloudAccounts {
-            awsCloudAccount {
-                id
-                nativeId
-                message
-                accountName
-            }
-            featureDetails {
-                feature
-                roleArn
-                stackArn
-                status
-                awsRegions
-            }
-        }
+// awsFinalizeCloudAccountProtection GraphQL query
+var awsFinalizeCloudAccountProtectionQuery = `mutation SdkGolangAwsFinalizeCloudAccountProtection($account_name: String!, $aws_account_id: String!, $aws_regions: [AwsCloudAccountRegionEnum!], $external_id: String!, $feature_versions: [AwsCloudAccountFeatureVersionInput!]!, $stack_name: String!) {
+    finalizeAwsCloudAccountProtection(input: {
+        action: CREATE,
+        awsChildAccounts: [{
+            accountName: $account_name,
+            nativeId: $aws_account_id,
+        }],
+        awsRegions: $aws_regions,
+        externalId: $external_id,
+        featureVersion: $feature_versions,
+        features: [CLOUD_NATIVE_PROTECTION],
+        stackName: $stack_name,
+    }) {
+       awsChildAccounts {
+           accountName
+           nativeId
+           message
+       }
+       message
     }
 }`
 
@@ -102,13 +120,60 @@ var awsNativeAccountsQuery = `query SdkGolangAwsNativeAccounts($awsNativeProtect
 	}
 }`
 
-// awsNativeProtectionAccountAdd GraphQL query
-var awsNativeProtectionAccountAddQuery = `mutation SdkGolangAwsNativeProtectionAccountAdd($accountId: String!, $accountName: String!, $regions: [String!]!) {
-    awsNativeProtectionAccountAdd(awsNativeProtectionAccountAddArg: {accountId: $accountId, name: $accountName, regions: $regions}) {
-       cloudFormationName
-       cloudFormationUrl
-       cloudFormationTemplateUrl
-       errorMessage
+// awsPrepareCloudAccountDeletion GraphQL query
+var awsPrepareCloudAccountDeletionQuery = `mutation SdkGolangAwsPrepareCloudAccountDeletion($cloud_account_uuid: UUID!) {
+    prepareAwsCloudAccountDeletion(input: {cloudAccountId: $cloud_account_uuid, feature: CLOUD_NATIVE_PROTECTION}) {
+        cloudFormationUrl
+    }
+}`
+
+// awsStartNativeAccountDisableJob GraphQL query
+var awsStartNativeAccountDisableJobQuery = `mutation SdkGolangAwsStartNativeAccountDisableJob($polarisAccountId: UUID!, $deleteNativeSnapshots: Boolean = false, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2) {
+    startAwsNativeAccountDisableJob(input: {awsNativeAccountId: $polarisAccountId, shouldDeleteNativeSnapshots: $deleteNativeSnapshots, awsNativeProtectionFeature: $awsNativeProtectionFeature}) {
+        error
+        jobId
+    }
+}`
+
+// awsUpdateCloudAccount GraphQL query
+var awsUpdateCloudAccountQuery = `mutation SdkGolangAwsUpdateCloudAccount($cloud_account_uuid: UUID!, $aws_regions: [AwsCloudAccountRegionEnum!]!) {
+  updateAwsCloudAccount(input: {cloudAccountId: $cloud_account_uuid, action: UPDATE_REGIONS, awsRegions: $aws_regions, feature: CLOUD_NATIVE_PROTECTION}) {
+    message
+  }
+}`
+
+// awsValidateAndCreateCloudAccount GraphQL query
+var awsValidateAndCreateCloudAccountQuery = `mutation SdkGolangAwsValidateAndCreateCloudAccount($account_name: String!, $aws_account_id: String!) {
+    validateAndCreateAwsCloudAccount(input: {
+        action: CREATE, 
+        awsChildAccounts: [{
+            accountName: $account_name,
+            nativeId: $aws_account_id,
+        }], 
+        features: [CLOUD_NATIVE_PROTECTION]
+    }) {
+        initiateResponse {
+            cloudFormationUrl
+            externalId
+            featureVersionList {
+                feature
+                version
+            }
+            stackName
+            templateUrl
+        }
+        validateResponse {
+            invalidAwsAccounts {
+                accountName
+                nativeId
+                message
+            }
+            invalidAwsAdminAccount {
+                accountName
+                nativeId
+                message
+            }
+        }
     }
 }`
 
@@ -205,13 +270,5 @@ var gcpNativeProjectConnectionQuery = `query SdkGolangGcpNativeProjectConnection
 			endCursor
 			hasNextPage
 		}
-    }
-}`
-
-// startAwsNativeAccountDisableJob GraphQL query
-var startAwsNativeAccountDisableJobQuery = `mutation SdkGolangStartAwsNativeAccountDisableJob($polarisAccountId: UUID!, $deleteNativeSnapshots: Boolean = false, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2) {
-    startAwsNativeAccountDisableJob(input: {awsNativeAccountId: $polarisAccountId, shouldDeleteNativeSnapshots: $deleteNativeSnapshots, awsNativeProtectionFeature: $awsNativeProtectionFeature}) {
-        error
-        jobId
     }
 }`
