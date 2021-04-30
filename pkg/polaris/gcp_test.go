@@ -36,11 +36,11 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	ctx := context.Background()
 
 	// Load configuration and create client.
-	config, err := DefaultConfig("default")
+	polAccount, err := DefaultAccount("default")
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClient(config, &log.DiscardLogger{})
+	client, err := NewClient(polAccount, &log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}

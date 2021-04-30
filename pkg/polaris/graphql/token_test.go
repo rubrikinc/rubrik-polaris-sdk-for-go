@@ -70,7 +70,7 @@ func TestTokenSource(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	src, lis := newTestTokenSource("john", "doe")
+	src, lis := newLocalUserTestSource("john", "doe")
 
 	// Respond with status code 200 and a token created by concatenating the
 	// username and password.
@@ -114,7 +114,7 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	src, lis := newTestTokenSource("john", "doe")
+	src, lis := newLocalUserTestSource("john", "doe")
 
 	// Respond with status code 401 and additional details in the body.
 	srv := serveJSON(lis, func(w http.ResponseWriter, req *http.Request) {
@@ -131,7 +131,7 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 }
 
 func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
-	src, lis := newTestTokenSource("john", "doe")
+	src, lis := newLocalUserTestSource("john", "doe")
 
 	// Respond with status code 500 and no additional details.
 	srv := serve(lis, func(w http.ResponseWriter, req *http.Request) {
