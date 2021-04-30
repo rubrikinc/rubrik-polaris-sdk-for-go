@@ -44,11 +44,11 @@ func main() {
 	ctx := context.Background()
 
 	// Load configuration and create client.
-	config, err := polaris.DefaultConfig("default")
+	account, err := polaris.DefaultAccount("default")
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClient(config, &polaris_log.StandardLogger{})
+	client, err := polaris.NewClient(account, &polaris_log.StandardLogger{})
 	if err != nil {
 		log.Fatal(err)
 	}

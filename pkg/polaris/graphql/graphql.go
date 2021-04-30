@@ -104,15 +104,30 @@ type Client struct {
 	log    log.Logger
 }
 
-// NewClient returns a new Client with the specified configuration.
-func NewClient(app, apiURL, username, password string, logger log.Logger) *Client {
+// NewClientFromLocalUser returns a new Client with the specified configuration.
+func NewClientFromLocalUser(app, apiURL, username, password string, logger log.Logger) *Client {
 	return &Client{
 		app:    app,
 		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
 		client: &http.Client{
 			Transport: &tokenTransport{
 				next: http.DefaultTransport,
-				src:  newTokenSource(apiURL, username, password),
+				src:  newLocalUserSource(apiURL, username, password),
+			},
+		},
+		log: logger,
+	}
+}
+
+// NewClientFromServiceAccount returns a new Client with the specified configuration.
+func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSecret string, logger log.Logger) *Client {
+	return &Client{
+		app:    app,
+		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
+		client: &http.Client{
+			Transport: &tokenTransport{
+				next: http.DefaultTransport,
+				src:  newServiceAccountSource(accessTokenURI, clientID, clientSecret),
 			},
 		},
 		log: logger,
@@ -121,7 +136,7 @@ func NewClient(app, apiURL, username, password string, logger log.Logger) *Clien
 
 // NewTestClient - Intended to be used by unit tests.
 func NewTestClient(username, password string, logger log.Logger) (*Client, *TestListener) {
-	src, lis := newTestTokenSource(username, password)
+	src, lis := newLocalUserTestSource(username, password)
 
 	client := &Client{
 		gqlURL: "http://test/api/graphql",
