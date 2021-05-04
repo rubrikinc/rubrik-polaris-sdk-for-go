@@ -3,10 +3,11 @@ package polaris
 import (
 	"context"
 	"errors"
+	"log"
 	"reflect"
 	"testing"
 
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	polaris_log "github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // Between the account has been added and it has been removed we never fail
@@ -16,14 +17,15 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Load configuration and create client.
-	polAccount, err := DefaultAccount("default")
+	// Load configuration and create client. Usually resolved using the
+	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+	polAccount, err := DefaultServiceAccount()
 	if err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
-	client, err := NewClient(polAccount, &log.DiscardLogger{})
+	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.StandardLogger{})
 	if err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
 
 	// Add the default AWS account to Polaris. Usually resolved using the
