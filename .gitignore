@@ -1,4 +1,6 @@
 /aws_account
-/gcp_account
+/gcp_project
+/gcp_project_with_set_sa
 /examples/aws_account/aws_account
-/examples/aws_account/gcp_account
+/examples/gcp_project/gcp_project
+/examples/gcp_project/gcp_project_with_set_sa

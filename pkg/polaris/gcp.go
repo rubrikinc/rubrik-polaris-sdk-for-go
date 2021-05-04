@@ -162,7 +162,8 @@ func (c *Client) GcpProjects(ctx context.Context, opt QueryOption) ([]GcpProject
 }
 
 // GcpProjectAdd adds the GCP project identified by the GcpConfigOption to
-// Polaris.
+// Polaris. Note that passing a FromGcpProject as the GcpConfigOption requires
+// that a GCP service account has been set.
 func (c *Client) GcpProjectAdd(ctx context.Context, opt GcpConfigOption) error {
 	c.log.Print(log.Trace, "polaris.Client.GcpProjectAdd")
 
@@ -174,29 +175,36 @@ func (c *Client) GcpProjectAdd(ctx context.Context, opt GcpConfigOption) error {
 		return err
 	}
 
-	perms, err := c.gql.GcpCloudAccountListPermissions(ctx)
-	if err != nil {
-		return err
+	// If we got a service account we check that it has all the permissions
+	// required by Polaris.
+	var jwtConfig string
+	if opts.gcpCreds != nil {
+		perms, err := c.gql.GcpCloudAccountListPermissions(ctx)
+		if err != nil {
+			return err
+		}
+
+		client, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(opts.gcpCreds))
+		if err != nil {
+			return err
+		}
+
+		req := client.Projects.TestIamPermissions(opts.gcpID, &cloudresourcemanager.TestIamPermissionsRequest{
+			Permissions: perms,
+		})
+		res, err := req.Do()
+		if err != nil {
+			return err
+		}
+		if !contains(res.Permissions, perms) {
+			return errors.New("polaris: service account missing permissions")
+		}
+
+		jwtConfig = string(opts.gcpCreds.JSON)
 	}
 
-	client, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(opts.gcpCreds))
-	if err != nil {
-		return err
-	}
-
-	req := client.Projects.TestIamPermissions(opts.gcpID, &cloudresourcemanager.TestIamPermissionsRequest{
-		Permissions: perms,
-	})
-	res, err := req.Do()
-	if err != nil {
-		return err
-	}
-	if !contains(res.Permissions, perms) {
-		return errors.New("polaris: service account missing permissions")
-	}
-
-	return c.gql.GcpCloudAccountAddManualAuthProject(ctx, opts.gcpID, opts.gcpName, opts.gcpNumber,
-		opts.gcpOrgName, string(opts.gcpCreds.JSON))
+	return c.gql.GcpCloudAccountAddManualAuthProject(ctx, opts.gcpName, opts.gcpID, opts.gcpNumber,
+		opts.gcpOrgName, jwtConfig)
 }
 
 // GcpProjectRemove removes the GCP project identified by the GcpConfigOption
@@ -213,7 +221,15 @@ func (c *Client) GcpProjectRemove(ctx context.Context, opt QueryOption, deleteSn
 		return err
 	}
 
-	project, err := c.GcpProject(ctx, WithGcpProjectID(opts.gcpID))
+	var queryOpt QueryOption
+	switch {
+	case opts.gcpNumber != 0:
+		queryOpt = WithGcpProjectNumber(opts.gcpNumber)
+	default:
+		queryOpt = WithGcpProjectID(opts.gcpID)
+	}
+
+	project, err := c.GcpProject(ctx, queryOpt)
 	if err != nil {
 		return err
 	}
@@ -248,4 +264,56 @@ func (c *Client) GcpProjectRemove(ctx context.Context, opt QueryOption, deleteSn
 
 	// Remove project.
 	return c.gql.GcpCloudAccountDeleteProjects(ctx, []string{project.ID}, nil, nil)
+}
+
+// GcpSetServiceAccount sets the default GCP service account. The set service
+// account will be used for GCP projects added without a service account key
+// file. The optional AddOption can be used to specify a name for the service
+// account, otherwise the service account's project name will be used. Note
+// that it's not possible to remove a service account once it has been set.
+func (c *Client) GcpServiceAccountSet(ctx context.Context, gcpOpt GcpConfigOption, addOpts ...AddOption) error {
+	c.log.Print(log.Trace, "polaris.Client.GcpServiceAccountSet")
+
+	opts := options{}
+	if gcpOpt == nil {
+		return errors.New("polaris: option not allowed to be nil")
+	}
+	if err := gcpOpt.gcpConfig(ctx, &opts); err != nil {
+		return err
+	}
+	if opts.gcpCreds == nil {
+		return errors.New("polaris: missing gcp credentials")
+	}
+	for _, addOpt := range addOpts {
+		if err := addOpt.add(ctx, &opts); err != nil {
+			return err
+		}
+	}
+	if opts.name == "" {
+		opts.name = opts.gcpName
+	}
+
+	// Check that the service account has all permissions required by Polaris.
+	perms, err := c.gql.GcpCloudAccountListPermissions(ctx)
+	if err != nil {
+		return err
+	}
+
+	client, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(opts.gcpCreds))
+	if err != nil {
+		return err
+	}
+
+	req := client.Projects.TestIamPermissions(opts.gcpID, &cloudresourcemanager.TestIamPermissionsRequest{
+		Permissions: perms,
+	})
+	res, err := req.Do()
+	if err != nil {
+		return err
+	}
+	if !contains(res.Permissions, perms) {
+		return errors.New("polaris: service account missing permissions")
+	}
+
+	return c.gql.GcpSetDefaultServiceAccount(ctx, string(opts.gcpCreds.JSON), opts.name)
 }

@@ -208,6 +208,12 @@ var gcpNativeProjectConnectionQuery = `query SdkGolangGcpNativeProjectConnection
     }
 }`
 
+// gcpSetDefaultServiceAccount GraphQL query
+var gcpSetDefaultServiceAccountQuery = `mutation SdkGolangGcpSetDefaultServiceAccount($jwt_config: String!, $account_name: String!)
+{
+    gcpSetDefaultServiceAccountJwtConfig(serviceAccountJWTConfig: $jwt_config, serviceAccountName: $account_name)
+}`
+
 // startAwsNativeAccountDisableJob GraphQL query
 var startAwsNativeAccountDisableJobQuery = `mutation SdkGolangStartAwsNativeAccountDisableJob($polarisAccountId: UUID!, $deleteNativeSnapshots: Boolean = false, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2) {
     startAwsNativeAccountDisableJob(input: {awsNativeAccountId: $polarisAccountId, shouldDeleteNativeSnapshots: $deleteNativeSnapshots, awsNativeProtectionFeature: $awsNativeProtectionFeature}) {
