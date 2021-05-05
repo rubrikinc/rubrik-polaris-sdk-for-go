@@ -1,27 +1,25 @@
 {
     "data": {
-        "awsCloudAccounts": {
-            "awsCloudAccounts": [
-                {
-                    "awsCloudAccount": {
-                        "id": "292e34ac-232c-4e8b-8053-b28cff91d056",
-                        "nativeId": "{{ .NativeID }}",
-                        "message": "",
-                        "accountName": "Trinity-TPM-DevOps"
-                    },
-                    "featureDetails": [
-                        {
-                            "feature": "CLOUD_NATIVE_PROTECTION",
-                            "roleArn": "arn:aws:iam::{{ .NativeID }}:role/rubrik-polaris-8yWxoH-CrossAccountRole-7PIPX8KVCUDZ",
-                            "stackArn": "arn:aws:cloudformation:us-east-2:{{ .NativeID }}:stack/rubrik-polaris-8yWxoH/c3d51130-986d-11eb-8748-0ac1f4eaf59c",
-                            "status": "CONNECTED",
-                            "awsRegions": [
-                                "US_EAST_2"
-                            ]
-                        }
-                    ]
-                }
-            ]
-        }
+        "allAwsCloudAccounts": [
+            {
+                "awsCloudAccount": {
+                    "id": "292e34ac-232c-4e8b-8053-b28cff91d056",
+                    "nativeId": "{{ .NativeID }}",
+                    "message": "",
+                    "accountName": "Trinity-TPM-DevOps"
+                },
+                "featureDetails": [
+                    {
+                        "feature": "CLOUD_NATIVE_PROTECTION",
+                        "roleArn": "arn:aws:iam::{{ .NativeID }}:role/rubrik-polaris-8yWxoH-CrossAccountRole-7PIPX8KVCUDZ",
+                        "stackArn": "arn:aws:cloudformation:us-east-2:{{ .NativeID }}:stack/rubrik-polaris-8yWxoH/c3d51130-986d-11eb-8748-0ac1f4eaf59c",
+                        "status": "CONNECTED",
+                        "awsRegions": [
+                            "US_EAST_2"
+                        ]
+                    }
+                ]
+            }
+        ]
     }
 }

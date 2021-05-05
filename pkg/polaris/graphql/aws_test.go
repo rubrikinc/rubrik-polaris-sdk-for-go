@@ -31,7 +31,7 @@ func TestAwsCloudAccounts(t *testing.T) {
 		var payload struct {
 			Query     string `json:"query"`
 			Variables struct {
-				ColumnFilter string `json:"columnFilter,omitempty"`
+				ColumnFilter string `json:"column_filter,omitempty"`
 			} `json:"variables,omitempty"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
@@ -52,25 +52,25 @@ func TestAwsCloudAccounts(t *testing.T) {
 		t.Fatal(err)
 	}
 	if n := len(accounts); n != 1 {
-		t.Errorf("invalid number of accounts: %v", n)
+		t.Fatalf("invalid number of accounts: %v", n)
 	}
 	if accounts[0].AwsCloudAccount.AccountName != "Trinity-TPM-DevOps" {
-		t.Errorf("invalid name: %v", accounts[0].AwsCloudAccount.AccountName)
+		t.Fatalf("invalid name: %v", accounts[0].AwsCloudAccount.AccountName)
 	}
 	if accounts[0].AwsCloudAccount.NativeID != "627297623784" {
-		t.Errorf("invalid native id: %v", accounts[0].AwsCloudAccount.NativeID)
+		t.Fatalf("invalid native id: %v", accounts[0].AwsCloudAccount.NativeID)
 	}
 	if n := len(accounts[0].FeatureDetails); n != 1 {
-		t.Errorf("invalid number of features: %v", n)
+		t.Fatalf("invalid number of features: %v", n)
 	}
 	if accounts[0].FeatureDetails[0].Feature != "CLOUD_NATIVE_PROTECTION" {
-		t.Errorf("invalid feature name: %v", accounts[0].FeatureDetails[0].Feature)
+		t.Fatalf("invalid feature name: %v", accounts[0].FeatureDetails[0].Feature)
 	}
 	if regions := accounts[0].FeatureDetails[0].AwsRegions; !reflect.DeepEqual(regions, []string{"US_EAST_2"}) {
-		t.Errorf("invalid feature regions: %v", regions)
+		t.Fatalf("invalid feature regions: %v", regions)
 	}
 	if accounts[0].FeatureDetails[0].Status != "CONNECTED" {
-		t.Errorf("invalid feature status: %v", accounts[0].FeatureDetails[0].Status)
+		t.Fatalf("invalid feature status: %v", accounts[0].FeatureDetails[0].Status)
 	}
 }
 

@@ -23,6 +23,7 @@ package graphql
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -41,9 +42,9 @@ const (
 	AwsRDS AwsProtectionFeature = "RDS"
 )
 
-// AwsCloudAccounts holds details about a cloud account and the features
+// AwsCloudAccountSelector holds details about a cloud account and the features
 // associated with that account.
-type AwsCloudAccount struct {
+type AwsCloudAccountSelector struct {
 	AwsCloudAccount struct {
 		CloudType           string `json:"cloudType"`
 		ID                  string `json:"id"`
@@ -79,6 +80,23 @@ type AwsNativeAccount struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"effectiveSlaDomain"`
+}
+
+// AwsFeatureVersion maps a feature to a version number.
+type AwsFeatureVersion struct {
+	Feature string `json:"feature"`
+	Version int    `json:"version"`
+}
+
+// AwsCloudAccountInitiate holds information about the CloudFormation stack
+// that needs to be created in AWS to give permission to Polaris for managing
+// the account being added. It also holds feature version information.
+type AwsCloudAccountInitiate struct {
+	CloudFormationURL string              `json:"cloudFormationUrl"`
+	ExternalID        string              `json:"externalId"`
+	FeatureVersions   []AwsFeatureVersion `json:"featureVersionList"`
+	StackName         string              `json:"stackName"`
+	TemplateURL       string              `json:"templateUrl"`
 }
 
 // AwsNativeAccounts returns the native account matching the specified filters.
@@ -131,15 +149,42 @@ func (c *Client) AwsNativeAccounts(ctx context.Context, protectionFeature AwsPro
 	return accounts, nil
 }
 
+// AwsCloudAccount returns the cloud accounts with the specified Polaris cloud
+// account UUID. Note that this call is locked to the cloud native protection
+// feature.
+func (c *Client) AwsCloudAccount(ctx context.Context, cloudAccountUUID string) (AwsCloudAccountSelector, error) {
+	c.log.Print(log.Trace, "graphql.Client.AwsCloudAccount")
+
+	buf, err := c.Request(ctx, awsCloudAccountSelectorQuery, struct {
+		CloudAccountUUID string `json:"cloud_account_uuid"`
+	}{CloudAccountUUID: cloudAccountUUID})
+	if err != nil {
+		return AwsCloudAccountSelector{}, err
+	}
+
+	c.log.Printf(log.Debug, "AwsCloudAccount(%q): %s", cloudAccountUUID, string(buf))
+
+	var payload struct {
+		Data struct {
+			Account AwsCloudAccountSelector `json:"awsCloudAccountSelector"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return AwsCloudAccountSelector{}, err
+	}
+
+	return payload.Data.Account, nil
+}
+
 // AwsCloudAccounts returns the cloud accounts matching the specified filters.
 // The columnFilter can be used to search for AWS account ID, account name and
-// role arn. Note that this call is locked to the cloud native
-// protection feature.
-func (c *Client) AwsCloudAccounts(ctx context.Context, columnFilter string) ([]AwsCloudAccount, error) {
+// role arn. Note that this call is locked to the cloud native protection
+// feature.
+func (c *Client) AwsCloudAccounts(ctx context.Context, columnFilter string) ([]AwsCloudAccountSelector, error) {
 	c.log.Print(log.Trace, "graphql.Client.AwsCloudAccounts")
 
-	buf, err := c.Request(ctx, awsCloudAccountsQuery, struct {
-		ColumnFilter string `json:"columnFilter,omitempty"`
+	buf, err := c.Request(ctx, awsAllCloudAccountsQuery, struct {
+		ColumnFilter string `json:"column_filter,omitempty"`
 	}{ColumnFilter: columnFilter})
 	if err != nil {
 		return nil, err
@@ -149,85 +194,108 @@ func (c *Client) AwsCloudAccounts(ctx context.Context, columnFilter string) ([]A
 
 	var payload struct {
 		Data struct {
-			Query struct {
-				Accounts []AwsCloudAccount `json:"awsCloudAccounts"`
-			} `json:"awsCloudAccounts"`
+			Accounts []AwsCloudAccountSelector `json:"allAwsCloudAccounts"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return nil, err
 	}
 
-	return payload.Data.Query.Accounts, nil
+	return payload.Data.Accounts, nil
 }
 
-// AwsNativeProtectionAccountAdd adds the native AWS account. The cfm prefix
-// for the return values are short form CloudFormation.
-func (c *Client) AwsNativeProtectionAccountAdd(ctx context.Context, awsAccountID, awsAccountName string, awsRegions []string) (cfmName, cfmURL, cfmTemplateURL string, err error) {
-	c.log.Print(log.Trace, "graphql.Client.AwsNativeProtectionAccountAdd")
+// AwsValidateAndCreateCloudAccount begins the process of adding the specified
+// AWS account to Polaris. The returned AwsCloudAccountInitiate value must be
+// passed on to AwsFinalizeCloudAccountProtection which is the next step in the
+// process.
+func (c *Client) AwsValidateAndCreateCloudAccount(ctx context.Context, accountName, awsAccountID string) (AwsCloudAccountInitiate, error) {
+	c.log.Print(log.Trace, "graphql.Client.AwsValidateAndCreateCloudAccount")
 
-	buf, err := c.Request(ctx, awsNativeProtectionAccountAddQuery, struct {
-		AccountID string   `json:"accountId,omitempty"`
-		Name      string   `json:"accountName,omitempty"`
-		Regions   []string `json:"regions,omitempty"`
-	}{AccountID: awsAccountID, Name: awsAccountName, Regions: awsRegions})
+	buf, err := c.Request(ctx, awsValidateAndCreateCloudAccountQuery, struct {
+		AccountName  string `json:"account_name"`
+		AwsAccountID string `json:"aws_account_id"`
+	}{AccountName: accountName, AwsAccountID: awsAccountID})
 	if err != nil {
-		return "", "", "", err
+		return AwsCloudAccountInitiate{}, err
 	}
 
-	c.log.Printf(log.Debug, "AwsNativeProtectionAccountAdd(%q, %q, %q): %s", awsAccountID, awsAccountName, awsRegions, string(buf))
+	c.log.Printf(log.Debug, "AwsValidateAndCreateCloudAccount(%q, %q): %s", accountName, awsAccountID, string(buf))
 
 	var payload struct {
 		Data struct {
 			Query struct {
-				Name        string `json:"cloudFormationName"`
-				URL         string `json:"cloudFormationUrl"`
-				TemplateURL string `json:"cloudFormationTemplateUrl"`
-				Message     string `json:"errorMessage"`
-			} `json:"awsNativeProtectionAccountAdd"`
+				InitiateResponse AwsCloudAccountInitiate `json:"initiateResponse"`
+				ValidateResponse struct {
+					InvalidAwsAccounts []struct {
+						AccountName string `json:"accountName"`
+						NativeID    string `json:"nativeId"`
+						Message     string `json:"message"`
+					}
+					InvalidAwsAdminAccount struct {
+						AccountName string `json:"accountName"`
+						NativeID    string `json:"nativeId"`
+						Message     string `json:"message"`
+					}
+				} `json:"validateReponse"`
+			} `json:"validateAndCreateAwsCloudAccount"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", "", "", err
+		return AwsCloudAccountInitiate{}, err
 	}
-	if payload.Data.Query.Message != "" {
-		return "", "", "", fmt.Errorf("polaris: %s", payload.Data.Query.Message)
-	}
-	if payload.Data.Query.Name == "" {
-		return "", "", "", fmt.Errorf("polaris: invalid CloudFormation stack name: %q", payload.Data.Query.Name)
+	if len(payload.Data.Query.ValidateResponse.InvalidAwsAccounts) != 0 {
+		return AwsCloudAccountInitiate{}, errors.New("polaris: invalid aws accounts")
 	}
 
-	return payload.Data.Query.Name, payload.Data.Query.URL, payload.Data.Query.TemplateURL, nil
+	return payload.Data.Query.InitiateResponse, nil
 }
 
-// AwsCloudAccountUpdateFeatureInitiate initiates a manual feature update.
-// The cfm prefix for the return values are short form CloudFormation. Note
-// that this call is locked to the cloud native protection feature.
-func (c *Client) AwsCloudAccountUpdateFeatureInitiate(ctx context.Context, accountID string) (cfmURL, cfmTemplateURL string, err error) {
-	c.log.Print(log.Trace, "graphql.Client.AwsCloudAccountUpdateFeatureInitiate")
+// AwsFinalizeCloudAccountProtection finalizes the process of the adding the
+// specified AWS account to Polaris. After this function a CloudFormation stack
+// must be created using the information returned by
+// AwsValidateAndCreateCloudAccount.
+func (c *Client) AwsFinalizeCloudAccountProtection(ctx context.Context, accountName, awsAccountID string, awsRegions []string, accountInit AwsCloudAccountInitiate) error {
+	c.log.Print(log.Trace, "graphql.Client.AwsFinalizeCloudAccountProtection")
 
-	buf, err := c.Request(ctx, awsCloudAccountUpdateFeatureInitiateQuery, struct {
-		AccountID string `json:"polarisAccountId,omitempty"`
-	}{AccountID: accountID})
+	buf, err := c.Request(ctx, awsFinalizeCloudAccountProtectionQuery, struct {
+		AccountName     string              `json:"account_name"`
+		AwsAccountID    string              `json:"aws_account_id"`
+		AwsRegions      []string            `json:"aws_regions,omitempty"`
+		ExternalID      string              `json:"external_id"`
+		FeatureVersions []AwsFeatureVersion `json:"feature_versions"`
+		StackName       string              `json:"stack_name"`
+	}{
+		AccountName:     accountName,
+		AwsAccountID:    awsAccountID,
+		AwsRegions:      awsRegions,
+		ExternalID:      accountInit.ExternalID,
+		FeatureVersions: accountInit.FeatureVersions,
+		StackName:       accountInit.StackName,
+	})
 	if err != nil {
-		return "", "", err
+		return err
 	}
 
-	c.log.Printf(log.Debug, "AwsCloudAccountUpdateFeatureInitiate(%q, %q, %q): %s", accountID, string(buf))
+	c.log.Printf(log.Debug, "AwsFinalizeCloudAccountProtection(%q, %q, %q, %q, %q, %q): %s", accountName, awsAccountID, awsRegions,
+		accountInit.ExternalID, accountInit.FeatureVersions, accountInit.StackName, string(buf))
 
 	var payload struct {
 		Data struct {
 			Query struct {
-				URL         string `json:"cloudFormationUrl"`
-				TemplateURL string `json:"templateUrl"`
-			} `json:"awsCloudAccountUpdateFeatureInitiate"`
+				AwsChildAccounts []struct {
+					AccountName string `json:"accountName"`
+					NativeId    string `json:"nativeId"`
+					Message     string `json:"message"`
+				}
+				Message string `json:"message"`
+			} `json:"finalizeAwsCloudAccountProtection"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", "", err
+		return err
 	}
 
-	return payload.Data.Query.URL, payload.Data.Query.TemplateURL, nil
+	return nil
 }
 
 // AwsStartNativeAccountDisableJob deletes the native account. After being
@@ -235,7 +303,7 @@ func (c *Client) AwsCloudAccountUpdateFeatureInitiate(ctx context.Context, accou
 func (c *Client) AwsStartNativeAccountDisableJob(ctx context.Context, accountID string, protectionFeature AwsProtectionFeature, deleteSnapshots bool) (TaskChainUUID, error) {
 	c.log.Print(log.Trace, "graphql.Client.AwsStartNativeAccountDisableJob")
 
-	buf, err := c.Request(ctx, startAwsNativeAccountDisableJobQuery, struct {
+	buf, err := c.Request(ctx, awsStartNativeAccountDisableJobQuery, struct {
 		AccountID         string `json:"polarisAccountId,omitempty"`
 		ProtectionFeature string `json:"awsNativeProtectionFeature"`
 		DeleteSnapshots   bool   `json:"deleteNativeSnapshots"`
@@ -264,26 +332,26 @@ func (c *Client) AwsStartNativeAccountDisableJob(ctx context.Context, accountID 
 	return payload.Data.Query.JobID, nil
 }
 
-// AwsCloudAccountDeleteInitiate initiates the deletion of a cloud account.
+// AwsPrepareCloudAccountDeletion prepares the deletion of a cloud account.
 // The cfm prefix for the return values are short form CloudFormation. Note
 // that this call is locked to the cloud native protection feature.
-func (c *Client) AwsCloudAccountDeleteInitiate(ctx context.Context, accountID string) (cfmURL string, err error) {
-	c.log.Print(log.Trace, "graphql.Client.AwsCloudAccountDeleteInitiate")
+func (c *Client) AwsPrepareCloudAccountDeletion(ctx context.Context, cloudAccountUUID string) (cfmURL string, err error) {
+	c.log.Print(log.Trace, "graphql.Client.AwsPrepareCloudAccountDeletion")
 
-	buf, err := c.Request(ctx, awsCloudAccountDeleteInitiateQuery, struct {
-		AccountID string `json:"polarisAccountId,omitempty"`
-	}{AccountID: accountID})
+	buf, err := c.Request(ctx, awsPrepareCloudAccountDeletionQuery, struct {
+		CloudAccountUUID string `json:"cloud_account_uuid,omitempty"`
+	}{CloudAccountUUID: cloudAccountUUID})
 	if err != nil {
 		return "", err
 	}
 
-	c.log.Printf(log.Debug, "AwsCloudAccountDeleteInitiate(%q): %s", accountID, string(buf))
+	c.log.Printf(log.Debug, "AwsPrepareCloudAccountDeletion(%q): %s", cloudAccountUUID, string(buf))
 
 	var payload struct {
 		Data struct {
 			Query struct {
 				URL string `json:"cloudFormationUrl"`
-			} `json:"awsCloudAccountDeleteInitiate"`
+			} `json:"prepareAwsCloudAccountDeletion"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
@@ -293,26 +361,26 @@ func (c *Client) AwsCloudAccountDeleteInitiate(ctx context.Context, accountID st
 	return payload.Data.Query.URL, nil
 }
 
-// AwsCloudAccountDeleteProcess finalizes the deletion of a cloud account.
+// AwsFinalizeCloudAccountDeletion finalizes the deletion of a cloud account.
 // The message returned by the GraphQL API call is converted into a Go error.
 // Note that this call is locked to the cloud native protection feature.
-func (c *Client) AwsCloudAccountDeleteProcess(ctx context.Context, accountID string) (err error) {
-	c.log.Print(log.Trace, "graphql.Client.AwsCloudAccountDeleteProcess")
+func (c *Client) AwsFinalizeCloudAccountDeletion(ctx context.Context, cloudAccountUUID string) (err error) {
+	c.log.Print(log.Trace, "graphql.Client.AwsFinalizeCloudAccountDeletion")
 
-	buf, err := c.Request(ctx, awsCloudAccountDeleteProcessQuery, struct {
-		AccountID string `json:"polarisAccountId,omitempty"`
-	}{AccountID: accountID})
+	buf, err := c.Request(ctx, awsFinalizeCloudAccountDeletionQuery, struct {
+		CloudAccountUUID string `json:"cloud_account_uuid"`
+	}{CloudAccountUUID: cloudAccountUUID})
 	if err != nil {
 		return err
 	}
 
-	c.log.Printf(log.Debug, "AwsCloudAccountDeleteProcess(%q): %s", accountID, string(buf))
+	c.log.Printf(log.Debug, "AwsFinalizeCloudAccountDeletion(%q): %s", cloudAccountUUID, string(buf))
 
 	var payload struct {
 		Data struct {
 			Query struct {
 				Message string `json:"message"`
-			} `json:"awsCloudAccountDeleteProcess"`
+			} `json:"finalizeAwsCloudAccountDeletion"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
@@ -327,27 +395,27 @@ func (c *Client) AwsCloudAccountDeleteProcess(ctx context.Context, accountID str
 	return nil
 }
 
-// AwsCloudAccountSave updates the settings of the cloud account. The message
+// AwsUpdateCloudAccount updates the settings of the cloud account. The message
 // returned by the GraphQL API call is converted into a Go error. At this time
-// only the AWS regions can be updated.
-func (c *Client) AwsCloudAccountSave(ctx context.Context, accountID string, awsRegions []string) (err error) {
-	c.log.Print(log.Trace, "graphql.Client.AwsCloudAccountSave")
+// only the regions can be updated.
+func (c *Client) AwsUpdateCloudAccount(ctx context.Context, cloudAccountUUID string, awsRegions []string) (err error) {
+	c.log.Print(log.Trace, "graphql.Client.AwsUpdateCloudAccount")
 
-	buf, err := c.Request(ctx, awsCloudAccountSaveQuery, struct {
-		AccountID  string   `json:"polarisAccountId,omitempty"`
-		AwsRegions []string `json:"awsRegions,omitempty"`
-	}{AccountID: accountID, AwsRegions: awsRegions})
+	buf, err := c.Request(ctx, awsUpdateCloudAccountQuery, struct {
+		CloudAccountUUID string   `json:"cloud_account_uuid"`
+		AwsRegions       []string `json:"aws_regions"`
+	}{CloudAccountUUID: cloudAccountUUID, AwsRegions: awsRegions})
 	if err != nil {
 		return err
 	}
 
-	c.log.Printf(log.Debug, "AwsCloudAccountSave(%q, %q): %s", accountID, awsRegions, string(buf))
+	c.log.Printf(log.Debug, "AwsCloudAccountSave(%q, %q): %s", cloudAccountUUID, awsRegions, string(buf))
 
 	var payload struct {
 		Data struct {
 			Query struct {
 				Message string `json:"message"`
-			} `json:"awsCloudAccountSave"`
+			} `json:"updateAwsCloudAccount"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {

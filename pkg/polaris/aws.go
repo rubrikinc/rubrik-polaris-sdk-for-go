@@ -207,12 +207,17 @@ func (c *Client) AwsAccountAdd(ctx context.Context, awsOpt AwsConfigOption, addO
 		opts.regions = append(opts.regions, opts.awsConfig.Region)
 	}
 
-	cfmName, _, cfmTmplURL, err := c.gql.AwsNativeProtectionAccountAdd(ctx, opts.awsID, opts.name, opts.regions)
+	accountInit, err := c.gql.AwsValidateAndCreateCloudAccount(ctx, opts.name, opts.awsID)
 	if err != nil {
 		return err
 	}
 
-	exist, err := awsStackExist(ctx, *opts.awsConfig, cfmName)
+	err = c.gql.AwsFinalizeCloudAccountProtection(ctx, opts.name, opts.awsID, toPolarisRegionNames(opts.regions...), accountInit)
+	if err != nil {
+		return err
+	}
+
+	exist, err := awsStackExist(ctx, *opts.awsConfig, accountInit.StackName)
 	if err != nil {
 		return err
 	}
@@ -220,11 +225,11 @@ func (c *Client) AwsAccountAdd(ctx context.Context, awsOpt AwsConfigOption, addO
 	// Create/Update the CloudFormation stack.
 	client := cloudformation.NewFromConfig(*opts.awsConfig)
 	if exist {
-		c.log.Printf(log.Info, "Updating CloudFormation stack: %s", cfmName)
+		c.log.Printf(log.Info, "Updating CloudFormation stack: %s", accountInit.StackName)
 
 		stack, err := client.UpdateStack(ctx, &cloudformation.UpdateStackInput{
-			StackName:    &cfmName,
-			TemplateURL:  &cfmTmplURL,
+			StackName:    &accountInit.StackName,
+			TemplateURL:  &accountInit.TemplateURL,
 			Capabilities: []types.Capability{types.CapabilityCapabilityIam},
 		})
 		if err != nil {
@@ -239,11 +244,11 @@ func (c *Client) AwsAccountAdd(ctx context.Context, awsOpt AwsConfigOption, addO
 			return fmt.Errorf("polaris: failed to update CloudFormation stack: %v", *stack.StackId)
 		}
 	} else {
-		c.log.Printf(log.Info, "Creating CloudFormation stack: %s", cfmName)
+		c.log.Printf(log.Info, "Creating CloudFormation stack: %s", accountInit.StackName)
 
 		stack, err := client.CreateStack(ctx, &cloudformation.CreateStackInput{
-			StackName:    &cfmName,
-			TemplateURL:  &cfmTmplURL,
+			StackName:    &accountInit.StackName,
+			TemplateURL:  &accountInit.TemplateURL,
 			Capabilities: []types.Capability{types.CapabilityCapabilityIam},
 		})
 		if err != nil {
@@ -292,7 +297,7 @@ func (c *Client) AwsAccountSetRegions(ctx context.Context, idOpts IDOption, regi
 		return errors.New("polaris: missing regions")
 	}
 
-	if err := c.gql.AwsCloudAccountSave(ctx, opts.id, toPolarisRegionNames(regions...)); err != nil {
+	if err := c.gql.AwsUpdateCloudAccount(ctx, opts.id, toPolarisRegionNames(regions...)); err != nil {
 		return err
 	}
 
@@ -334,7 +339,7 @@ func (c *Client) AwsAccountRemove(ctx context.Context, awsOpt AwsConfigOption, d
 		return fmt.Errorf("polaris: taskchain failed: jobID=%v, state=%v", jobID, state)
 	}
 
-	cfmURL, err := c.gql.AwsCloudAccountDeleteInitiate(ctx, account.ID)
+	cfmURL, err := c.gql.AwsPrepareCloudAccountDeletion(ctx, account.ID)
 	if err != nil {
 		return err
 	}
@@ -395,7 +400,7 @@ func (c *Client) AwsAccountRemove(ctx context.Context, awsOpt AwsConfigOption, d
 		}
 	}
 
-	if err := c.gql.AwsCloudAccountDeleteProcess(ctx, account.ID); err != nil {
+	if err := c.gql.AwsFinalizeCloudAccountDeletion(ctx, account.ID); err != nil {
 		return err
 	}
 
