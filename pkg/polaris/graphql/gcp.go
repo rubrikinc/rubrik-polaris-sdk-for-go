@@ -267,6 +267,31 @@ func (c *Client) GcpNativeProjectConnection(ctx context.Context, filter string) 
 	return accounts, nil
 }
 
+// GcpGetDefaultCredentialsServiceAccount gets the default GCP service account
+// name. If no default GCP service account has been set an empty string is
+// returned.
+func (c *Client) GcpGetDefaultCredentialsServiceAccount(ctx context.Context) (string, error) {
+	c.log.Print(log.Trace, "graphql.Client.GcpGetDefaultCredentialsServiceAccount")
+
+	buf, err := c.Request(ctx, gcpGetDefaultCredentialsServiceAccountQuery, nil)
+	if err != nil {
+		return "", err
+	}
+
+	c.log.Printf(log.Debug, "GcpGetDefaultCredentialsServiceAccount(): %s", string(buf))
+
+	var payload struct {
+		Data struct {
+			Name string `json:"gcpGetDefaultCredentialsServiceAccount"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return "", err
+	}
+
+	return payload.Data.Name, nil
+}
+
 // GcpSetDefaultServiceAccount sets the default GCP service account. The set
 // service account will be used for GCP projects added without a service
 // account key file.

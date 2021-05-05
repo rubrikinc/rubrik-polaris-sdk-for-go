@@ -266,6 +266,14 @@ func (c *Client) GcpProjectRemove(ctx context.Context, opt QueryOption, deleteSn
 	return c.gql.GcpCloudAccountDeleteProjects(ctx, []string{project.ID}, nil, nil)
 }
 
+// GcpServiceAccount gets the default GCP service account name. If no default
+// GCP service account has been set an empty string is returned.
+func (c *Client) GcpServiceAccount(ctx context.Context) (string, error) {
+	c.log.Print(log.Trace, "polaris.Client.GcpServiceAccount")
+
+	return c.gql.GcpGetDefaultCredentialsServiceAccount(ctx)
+}
+
 // GcpSetServiceAccount sets the default GCP service account. The set service
 // account will be used for GCP projects added without a service account key
 // file. The optional AddOption can be used to specify a name for the service

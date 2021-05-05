@@ -171,6 +171,11 @@ var gcpCloudAccountListProjectsQuery = `query SdkGolangGcpCloudAccountListProjec
     }
 }`
 
+// gcpGetDefaultCredentialsServiceAccount GraphQL query
+var gcpGetDefaultCredentialsServiceAccountQuery = `query SdkGolangGcpGetDefaultCredentialsServiceAccount {
+    gcpGetDefaultCredentialsServiceAccount
+}`
+
 // gcpNativeDisableProject GraphQL query
 var gcpNativeDisableProjectQuery = `mutation SdkGolangGcpNativeDisableProject($rubrik_project_id: UUID!, $delete_snapshots: Boolean!) {
   gcpNativeDisableProject(projectId: $rubrik_project_id, shouldDeleteNativeSnapshots: $delete_snapshots) {
