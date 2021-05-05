@@ -1,0 +1,17 @@
+query RubrikPolarisSDKRequest($cloud_account_uuid: String!) {
+    awsCloudAccountSelector(awsCloudAccountsArg: {features: [CLOUD_NATIVE_PROTECTION], cloudAccountUuid: $cloud_account_uuid}) {
+        awsCloudAccount {
+            id
+            nativeId
+            message
+            accountName
+        }
+        featureDetails {
+            feature
+            roleArn
+            stackArn
+            status
+            awsRegions
+        }
+    }
+}

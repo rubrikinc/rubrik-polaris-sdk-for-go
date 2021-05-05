@@ -195,7 +195,7 @@ func (c *Client) GcpProjectAdd(ctx context.Context, opt GcpConfigOption) error {
 		return errors.New("polaris: service account missing permissions")
 	}
 
-	return c.gql.GcpCloudAccountAddManualAuthProject(ctx, opts.gcpID, opts.gcpName, opts.gcpNumber,
+	return c.gql.GcpCloudAccountAddManualAuthProject(ctx, opts.gcpName, opts.gcpID, opts.gcpNumber,
 		opts.gcpOrgName, string(opts.gcpCreds.JSON))
 }
 

@@ -23,9 +23,11 @@ package polaris
 import (
 	"context"
 	"errors"
+	"log"
+	"strings"
 	"testing"
 
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	polaris_log "github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // Between the project has been added and it has been removed we never fail
@@ -35,14 +37,15 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Load configuration and create client.
-	polAccount, err := DefaultAccount("default")
+	// Load configuration and create client. Usually resolved using the
+	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+	polAccount, err := DefaultServiceAccount()
 	if err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
-	client, err := NewClient(polAccount, &log.DiscardLogger{})
+	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.StandardLogger{})
 	if err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
 
 	// Add the default GCP project to Polaris. Usually resolved using the
@@ -52,7 +55,9 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Verify that the project was successfully added.
+	// Verify that the project was successfully added. ProjectID is compared
+	// in a case-insensitive fashion due to a bug causing the initial project
+	// id to be the same as the name.
 	project, err := client.GcpProject(ctx, FromGcpDefault())
 	if err != nil {
 		t.Error(err)
@@ -61,16 +66,16 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 		t.Errorf("invalid name: %v", project.Name)
 	}
 	if project.ProjectName != "Trinity-FDSE" {
-		t.Errorf("invalid native id: %v", project.ProjectName)
+		t.Errorf("invalid project name: %v", project.ProjectName)
 	}
-	if project.ProjectID != "trinity-fdse" {
-		t.Errorf("invalid native id: %v", project.ProjectID)
+	if strings.ToLower(project.ProjectID) != "trinity-fdse" {
+		t.Errorf("invalid project id: %v", project.ProjectID)
 	}
 	if project.ProjectNumber != 994761414559 {
-		t.Errorf("invalid native id: %v", project.ProjectNumber)
+		t.Errorf("invalid project number: %v", project.ProjectNumber)
 	}
 	if project.OrganizationName != "" {
-		t.Errorf("invalid native id: %v", project.OrganizationName)
+		t.Errorf("invalid organization name: %v", project.OrganizationName)
 	}
 	if n := len(project.Features); n != 1 {
 		t.Errorf("invalid number of features: %v", n)
