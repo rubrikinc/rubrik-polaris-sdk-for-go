@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 	"testing"
 
 	polaris_log "github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -54,7 +55,9 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Verify that the project was successfully added.
+	// Verify that the project was successfully added. ProjectID is compared
+	// in a case-insensitive fashion due to a bug causing the initial project
+	// id to be the same as the name.
 	project, err := client.GcpProject(ctx, FromGcpDefault())
 	if err != nil {
 		t.Error(err)
@@ -63,16 +66,16 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 		t.Errorf("invalid name: %v", project.Name)
 	}
 	if project.ProjectName != "Trinity-FDSE" {
-		t.Errorf("invalid native id: %v", project.ProjectName)
+		t.Errorf("invalid project name: %v", project.ProjectName)
 	}
-	if project.ProjectID != "trinity-fdse" {
-		t.Errorf("invalid native id: %v", project.ProjectID)
+	if strings.ToLower(project.ProjectID) != "trinity-fdse" {
+		t.Errorf("invalid project id: %v", project.ProjectID)
 	}
 	if project.ProjectNumber != 994761414559 {
-		t.Errorf("invalid native id: %v", project.ProjectNumber)
+		t.Errorf("invalid project number: %v", project.ProjectNumber)
 	}
 	if project.OrganizationName != "" {
-		t.Errorf("invalid native id: %v", project.OrganizationName)
+		t.Errorf("invalid organization name: %v", project.OrganizationName)
 	}
 	if n := len(project.Features); n != 1 {
 		t.Errorf("invalid number of features: %v", n)
