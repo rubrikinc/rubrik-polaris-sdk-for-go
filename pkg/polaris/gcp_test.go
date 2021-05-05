@@ -23,7 +23,6 @@ package polaris
 import (
 	"context"
 	"errors"
-	"log"
 	"strings"
 	"testing"
 
@@ -41,11 +40,11 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
 	polAccount, err := DefaultServiceAccount()
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.StandardLogger{})
+	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// Add the default GCP project to Polaris. Usually resolved using the
@@ -104,12 +103,13 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Load configuration and create client.
-	polAccount, err := DefaultAccount("default")
+	// Load configuration and create client. Usually resolved using the
+	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+	polAccount, err := DefaultServiceAccount()
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClient(polAccount, &log.DiscardLogger{})
+	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -50,10 +50,7 @@ pipeline {
                 GOOGLE_APPLICATION_CREDENTIALS = credentials('sdk-gcp-service-account')
 
                 // Polaris credentials.
-                RUBRIK_POLARIS_ACCOUNT  = "rubrik-trinity-lab"
-                RUBRIK_POLARIS_USERNAME = credentials('sdk-polaris-username')
-                RUBRIK_POLARIS_PASSWORD = credentials('sdk-polaris-password')
-                RUBRIK_POLARIS_URL      = "https://rubrik-trinity-lab.dev.my.rubrik-lab.com/api"
+                RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('sdk-polaris-service-account')
 
                 // Run integration tests with the nightly build.
                 SDK_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
