@@ -23,7 +23,6 @@ package polaris
 import (
 	"context"
 	"errors"
-	"log"
 	"strings"
 	"testing"
 
@@ -41,11 +40,11 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
 	polAccount, err := DefaultServiceAccount()
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.StandardLogger{})
+	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// Add the default GCP project to Polaris. Usually resolved using the
@@ -89,6 +88,77 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 
 	// Remove GCP project from Polaris keeping the snapshots.
 	if err := client.GcpProjectRemove(ctx, FromGcpDefault(), false); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the project was successfully removed.
+	project, err = client.GcpProject(ctx, FromGcpDefault())
+	if !errors.Is(err, ErrNotFound) {
+		t.Error(err)
+	}
+}
+
+func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
+	requireEnv(t, "SDK_INTEGRATION")
+
+	ctx := context.Background()
+
+	// Load configuration and create client. Usually resolved using the
+	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+	polAccount, err := DefaultServiceAccount()
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add the service account to Polaris.
+	if err = client.GcpServiceAccountSet(ctx, FromGcpDefault()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Add the default GCP project to Polaris. Usually resolved using the
+	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
+	err = client.GcpProjectAdd(ctx,
+		FromGcpProject("trinity-fdse", "Trinity-FDSE", 994761414559, "Trinity Org"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the project was successfully added.
+	project, err := client.GcpProject(ctx, WithGcpProjectNumber(994761414559))
+	if err != nil {
+		t.Error(err)
+	}
+	if project.Name != "Trinity-FDSE" {
+		t.Errorf("invalid name: %v", project.Name)
+	}
+	if project.ProjectName != "Trinity-FDSE" {
+		t.Errorf("invalid native id: %v", project.ProjectName)
+	}
+	if strings.ToLower(project.ProjectID) != "trinity-fdse" {
+		t.Errorf("invalid native id: %v", project.ProjectID)
+	}
+	if project.ProjectNumber != 994761414559 {
+		t.Errorf("invalid native id: %v", project.ProjectNumber)
+	}
+	if project.OrganizationName != "" {
+		t.Errorf("invalid native id: %v", project.OrganizationName)
+	}
+	if n := len(project.Features); n != 1 {
+		t.Errorf("invalid number of features: %v", n)
+	}
+	if project.Features[0].Feature != "CLOUD_NATIVE_PROTECTION" {
+		t.Errorf("invalid feature name: %v", project.Features[0].Feature)
+	}
+	if project.Features[0].Status != "CONNECTED" {
+		t.Errorf("invalid feature status: %v", project.Features[0].Status)
+	}
+
+	// Remove GCP project from Polaris keeping the snapshots.
+	if err := client.GcpProjectRemove(ctx, WithGcpProjectNumber(994761414559), false); err != nil {
 		t.Fatal(err)
 	}
 

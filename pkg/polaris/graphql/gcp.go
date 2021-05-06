@@ -23,6 +23,7 @@ package graphql
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -67,9 +68,9 @@ func (c *Client) GcpCloudAccountAddManualAuthProject(ctx context.Context, projec
 	c.log.Print(log.Trace, "graphql.Client.GcpCloudAccountAddManualAuthProject")
 
 	_, err := c.Request(ctx, gcpCloudAccountAddManualAuthProjectQuery, struct {
-		Name      string `json:"gcp_native_project_name,omitempty"`
-		ID        string `json:"gcp_native_project_id,omitempty"`
-		Number    int64  `json:"gcp_native_project_number,omitempty"`
+		Name      string `json:"gcp_native_project_name"`
+		ID        string `json:"gcp_native_project_id"`
+		Number    int64  `json:"gcp_native_project_number"`
 		OrgName   string `json:"organization_name,omitempty"`
 		JwtConfig string `json:"service_account_auth_key,omitempty"`
 	}{Name: projectName, ID: projectID, Number: projectNumber, OrgName: orgName, JwtConfig: jwtConfig})
@@ -264,4 +265,60 @@ func (c *Client) GcpNativeProjectConnection(ctx context.Context, filter string) 
 	}
 
 	return accounts, nil
+}
+
+// GcpGetDefaultCredentialsServiceAccount gets the default GCP service account
+// name. If no default GCP service account has been set an empty string is
+// returned.
+func (c *Client) GcpGetDefaultCredentialsServiceAccount(ctx context.Context) (string, error) {
+	c.log.Print(log.Trace, "graphql.Client.GcpGetDefaultCredentialsServiceAccount")
+
+	buf, err := c.Request(ctx, gcpGetDefaultCredentialsServiceAccountQuery, nil)
+	if err != nil {
+		return "", err
+	}
+
+	c.log.Printf(log.Debug, "GcpGetDefaultCredentialsServiceAccount(): %s", string(buf))
+
+	var payload struct {
+		Data struct {
+			Name string `json:"gcpGetDefaultCredentialsServiceAccount"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return "", err
+	}
+
+	return payload.Data.Name, nil
+}
+
+// GcpSetDefaultServiceAccount sets the default GCP service account. The set
+// service account will be used for GCP projects added without a service
+// account key file.
+func (c *Client) GcpSetDefaultServiceAccount(ctx context.Context, jwtConfig, accountName string) error {
+	c.log.Print(log.Trace, "graphql.Client.GcpSetDefaultServiceAccount")
+
+	buf, err := c.Request(ctx, gcpSetDefaultServiceAccountQuery, struct {
+		JwtConfig   string `json:"jwt_config"`
+		AccountName string `json:"account_name"`
+	}{JwtConfig: jwtConfig, AccountName: accountName})
+	if err != nil {
+		return err
+	}
+
+	c.log.Printf(log.Debug, "GcpSetDefaultServiceAccount(%q, %q): %s", jwtConfig, accountName, string(buf))
+
+	var payload struct {
+		Data struct {
+			Success bool `json:"gcpSetDefaultServiceAccountJwtConfig"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return err
+	}
+	if !payload.Data.Success {
+		return errors.New("polaris: failed to set default service account")
+	}
+
+	return nil
 }

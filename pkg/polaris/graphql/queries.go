@@ -222,18 +222,23 @@ var gcpCloudAccountListPermissionsQuery = `query SdkGolangGcpCloudAccountListPer
 
 // gcpCloudAccountListProjects GraphQL query
 var gcpCloudAccountListProjectsQuery = `query SdkGolangGcpCloudAccountListProjects($feature: CloudAccountFeatureEnum = CLOUD_NATIVE_PROTECTION, $search_text: String!, $status_filters: [CloudAccountStatusEnum!]!) {
-    gcpCloudAccountListProjects(feature: $feature, projectStatusFilters: $status_filters, projectSearchText: $search_text){
-        project{
+    gcpCloudAccountListProjects(feature: $feature, projectStatusFilters: $status_filters, projectSearchText: $search_text) {
+        project {
             projectId,
             projectNumber,
             name,
             id
         }
-        featureDetail{
+        featureDetail {
             feature
             status
         }
     }
+}`
+
+// gcpGetDefaultCredentialsServiceAccount GraphQL query
+var gcpGetDefaultCredentialsServiceAccountQuery = `query SdkGolangGcpGetDefaultCredentialsServiceAccount {
+    gcpGetDefaultCredentialsServiceAccount
 }`
 
 // gcpNativeDisableProject GraphQL query
@@ -271,4 +276,10 @@ var gcpNativeProjectConnectionQuery = `query SdkGolangGcpNativeProjectConnection
 			hasNextPage
 		}
     }
+}`
+
+// gcpSetDefaultServiceAccount GraphQL query
+var gcpSetDefaultServiceAccountQuery = `mutation SdkGolangGcpSetDefaultServiceAccount($jwt_config: String!, $account_name: String!)
+{
+    gcpSetDefaultServiceAccountJwtConfig(serviceAccountJWTConfig: $jwt_config, serviceAccountName: $account_name)
 }`

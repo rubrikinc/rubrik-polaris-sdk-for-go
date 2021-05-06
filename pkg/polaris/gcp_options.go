@@ -2,6 +2,7 @@ package polaris
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +18,10 @@ type GcpConfigOption interface {
 }
 
 func gcpProject(ctx context.Context, creds *google.Credentials, projectID string, opts *options) error {
+	if opts == nil {
+		return errors.New("polaris: opts cannot be nil")
+	}
+
 	client, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(creds))
 	if err != nil {
 		return err
@@ -134,6 +139,25 @@ func FromGcpKeyFileWithProjectID(keyFile, projectID string) *gcpConfigOption {
 	}}
 }
 
+// FromGcpProject passes the GCP project details as an option to a function
+// accepting GcpConfigOption or QueryOption as argument. When given multiple
+// times to a variadic function the details given will be used.
+func FromGcpProject(projectID, projectName string, projectNumber int64, orgName string) *gcpConfigOption {
+	return &gcpConfigOption{func(ctx context.Context, opts *options) error {
+		if opts == nil {
+			return errors.New("polaris: opts cannot be nil")
+		}
+
+		opts.gcpCreds = nil
+		opts.gcpID = projectID
+		opts.gcpName = projectName
+		opts.gcpNumber = projectNumber
+		opts.gcpOrgName = orgName
+
+		return nil
+	}}
+}
+
 // WithGcpProjectID passes the specified GCP project id as an option to a
 // function accepting QueryOption as argument. When given multiple times to a
 // variadic function only the first project id will be used. Note that cloud
@@ -141,9 +165,14 @@ func FromGcpKeyFileWithProjectID(keyFile, projectID string) *gcpConfigOption {
 // or indirectly, takes priority.
 func WithGcpProjectID(projectID string) *queryOption {
 	return &queryOption{func(ctx context.Context, opts *options) error {
+		if opts == nil {
+			return errors.New("polaris: opts cannot be nil")
+		}
+
 		if opts.gcpID == "" {
 			opts.gcpID = projectID
 		}
+
 		return nil
 	}}
 }
@@ -155,9 +184,14 @@ func WithGcpProjectID(projectID string) *queryOption {
 // number, directly or indirectly, takes priority.
 func WithGcpProjectNumber(projectNumber int64) *queryOption {
 	return &queryOption{func(ctx context.Context, opts *options) error {
+		if opts == nil {
+			return errors.New("polaris: opts cannot be nil")
+		}
+
 		if opts.gcpNumber == 0 {
 			opts.gcpNumber = projectNumber
 		}
+
 		return nil
 	}}
 }

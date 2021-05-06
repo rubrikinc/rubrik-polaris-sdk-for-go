@@ -23,7 +23,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.StandardLogger{})
+	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		log.Fatal(err)
 	}
