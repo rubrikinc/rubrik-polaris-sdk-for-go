@@ -50,6 +50,41 @@ import (
 	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+// CloudAccountFeature -
+type CloudAccountFeature string
+
+const (
+	All                   CloudAccountFeature = "ALL"
+	AppFlows              CloudAccountFeature = "APP_FLOWS"
+	Archival              CloudAccountFeature = "ARCHIVAL"
+	CloudAccounts         CloudAccountFeature = "CLOUDACCOUNTS"
+	CloudNativeArchival   CloudAccountFeature = "CLOUD_NATIVE_ARCHIVAL"
+	CloudNativeProtection CloudAccountFeature = "CLOUD_NATIVE_PROTECTION"
+	Exocompute            CloudAccountFeature = "EXOCOMPUTE"
+	GCPSharedVPCHost      CloudAccountFeature = "GCP_SHARED_VPC_HOST"
+	RDSProtection         CloudAccountFeature = "RDS_PROTECTION"
+)
+
+// CloudAccountStatus -
+type CloudAccountStatus string
+
+const (
+	Connected          CloudAccountStatus = "CONNECTED"
+	Connecting         CloudAccountStatus = "CONNECTING"
+	Disabled           CloudAccountStatus = "DISABLED"
+	Disconnected       CloudAccountStatus = "DISCONNECTED"
+	MissingPermissions CloudAccountStatus = "MISSING_PERMISSIONS"
+)
+
+// SLAAssignment -
+type SLAAssignment string
+
+const (
+	Derived    SLAAssignment = "Derived"
+	Direct     SLAAssignment = "Direct"
+	Unassigned SLAAssignment = "Unassigned"
+)
+
 // jsonError is returned by Polaris in the body of a response as a JSON
 // document when certain types of errors occur.
 type jsonError struct {

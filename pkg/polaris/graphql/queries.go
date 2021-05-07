@@ -129,7 +129,7 @@ var awsPrepareCloudAccountDeletionQuery = `mutation SdkGolangAwsPrepareCloudAcco
 
 // awsStartNativeAccountDisableJob GraphQL query
 var awsStartNativeAccountDisableJobQuery = `mutation SdkGolangAwsStartNativeAccountDisableJob($polarisAccountId: UUID!, $deleteNativeSnapshots: Boolean = false, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2) {
-    startAwsNativeAccountDisableJob(input: {awsNativeAccountId: $polarisAccountId, shouldDeleteNativeSnapshots: $deleteNativeSnapshots, awsNativeProtectionFeature: $awsNativeProtectionFeature}) {
+    startAwsNativeAccountDisableJob(input: {awsAccountRubrikId: $polarisAccountId, shouldDeleteNativeSnapshots: $deleteNativeSnapshots, awsNativeProtectionFeature: $awsNativeProtectionFeature}) {
         error
         jobId
     }
@@ -175,6 +175,102 @@ var awsValidateAndCreateCloudAccountQuery = `mutation SdkGolangAwsValidateAndCre
             }
         }
     }
+}`
+
+// azureCloudAccountAddWithoutOauth GraphQL query
+var azureCloudAccountAddWithoutOauthQuery = `mutation SdkGolangAzureCloudAccountAddWithoutOauth($azure_tenant_domain_name: String!, $azure_cloud_type: AzureCloudTypeEnum!, $azure_regions: [AzureCloudAccountRegionEnum!]!, $feature: CloudAccountFeatureEnum!, $azure_subscriptions: [AzureSubscriptionInput!]!, $azure_policy_version: Int!) {
+    azureCloudAccountAddWithoutOAuth(tenantDomainName: $azure_tenant_domain_name, azureCloudType: $azure_cloud_type, feature: $feature, subscriptions: $azure_subscriptions, regions: $azure_regions, policyVersion: $azure_policy_version) {
+        tenantId
+        status {
+            subscriptionId
+            subscriptionNativeId
+            error
+        }
+    }
+}`
+
+// azureCloudAccountDeleteWithoutOauth GraphQL query
+var azureCloudAccountDeleteWithoutOauthQuery = `mutation SdkGolangAzureCloudAccountDeleteWithoutOauth($feature: CloudAccountFeatureEnum!, $azure_subscription_ids: [UUID!]!) {
+    azureCloudAccountDeleteWithoutOAuth(feature: $feature, subscriptionIds: $azure_subscription_ids) {
+        status {
+            subscriptionId
+            success
+            error
+        }
+    }
+}`
+
+// azureCloudAccountTenants GraphQL query
+var azureCloudAccountTenantsQuery = `query SdkGolangAzureCloudAccountTenants($feature: CloudAccountFeatureEnum!, $include_subscriptions: Boolean!) {
+    azureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $include_subscriptions) {
+        cloudType
+        id
+        domainName
+        subscriptionCount
+        subscriptions {
+            id
+            name
+            nativeId
+            featureDetail {
+                feature
+                status
+                regions
+            }
+        }
+    }
+}`
+
+// azureCloudAccountUpdate GraphQL query
+var azureCloudAccountUpdateQuery = `mutation SdkGolangAzureCloudAccountUpdate($feature: CloudAccountFeatureEnum!, $regions_to_add: [AzureCloudAccountRegionEnum!], $regions_to_remove: [AzureCloudAccountRegionEnum!], $subscriptions: [AzureCloudAccountSubscriptionInput!]!) {
+    azureCloudAccountUpdate(feature: $feature, regionsToAdd: $regions_to_add, regionsToRemove: $regions_to_remove, subscriptions: $subscriptions) {
+        status {
+            subscriptionId
+            success
+        }
+    }
+}`
+
+// azureDeleteNativeSubscription GraphQL query
+var azureDeleteNativeSubscriptionQuery = `mutation SdkGolangAzureDeleteNativeSubscription($subscription_id: UUID!, $delete_snapshots: Boolean!) {
+    deleteAzureNativeSubscription(subscriptionId: $subscription_id, shouldDeleteNativeSnapshots: $delete_snapshots) {
+        taskchainUuid
+    }
+}`
+
+// azureNativeSubscriptionConnection GraphQL query
+var azureNativeSubscriptionConnectionQuery = `query SdkGolangAzureNativeSubscriptionConnection($filter: String = "") {
+    azureNativeSubscriptionConnection(subscriptionFilters: {
+        nameSubstringFilter: {
+            nameSubstring: $filter
+        }
+    }) {
+        count
+        edges {
+            node {
+                id
+                name
+                status
+                slaAssignment
+                configuredSlaDomain{
+                    id
+                    name
+                }
+                effectiveSlaDomain{
+                    id
+                    name
+                }
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
+// azureSetCustomerAppCredentials GraphQL query
+var azureSetCustomerAppCredentialsQuery = `mutation SdkGolangAzureSetCustomerAppCredentials($azure_app_id: String!, $azure_app_secret_key: String!, $azure_app_tenant_id: String, $azure_app_name: String, $azure_tenant_domain_name: String, $azure_cloud_type: AzureCloudTypeEnum!) {
+    azureSetCustomerAppCredentials(appId: $azure_app_id, appSecretKey: $azure_app_secret_key, appTenantId: $azure_app_tenant_id, appName: $azure_app_name, tenantDomainName: $azure_tenant_domain_name, azureCloudType: $azure_cloud_type)
 }`
 
 // coreTaskchainStatus GraphQL query
