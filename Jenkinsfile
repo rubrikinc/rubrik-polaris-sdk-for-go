@@ -73,12 +73,24 @@ pipeline {
     post {
         success {
             script {
-                slackSend(channel: '#jenkins-slack-test', color: 'danger', message: "The pipeline ${currentBuild.fullDisplayName} failed\n${currentBuild.absoluteUrl}")
+                if (currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0) {
+                    slackSend(
+                        channel: '#terraform-provider-development',
+                        color: 'good',
+                        message: "The pipeline ${currentBuild.fullDisplayName} failed\n${currentBuild.absoluteUrl}"
+                    )
+                }
             }
         }
         failure {
             script {
-                slackSend(channel: '#jenkins-slack-test', color: 'warning', message: "The pipeline ${currentBuild.fullDisplayName} failed.")
+                if (currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0) {
+                    slackSend(
+                        channel: '#terraform-provider-development',
+                        color: 'danger',
+                        message: "The pipeline ${currentBuild.fullDisplayName} succeeded\n${currentBuild.absoluteUrl}"
+                    )
+                }
             }
         }
     }
