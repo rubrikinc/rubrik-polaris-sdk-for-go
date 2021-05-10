@@ -71,7 +71,7 @@ pipeline {
         }
     }
     post {
-        failure {
+        success {
             script {
                 slackSend(channel: '#jenkins-slack-test', color: 'good', message: "The pipeline ${currentBuild.fullDisplayName} succeeded.")
             }
