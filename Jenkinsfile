@@ -77,7 +77,7 @@ pipeline {
                     slackSend(
                         channel: '#terraform-provider-development',
                         color: 'good',
-                        message: "The pipeline ${currentBuild.fullDisplayName} failed\n${currentBuild.absoluteUrl}"
+                        message: "The pipeline ${currentBuild.fullDisplayName} succeeded\n${currentBuild.absoluteUrl}"
                     )
                 }
             }
@@ -88,7 +88,7 @@ pipeline {
                     slackSend(
                         channel: '#terraform-provider-development',
                         color: 'danger',
-                        message: "The pipeline ${currentBuild.fullDisplayName} succeeded\n${currentBuild.absoluteUrl}"
+                        message: "The pipeline ${currentBuild.fullDisplayName} failed\n${currentBuild.absoluteUrl}"
                     )
                 }
             }
