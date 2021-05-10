@@ -70,4 +70,28 @@ pipeline {
             }
         }
     }
+    post {
+        success {
+            script {
+                if (currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0) {
+                    slackSend(
+                        channel: '#terraform-provider-development',
+                        color: 'good',
+                        message: "The pipeline ${currentBuild.fullDisplayName} succeeded\n${currentBuild.absoluteUrl}"
+                    )
+                }
+            }
+        }
+        failure {
+            script {
+                if (currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0) {
+                    slackSend(
+                        channel: '#terraform-provider-development',
+                        color: 'danger',
+                        message: "The pipeline ${currentBuild.fullDisplayName} failed\n${currentBuild.absoluteUrl}"
+                    )
+                }
+            }
+        }
+    }
 }
