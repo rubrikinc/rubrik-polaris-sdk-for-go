@@ -70,4 +70,16 @@ pipeline {
             }
         }
     }
+    post {
+        failure {
+            script {
+                slackSend(channel: '#jenkins-slack-test', color: 'good', message: "The pipeline ${currentBuild.fullDisplayName} succeeded.")
+            }
+        }
+        failure {
+            script {
+                slackSend(channel: '#jenkins-slack-test', color: 'warning', message: "The pipeline ${currentBuild.fullDisplayName} failed.")
+            }
+        }
+    }
 }
