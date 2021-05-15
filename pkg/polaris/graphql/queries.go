@@ -44,8 +44,8 @@ var awsAllCloudAccountsQuery = `query SdkGolangAwsAllCloudAccounts($column_filte
 }`
 
 // awsCloudAccountSelector GraphQL query
-var awsCloudAccountSelectorQuery = `query SdkGolangAwsCloudAccountSelector($cloud_account_uuid: String!) {
-    awsCloudAccountSelector(awsCloudAccountsArg: {features: [CLOUD_NATIVE_PROTECTION], cloudAccountUuid: $cloud_account_uuid}) {
+var awsCloudAccountSelectorQuery = `query SdkGolangAwsCloudAccountSelector($cloud_account_id: String!) {
+    awsCloudAccountSelector(awsCloudAccountsArg: {features: [CLOUD_NATIVE_PROTECTION], cloudAccountId: $cloud_account_id}) {
         awsCloudAccount {
             id
             nativeId
@@ -128,8 +128,12 @@ var awsPrepareCloudAccountDeletionQuery = `mutation SdkGolangAwsPrepareCloudAcco
 }`
 
 // awsStartNativeAccountDisableJob GraphQL query
-var awsStartNativeAccountDisableJobQuery = `mutation SdkGolangAwsStartNativeAccountDisableJob($polarisAccountId: UUID!, $deleteNativeSnapshots: Boolean = false, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum = EC2) {
-    startAwsNativeAccountDisableJob(input: {awsNativeAccountId: $polarisAccountId, shouldDeleteNativeSnapshots: $deleteNativeSnapshots, awsNativeProtectionFeature: $awsNativeProtectionFeature}) {
+var awsStartNativeAccountDisableJobQuery = `mutation SdkGolangAwsStartNativeAccountDisableJob($aws_account_rubrik_id: UUID!, $delete_native_snapshots: Boolean = false, $aws_native_protection_feature: AwsNativeProtectionFeatureEnum = EC2) {
+    startAwsNativeAccountDisableJob(input: {
+        awsAccountRubrikId:          $aws_account_rubrik_id,
+        shouldDeleteNativeSnapshots: $delete_native_snapshots,
+        awsNativeProtectionFeature:  $aws_native_protection_feature
+    }) {
         error
         jobId
     }

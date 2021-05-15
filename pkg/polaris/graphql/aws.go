@@ -304,9 +304,9 @@ func (c *Client) AwsStartNativeAccountDisableJob(ctx context.Context, accountID 
 	c.log.Print(log.Trace, "graphql.Client.AwsStartNativeAccountDisableJob")
 
 	buf, err := c.Request(ctx, awsStartNativeAccountDisableJobQuery, struct {
-		AccountID         string `json:"polarisAccountId,omitempty"`
-		ProtectionFeature string `json:"awsNativeProtectionFeature"`
-		DeleteSnapshots   bool   `json:"deleteNativeSnapshots"`
+		AccountID         string `json:"aws_account_rubrik_id"`
+		ProtectionFeature string `json:"aws_native_protection_feature"`
+		DeleteSnapshots   bool   `json:"delete_native_snapshots"`
 	}{AccountID: accountID, ProtectionFeature: string(protectionFeature), DeleteSnapshots: deleteSnapshots})
 	if err != nil {
 		return "", err

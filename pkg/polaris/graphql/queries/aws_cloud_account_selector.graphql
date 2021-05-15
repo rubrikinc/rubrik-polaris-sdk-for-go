@@ -1,5 +1,5 @@
-query RubrikPolarisSDKRequest($cloud_account_uuid: String!) {
-    awsCloudAccountSelector(awsCloudAccountsArg: {features: [CLOUD_NATIVE_PROTECTION], cloudAccountUuid: $cloud_account_uuid}) {
+query RubrikPolarisSDKRequest($cloud_account_id: String!) {
+    awsCloudAccountSelector(awsCloudAccountsArg: {features: [CLOUD_NATIVE_PROTECTION], cloudAccountId: $cloud_account_id}) {
         awsCloudAccount {
             id
             nativeId
