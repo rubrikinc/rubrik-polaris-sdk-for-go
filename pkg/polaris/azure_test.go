@@ -26,12 +26,14 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	polaris_log "github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // Between the account has been added and it has been removed we never fail
 // fatally to allow the account to be removed in case of an error.
-func TestAwsAccountAddAndRemove(t *testing.T) {
+func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	requireEnv(t, "SDK_INTEGRATION")
 
 	ctx := context.Background()
@@ -47,62 +49,72 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Add the default AWS account to Polaris. Usually resolved using the
-	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
-	// AWS_DEFAULT_REGION. Note that for the Trinity lab we must use the name
-	// specified name since accounts cannot be renamed.
-	err = client.AwsAccountAdd(ctx, FromAwsDefault(), WithName("Trinity-AWS-FDSE"),
-		WithRegion("us-east-2"))
+	// Add default Azure service principal to Polaris. Usually resolved using
+	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
+	principal, err := AzureDefaultServicePrincipal()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Verify that the account was successfully added.
-	account, err := client.AwsAccount(ctx, FromAwsDefault())
+	err = client.AzureServicePrincipalSet(ctx, principal)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add default Azure subscription to Polaris. Usually resolved using the
+	// environment variable AZURE_SUBSCRIPTION_LOCATION
+	subscriptionIn, err := AzureDefaultSubscription()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = client.AzureSubscriptionAdd(ctx, subscriptionIn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the subscription was successfully added.
+	subscription, err := client.AzureSubscription(ctx, WithAzureSubscriptionID("8fa81a5e-a236-4a73-8e28-e1dcf863c56d"))
 	if err != nil {
 		t.Error(err)
 	}
-	if account.Name != "Trinity-AWS-FDSE" {
-		t.Errorf("invalid name: %v", account.Name)
+	if subscription.Name != "TrinityFDSE" {
+		t.Errorf("invalid name: %v", subscription.Name)
 	}
-	if account.NativeID != "311033699123" {
-		t.Errorf("invalid native id: %v", account.NativeID)
+	if subscription.NativeID != uuid.MustParse("8fa81a5e-a236-4a73-8e28-e1dcf863c56d") {
+		t.Errorf("invalid native id: %v", subscription.NativeID)
 	}
-	if n := len(account.Features); n != 1 {
-		t.Errorf("invalid number of features: %v", n)
+	if subscription.Feature.Name != "CLOUD_NATIVE_PROTECTION" {
+		t.Errorf("invalid feature name: %v", subscription.Feature.Name)
 	}
-	if account.Features[0].Feature != "CLOUD_NATIVE_PROTECTION" {
-		t.Errorf("invalid feature name: %v", account.Features[0].Feature)
-	}
-	if regions := account.Features[0].AwsRegions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+	if regions := subscription.Feature.Regions; !reflect.DeepEqual(regions, []graphql.AzureRegion{graphql.AzureRegionEastUS2}) {
 		t.Errorf("invalid feature regions: %v", regions)
 	}
-	if account.Features[0].Status != "CONNECTED" {
-		t.Errorf("invalid feature status: %v", account.Features[0].Status)
+	if subscription.Feature.Status != "CONNECTED" {
+		t.Errorf("invalid feature status: %v", subscription.Feature.Status)
 	}
 
 	// Set and verify regions for AWS account.
-	if err := client.AwsAccountSetRegions(ctx, WithUUID(account.ID), "us-west-2"); err != nil {
-		t.Error(err)
-	}
-	account, err = client.AwsAccount(ctx, WithAwsID(account.NativeID))
+	err = client.AzureSubscriptionSetRegions(ctx, WithAzureSubscriptionID("8fa81a5e-a236-4a73-8e28-e1dcf863c56d"), graphql.AzureRegionWestUS2)
 	if err != nil {
 		t.Error(err)
 	}
-	if n := len(account.Features); n != 1 {
-		t.Errorf("invalid number of features: %v", n)
+	subscription, err = client.AzureSubscription(ctx, WithAzureSubscriptionID("8fa81a5e-a236-4a73-8e28-e1dcf863c56d"))
+	if err != nil {
+		t.Error(err)
 	}
-	if regions := account.Features[0].AwsRegions; !reflect.DeepEqual(regions, []string{"us-west-2"}) {
+	if regions := subscription.Feature.Regions; !reflect.DeepEqual(regions, []graphql.AzureRegion{graphql.AzureRegionWestUS2}) {
 		t.Errorf("invalid feature regions: %v", regions)
 	}
 
-	// Remove AWS account from Polaris.
-	if err := client.AwsAccountRemove(ctx, FromAwsDefault(), false); err != nil {
+	//
+	err = client.AzureSubscriptionRemove(ctx, WithAzureSubscriptionID("8fa81a5e-a236-4a73-8e28-e1dcf863c56d"), false)
+	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	account, err = client.AwsAccount(ctx, FromAwsDefault())
+	_, err = client.AzureSubscription(ctx, WithAzureSubscriptionID("8fa81a5e-a236-4a73-8e28-e1dcf863c56d"))
 	if !errors.Is(err, ErrNotFound) {
 		t.Error(err)
 	}

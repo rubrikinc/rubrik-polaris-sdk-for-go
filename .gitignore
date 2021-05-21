@@ -1,6 +1,8 @@
 /aws_account
+/azure_subscription
 /gcp_project
 /gcp_project_with_set_sa
 /examples/aws_account/aws_account
+/examples/azure_subscription/azure_subscription
 /examples/gcp_project/gcp_project
 /examples/gcp_project/gcp_project_with_set_sa

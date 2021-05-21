@@ -1,0 +1,29 @@
+query RubrikPolarisSDKRequest($filter: String = "") {
+    azureNativeSubscriptionConnection(subscriptionFilters: {
+        nameSubstringFilter: {
+            nameSubstring: $filter
+        }
+    }) {
+        count
+        edges {
+            node {
+                id
+                name
+                status
+                slaAssignment
+                configuredSlaDomain{
+                    id
+                    name
+                }
+                effectiveSlaDomain{
+                    id
+                    name
+                }
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}
