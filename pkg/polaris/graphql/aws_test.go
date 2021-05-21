@@ -92,9 +92,9 @@ func TestAwsStartNativeAccountDisableJob(t *testing.T) {
 		var payload struct {
 			Query     string `json:"query"`
 			Variables struct {
-				AccountID         string `json:"polarisAccountId,omitempty"`
-				ProtectionFeature string `json:"awsNativeProtectionFeature"`
-				DeleteSnapshots   bool   `json:"deleteNativeSnapshots"`
+				AccountID         string `json:"aws_account_rubrik_id"`
+				ProtectionFeature string `json:"aws_native_protection_feature"`
+				DeleteSnapshots   bool   `json:"delete_native_snapshots"`
 			} `json:"variables,omitempty"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {

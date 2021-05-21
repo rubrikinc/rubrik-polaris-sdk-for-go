@@ -192,11 +192,21 @@ func NewTestClient(username, password string, logger log.Logger) (*Client, *Test
 func (c *Client) Request(ctx context.Context, query string, variables interface{}) ([]byte, error) {
 	c.log.Print(log.Trace, "graphql.Request")
 
+	// Extract operation name from query to pass in the body of the request for
+	// metrics.
+	var operation string
+	i := strings.Index(query, " ")
+	j := strings.Index(query, "(")
+	if i != -1 && j != -1 {
+		operation = query[i+1 : j]
+	}
+
 	// Prepare the query request body.
 	buf, err := json.Marshal(struct {
 		Query     string      `json:"query"`
 		Variables interface{} `json:"variables,omitempty"`
-	}{Query: query, Variables: variables})
+		Operation string      `json:"operationName,omitempty"`
+	}{Query: query, Variables: variables, Operation: operation})
 	if err != nil {
 		return nil, err
 	}
