@@ -247,6 +247,11 @@ func (c *Client) AwsValidateAndCreateCloudAccount(ctx context.Context, accountNa
 		return AwsCloudAccountInitiate{}, errors.New("polaris: invalid aws accounts")
 	}
 
+	// Make sure the InitiateResponse we receive from Polaris isn't empty.
+	if payload.Data.Query.InitiateResponse.FeatureVersions == nil {
+		return AwsCloudAccountInitiate{}, errors.New("polaris: invalid initiate response")
+	}
+
 	return payload.Data.Query.InitiateResponse, nil
 }
 
