@@ -41,6 +41,10 @@ pipeline {
         }
         stage('Test') {
             environment {
+                // Azure credentials.
+                AZURE_SERVICEPRINCIPAL_LOCATION = credentials('sdk-azure-service-principal')
+                AZURE_SUBSCRIPTION_LOCATION = credentials('sdk-azure-subscription')
+
                 // AWS credentials.
                 AWS_ACCESS_KEY_ID     = credentials('sdk-aws-access-key')
                 AWS_SECRET_ACCESS_KEY = credentials('sdk-aws-secret-key')
