@@ -1,4 +1,4 @@
-module github.com/trinity-team/rubrik-polaris-sdk-for-go
+module github.com/rubrikinc/rubrik-polaris-sdk-for-go
 
 go 1.16
 

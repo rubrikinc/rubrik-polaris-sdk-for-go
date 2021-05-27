@@ -10,7 +10,7 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 func TestAwsCloudAccounts(t *testing.T) {

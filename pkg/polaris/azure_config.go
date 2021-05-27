@@ -25,7 +25,7 @@ import (
 	"os"
 
 	"github.com/google/uuid"
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
 // AzureServicePrincipalConfig -

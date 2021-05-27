@@ -27,8 +27,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
