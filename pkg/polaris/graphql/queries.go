@@ -204,6 +204,19 @@ var azureCloudAccountDeleteWithoutOauthQuery = `mutation SdkGolangAzureCloudAcco
     }
 }`
 
+// azureCloudAccountPermissionConfig GraphQL query
+var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPermissionConfig($feature: CloudAccountFeatureEnum = CLOUD_NATIVE_PROTECTION) {
+    azureCloudAccountPermissionConfig(feature: $feature) {
+        permissionVersion
+        rolePermissions {
+            excludedActions
+            excludedDataActions
+            includedActions
+            includedDataActions
+        }
+    }
+}`
+
 // azureCloudAccountTenants GraphQL query
 var azureCloudAccountTenantsQuery = `query SdkGolangAzureCloudAccountTenants($feature: CloudAccountFeatureEnum!, $include_subscriptions: Boolean!) {
     azureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $include_subscriptions) {
@@ -252,6 +265,7 @@ var azureNativeSubscriptionConnectionQuery = `query SdkGolangAzureNativeSubscrip
         edges {
             node {
                 id
+                nativeId
                 name
                 status
                 slaAssignment
