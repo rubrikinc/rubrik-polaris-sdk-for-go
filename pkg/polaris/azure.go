@@ -273,9 +273,13 @@ func (c *Client) AzureSubscriptionAdd(ctx context.Context, subscription AzureSub
 		Name: subscription.Name,
 	}}
 
-	// Policy version is temporary hardcoded to 1007.
+	permConf, err := c.gql.AzureCloudAccountPermissionConfig(ctx)
+	if err != nil {
+		return err
+	}
+
 	_, status, err := c.gql.AzureCloudAccountAddWithoutOAuth(ctx, subscription.Cloud, subscription.TenantDomain,
-		subscription.Regions, graphql.CloudNativeProtection, subsIn, 1007)
+		subscription.Regions, graphql.CloudNativeProtection, subsIn, permConf.PermissionVersion)
 	if len(status) != 1 {
 		return errors.New("polaris: expected a single response")
 	}
@@ -359,16 +363,25 @@ func (c *Client) AzureSubscriptionRemove(ctx context.Context, id AzureSubscripti
 		return err
 	}
 
+	// Lookup the Polaris Native ID from the Polaris subscription name and
+	// the Azure subscription ID. The Polaris Native ID is needed to delete
+	// the Polaris Native Account subscription.
 	nativeSubs, err := c.gql.AzureNativeSubscriptionConnection(ctx, subscription.Name)
 	if err != nil {
 		return err
 	}
-	if len(nativeSubs) != 1 {
-		return errors.New("polaris: expected a single response")
+	var nativeID string
+	for _, nativeSub := range nativeSubs {
+		if nativeSub.NativeID == subscription.NativeID.String() {
+			nativeID = nativeSub.ID
+			break
+		}
 	}
-	nativeSub := nativeSubs[0].ID
+	if nativeID == "" {
+		return errors.New("polaris: polaris native id not found")
+	}
 
-	jobID, err := c.gql.AzureDeleteNativeSubscription(ctx, nativeSub, deleteSnapshots)
+	jobID, err := c.gql.AzureDeleteNativeSubscription(ctx, nativeID, deleteSnapshots)
 	if err != nil {
 		return err
 	}

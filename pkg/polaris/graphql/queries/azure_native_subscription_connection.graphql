@@ -8,6 +8,7 @@ query RubrikPolarisSDKRequest($filter: String = "") {
         edges {
             node {
                 id
+                nativeId
                 name
                 status
                 slaAssignment
