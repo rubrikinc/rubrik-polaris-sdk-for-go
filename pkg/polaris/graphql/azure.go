@@ -25,7 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // AzureCloud -

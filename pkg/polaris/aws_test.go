@@ -26,7 +26,7 @@ import (
 	"reflect"
 	"testing"
 
-	polaris_log "github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // Between the account has been added and it has been removed we never fail

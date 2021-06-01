@@ -29,8 +29,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 const (

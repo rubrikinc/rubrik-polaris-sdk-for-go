@@ -27,8 +27,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/option"
 )

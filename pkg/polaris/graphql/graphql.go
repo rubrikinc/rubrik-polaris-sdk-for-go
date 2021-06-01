@@ -47,7 +47,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // CloudAccountFeature -
