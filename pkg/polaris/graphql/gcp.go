@@ -26,7 +26,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 type GcpProject struct {
