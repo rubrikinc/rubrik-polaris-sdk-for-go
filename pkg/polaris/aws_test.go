@@ -28,7 +28,7 @@ import (
 	"reflect"
 	"testing"
 
-	polaris_log "github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // testAwsAccount holds information about the AWS account used in the

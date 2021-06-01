@@ -25,8 +25,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris"
-	polaris_log "github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // Example showing how to manage an AWS account with the Polaris Go SDK.

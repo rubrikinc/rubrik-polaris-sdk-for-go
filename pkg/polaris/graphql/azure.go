@@ -25,7 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // AzureCloud -
@@ -305,6 +305,7 @@ func (c *Client) AzureDeleteNativeSubscription(ctx context.Context, subscription
 type AzureNativeSubscription struct {
 	ID            string        `json:"id"`
 	Name          string        `json:"name"`
+	NativeID      string        `json:"nativeId"`
 	Status        string        `json:"status"`
 	SLAAssignment SLAAssignment `json:"slaAssignment"`
 
@@ -364,4 +365,42 @@ func (c *Client) AzureNativeSubscriptionConnection(ctx context.Context, nameFilt
 	}
 
 	return subscriptions, nil
+}
+
+// AzurePermissionConfig holds the permissions and version required to enable a
+// given feature. IncludedActions refers to actions which should be allowed on
+// the Azure role for the subscription. ExcludedActions refers to actions which
+// should be explicitly disallowed on the Azure role for the subscription.
+type AzurePermissionConfig struct {
+	PermissionVersion int `json:"permissionVersion"`
+	RolePermissions   []struct {
+		ExcludedActions     []string `json:"excludedActions"`
+		ExcludedDataActions []string `json:"excludedDataActions"`
+		IncludedActions     []string `json:"includedActions"`
+		IncludedDataActions []string `json:"includedDataActions"`
+	} `json:"rolePermissions"`
+}
+
+// AzureCloudAccountPermissionConfig returns the permissions and version
+// required to enable the given feature for Azure subscription.
+func (c *Client) AzureCloudAccountPermissionConfig(ctx context.Context) (AzurePermissionConfig, error) {
+	c.log.Print(log.Trace, "graphql.Client.AzureCloudAccountPermissionConfig")
+
+	buf, err := c.Request(ctx, azureCloudAccountPermissionConfigQuery, struct{}{})
+	if err != nil {
+		return AzurePermissionConfig{}, err
+	}
+
+	c.log.Printf(log.Debug, "AzureCloudAccountPermissionConfig(): %s", string(buf))
+
+	var payload struct {
+		Data struct {
+			PermissionConfig AzurePermissionConfig `json:"azureCloudAccountPermissionConfig"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return AzurePermissionConfig{}, err
+	}
+
+	return payload.Data.PermissionConfig, nil
 }
