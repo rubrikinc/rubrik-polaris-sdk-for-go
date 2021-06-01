@@ -22,19 +22,56 @@ package polaris
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 
 	polaris_log "github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Between the project has been added and it has been removed we never fail
-// fatally to allow the project to be removed in case of an error.
+// testGcpProject holds information about the GCP project used in the
+// integration tests. Normally used to assert that the project information read
+// from Polaris is correct.
+type testGcpProject struct {
+	Name             string `json:"name"`
+	ProjectName      string `json:"projectName"`
+	ProjectID        string `json:"projectId"`
+	ProjectNumber    int64  `json:"projectNumber"`
+	OrganizationName string `json:"organizationName"`
+}
+
+// TestGcpProjectAddAndRemove verifies that the SDK can perform the basic GCP
+// project operations on a real Polaris instance.
+//
+// To run this test against a Polaris instance the following environment
+// variables needs to be set:
+//   * SDK_INTEGRATION=1
+//   * SDK_GCPPROJECT_FILE=<path-to-test-gcp-project-file>
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   * GOOGLE_APPLICATION_CREDENTIALS=<path-to-gcp-service-account-key-file>
+//
+// The file referred to by SDK_GCPPROJECT_FILE should contain a single
+// testGcpProject JSON object.
+//
+// Note that between the project has been added and it has been removed we
+// never fail fatally to allow the project to be removed in case of an error.
 func TestGcpProjectAddAndRemove(t *testing.T) {
 	requireEnv(t, "SDK_INTEGRATION")
 
 	ctx := context.Background()
+
+	// Load test project information from the file pointed to by the
+	// SDK_GCPPROJECT_FILE environment variable.
+	buf, err := os.ReadFile(os.Getenv("SDK_GCPPROJECT_FILE"))
+	if err != nil {
+		t.Fatalf("failed to read file pointed to by SDK_GCPPROJECT_FILE: %v", err)
+	}
+	testProject := testGcpProject{}
+	if err := json.Unmarshal(buf, &testProject); err != nil {
+		t.Fatal(err)
+	}
 
 	// Load configuration and create client. Usually resolved using the
 	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
@@ -61,29 +98,30 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if project.Name != "Trinity-FDSE" {
+	if project.Name != testProject.Name {
 		t.Errorf("invalid name: %v", project.Name)
 	}
-	if project.ProjectName != "Trinity-FDSE" {
+	if project.ProjectName != testProject.ProjectName {
 		t.Errorf("invalid project name: %v", project.ProjectName)
 	}
-	if strings.ToLower(project.ProjectID) != "trinity-fdse" {
+	if strings.ToLower(project.ProjectID) != testProject.ProjectID {
 		t.Errorf("invalid project id: %v", project.ProjectID)
 	}
-	if project.ProjectNumber != 994761414559 {
+	if project.ProjectNumber != testProject.ProjectNumber {
 		t.Errorf("invalid project number: %v", project.ProjectNumber)
 	}
-	if project.OrganizationName != "" {
+	if project.OrganizationName != testProject.OrganizationName {
 		t.Errorf("invalid organization name: %v", project.OrganizationName)
 	}
-	if n := len(project.Features); n != 1 {
+	if n := len(project.Features); n == 1 {
+		if project.Features[0].Feature != "CLOUD_NATIVE_PROTECTION" {
+			t.Errorf("invalid feature name: %v", project.Features[0].Feature)
+		}
+		if project.Features[0].Status != "CONNECTED" {
+			t.Errorf("invalid feature status: %v", project.Features[0].Status)
+		}
+	} else {
 		t.Errorf("invalid number of features: %v", n)
-	}
-	if project.Features[0].Feature != "CLOUD_NATIVE_PROTECTION" {
-		t.Errorf("invalid feature name: %v", project.Features[0].Feature)
-	}
-	if project.Features[0].Status != "CONNECTED" {
-		t.Errorf("invalid feature status: %v", project.Features[0].Status)
 	}
 
 	// Remove GCP project from Polaris keeping the snapshots.
@@ -98,10 +136,38 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	}
 }
 
+// TestGcpProjectAddAndRemoveWithServiceAccountSet verifies that the SDK can
+// perform the basic GCP project operations on a real Polaris instance using a
+// Polaris account global GCP service account.
+//
+// To run this test against a Polaris instance the following environment
+// variables needs to be set:
+//   * SDK_INTEGRATION=1
+//   * SDK_GCPPROJECT_FILE=<path-to-test-gcp-project-file>
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   * GOOGLE_APPLICATION_CREDENTIALS=<path-to-gcp-service-account-key-file>
+//
+// The file referred to by SDK_GCPPROJECT_FILE should contain a single
+// testGcpProject JSON object.
+//
+// Note that between the project has been added and it has been removed we
+// never fail fatally to allow the project to be removed in case of an error.
 func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 	requireEnv(t, "SDK_INTEGRATION")
 
 	ctx := context.Background()
+
+	// Load test project information from the file pointed to by the
+	// SDK_GCPPROJECT_FILE environment variable.
+	buf, err := os.ReadFile(os.Getenv("SDK_GCPPROJECT_FILE"))
+	if err != nil {
+		t.Fatalf("failed to read file pointed to by SDK_GCPPROJECT_FILE: %v", err)
+	}
+
+	testProject := testGcpProject{}
+	if err := json.Unmarshal(buf, &testProject); err != nil {
+		t.Fatal(err)
+	}
 
 	// Load configuration and create client. Usually resolved using the
 	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
@@ -122,48 +188,51 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 	// Add the default GCP project to Polaris. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
 	err = client.GcpProjectAdd(ctx,
-		FromGcpProject("trinity-fdse", "Trinity-FDSE", 994761414559, "Trinity Org"))
+		FromGcpProject(testProject.ProjectID, testProject.ProjectName, testProject.ProjectNumber,
+			testProject.OrganizationName))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the project was successfully added.
-	project, err := client.GcpProject(ctx, WithGcpProjectNumber(994761414559))
+	project, err := client.GcpProject(ctx, WithGcpProjectNumber(testProject.ProjectNumber))
 	if err != nil {
 		t.Error(err)
 	}
-	if project.Name != "Trinity-FDSE" {
+	if project.Name != testProject.Name {
 		t.Errorf("invalid name: %v", project.Name)
 	}
-	if project.ProjectName != "Trinity-FDSE" {
-		t.Errorf("invalid native id: %v", project.ProjectName)
+	if project.ProjectName != testProject.ProjectName {
+		t.Errorf("invalid project name: %v", project.ProjectName)
 	}
-	if strings.ToLower(project.ProjectID) != "trinity-fdse" {
-		t.Errorf("invalid native id: %v", project.ProjectID)
+	if strings.ToLower(project.ProjectID) != testProject.ProjectID {
+		t.Errorf("invalid project id: %v", project.ProjectID)
 	}
-	if project.ProjectNumber != 994761414559 {
-		t.Errorf("invalid native id: %v", project.ProjectNumber)
+	if project.ProjectNumber != testProject.ProjectNumber {
+		t.Errorf("invalid project number: %v", project.ProjectNumber)
 	}
-	if project.OrganizationName != "" {
-		t.Errorf("invalid native id: %v", project.OrganizationName)
+	if project.OrganizationName != testProject.OrganizationName {
+		t.Errorf("invalid organization name: %v", project.OrganizationName)
 	}
-	if n := len(project.Features); n != 1 {
+	if n := len(project.Features); n == 1 {
+		if project.Features[0].Feature != "CLOUD_NATIVE_PROTECTION" {
+			t.Errorf("invalid feature name: %v", project.Features[0].Feature)
+		}
+		if project.Features[0].Status != "CONNECTED" {
+			t.Errorf("invalid feature status: %v", project.Features[0].Status)
+		}
+	} else {
 		t.Errorf("invalid number of features: %v", n)
-	}
-	if project.Features[0].Feature != "CLOUD_NATIVE_PROTECTION" {
-		t.Errorf("invalid feature name: %v", project.Features[0].Feature)
-	}
-	if project.Features[0].Status != "CONNECTED" {
-		t.Errorf("invalid feature status: %v", project.Features[0].Status)
 	}
 
 	// Remove GCP project from Polaris keeping the snapshots.
-	if err := client.GcpProjectRemove(ctx, WithGcpProjectNumber(994761414559), false); err != nil {
+	err = client.GcpProjectRemove(ctx, WithGcpProjectNumber(testProject.ProjectNumber), false)
+	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the project was successfully removed.
-	project, err = client.GcpProject(ctx, FromGcpDefault())
+	project, err = client.GcpProject(ctx, WithGcpProjectNumber(testProject.ProjectNumber))
 	if !errors.Is(err, ErrNotFound) {
 		t.Error(err)
 	}

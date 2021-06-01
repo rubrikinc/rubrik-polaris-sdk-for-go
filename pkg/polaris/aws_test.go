@@ -22,19 +22,55 @@ package polaris
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
 	"reflect"
 	"testing"
 
 	polaris_log "github.com/trinity-team/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Between the account has been added and it has been removed we never fail
-// fatally to allow the account to be removed in case of an error.
+// testAwsAccount holds information about the AWS account used in the
+// integration tests. Normally used to assert that the account information read
+// from Polaris is correct.
+type testAwsAccount struct {
+	Name      string `json:"name"`
+	AccountID string `json:"accountId"`
+}
+
+// TestAwsAccountAddAndRemove verifies that the SDK can perform the basic AWS
+// account operations on a real Polaris instance.
+//
+// To run this test against a Polaris instance the following environment
+// variables needs to be set:
+//   * SDK_INTEGRATION=1
+//   * SDK_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   * AWS_ACCESS_KEY_ID=<aws-access-key>
+//   * AWS_SECRET_ACCESS_KEY=<aws-secret-key>
+//   * AWS_DEFAULT_REGION=<aws-default-region>
+//
+// The file referred to by SDK_AWSACCOUNT_FILE should contain a single
+// testAwsAccount JSON object.
+//
+// Note that between the project has been added and it has been removed we
+// never fail fatally to allow the project to be removed in case of an error.
 func TestAwsAccountAddAndRemove(t *testing.T) {
 	requireEnv(t, "SDK_INTEGRATION")
 
 	ctx := context.Background()
+
+	// Load test account information from the file pointed to by the
+	// SDK_AWSACCOUNT_FILE environment variable.
+	buf, err := os.ReadFile(os.Getenv("SDK_AWSACCOUNT_FILE"))
+	if err != nil {
+		t.Fatalf("failed to read file pointed to by SDK_AWSACCOUNT_FILE: %v", err)
+	}
+	testAccount := testAwsAccount{}
+	if err := json.Unmarshal(buf, &testAccount); err != nil {
+		t.Fatal(err)
+	}
 
 	// Load configuration and create client. Usually resolved using the
 	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
@@ -62,10 +98,10 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if account.Name != "Trinity-AWS-FDSE" {
+	if account.Name != testAccount.Name {
 		t.Errorf("invalid name: %v", account.Name)
 	}
-	if account.NativeID != "311033699123" {
+	if account.NativeID != testAccount.AccountID {
 		t.Errorf("invalid native id: %v", account.NativeID)
 	}
 	if n := len(account.Features); n != 1 {
@@ -89,11 +125,12 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if n := len(account.Features); n != 1 {
+	if n := len(account.Features); n == 1 {
+		if regions := account.Features[0].AwsRegions; !reflect.DeepEqual(regions, []string{"us-west-2"}) {
+			t.Errorf("invalid feature regions: %v", regions)
+		}
+	} else {
 		t.Errorf("invalid number of features: %v", n)
-	}
-	if regions := account.Features[0].AwsRegions; !reflect.DeepEqual(regions, []string{"us-west-2"}) {
-		t.Errorf("invalid feature regions: %v", regions)
 	}
 
 	// Remove AWS account from Polaris.
