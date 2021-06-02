@@ -56,13 +56,13 @@ func main() {
 	// Add the GCP project to Polaris. Usually resolved using the environment
 	// variable GOOGLE_APPLICATION_CREDENTIALS.
 	err = client.GcpProjectAdd(ctx,
-		polaris.FromGcpProject("trinity-fdse", "Trinity-FDSE", 994761414559, "Trinity Org"))
+		polaris.FromGcpProject("my-project-id", "My-Project-Name", 123456789012, "My-Organization"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Lookup the newly added project.
-	project, err := client.GcpProject(ctx, polaris.WithGcpProjectNumber(994761414559))
+	project, err := client.GcpProject(ctx, polaris.WithGcpProjectNumber(123456789012))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func main() {
 	}
 
 	// Remove the GCP account from Polaris.
-	if err := client.GcpProjectRemove(ctx, polaris.WithGcpProjectNumber(994761414559), false); err != nil {
+	if err := client.GcpProjectRemove(ctx, polaris.WithGcpProjectNumber(123456789012), false); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -22,7 +22,9 @@ package polaris
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
 	"reflect"
 	"testing"
 
@@ -31,12 +33,31 @@ import (
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+// testAzureSubscription holds information about the Azure subscription used in
+// the integration tests. Normally used to assert that the account information
+// read from Polaris is correct.
+type testAzureSubscription struct {
+	Name           string
+	SubscriptionID string
+}
+
 // Between the account has been added and it has been removed we never fail
 // fatally to allow the account to be removed in case of an error.
 func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	requireEnv(t, "SDK_INTEGRATION")
 
 	ctx := context.Background()
+
+	// Load test project information from the file pointed to by the
+	// SDK_AZURESUBSCRIPTION_FILE environment variable.
+	buf, err := os.ReadFile(os.Getenv("SDK_AZURESUBSCRIPTION_FILE"))
+	if err != nil {
+		t.Fatalf("failed to read file pointed to by SDK_AZURESUBSCRIPTION_FILE: %v", err)
+	}
+	testSubscription := testAzureSubscription{}
+	if err := json.Unmarshal(buf, &testSubscription); err != nil {
+		t.Fatal(err)
+	}
 
 	// Load configuration and create client. Usually resolved using the
 	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
@@ -74,14 +95,14 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Verify that the subscription was successfully added.
-	subscription, err := client.AzureSubscription(ctx, WithAzureSubscriptionID("8fa81a5e-a236-4a73-8e28-e1dcf863c56d"))
+	subscription, err := client.AzureSubscription(ctx, WithAzureSubscriptionID(testSubscription.SubscriptionID))
 	if err != nil {
 		t.Error(err)
 	}
-	if subscription.Name != "TrinityFDSE" {
+	if subscription.Name != testSubscription.Name {
 		t.Errorf("invalid name: %v", subscription.Name)
 	}
-	if subscription.NativeID != uuid.MustParse("8fa81a5e-a236-4a73-8e28-e1dcf863c56d") {
+	if subscription.NativeID != uuid.MustParse(testSubscription.SubscriptionID) {
 		t.Errorf("invalid native id: %v", subscription.NativeID)
 	}
 	if subscription.Feature.Name != "CLOUD_NATIVE_PROTECTION" {
@@ -95,11 +116,11 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Set and verify regions for AWS account.
-	err = client.AzureSubscriptionSetRegions(ctx, WithAzureSubscriptionID("8fa81a5e-a236-4a73-8e28-e1dcf863c56d"), graphql.AzureRegionWestUS2)
+	err = client.AzureSubscriptionSetRegions(ctx, WithAzureSubscriptionID(testSubscription.SubscriptionID), graphql.AzureRegionWestUS2)
 	if err != nil {
 		t.Error(err)
 	}
-	subscription, err = client.AzureSubscription(ctx, WithAzureSubscriptionID("8fa81a5e-a236-4a73-8e28-e1dcf863c56d"))
+	subscription, err = client.AzureSubscription(ctx, WithAzureSubscriptionID(testSubscription.SubscriptionID))
 	if err != nil {
 		t.Error(err)
 	}
@@ -107,14 +128,14 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 		t.Errorf("invalid feature regions: %v", regions)
 	}
 
-	//
-	err = client.AzureSubscriptionRemove(ctx, WithAzureSubscriptionID("8fa81a5e-a236-4a73-8e28-e1dcf863c56d"), false)
+	// Remove the Azure subscription from Polaris keeping the snapshots.
+	err = client.AzureSubscriptionRemove(ctx, WithAzureSubscriptionID(testSubscription.SubscriptionID), false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	_, err = client.AzureSubscription(ctx, WithAzureSubscriptionID("8fa81a5e-a236-4a73-8e28-e1dcf863c56d"))
+	_, err = client.AzureSubscription(ctx, WithAzureSubscriptionID(testSubscription.SubscriptionID))
 	if !errors.Is(err, ErrNotFound) {
 		t.Error(err)
 	}

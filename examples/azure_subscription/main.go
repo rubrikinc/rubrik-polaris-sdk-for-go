@@ -26,7 +26,6 @@ import (
 	"log"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -72,36 +71,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Lookup single license.
-	subscription, err := client.AzureSubscription(ctx,
-		polaris.WithAzureSubscriptionID(subscriptionIn.ID.String()))
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(subscription)
-
-	// Lookup multiple licenses.
+	// Lookup the newly added subscription.
 	subscriptions, err := client.AzureSubscriptions(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	for _, subscription := range subscriptions {
-		fmt.Println(subscription)
+		fmt.Printf("Name: %v, NativeID: %v\n", subscription.Name, subscription.NativeID)
+		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", subscription.Feature.Name,
+			subscription.Feature.Regions, subscription.Feature.Status)
 	}
-
-	err = client.AzureSubscriptionSetRegions(ctx, polaris.WithAzureSubscriptionID(subscriptionIn.ID.String()),
-		graphql.AzureRegionEastUS, graphql.AzureRegionCentralUS)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Lookup single license.
-	subscription, err = client.AzureSubscription(ctx,
-		polaris.WithAzureSubscriptionID(subscriptionIn.ID.String()))
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(subscription)
 
 	// Remove subscription.
 	err = client.AzureSubscriptionRemove(ctx,
