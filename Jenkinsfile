@@ -58,6 +58,12 @@ pipeline {
 
                 // Run integration tests with the nightly build.
                 SDK_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
+
+                // Cloud resource specific information used to verify the
+                // information read from Polaris.
+                SDK_AWSACCOUNT_FILE = credentials('sdk-test-aws-account')
+                SDK_AZURESUBSCRIPTION_FILE = credentials('sdk-test-azure-subscription')
+                SDK_GCPPROJECT_FILE = credentials('sdk-test-gcp-project')
             }
             steps {
                 sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -v ./...'
