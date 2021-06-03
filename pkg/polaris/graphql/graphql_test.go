@@ -61,7 +61,7 @@ func serveJSONWithToken(lis net.Listener, handler http.HandlerFunc) *http.Server
 	mux.HandleFunc("/api/session", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{
-			"access_token": "fake:test:token",
+			"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0",
 			"is_eula_accepted": true
 		}`))
 	})

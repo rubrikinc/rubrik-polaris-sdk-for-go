@@ -149,11 +149,5 @@ func (src *localUserSource) token() (token, error) {
 		return token{}, errors.New("polaris: invalid token")
 	}
 
-	// Note that token expiration is hardcoded to 2 hours. We should inspect
-	// the returned JWT token and determine this from the iat and exp fields.
-	token := token{
-		token:  payload.AccessToken,
-		expiry: time.Now().Add(2 * time.Hour),
-	}
-	return token, nil
+	return fromJWT(payload.AccessToken)
 }

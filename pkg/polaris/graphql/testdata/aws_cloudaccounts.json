@@ -6,7 +6,7 @@
                     "id": "292e34ac-232c-4e8b-8053-b28cff91d056",
                     "nativeId": "{{ .NativeID }}",
                     "message": "",
-                    "accountName": "Trinity-TPM-DevOps"
+                    "accountName": "My-Account-Name"
                 },
                 "featureDetails": [
                     {
