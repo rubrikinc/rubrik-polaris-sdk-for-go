@@ -23,25 +23,28 @@ package graphql
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"testing"
 	"text/template"
-	"time"
 )
 
 func TestTokenExpired(t *testing.T) {
-	tok := token{
-		token:  "token",
-		expiry: time.Now().Add(-1 * time.Minute),
+	tok := token{}
+	if !tok.expired() {
+		t.Fatal("empty token should be expired")
+	}
+
+	tok, err := fromJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MjI0OTExNTR9.y3TkH5_8Pv7Vde1I-ll2BJ29dX4tYKGIhrAA314VGa0")
+	if err != nil {
+		t.Fatal(err)
 	}
 	if !tok.expired() {
 		t.Error("token should be expired")
 	}
 
-	tok = token{
-		token:  "token",
-		expiry: time.Now().Add(1 * time.Minute),
+	tok, err = fromJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0")
+	if err != nil {
+		t.Fatal(err)
 	}
 	if tok.expired() {
 		t.Error("token should not be expired")
@@ -49,9 +52,9 @@ func TestTokenExpired(t *testing.T) {
 }
 
 func TestTokenSetAsHeader(t *testing.T) {
-	tok := token{
-		token:  "token",
-		expiry: time.Now(),
+	tok, err := fromJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MjI0OTExNTR9.y3TkH5_8Pv7Vde1I-ll2BJ29dX4tYKGIhrAA314VGa0")
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	req := &http.Request{
@@ -59,49 +62,41 @@ func TestTokenSetAsHeader(t *testing.T) {
 	}
 	tok.setAsAuthHeader(req)
 
-	if auth := req.Header.Get("Authorization"); auth != "Bearer token" {
+	if auth := req.Header.Get("Authorization"); auth != "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MjI0OTExNTR9.y3TkH5_8Pv7Vde1I-ll2BJ29dX4tYKGIhrAA314VGa0" {
 		t.Errorf("invalid Authorization header: %s", auth)
 	}
 }
 
 func TestTokenSource(t *testing.T) {
-	tmpl, err := template.ParseFiles("testdata/session.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	src, lis := newLocalUserTestSource("john", "doe")
 
-	// Respond with status code 200 and a token created by concatenating the
-	// username and password.
+	// Respond with 200 and a valid token as long as the correct username and
+	// password are received.
 	srv := serveJSON(lis, func(w http.ResponseWriter, req *http.Request) {
-		buf, err := io.ReadAll(req.Body)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
 		var payload struct {
 			Username string
 			Password string
 		}
-		if err := json.Unmarshal(buf, &payload); err != nil {
-			http.Error(w, err.Error(), 500)
+		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		if err := tmpl.Execute(w, payload); err != nil {
-			panic(err)
+		if payload.Username != "john" || payload.Password != "doe" {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
 		}
+
+		json.NewEncoder(w).Encode(struct {
+			AccessToken string `json:"access_token"`
+		}{AccessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0"})
 	})
 	defer srv.Shutdown(context.Background())
 
+	// Request token and verify that it's not expired.
 	token, err := src.token()
 	if err != nil {
 		t.Fatal(err)
-	}
-	if token.token != "john:doe" {
-		t.Fatalf("invalid token: %v", token.token)
 	}
 	if token.expired() {
 		t.Fatal("invalid token, already expired")

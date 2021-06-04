@@ -25,23 +25,45 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
 )
 
-// token holds a textual access token and the time when it expires.
 type token struct {
-	token  string
-	expiry time.Time
+	jwtToken *jwt.Token
 }
 
-// expired returns true if the token has expired.
+// expired returns true if the token has expired or if the token has no
+// expiration time associated with it.
 func (t token) expired() bool {
-	return t.expiry.Before(time.Now())
+	if t.jwtToken == nil {
+		return true
+	}
+
+	claims, ok := t.jwtToken.Claims.(jwt.MapClaims)
+	if ok {
+		return !claims.VerifyExpiresAt(time.Now().Unix(), true)
+	}
+
+	return true
 }
 
 // setAsAuthHeader adds an Authorization header with a bearer token to the
 // specified request.
 func (t token) setAsAuthHeader(req *http.Request) {
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", t.token))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", t.jwtToken.Raw))
+}
+
+// fromJWT returns a new token from the JWT token text. Note that the token
+// signature is not verified.
+func fromJWT(text string) (token, error) {
+	p := jwt.Parser{}
+	jwtToken, _, err := p.ParseUnverified(text, jwt.MapClaims{})
+	if err != nil {
+		return token{}, err
+	}
+
+	return token{jwtToken: jwtToken}, nil
 }
 
 // tokenSource is used to obtain access tokens from a remote source.

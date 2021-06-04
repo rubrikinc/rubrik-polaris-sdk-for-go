@@ -47,17 +47,17 @@ func TestAwsCloudAccounts(t *testing.T) {
 	})
 	defer srv.Shutdown(context.Background())
 
-	accounts, err := client.AwsCloudAccounts(context.Background(), "627297623784")
+	accounts, err := client.AwsCloudAccounts(context.Background(), "123456789012")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if n := len(accounts); n != 1 {
 		t.Fatalf("invalid number of accounts: %v", n)
 	}
-	if accounts[0].AwsCloudAccount.AccountName != "Trinity-TPM-DevOps" {
+	if accounts[0].AwsCloudAccount.AccountName != "My-Account-Name" {
 		t.Fatalf("invalid name: %v", accounts[0].AwsCloudAccount.AccountName)
 	}
-	if accounts[0].AwsCloudAccount.NativeID != "627297623784" {
+	if accounts[0].AwsCloudAccount.NativeID != "123456789012" {
 		t.Fatalf("invalid native id: %v", accounts[0].AwsCloudAccount.NativeID)
 	}
 	if n := len(accounts[0].FeatureDetails); n != 1 {
@@ -102,7 +102,7 @@ func TestAwsStartNativeAccountDisableJob(t *testing.T) {
 		}
 
 		var msg string
-		if payload.Variables.AccountID != "627297623784" {
+		if payload.Variables.AccountID != "123456789012" {
 			msg = fmt.Sprintf("invalid account id: %s", payload.Variables.AccountID)
 		}
 		if payload.Variables.ProtectionFeature != "EC2" {
@@ -122,7 +122,7 @@ func TestAwsStartNativeAccountDisableJob(t *testing.T) {
 	})
 	defer srv.Shutdown(context.Background())
 
-	jobID, err := client.AwsStartNativeAccountDisableJob(context.Background(), "627297623784", AwsEC2, true)
+	jobID, err := client.AwsStartNativeAccountDisableJob(context.Background(), "123456789012", AwsEC2, true)
 	if err != nil {
 		t.Fatal(err)
 	}
