@@ -107,22 +107,26 @@ func (src *localUserSource) token() (token, error) {
 	// Remote responded without a body. For status code 200 this means we are
 	// missing the token. For an error we have no additional details.
 	if res.ContentLength == 0 {
-		if res.StatusCode != 200 {
-			return token{}, fmt.Errorf("polaris: %s", res.Status)
-		} else {
+		if res.StatusCode == 200 {
 			return token{}, errors.New("polaris: no body")
 		}
-	}
-
-	// Verify that the content type of the body is JSON.
-	contentType := res.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "application/json") {
-		return token{}, fmt.Errorf("polaris: wrong content-type: %s", contentType)
+		return token{}, fmt.Errorf("polaris: %s", res.Status)
 	}
 
 	buf, err = io.ReadAll(res.Body)
 	if err != nil {
 		return token{}, err
+	}
+
+	// Verify that the content type of the body is JSON. For status code 200
+	// this mean we received something that isn't a GraphQL response. For an
+	// error we have no additional JSON details.
+	contentType := res.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "application/json") {
+		if res.StatusCode == 200 {
+			return token{}, fmt.Errorf("polaris: wrong content-type: %s", contentType)
+		}
+		return token{}, fmt.Errorf("polaris: %s - %s", res.Status, string(buf))
 	}
 
 	// Remote responded with a JSON document. Try to parse it as an error
