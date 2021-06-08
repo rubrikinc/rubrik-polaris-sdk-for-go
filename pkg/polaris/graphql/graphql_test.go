@@ -43,6 +43,23 @@ func serve(lis net.Listener, handler http.HandlerFunc) *http.Server {
 	return server
 }
 
+func serveWithToken(lis net.Listener, handler http.HandlerFunc) *http.Server {
+	mux := &http.ServeMux{}
+	mux.HandleFunc("/api/session", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0",
+			"is_eula_accepted": true
+		}`))
+	})
+	mux.HandleFunc("/api/graphql", func(w http.ResponseWriter, req *http.Request) {
+		handler(w, req)
+	})
+	server := &http.Server{Handler: mux}
+	go server.Serve(lis)
+	return server
+}
+
 // serveJSON serves the handler function using HTTP by accepting incoming
 // connections on the specified listener. The response content-type is set to
 // application/json.
@@ -57,22 +74,10 @@ func serveJSON(lis net.Listener, handler http.HandlerFunc) *http.Server {
 // incoming connections on specified listener. The response content-type is set
 // to application/json.
 func serveJSONWithToken(lis net.Listener, handler http.HandlerFunc) *http.Server {
-	mux := &http.ServeMux{}
-	mux.HandleFunc("/api/session", func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{
-			"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0",
-			"is_eula_accepted": true
-		}`))
-	})
-	mux.HandleFunc("/api/graphql", func(w http.ResponseWriter, req *http.Request) {
+	return serveWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		handler(w, req)
 	})
-
-	server := &http.Server{Handler: mux}
-	go server.Serve(lis)
-	return server
 }
 
 func TestErrorsWithNoError(t *testing.T) {
@@ -180,7 +185,7 @@ func TestRequestUnauthenticated(t *testing.T) {
 	}
 }
 
-func TestRequestWithInternalServerError(t *testing.T) {
+func TestRequestWithInternalServerErrorJSONBody(t *testing.T) {
 	tmpl, err := template.ParseFiles("testdata/error_graphql.json")
 	if err != nil {
 		t.Fatal(err)
@@ -188,7 +193,7 @@ func TestRequestWithInternalServerError(t *testing.T) {
 
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
-	// Respond with status code 500 and additional details in the body.
+	// Respond with status code 500 and additional details in the JSON body.
 	srv := serveJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
 		if err := tmpl.Execute(w, nil); err != nil {
@@ -210,7 +215,7 @@ func TestRequestWithInternalServerErrorNoBody(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 500 and no additional details.
-	srv := serve(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := serveWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
 	})
 	defer srv.Shutdown(context.Background())
@@ -219,7 +224,27 @@ func TestRequestWithInternalServerErrorNoBody(t *testing.T) {
 	if err == nil {
 		t.Fatal("graphql request should fail")
 	}
-	if !strings.HasSuffix(err.Error(), "polaris: 500 Internal Server Error") {
+	if !strings.HasPrefix(err.Error(), "polaris: 500 Internal Server Error") {
+		t.Fatal(err)
+	}
+}
+
+func TestRequestWithInternalServerErrorTextBody(t *testing.T) {
+	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
+
+	// Respond with status code 500 and additional details in the text body.
+	srv := serveWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(500)
+		w.Write([]byte("database is corrupt"))
+	})
+	defer srv.Shutdown(context.Background())
+
+	_, err := client.Request(context.Background(), "me { name }", nil)
+	if err == nil {
+		t.Fatal("graphql request should fail")
+	}
+	if !strings.HasPrefix(err.Error(), "polaris: 500 Internal Server Error") {
 		t.Fatal(err)
 	}
 }

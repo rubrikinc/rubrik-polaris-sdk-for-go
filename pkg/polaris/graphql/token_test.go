@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"text/template"
 )
@@ -120,8 +121,12 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 	})
 	defer srv.Shutdown(context.Background())
 
-	if _, err := src.token(); err == nil {
+	_, err = src.token()
+	if err == nil {
 		t.Fatal("token request should fail")
+	}
+	if err.Error() != "polaris: code 401: UNAUTHENTICATED: wrong username or password" {
+		t.Fatal(err)
 	}
 }
 
@@ -134,7 +139,31 @@ func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
 	})
 	defer srv.Shutdown(context.Background())
 
-	if _, err := src.token(); err == nil {
+	_, err := src.token()
+	if err == nil {
 		t.Fatal("token request should fail")
+	}
+	if !strings.HasPrefix(err.Error(), "polaris: 500 Internal Server Error") {
+		t.Fatal(err)
+	}
+}
+
+func TestTokenSourceWithInternalServerErrorTextBody(t *testing.T) {
+	src, lis := newLocalUserTestSource("john", "doe")
+
+	// Respond with status code 500 and no additional details.
+	srv := serve(lis, func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Add("Content-Type", "text/plain")
+		w.WriteHeader(500)
+		w.Write([]byte("user database is corrupt"))
+	})
+	defer srv.Shutdown(context.Background())
+
+	_, err := src.token()
+	if err == nil {
+		t.Fatal("token request should fail")
+	}
+	if !strings.HasPrefix(err.Error(), "polaris: 500 Internal Server Error") {
+		t.Fatal(err)
 	}
 }
