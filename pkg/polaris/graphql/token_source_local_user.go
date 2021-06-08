@@ -119,8 +119,8 @@ func (src *localUserSource) token() (token, error) {
 	}
 
 	// Verify that the content type of the body is JSON. For status code 200
-	// this mean we received something that isn't a GraphQL response. For an
-	// error we have no additional JSON details.
+	// this mean we received something that isn't JSON. For an error we have no
+	// additional JSON details.
 	contentType := res.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
 		if res.StatusCode == 200 {
