@@ -1,0 +1,18 @@
+query RubrikPolarisSDKRequest($feature: CloudAccountFeatureEnum!, $includeSubscriptionDetails: Boolean!) {
+    azureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $includeSubscriptionDetails) {
+        cloudType
+        id
+        clientId
+        domainName
+        subscriptions {
+            id
+            name
+            nativeId
+            featureDetail {
+                feature
+                regions
+                status
+            }
+        }
+    }
+}

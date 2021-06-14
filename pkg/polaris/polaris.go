@@ -29,6 +29,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -41,18 +44,28 @@ const (
 	DefaultServiceAccountFile = "~/.rubrik/polaris-service-account.json"
 )
 
-var (
-	// ErrNotFound signals that the specified entity could not be found.
-	ErrNotFound = errors.New("not found")
-
-	// ErrNotUnique signals that a request did not result in a unique entity.
-	ErrNotUnique = errors.New("not unique")
-)
-
 // Client is used to make calls to the Polaris platform.
 type Client struct {
-	gql *graphql.Client
-	log log.Logger
+	aws   aws.API
+	azure azure.API
+	gcp   gcp.API
+	gql   *graphql.Client
+	log   log.Logger
+}
+
+// AWS -
+func (c *Client) AWS() aws.API {
+	return c.aws
+}
+
+// Azure -
+func (c *Client) Azure() azure.API {
+	return c.azure
+}
+
+// GCP -
+func (c *Client) GCP() gcp.API {
+	return c.gcp
 }
 
 // NewClient returns a new Client from the specified Account. The log level of
@@ -88,9 +101,13 @@ func NewClient(account Account, logger log.Logger) (*Client, error) {
 		logger = &log.DiscardLogger{}
 	}
 
+	gql := graphql.NewClientFromLocalUser("custom", apiURL, account.Username, account.Password, logger)
 	client := &Client{
-		gql: graphql.NewClientFromLocalUser("custom", apiURL, account.Username, account.Password, logger),
-		log: logger,
+		aws:   aws.NewAPI(gql),
+		azure: azure.NewAPI(gql),
+		gcp:   gcp.NewAPI(gql),
+		gql:   gql,
+		log:   logger,
 	}
 
 	return client, nil
@@ -137,8 +154,11 @@ func NewClientFromServiceAccount(account ServiceAccount, logger log.Logger) (*Cl
 	gql := graphql.NewClientFromServiceAccount("custom", apiURL, account.AccessTokenURI, account.ClientID,
 		account.ClientSecret, logger)
 	client := &Client{
-		gql: gql,
-		log: logger,
+		aws:   aws.NewAPI(gql),
+		azure: azure.NewAPI(gql),
+		gcp:   gcp.NewAPI(gql),
+		gql:   gql,
+		log:   logger,
 	}
 
 	return client, nil
@@ -149,22 +169,4 @@ func NewClientFromServiceAccount(account ServiceAccount, logger log.Logger) (*Cl
 // level and raw GraphQL queries against the Polaris platform.
 func (c *Client) GQLClient() *graphql.Client {
 	return c.gql
-}
-
-func fromPolarisRegionNames(polarisNames []string) []string {
-	names := make([]string, 0, len(polarisNames))
-	for _, name := range polarisNames {
-		names = append(names, strings.ReplaceAll(strings.ToLower(name), "_", "-"))
-	}
-
-	return names
-}
-
-func toPolarisRegionNames(names ...string) []string {
-	polarisNames := make([]string, 0, len(names))
-	for _, name := range names {
-		polarisNames = append(polarisNames, strings.ReplaceAll(strings.ToUpper(name), "-", "_"))
-	}
-
-	return polarisNames
 }

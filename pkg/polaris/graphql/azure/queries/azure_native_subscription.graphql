@@ -1,0 +1,17 @@
+query RubrikPolarisSDKRequest($fid: UUID!) {
+    azureNativeSubscription(fid: $fid) {
+        id
+        nativeId
+        name
+        status
+        slaAssignment
+        configuredSlaDomain{
+            id
+            name
+        }
+        effectiveSlaDomain{
+            id
+            name
+        }
+    }
+}

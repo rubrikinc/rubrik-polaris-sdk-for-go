@@ -1,5 +1,0 @@
-mutation RubrikPolarisSDKRequest($subscription_id: UUID!, $delete_snapshots: Boolean!) {
-    deleteAzureNativeSubscription(subscriptionId: $subscription_id, shouldDeleteNativeSnapshots: $delete_snapshots) {
-        taskchainUuid
-    }
-}

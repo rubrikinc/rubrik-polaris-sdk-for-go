@@ -25,11 +25,14 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Example showing how to manage an AWS account with the Polaris Go SDK.
+// Example showing how to manage an Azure subscription with the Polaris Go SDK.
 //
 // The Polaris service account key file identifying the Polaris account should
 // either be placed at ~/.rubrik/polaris-service-account.json or pointed out by
@@ -49,43 +52,34 @@ func main() {
 
 	// Add default Azure service principal to Polaris. Usually resolved using
 	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
-	principal, err := polaris.AzureDefaultServicePrincipal()
+	err = client.Azure().SetServicePrincipal(ctx, azure.Default())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = client.AzureServicePrincipalSet(ctx, principal)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Add default Azure subscription to Polaris. Usually resolved using the
-	// environment variable AZURE_SUBSCRIPTION_LOCATION
-	subscriptionIn, err := polaris.AzureDefaultSubscription()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = client.AzureSubscriptionAdd(ctx, subscriptionIn)
+	// Add Azure subscription to Polaris.
+	subscription := azure.Subscription(uuid.MustParse("9318aeec-d357-11eb-9b37-5f4e9f79db5d"),
+		"my-domain.onmicrosoft.com")
+	err = client.Azure().AddSubscription(ctx, subscription, azure.Regions("eastus2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Lookup the newly added subscription.
-	subscriptions, err := client.AzureSubscriptions(ctx)
+	accounts, err := client.Azure().Subscriptions(ctx, core.CloudNativeProtection, "")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, subscription := range subscriptions {
-		fmt.Printf("Name: %v, NativeID: %v\n", subscription.Name, subscription.NativeID)
-		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", subscription.Feature.Name,
-			subscription.Feature.Regions, subscription.Feature.Status)
+	for _, account := range accounts {
+		fmt.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
+		for _, feature := range account.Features {
+			fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
+		}
 	}
 
 	// Remove subscription.
-	err = client.AzureSubscriptionRemove(ctx,
-		polaris.WithAzureSubscriptionID(subscriptionIn.ID.String()), false)
+	err = client.Azure().RemoveSubscription(ctx, azure.ID(subscription), false)
 	if err != nil {
 		log.Fatal(err)
 	}

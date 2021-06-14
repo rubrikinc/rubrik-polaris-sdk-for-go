@@ -1,5 +1,3 @@
-//go:generate go run queries_gen.go
-
 // Copyright 2021 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -45,44 +43,16 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// CloudAccountFeature -
-type CloudAccountFeature string
+var (
+	// ErrNotFound signals that the specified entity could not be found.
+	ErrNotFound = errors.New("not found")
 
-const (
-	All                   CloudAccountFeature = "ALL"
-	AppFlows              CloudAccountFeature = "APP_FLOWS"
-	Archival              CloudAccountFeature = "ARCHIVAL"
-	CloudAccounts         CloudAccountFeature = "CLOUDACCOUNTS"
-	CloudNativeArchival   CloudAccountFeature = "CLOUD_NATIVE_ARCHIVAL"
-	CloudNativeProtection CloudAccountFeature = "CLOUD_NATIVE_PROTECTION"
-	Exocompute            CloudAccountFeature = "EXOCOMPUTE"
-	GCPSharedVPCHost      CloudAccountFeature = "GCP_SHARED_VPC_HOST"
-	RDSProtection         CloudAccountFeature = "RDS_PROTECTION"
-)
-
-// CloudAccountStatus -
-type CloudAccountStatus string
-
-const (
-	Connected          CloudAccountStatus = "CONNECTED"
-	Connecting         CloudAccountStatus = "CONNECTING"
-	Disabled           CloudAccountStatus = "DISABLED"
-	Disconnected       CloudAccountStatus = "DISCONNECTED"
-	MissingPermissions CloudAccountStatus = "MISSING_PERMISSIONS"
-)
-
-// SLAAssignment -
-type SLAAssignment string
-
-const (
-	Derived    SLAAssignment = "Derived"
-	Direct     SLAAssignment = "Direct"
-	Unassigned SLAAssignment = "Unassigned"
+	// ErrNotUnique signals that a request did not result in a unique entity.
+	ErrNotUnique = errors.New("not unique")
 )
 
 // jsonError is returned by Polaris in the body of a response as a JSON
@@ -190,7 +160,7 @@ func NewTestClient(username, password string, logger log.Logger) (*Client, *Test
 // Request posts the specified GraphQL query with the given variables to the
 // Polaris platform. Returns the response JSON text as is.
 func (c *Client) Request(ctx context.Context, query string, variables interface{}) ([]byte, error) {
-	c.log.Print(log.Trace, "graphql.Request")
+	c.log.Print(log.Trace, "polaris/graphql.Request")
 
 	// Extract operation name from query to pass in the body of the request for
 	// metrics.
@@ -274,85 +244,6 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 	return buf, nil
 }
 
-// TaskChain is a collection of sequential tasks that all must complete for the
-// task chain to be considered complete.
-type TaskChain struct {
-	ID            int64          `json:"id"`
-	TaskChainUUID TaskChainUUID  `json:"taskchainUuid"`
-	State         TaskChainState `json:"state"`
-	ProgressedAt  time.Time      `json:"progressedAt"`
-}
-
-// TaskChainState represents the state of a Polaris task chain.
-type TaskChainState string
-
-const (
-	TaskChainInvalid   TaskChainState = ""
-	TaskChainCanceled  TaskChainState = "CANCELED"
-	TaskChainCanceling TaskChainState = "CANCELING"
-	TaskChainFailed    TaskChainState = "FAILED"
-	TaskChainReady     TaskChainState = "READY"
-	TaskChainRunning   TaskChainState = "RUNNING"
-	TaskChainSucceeded TaskChainState = "SUCCEEDED"
-	TaskChainUndoing   TaskChainState = "UNDOING"
-)
-
-// TaskChainUUID represents the identity of a Polaris task chain.
-type TaskChainUUID string
-
-// KorgTaskChainStatus returns the task chain for the specified task chain
-// UUID. If the task chain UUID refers to a task chain that was just created
-// it's state might not have reached ready yet. This can be detected by state
-// being TaskChainInvalid and error is nil.
-func (c *Client) KorgTaskChainStatus(ctx context.Context, taskChainID TaskChainUUID) (TaskChain, error) {
-	c.log.Print(log.Trace, "graphql.Client.KorgTaskChainStatus")
-
-	buf, err := c.Request(ctx, coreTaskchainStatusQuery, struct {
-		TaskChainID string `json:"taskchainId,omitempty"`
-	}{TaskChainID: string(taskChainID)})
-	if err != nil {
-		return TaskChain{}, err
-	}
-
-	c.log.Printf(log.Debug, "KorgTaskChainStatus(%q): %s", string(taskChainID), string(buf))
-
-	var payload struct {
-		Data struct {
-			Query struct {
-				TaskChain TaskChain `json:"taskchain"`
-			} `json:"getKorgTaskchainStatus"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return TaskChain{}, err
-	}
-
-	return payload.Data.Query.TaskChain, nil
-}
-
-// WaitForTaskChain blocks until the Polaris task chain with the specified task
-// chain ID has completed. When the task chain completes the final state of the
-// task chain is returned. The wait parameter specifies the amount of time to
-// wait before requesting another task status update.
-func (c *Client) WaitForTaskChain(ctx context.Context, taskChainID TaskChainUUID, wait time.Duration) (TaskChainState, error) {
-	c.log.Print(log.Trace, "graphql.Client.WaitForTaskChain")
-
-	for {
-		taskChain, err := c.KorgTaskChainStatus(ctx, taskChainID)
-		if err != nil {
-			return TaskChainInvalid, err
-		}
-
-		if taskChain.State == TaskChainSucceeded || taskChain.State == TaskChainCanceled || taskChain.State == TaskChainFailed {
-			return taskChain.State, nil
-		}
-
-		c.log.Print(log.Debug, "Waiting for Polaris task chain")
-
-		select {
-		case <-time.After(wait):
-		case <-ctx.Done():
-			return TaskChainInvalid, ctx.Err()
-		}
-	}
+func (c *Client) Log() log.Logger {
+	return c.log
 }

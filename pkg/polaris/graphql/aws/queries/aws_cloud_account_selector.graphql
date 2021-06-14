@@ -1,0 +1,18 @@
+query RubrikPolarisSDKRequest($cloudAccountId: String!, $feature: CloudAccountFeatureEnum!) {
+    awsCloudAccountSelector(awsCloudAccountsArg: {features: [$feature], cloudAccountId: $cloudAccountId}) {
+        awsCloudAccount {
+            cloudType
+            id
+            nativeId
+            message
+            accountName
+        }
+        featureDetails {
+            feature
+            roleArn
+            stackArn
+            status
+            awsRegions
+        }
+    }
+}

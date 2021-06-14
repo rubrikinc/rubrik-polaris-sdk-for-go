@@ -1,0 +1,18 @@
+query RubrikPolarisSDKRequest($feature: CloudAccountFeatureEnum!, $columnSearchFilter: String!) {
+    allAwsCloudAccounts(awsCloudAccountsArg: {columnSearchFilter: $columnSearchFilter, statusFilters: [], feature: $feature}) {
+        awsCloudAccount {
+            cloudType
+            id
+            nativeId
+            message
+            accountName
+        }
+        featureDetails {
+            feature
+            roleArn
+            stackArn
+            status
+            awsRegions
+        }
+    }
+}

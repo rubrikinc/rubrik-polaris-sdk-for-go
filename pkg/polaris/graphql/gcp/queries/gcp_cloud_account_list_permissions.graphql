@@ -1,0 +1,5 @@
+query RubrikPolarisSDKRequest($feature: CloudAccountFeatureEnum!) {
+    gcpCloudAccountListPermissions(feature: $feature){
+        permission
+    }
+}

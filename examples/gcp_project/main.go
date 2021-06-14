@@ -26,6 +26,8 @@ import (
 	"log"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -49,25 +51,28 @@ func main() {
 
 	// Add the GCP default project to Polaris. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
-	err = client.GcpProjectAdd(ctx, polaris.FromGcpDefault())
+	err = client.GCP().AddProject(ctx, gcp.Default())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Lookup the newly added project.
-	project, err := client.GcpProject(ctx, polaris.FromGcpDefault())
+	// List the GCP projects added to Polaris.
+	accounts, err := client.GCP().Projects(ctx, core.CloudNativeProtection, "")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Name: %v, ProjectID: %v, ProjectNumber: %v\n", project.Name, project.ProjectID,
-		project.ProjectNumber)
-	for _, feature := range project.Features {
-		fmt.Printf("Feature: %v, Status: %v\n", feature.Feature, feature.Status)
+	for _, account := range accounts {
+		fmt.Printf("Name: %v, ProjectID: %v, ProjectNumber: %v\n", account.Name, account.ID,
+			account.ProjectNumber)
+		for _, feature := range account.Features {
+			fmt.Printf("Feature: %v, Status: %v\n", feature.Name, feature.Status)
+		}
 	}
 
 	// Remove the GCP account from Polaris.
-	if err := client.GcpProjectRemove(ctx, polaris.FromGcpDefault(), false); err != nil {
+	err = client.GCP().RemoveProject(ctx, gcp.ID(gcp.Default()), false)
+	if err != nil {
 		log.Fatal(err)
 	}
 }

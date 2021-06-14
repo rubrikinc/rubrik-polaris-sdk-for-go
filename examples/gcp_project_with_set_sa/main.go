@@ -26,6 +26,8 @@ import (
 	"log"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -49,32 +51,31 @@ func main() {
 	}
 
 	// Add the service account to Polaris.
-	if err = client.GcpServiceAccountSet(ctx, polaris.FromGcpDefault()); err != nil {
+	err = client.GCP().SetServiceAccount(ctx, gcp.Default())
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Add the GCP project to Polaris. Usually resolved using the environment
-	// variable GOOGLE_APPLICATION_CREDENTIALS.
-	err = client.GcpProjectAdd(ctx,
-		polaris.FromGcpProject("my-project-id", "My-Project-Name", 123456789012, "My-Organization"))
+	// Add the GCP project to Polaris without any GCP credentials.
+	err = client.GCP().AddProject(ctx, gcp.Project("my-project-id", "My-Project-Name", 123456789012, "My-Organization"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Lookup the newly added project.
-	project, err := client.GcpProject(ctx, polaris.WithGcpProjectNumber(123456789012))
+	project, err := client.GCP().Project(ctx, gcp.ProjectNumber(123456789012), core.CloudNativeProtection)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Name: %v, ProjectID: %v, ProjectNumber: %v, OrgName: %v\n", project.Name, project.ProjectID,
-		project.ProjectNumber, project.OrganizationName)
+	fmt.Printf("Name: %v, ProjectID: %v, ProjectNumber: %v\n", project.Name, project.ID, project.ProjectNumber)
 	for _, feature := range project.Features {
-		fmt.Printf("Feature: %v, Status: %v\n", feature.Feature, feature.Status)
+		fmt.Printf("Feature: %v, Status: %v\n", feature.Name, feature.Status)
 	}
 
 	// Remove the GCP account from Polaris.
-	if err := client.GcpProjectRemove(ctx, polaris.WithGcpProjectNumber(123456789012), false); err != nil {
+	err = client.GCP().RemoveProject(ctx, gcp.ProjectNumber(123456789012), false)
+	if err != nil {
 		log.Fatal(err)
 	}
 }
