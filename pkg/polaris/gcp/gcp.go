@@ -50,11 +50,12 @@ func NewAPI(gql *graphql.Client) API {
 
 // CloudAccount for Google Cloud Platform projects.
 type CloudAccount struct {
-	ID            uuid.UUID
-	NativeID      string
-	Name          string
-	ProjectNumber int64
-	Features      []Feature
+	ID               uuid.UUID
+	NativeID         string
+	Name             string
+	ProjectNumber    int64
+	OrganizationName string
+	Features         []Feature
 }
 
 // Feature for Google Cloud Platform projects.
@@ -126,11 +127,21 @@ func (a API) Projects(ctx context.Context, feature core.CloudAccountFeature, fil
 				Status: selector.Feature.Status,
 			})
 		} else {
+			// Look up organization name for cloud account.
+			natives, err := gcp.Wrap(a.gql).NativeProjects(ctx, strconv.FormatInt(selector.Account.ProjectNumber, 10))
+			if err != nil {
+				return nil, err
+			}
+			if len(natives) != 1 {
+				return nil, fmt.Errorf("polaris: native project %w", graphql.ErrNotUnique)
+			}
+
 			accountMap[selector.Account.ID] = &CloudAccount{
-				ID:            selector.Account.ID,
-				NativeID:      selector.Account.ProjectID,
-				Name:          selector.Account.Name,
-				ProjectNumber: selector.Account.ProjectNumber,
+				ID:               selector.Account.ID,
+				NativeID:         selector.Account.ProjectID,
+				Name:             selector.Account.Name,
+				ProjectNumber:    selector.Account.ProjectNumber,
+				OrganizationName: natives[0].OrganizationName,
 				Features: []Feature{{
 					Name:   selector.Feature.Name,
 					Status: selector.Feature.Status,
@@ -169,22 +180,23 @@ func diffPermissions(required, available []string) []string {
 
 // AddProject adds the specified project to Polaris. If name or organization
 // aren't given as a options they are derived from information in the cloud.
-// The result can vary slightly depending on permissions.
-func (a API) AddProject(ctx context.Context, project ProjectFunc, opts ...OptionFunc) error {
+// The result can vary slightly depending on permissions. Returns the Polaris
+// cloud account id of the added project.
+func (a API) AddProject(ctx context.Context, project ProjectFunc, opts ...OptionFunc) (uuid.UUID, error) {
 	a.gql.Log().Print(log.Trace, "polaris/gcp.AddProject")
 
 	if project == nil {
-		return errors.New("polaris: project is not allowed to be nil")
+		return uuid.Nil, errors.New("polaris: project is not allowed to be nil")
 	}
 	config, err := project(ctx)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
 	var options options
 	for _, option := range opts {
 		if err := option(ctx, &options); err != nil {
-			return err
+			return uuid.Nil, err
 		}
 	}
 	if options.name != "" {
@@ -197,23 +209,23 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, opts ...Option
 	if config.creds != nil {
 		perms, err := gcp.Wrap(a.gql).CloudAccountListPermissions(ctx, core.CloudNativeProtection)
 		if err != nil {
-			return err
+			return uuid.Nil, err
 		}
 
 		client, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(config.creds))
 		if err != nil {
-			return err
+			return uuid.Nil, err
 		}
 
 		res, err := client.Projects.TestIamPermissions(config.id,
 			&cloudresourcemanager.TestIamPermissionsRequest{Permissions: perms}).Do()
 		if err != nil {
-			return err
+			return uuid.Nil, err
 		}
 
 		missing := diffPermissions(perms, res.Permissions)
 		if len(missing) > 0 {
-			return fmt.Errorf("polaris: service account missing permissions: %v", strings.Join(missing, ","))
+			return uuid.Nil, fmt.Errorf("polaris: service account missing permissions: %v", strings.Join(missing, ","))
 		}
 
 		jwtConfig = string(config.creds.JSON)
@@ -222,10 +234,16 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, opts ...Option
 	err = gcp.Wrap(a.gql).CloudAccountAddManualAuthProject(ctx, config.id, config.name, config.number, config.orgName,
 		jwtConfig, core.CloudNativeProtection)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
-	return nil
+	// Get the cloud account id of the newly added project
+	account, err := a.Project(ctx, ProjectID(config.id), core.CloudNativeProtection)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return account.ID, nil
 }
 
 // RemoveProject removes the project with the specified id from Polaris. If
@@ -286,10 +304,12 @@ func (a API) ServiceAccount(ctx context.Context) (string, error) {
 }
 
 // SetServiceAccount sets the default service account. The service account set
-// will be used for projects added without a service account key file. The
-// project name will be used as the name for the service account. Note that
-// it's not possible to remove a service account once it has been set.
-func (a API) SetServiceAccount(ctx context.Context, project ProjectFunc) error {
+// will be used for projects added without a service account key file. If name
+// isn't given as an option it will be derived from information in the cloud.
+// The result can vary slightly depending on permissions. The organization
+// option does nothing. Note that it's not possible to remove a service account
+// once it has been set.
+func (a API) SetServiceAccount(ctx context.Context, project ProjectFunc, opts ...OptionFunc) error {
 	a.gql.Log().Print(log.Trace, "polaris/gcp.GcpServiceAccountSet")
 
 	if project == nil {
@@ -301,6 +321,16 @@ func (a API) SetServiceAccount(ctx context.Context, project ProjectFunc) error {
 	}
 	if config.creds == nil {
 		return errors.New("polaris: project is missing google credentials")
+	}
+
+	var options options
+	for _, option := range opts {
+		if err := option(ctx, &options); err != nil {
+			return err
+		}
+	}
+	if options.name != "" {
+		config.name = options.name
 	}
 
 	// Check that the service account has all permissions required by Polaris.

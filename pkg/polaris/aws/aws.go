@@ -158,22 +158,23 @@ func (a API) Accounts(ctx context.Context, feature core.CloudAccountFeature, fil
 
 // AddAccount adds the specified project to Polaris. If name isn't given as an
 // option it's derived from information in the cloud. The result can vary
-// slightly depending on permissions.
-func (a API) AddAccount(ctx context.Context, account AccountFunc, opts ...OptionFunc) error {
+// slightly depending on permissions. Returns the Polaris cloud account id of
+// the added account.
+func (a API) AddAccount(ctx context.Context, account AccountFunc, opts ...OptionFunc) (uuid.UUID, error) {
 	a.gql.Log().Print(log.Trace, "polaris/aws.AddAccount")
 
 	if account == nil {
-		return errors.New("polaris: account is not allowed to be nil")
+		return uuid.Nil, errors.New("polaris: account is not allowed to be nil")
 	}
 	config, err := account(ctx)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
 	var options options
 	for _, option := range opts {
 		if err := option(ctx, &options); err != nil {
-			return err
+			return uuid.Nil, err
 		}
 	}
 	if options.name != "" {
@@ -183,23 +184,23 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, opts ...Option
 	accountInit, err := aws.Wrap(a.gql).ValidateAndCreateCloudAccount(ctx, config.id, config.name,
 		core.CloudNativeProtection)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
 	err = aws.Wrap(a.gql).FinalizeCloudAccountProtection(ctx, config.id, config.name, core.CloudNativeProtection,
 		options.regions, accountInit)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
 	a.gql.Log().Printf(log.Debug, "creating CloudFormation stack: %v", accountInit.StackName)
 
 	err = awsUpdateStack(ctx, config.config, accountInit.StackName, accountInit.TemplateURL)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
-	return nil
+	return accountInit.ExternalID, nil
 }
 
 // RemoveAccount removes the account with the specified id from Polaris. If

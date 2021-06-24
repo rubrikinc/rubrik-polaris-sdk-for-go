@@ -89,3 +89,17 @@ func KeyFile(keyFile string) ServicePrincipalFunc {
 		return principal, nil
 	}
 }
+
+// ServicePrincipal returns a ServicePrincipalFunc that initializes the service
+// principal with the specified values.
+func ServicePrincipal(appID uuid.UUID, appName, appSecret string, tenantID uuid.UUID, tenantDomain string) ServicePrincipalFunc {
+	return func(ctx context.Context) (servicePrincipal, error) {
+		return servicePrincipal{
+			appID:        appID,
+			appName:      appName,
+			appSecret:    appSecret,
+			tenantID:     tenantID,
+			tenantDomain: tenantDomain,
+		}, nil
+	}
+}

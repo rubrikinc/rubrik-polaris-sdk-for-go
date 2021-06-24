@@ -42,7 +42,7 @@ type SubscriptionFunc func(ctx context.Context) (subscription, error)
 // with the specified values.
 func Subscription(id uuid.UUID, tenantDomain string) SubscriptionFunc {
 	return func(ctx context.Context) (subscription, error) {
-		name := fmt.Sprintf("%s - %s", strings.Split(tenantDomain, ".")[0], id)
+		name := fmt.Sprintf("%s : %s", strings.Split(tenantDomain, ".")[0], id)
 
 		subscription := subscription{
 			id:           id,

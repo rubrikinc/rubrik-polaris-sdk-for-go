@@ -92,14 +92,14 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	// Add the default AWS account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	err = client.AWS().AddAccount(ctx, aws.Default(), aws.Name(testAccount.Name),
+	id, err := client.AWS().AddAccount(ctx, aws.Default(), aws.Name(testAccount.Name),
 		aws.Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully added.
-	account, err := client.AWS().Account(ctx, aws.ID(aws.Default()), core.CloudNativeProtection)
+	account, err := client.AWS().Account(ctx, aws.CloudAccountID(id), core.CloudNativeProtection)
 	if err != nil {
 		t.Error(err)
 	}
@@ -206,21 +206,21 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 
 	// Add default Azure service principal to Polaris. Usually resolved using
 	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
-	err = client.Azure().SetServicePrincipal(ctx, azure.Default())
+	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Add default Azure subscription to Polaris.
 	subscription := azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
-	err = client.Azure().AddSubscription(ctx, subscription, azure.Regions("eastus2"),
+	id, err := client.Azure().AddSubscription(ctx, subscription, azure.Regions("eastus2"),
 		azure.Name(testSubscription.Name))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the subscription was successfully added.
-	account, err := client.Azure().Subscription(ctx, azure.ID(subscription), core.CloudNativeProtection)
+	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.CloudNativeProtection)
 	if err != nil {
 		t.Error(err)
 	}
@@ -331,7 +331,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 
 	// Add the default GCP project to Polaris. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
-	err = client.GCP().AddProject(ctx, gcp.Default())
+	id, err := client.GCP().AddProject(ctx, gcp.Default())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,7 +339,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	// Verify that the project was successfully added. ProjectID is compared
 	// in a case-insensitive fashion due to a bug causing the initial project
 	// id to be the same as the name.
-	account, err := client.GCP().Project(ctx, gcp.ID(gcp.Default()), core.CloudNativeProtection)
+	account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.CloudNativeProtection)
 	if err != nil {
 		t.Error(err)
 	}
@@ -427,14 +427,14 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 
 	// Add the default GCP project to Polaris. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
-	err = client.GCP().AddProject(ctx, gcp.Project(testProject.ProjectID, testProject.Name, testProject.ProjectNumber,
+	id, err := client.GCP().AddProject(ctx, gcp.Project(testProject.ProjectID, testProject.Name, testProject.ProjectNumber,
 		testProject.OrganizationName))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the project was successfully added.
-	account, err := client.GCP().Project(ctx, gcp.ProjectNumber(testProject.ProjectNumber), core.CloudNativeProtection)
+	account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.CloudNativeProtection)
 	if err != nil {
 		t.Error(err)
 	}

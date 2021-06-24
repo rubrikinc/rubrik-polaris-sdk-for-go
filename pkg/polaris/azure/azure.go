@@ -148,22 +148,23 @@ func (a API) Subscriptions(ctx context.Context, feature core.CloudAccountFeature
 }
 
 // AddSubscription adds the specified subscription to Polaris. If name isn't
-// given as an option it's derived from the tenant name.
-func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc, opts ...OptionFunc) error {
+// given as an option it's derived from the tenant name. Returns the Polaris
+// cloud account id of the added project.
+func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc, opts ...OptionFunc) (uuid.UUID, error) {
 	a.gql.Log().Print(log.Trace, "polaris/azure.AddSubscription")
 
 	if subscription == nil {
-		return errors.New("polaris: subscription is not allowed to be nil")
+		return uuid.Nil, errors.New("polaris: subscription is not allowed to be nil")
 	}
 	config, err := subscription(ctx)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
 	var options options
 	for _, option := range opts {
 		if err := option(ctx, &options); err != nil {
-			return err
+			return uuid.Nil, err
 		}
 	}
 	if options.name != "" {
@@ -172,16 +173,21 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 
 	perms, err := azure.Wrap(a.gql).CloudAccountPermissionConfig(ctx, core.CloudNativeProtection)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
 	_, err = azure.Wrap(a.gql).CloudAccountAddWithoutOAuth(ctx, azure.PublicCloud, config.id,
 		core.CloudNativeProtection, config.name, config.tenantDomain, options.regions, perms.PermissionVersion)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
-	return nil
+	account, err := a.Subscription(ctx, SubscriptionID(config.id), core.CloudNativeProtection)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return account.ID, nil
 }
 
 // RemoveSubscription removes the subscription with the specified id from
@@ -295,20 +301,21 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 }
 
 // SetServicePrincipal sets the default service principal. Note that it's not
-// possible to remove a service account once it has been set.
-func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipalFunc) error {
+// possible to remove a service account once it has been set. Returns the
+// application id of the service principal set.
+func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipalFunc) (uuid.UUID, error) {
 	a.gql.Log().Print(log.Trace, "polaris/azure.SetServicePrincipal")
 
 	config, err := principal(ctx)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
 	err = azure.Wrap(a.gql).SetCustomerAppCredentials(ctx, azure.PublicCloud, config.appID, config.tenantID, config.appName,
 		config.tenantDomain, config.appSecret)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
-	return nil
+	return config.appID, nil
 }

@@ -52,22 +52,20 @@ func main() {
 	// Add the AWS default account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	err = client.AWS().AddAccount(ctx, aws.Default(), aws.Regions("us-east-2"))
+	id, err := client.AWS().AddAccount(ctx, aws.Default(), aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// List the AWS accounts added to Polaris.
-	accounts, err := client.AWS().Accounts(ctx, core.CloudNativeProtection, "")
+	account, err := client.AWS().Account(ctx, aws.CloudAccountID(id), core.CloudNativeProtection)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, account := range accounts {
-		fmt.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
-		for _, feature := range account.Features {
-			fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
-		}
+	fmt.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
+	for _, feature := range account.Features {
+		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
 	}
 
 	// Remove the AWS account from Polaris.

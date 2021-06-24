@@ -44,6 +44,20 @@ func Name(name string) OptionFunc {
 	}
 }
 
+// Region returns an OptionFunc that gives the specified region to the options
+// instance.
+func Region(region string) OptionFunc {
+	return func(ctx context.Context, opts *options) error {
+		r, err := azure.ParseRegion(region)
+		if err != nil {
+			return err
+		}
+
+		opts.regions = append(opts.regions, r)
+		return nil
+	}
+}
+
 // Regions returns an OptionFunc that gives the specified regions to the
 // options instance.
 func Regions(regions ...string) OptionFunc {
