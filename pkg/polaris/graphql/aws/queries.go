@@ -47,7 +47,13 @@ var allAwsCloudAccountsQuery = `query SdkGolangAllAwsCloudAccounts($feature: Clo
 // allAwsExocomputeConfigs GraphQL query
 var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsNativeAccountIdOrNamePrefix: String!) {
     allAwsExocomputeConfigs(awsNativeAccountIdOrNamePrefix: $awsNativeAccountIdOrNamePrefix) {
-        awsCloudAccount
+        awsCloudAccount {
+            cloudType
+            id
+            nativeId
+            message
+            accountName
+        }
         configs {
             areSecurityGroupsPolarisManaged
             clusterSecurityGroupId
@@ -55,12 +61,24 @@ var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsN
             message
             nodeSecurityGroupId
             region
-            subnet1
-            subnet2
+            subnet1 {
+                availabilityZone
+                subnetId
+            }
+            subnet2 {
+                availabilityZone
+                subnetId
+             }
             vpcId
         }
         exocomputeEligibleRegions
-        featureDetails
+        featureDetails {
+            feature
+            roleArn
+            stackArn
+            status
+            awsRegions
+        }
     }
 }`
 
@@ -129,6 +147,39 @@ var awsNativeAccountsQuery = `query SdkGolangAwsNativeAccounts($after: String, $
 			hasNextPage
 		}
 	}
+}`
+
+// createAwsExocomputeConfigs GraphQL query
+var createAwsExocomputeConfigsQuery = `mutation SdkGolangCreateAwsExocomputeConfigs($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
+    createAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
+        configs {
+            areSecurityGroupsPolarisManaged
+            clusterSecurityGroupId
+            configUuid
+            message
+            nodeSecurityGroupId
+            region
+            subnet1 {
+                availabilityZone
+                subnetId
+            }
+            subnet2 {
+                availabilityZone
+                subnetId
+            }
+            vpcId
+        }
+    }
+}`
+
+// deleteAwsExocomputeConfigs GraphQL query
+var deleteAwsExocomputeConfigsQuery = `mutation SdkGolangDeleteAwsExocomputeConfigs($configIdsToBeDeleted: [UUID!]!) {
+    deleteAwsExocomputeConfigs(input: {configIdsToBeDeleted: $configIdsToBeDeleted}) {
+        deletionStatus {
+            exocomputeConfigId
+            success
+        }
+    }
 }`
 
 // finalizeAwsCloudAccountDeletion GraphQL query

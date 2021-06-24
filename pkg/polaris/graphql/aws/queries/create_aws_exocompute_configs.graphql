@@ -1,0 +1,21 @@
+mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
+    createAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
+        configs {
+            areSecurityGroupsPolarisManaged
+            clusterSecurityGroupId
+            configUuid
+            message
+            nodeSecurityGroupId
+            region
+            subnet1 {
+                availabilityZone
+                subnetId
+            }
+            subnet2 {
+                availabilityZone
+                subnetId
+            }
+            vpcId
+        }
+    }
+}
