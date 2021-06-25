@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -43,6 +44,34 @@ import (
 type testAwsAccount struct {
 	Name      string `json:"name"`
 	AccountID string `json:"accountId"`
+
+	Exocompute struct {
+		VPCID   string `json:"vcpId"`
+		Subnets []struct {
+			ID               string `json:"id"`
+			AvailabilityZone string `json:"availabilityZone"`
+		} `json:"subnets"`
+	} `json:"exocompute"`
+}
+
+// Load test account information from the file pointed to by the
+// SDK_AWSACCOUNT_FILE environment variable.
+func loadTestAwsAccount() (testAwsAccount, error) {
+	buf, err := os.ReadFile(os.Getenv("SDK_AWSACCOUNT_FILE"))
+	if err != nil {
+		return testAwsAccount{}, fmt.Errorf("failed to read file pointed to by SDK_AWSACCOUNT_FILE: %v", err)
+	}
+
+	testAccount := testAwsAccount{}
+	if err := json.Unmarshal(buf, &testAccount); err != nil {
+		return testAwsAccount{}, err
+	}
+
+	if n := len(testAccount.Exocompute.Subnets); n != 2 {
+		return testAwsAccount{}, fmt.Errorf("file contains the wrong number of subnets: %d", n)
+	}
+
+	return testAccount, nil
 }
 
 // TestAwsAccountAddAndRemove verifies that the SDK can perform the basic AWS
@@ -67,20 +96,14 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Load test account information from the file pointed to by the
-	// SDK_AWSACCOUNT_FILE environment variable.
-	buf, err := os.ReadFile(os.Getenv("SDK_AWSACCOUNT_FILE"))
+	testAccount, err := loadTestAwsAccount()
 	if err != nil {
-		t.Fatalf("failed to read file pointed to by SDK_AWSACCOUNT_FILE: %v", err)
-	}
-	testAccount := testAwsAccount{}
-	if err := json.Unmarshal(buf, &testAccount); err != nil {
 		t.Fatal(err)
 	}
 
 	// Load configuration and create client. Usually resolved using the
 	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	polAccount, err := DefaultServiceAccount()
+	polAccount, err := DefaultServiceAccount(true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,23 +126,24 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if n := len(account.Features); n != 1 {
-		t.Errorf("invalid number of features: %v", n)
-	}
 	if account.Name != testAccount.Name {
 		t.Errorf("invalid name: %v", account.Name)
 	}
 	if account.NativeID != testAccount.AccountID {
 		t.Errorf("invalid native id: %v", account.NativeID)
 	}
-	if account.Features[0].Name != "CLOUD_NATIVE_PROTECTION" {
-		t.Errorf("invalid feature name: %v", account.Features[0].Name)
-	}
-	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
-		t.Errorf("invalid feature regions: %v", regions)
-	}
-	if account.Features[0].Status != "CONNECTED" {
-		t.Errorf("invalid feature status: %v", account.Features[0].Status)
+	if n := len(account.Features); n == 1 {
+		if account.Features[0].Name != "CLOUD_NATIVE_PROTECTION" {
+			t.Errorf("invalid feature name: %v", account.Features[0].Name)
+		}
+		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+			t.Errorf("invalid feature regions: %v", regions)
+		}
+		if account.Features[0].Status != "CONNECTED" {
+			t.Errorf("invalid feature status: %v", account.Features[0].Status)
+		}
+	} else {
+		t.Errorf("invalid number of features: %v", n)
 	}
 
 	// Update and verify regions for AWS account.
@@ -149,7 +173,137 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	// Verify that the account was successfully removed.
 	account, err = client.AWS().Account(ctx, aws.ID(aws.Default()), core.CloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal(err)
+	}
+}
+
+func TestAwsExocompute(t *testing.T) {
+	requireEnv(t, "SDK_INTEGRATION")
+
+	ctx := context.Background()
+
+	testAccount, err := loadTestAwsAccount()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Load configuration and create client. Usually resolved using the
+	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+	polAccount, err := DefaultServiceAccount(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add the default AWS account to Polaris. Usually resolved using the
+	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
+	// AWS_DEFAULT_REGION.
+	accountID, err := client.AWS().AddAccount(ctx, aws.Default(), aws.Name(testAccount.Name),
+		aws.Regions("us-east-2"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Enable the exocompute feature for the account.
+	err = client.AWS().EnableExocompute(ctx, aws.Default(), "us-east-2")
+	if err != nil {
 		t.Error(err)
+	}
+
+	// Verify that the account was successfully added.
+	account, err := client.AWS().Account(ctx, aws.CloudAccountID(accountID), core.Exocompute)
+	if err != nil {
+		t.Error(err)
+	}
+	if account.Name != testAccount.Name {
+		t.Errorf("invalid name: %v", account.Name)
+	}
+	if account.NativeID != testAccount.AccountID {
+		t.Errorf("invalid native id: %v", account.NativeID)
+	}
+	if n := len(account.Features); n == 1 {
+		if account.Features[0].Name != "EXOCOMPUTE" {
+			t.Errorf("invalid feature name: %v", account.Features[0].Name)
+		}
+		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+			t.Errorf("invalid feature regions: %v", regions)
+		}
+		if account.Features[0].Status != "CONNECTED" {
+			t.Errorf("invalid feature status: %v", account.Features[0].Status)
+		}
+	} else {
+		t.Errorf("invalid number of features: %v", n)
+	}
+
+	// Add exocompute config to the account.
+	subnets := []aws.Subnet{{
+		ID:               testAccount.Exocompute.Subnets[0].ID,
+		AvailabilityZone: testAccount.Exocompute.Subnets[0].AvailabilityZone,
+	}, {
+		ID:               testAccount.Exocompute.Subnets[1].ID,
+		AvailabilityZone: testAccount.Exocompute.Subnets[1].AvailabilityZone,
+	}}
+	exoID, err := client.AWS().AddExocomputeConfig(ctx, aws.ID(aws.Default()),
+		aws.Managed("us-east-2", testAccount.Exocompute.VPCID, subnets))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Retrieve the exocompute config added.
+	exoConfig, err := client.AWS().ExocomputeConfig(ctx, exoID)
+	if err != nil {
+		t.Error(err)
+	}
+	if exoConfig.ID != exoID {
+		t.Errorf("invalid id: %v", exoConfig.ID)
+	}
+	if exoConfig.Region != "us-east-2" {
+		t.Errorf("invalid region: %v", exoConfig.Region)
+	}
+	if exoConfig.VPCID != testAccount.Exocompute.VPCID {
+		t.Errorf("invalid vpc id: %v", exoConfig.VPCID)
+	}
+	if exoConfig.Subnets[0].ID != testAccount.Exocompute.Subnets[0].ID {
+		t.Errorf("invalid subnet id: %v", exoConfig.Subnets[0].ID)
+	}
+	if exoConfig.Subnets[0].AvailabilityZone != testAccount.Exocompute.Subnets[0].AvailabilityZone {
+		t.Errorf("invalid subnet availability zone: %v", exoConfig.Subnets[0].AvailabilityZone)
+	}
+	if exoConfig.Subnets[1].ID != testAccount.Exocompute.Subnets[1].ID {
+		t.Errorf("invalid subnet id: %v", exoConfig.Subnets[1].ID)
+	}
+	if exoConfig.Subnets[1].AvailabilityZone != testAccount.Exocompute.Subnets[1].AvailabilityZone {
+		t.Errorf("invalid subnet availability zone: %v", exoConfig.Subnets[1].AvailabilityZone)
+	}
+	if !exoConfig.PolarisManaged {
+		t.Errorf("invalid polaris managed state: %t", exoConfig.PolarisManaged)
+	}
+
+	// Remove the exocompute config.
+	err = client.AWS().RemoveExocomputeConfig(ctx, exoID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Verify that the exocompute config was successfully removed.
+	exoConfig, err = client.AWS().ExocomputeConfig(ctx, exoID)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Error(err)
+	}
+
+	// Remove the AWS account from Polaris.
+	err = client.AWS().RemoveAccount(ctx, aws.Default(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the account was successfully removed.
+	account, err = client.AWS().Account(ctx, aws.ID(aws.Default()), core.CloudNativeProtection)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal(err)
 	}
 }
 
@@ -160,6 +314,26 @@ type testAzureSubscription struct {
 	Name           string    `json:"name"`
 	SubscriptionID uuid.UUID `json:"subscriptionId"`
 	TenantDomain   string    `json:"tenantDomain"`
+
+	Exocompute struct {
+		SubnetID string `json:"subnetId"`
+	} `json:"exocompute"`
+}
+
+// Load test project information from the file pointed to by the
+// SDK_AZURESUBSCRIPTION_FILE environment variable.
+func loadTestAzureSubscription() (testAzureSubscription, error) {
+	buf, err := os.ReadFile(os.Getenv("SDK_AZURESUBSCRIPTION_FILE"))
+	if err != nil {
+		return testAzureSubscription{}, fmt.Errorf("failed to read file pointed to by SDK_AZURESUBSCRIPTION_FILE: %v", err)
+	}
+
+	testSubscription := testAzureSubscription{}
+	if err := json.Unmarshal(buf, &testSubscription); err != nil {
+		return testAzureSubscription{}, err
+	}
+
+	return testSubscription, nil
 }
 
 // TestAzureSubscriptionAddAndRemove verifies that the SDK can perform the
@@ -182,20 +356,14 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Load test project information from the file pointed to by the
-	// SDK_AZURESUBSCRIPTION_FILE environment variable.
-	buf, err := os.ReadFile(os.Getenv("SDK_AZURESUBSCRIPTION_FILE"))
+	testSubscription, err := loadTestAzureSubscription()
 	if err != nil {
-		t.Fatalf("failed to read file pointed to by SDK_AZURESUBSCRIPTION_FILE: %v", err)
-	}
-	testSubscription := testAzureSubscription{}
-	if err := json.Unmarshal(buf, &testSubscription); err != nil {
 		t.Fatal(err)
 	}
 
 	// Load configuration and create client. Usually resolved using the
 	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	polAccount, err := DefaultServiceAccount()
+	polAccount, err := DefaultServiceAccount(true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,7 +442,126 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	// Verify that the account was successfully removed.
 	_, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.CloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal(err)
+	}
+}
+
+func TestAzureExocompute(t *testing.T) {
+	requireEnv(t, "SDK_INTEGRATION")
+
+	ctx := context.Background()
+
+	testSubscription, err := loadTestAzureSubscription()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Load configuration and create client. Usually resolved using the
+	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+	polAccount, err := DefaultServiceAccount(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add default Azure service principal to Polaris. Usually resolved using
+	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
+	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add default Azure subscription to Polaris.
+	subscription := azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
+	accountID, err := client.Azure().AddSubscription(ctx, subscription, azure.Regions("eastus2"),
+		azure.Name(testSubscription.Name))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Enable the exocompute feature for the account.
+	err = client.Azure().EnableExocompute(ctx, azure.CloudAccountID(accountID), "eastus2")
+	if err != nil {
 		t.Error(err)
+	}
+
+	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(accountID), core.Exocompute)
+	if err != nil {
+		t.Error(err)
+	}
+	if account.Name != testSubscription.Name {
+		t.Errorf("invalid name: %v", account.Name)
+	}
+	if account.NativeID != testSubscription.SubscriptionID {
+		t.Errorf("invalid native id: %v", account.NativeID)
+	}
+	if account.TenantDomain != testSubscription.TenantDomain {
+		t.Errorf("invalid tenant domain: %v", account.TenantDomain)
+	}
+	if n := len(account.Features); n == 1 {
+		if name := account.Features[0].Name; name != "EXOCOMPUTE" {
+			t.Errorf("invalid feature name: %v", name)
+		}
+		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"eastus2"}) {
+			t.Errorf("invalid feature regions: %v", regions)
+		}
+		if account.Features[0].Status != "CONNECTED" {
+			t.Errorf("invalid feature status: %v", account.Features[0].Status)
+		}
+	} else {
+		t.Errorf("invalid number of features: %v", n)
+	}
+
+	// Add exocompute config for the account.
+	exoID, err := client.Azure().AddExocomputeConfig(ctx, azure.CloudAccountID(accountID),
+		azure.Managed("eastus2", testSubscription.Exocompute.SubnetID))
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Retrieve the exocompute config added.
+	exoConfig, err := client.Azure().ExocomputeConfig(ctx, exoID)
+	if err != nil {
+		t.Error(err)
+	}
+	if exoConfig.ID != exoID {
+		t.Errorf("invalid id: %v", exoConfig.ID)
+	}
+	if exoConfig.Region != "eastus2" {
+		t.Errorf("invalid region: %v", exoConfig.Region)
+	}
+	if exoConfig.SubnetID != testSubscription.Exocompute.SubnetID {
+		t.Errorf("invalid subnet id: %v", exoConfig.SubnetID)
+	}
+	if !exoConfig.PolarisManaged {
+		t.Errorf("invalid polaris managed state: %t", exoConfig.PolarisManaged)
+	}
+
+	// Remove the exocompute config.
+	err = client.Azure().RemoveExocomputeConfig(ctx, exoID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Verify that the exocompute config was successfully removed.
+	exoConfig, err = client.Azure().ExocomputeConfig(ctx, exoID)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Error(err)
+	}
+
+	// Remove subscription.
+	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(accountID), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the account was successfully removed.
+	_, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.CloudNativeProtection)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal(err)
 	}
 }
 
@@ -282,6 +569,7 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 // Normally used to assert that the information read from Polaris is correct.
 type testGcpProject struct {
 	Name             string `json:"name"`
+	ProjectName      string `json:"projectName"`
 	ProjectID        string `json:"projectId"`
 	ProjectNumber    int64  `json:"projectNumber"`
 	OrganizationName string `json:"organizationName"`
@@ -320,7 +608,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 
 	// Load configuration and create client. Usually resolved using the
 	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	polAccount, err := DefaultServiceAccount()
+	polAccount, err := DefaultServiceAccount(true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,7 +659,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	// Verify that the project was successfully removed.
 	_, err = client.gcp.Project(ctx, gcp.ID(gcp.Default()), core.CloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
-		t.Error(err)
+		t.Fatal(err)
 	}
 }
 
@@ -410,7 +698,7 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 
 	// Load configuration and create client. Usually resolved using the
 	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	polAccount, err := DefaultServiceAccount()
+	polAccount, err := DefaultServiceAccount(true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -427,8 +715,8 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 
 	// Add the default GCP project to Polaris. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
-	id, err := client.GCP().AddProject(ctx, gcp.Project(testProject.ProjectID, testProject.Name, testProject.ProjectNumber,
-		testProject.OrganizationName))
+	id, err := client.GCP().AddProject(ctx, gcp.Project(testProject.ProjectID, testProject.ProjectNumber),
+		gcp.Name(testProject.Name), gcp.Organization(testProject.OrganizationName))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -467,6 +755,6 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 	// Verify that the project was successfully removed.
 	_, err = client.GCP().Project(ctx, gcp.ProjectNumber(testProject.ProjectNumber), core.CloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
-		t.Error(err)
+		t.Fatal(err)
 	}
 }

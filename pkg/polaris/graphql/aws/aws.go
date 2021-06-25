@@ -62,7 +62,7 @@ const (
 	RegionCnNorthWest1 Region = "CN_NORTHWEST_1"
 	RegionCnNorth1     Region = "CN_NORTH_1"
 	RegionEuCentral1   Region = "EU_CENTRAL_1"
-	RegionEuNorth1     Region = "RU_NORTH_1"
+	RegionEuNorth1     Region = "EU_NORTH_1"
 	RegionEuSouth1     Region = "EU_SOUTH_1"
 	RegionEuWest1      Region = "EU_WEST_1"
 	RegionEuWest2      Region = "EU_WEST_2"

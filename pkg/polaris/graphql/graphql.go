@@ -48,6 +48,10 @@ import (
 )
 
 var (
+	// ErrAlreadyEnabled signals that the specified feature has  already been
+	// enabled.
+	ErrAlreadyEnabled = errors.New("already enabled")
+
 	// ErrNotFound signals that the specified entity could not be found.
 	ErrNotFound = errors.New("not found")
 

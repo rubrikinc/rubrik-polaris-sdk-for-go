@@ -23,6 +23,7 @@ package aws
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -56,6 +57,31 @@ type ExocomputeConfig struct {
 // passed to the function creating the ExoConfigFunc.
 type ExoConfigFunc func(ctx context.Context) (aws.ExocomputeConfigCreate, error)
 
+// Managed returns an ExoConfigFunc that initializes an exocompute config with
+// security groups managed by Polaris using the specified values.
+func Managed(region, vpcID string, subnets []Subnet) ExoConfigFunc {
+	return func(ctx context.Context) (aws.ExocomputeConfigCreate, error) {
+		if len(subnets) != 2 {
+			return aws.ExocomputeConfigCreate{}, errors.New("polaris: there should be exactly 2 subnets")
+		}
+
+		r, err := aws.ParseRegion(region)
+		if err != nil {
+			return aws.ExocomputeConfigCreate{}, err
+		}
+
+		return aws.ExocomputeConfigCreate{
+			Region: r,
+			VPCID:  vpcID,
+			Subnets: []aws.Subnet{
+				{ID: subnets[0].ID, AvailabilityZone: subnets[0].AvailabilityZone},
+				{ID: subnets[1].ID, AvailabilityZone: subnets[1].AvailabilityZone},
+			},
+			IsPolarisManaged: true,
+		}, nil
+	}
+}
+
 // Unmanaged returns an ExoConfigFunc that initializes an exocompute config
 // with security groups managed by the user using the specified values.
 func Unmanaged(region, vpcID string, subnets []Subnet, clusterSecurityGroupID, nodeSecurityGroupID string) ExoConfigFunc {
@@ -83,36 +109,13 @@ func Unmanaged(region, vpcID string, subnets []Subnet, clusterSecurityGroupID, n
 	}
 }
 
-// Managed returns an ExoConfigFunc that initializes an exocompute config with
-// security groups managed by Polaris using the specified values.
-func Managed(region, vpcID string, subnets []Subnet) ExoConfigFunc {
-	return func(ctx context.Context) (aws.ExocomputeConfigCreate, error) {
-		if len(subnets) != 2 {
-			return aws.ExocomputeConfigCreate{}, errors.New("polaris: there should be exactly 2 subnets")
-		}
-
-		r, err := aws.ParseRegion(region)
-		if err != nil {
-			return aws.ExocomputeConfigCreate{}, err
-		}
-
-		return aws.ExocomputeConfigCreate{
-			Region: r,
-			VPCID:  vpcID,
-			Subnets: []aws.Subnet{
-				{ID: subnets[0].ID, AvailabilityZone: subnets[0].AvailabilityZone},
-				{ID: subnets[1].ID, AvailabilityZone: subnets[1].AvailabilityZone},
-			},
-			IsPolarisManaged: true,
-		}, nil
-	}
-}
-
 // EnableExocompute enables the exocompute feature for the account with the
 // specified id for the given regions. The account must already be added to
 // Polaris. Note that to disable the feature the account must be removed.
+// The returned error will be graphql.ErrAlreadyEnabled if the feature has
+// already been enabled for the specified account.
 func (a API) EnableExocompute(ctx context.Context, account AccountFunc, regions ...string) error {
-	a.gql.Log().Print(log.Trace, "polaris/aws.AddExocompute")
+	a.gql.Log().Print(log.Trace, "polaris/aws.EnableExocompute")
 
 	if account == nil {
 		return errors.New("polaris: account is not allowed to be nil")
@@ -127,9 +130,13 @@ func (a API) EnableExocompute(ctx context.Context, account AccountFunc, regions 
 		return err
 	}
 
-	akkount, err := a.Account(ctx, AccountID(config.id), core.CloudNativeProtection)
+	akkount, err := a.Account(ctx, AccountID(config.id), core.AllFeatures)
 	if err != nil {
 		return err
+	}
+
+	if _, ok := akkount.Feature(core.Exocompute); ok {
+		return fmt.Errorf("polaris: feature %w", graphql.ErrAlreadyEnabled)
 	}
 
 	accountInit, err := aws.Wrap(a.gql).ValidateAndCreateCloudAccount(ctx, akkount.NativeID,
@@ -197,26 +204,9 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]ExocomputeConfig, error) {
 	a.gql.Log().Print(log.Trace, "polaris/aws.ExocomputeConfigs")
 
-	identity, err := id(ctx)
+	nativeID, err := a.toNativeID(ctx, id)
 	if err != nil {
 		return nil, err
-	}
-
-	var nativeID string
-	if identity.internal {
-		u, err := uuid.Parse(identity.id)
-		if err != nil {
-			return nil, err
-		}
-
-		account, err := aws.Wrap(a.gql).CloudAccount(ctx, u, core.Exocompute)
-		if err != nil {
-			return nil, err
-		}
-
-		nativeID = account.Account.NativeID
-	} else {
-		nativeID = identity.id
 	}
 
 	selectors, err := aws.Wrap(a.gql).ExocomputeConfigs(ctx, nativeID)
@@ -244,12 +234,12 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 		return uuid.Nil, err
 	}
 
-	account, err := a.Account(ctx, id, core.Exocompute)
+	accountID, err := a.toCloudAccountID(ctx, id)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	exo, err := aws.Wrap(a.gql).CreateExocomputeConfig(ctx, account.ID, exoConfig)
+	exo, err := aws.Wrap(a.gql).CreateExocomputeConfig(ctx, accountID, exoConfig)
 	if err != nil {
 		return uuid.Nil, err
 	}

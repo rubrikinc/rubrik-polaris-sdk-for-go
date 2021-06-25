@@ -41,7 +41,7 @@ func main() {
 	ctx := context.Background()
 
 	// Load configuration and create client.
-	polAccount, err := polaris.DefaultServiceAccount()
+	polAccount, err := polaris.DefaultServiceAccount(true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -65,8 +65,7 @@ func main() {
 	fmt.Printf("Service Account Name: %v\n", name)
 
 	// Add the GCP project to Polaris without any GCP credentials.
-	id, err := client.GCP().AddProject(ctx,
-		gcp.Project("my-project-id", "My-Project-Name", 123456789012, "My-Organization"))
+	id, err := client.GCP().AddProject(ctx, gcp.Project("my-project", 123456789012), gcp.Name("My Project"))
 	if err != nil {
 		log.Fatal(err)
 	}

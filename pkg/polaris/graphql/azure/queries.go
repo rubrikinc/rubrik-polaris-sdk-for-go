@@ -110,6 +110,58 @@ var azureCloudAccountUpdateQuery = `mutation SdkGolangAzureCloudAccountUpdate($f
     }
 }`
 
+// azureExocomputeAdd GraphQL query
+var azureExocomputeAddQuery = `mutation SdkGolangAzureExocomputeAdd($cloudAccountUuid: UUID!, $azureExocomputeAddRequests: [AzureExocomputeAddConfigInputType!]!) {
+    azureExocomputeAdd(cloudAccountId: $cloudAccountId, azureExocomputeAddRequests: $azureExocomputeAddRequests) {
+        configs {
+            configUuid
+            isPolarisManaged
+            message
+            region
+            subnetNativeId
+        }
+    }
+}`
+
+// azureExocomputeConfigs GraphQL query
+var azureExocomputeConfigsQuery = `query SdkGolangAzureExocomputeConfigs($cloudAccountIDs: [UUID!], $azureExocomputeSearchQueryArg: String!) {
+    azureExocomputeConfigs(cloudAccountIDs: $cloudAccountIDs, AzureExocomputeSearchQueryArg: $azureExocomputeSearchQueryArg) {
+        configs {
+            azureCloudAccount {
+                id
+                name
+                nativeId
+                featureDetail {
+                    feature
+                    regions
+                    status
+                }
+            }
+            configs {
+                configUuid
+                isPolarisManaged
+                message
+                region
+                subnetNativeId
+            }
+            exocomputeEligibleRegions
+            featureDetails {
+                feature
+                regions
+                status
+            }
+        }
+    }
+}`
+
+// azureExocomputeConfigsDelete GraphQL query
+var azureExocomputeConfigsDeleteQuery = `mutation SdkGolangAzureExocomputeConfigsDelete($azureExocomputeConfigIdsArg: [UUID!]!) {
+    azureExocomputeConfigsDelete(azureExocomputeConfigIdsArg: $azureExocomputeConfigIdsArg) {
+        deletionFailedIds
+        deletionSuccessIds
+    }
+}`
+
 // azureNativeSubscription GraphQL query
 var azureNativeSubscriptionQuery = `query SdkGolangAzureNativeSubscription($fid: UUID!) {
     azureNativeSubscription(fid: $fid) {

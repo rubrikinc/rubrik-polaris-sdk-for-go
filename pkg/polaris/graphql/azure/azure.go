@@ -70,7 +70,7 @@ const (
 	RegionJapanWest          Region = "JAPANWEST"
 	RegionKoreaCentral       Region = "KOREACENTRAL"
 	RegionKoreaSouth         Region = "KOREASOUTH"
-	RegionNorthCentralUs     Region = "NORTHCENTRALUS"
+	RegionNorthCentralUS     Region = "NORTHCENTRALUS"
 	RegionNorthEurope        Region = "NORTHEUROPE"
 	RegionNorwayEast         Region = "NORWAYEAST"
 	RegionNorwayWest         Region = "NORWAYWEST"
@@ -135,7 +135,7 @@ var validRegions = map[Region]struct{}{
 	RegionJapanWest:          {},
 	RegionKoreaCentral:       {},
 	RegionKoreaSouth:         {},
-	RegionNorthCentralUs:     {},
+	RegionNorthCentralUS:     {},
 	RegionNorthEurope:        {},
 	RegionNorwayEast:         {},
 	RegionNorwayWest:         {},

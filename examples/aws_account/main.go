@@ -40,7 +40,7 @@ func main() {
 	ctx := context.Background()
 
 	// Load configuration and create client.
-	polAccount, err := polaris.DefaultServiceAccount()
+	polAccount, err := polaris.DefaultServiceAccount(true)
 	if err != nil {
 		log.Fatal(err)
 	}

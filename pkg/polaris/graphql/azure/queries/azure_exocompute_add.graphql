@@ -1,0 +1,11 @@
+mutation RubrikPolarisSDKRequest($cloudAccountUuid: UUID!, $azureExocomputeAddRequests: [AzureExocomputeAddConfigInputType!]!) {
+    azureExocomputeAdd(cloudAccountId: $cloudAccountId, azureExocomputeAddRequests: $azureExocomputeAddRequests) {
+        configs {
+            configUuid
+            isPolarisManaged
+            message
+            region
+            subnetNativeId
+        }
+    }
+}

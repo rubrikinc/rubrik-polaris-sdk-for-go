@@ -60,6 +60,94 @@ type Feature struct {
 	Status  core.CloudAccountStatus
 }
 
+// toCloudAccountID returns the Polaris cloud account id for the specified
+// identity. If the identity is a Polaris cloud account id no remote endpoint
+// is called.
+func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
+	a.gql.Log().Print(log.Trace, "polaris/azure.toCloudAccountID")
+
+	if id == nil {
+		return uuid.Nil, errors.New("polaris: id is not allowed to be nil")
+	}
+	identity, err := id(ctx)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	if identity.internal {
+		id, err := uuid.Parse(identity.id)
+		if err != nil {
+			return uuid.Nil, err
+		}
+
+		return id, nil
+	}
+
+	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, core.CloudNativeProtection, false)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	for _, tenant := range tenants {
+		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.CloudNativeProtection, identity.id)
+		if err != nil {
+			return uuid.Nil, err
+		}
+		if len(selector.Accounts) == 0 {
+			continue
+		}
+		if len(selector.Accounts) > 1 {
+			return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotUnique)
+		}
+
+		return selector.Accounts[0].ID, nil
+	}
+
+	return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotFound)
+}
+
+// toNativeID returns the Azure subscription id for the specified identity.
+// If the identity is an Azure subscription id no remote endpoint is called.
+func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
+	a.gql.Log().Print(log.Trace, "polaris/azure.toNativeID")
+
+	if id == nil {
+		return uuid.Nil, errors.New("polaris: id is not allowed to be nil")
+	}
+	identity, err := id(ctx)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	uid, err := uuid.Parse(identity.id)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	if !identity.internal {
+		return uid, nil
+	}
+
+	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, core.CloudNativeProtection, false)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	for _, tenant := range tenants {
+		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.CloudNativeProtection, "")
+		if err != nil {
+			return uuid.Nil, err
+		}
+		for _, account := range selector.Accounts {
+			if account.ID == uid {
+				return account.ID, nil
+			}
+		}
+	}
+
+	return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotFound)
+}
+
 // Subscription returns the subscription with specified id and feature. Note
 // that this function does not support AllFeatures.
 func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.CloudAccountFeature) (CloudAccount, error) {

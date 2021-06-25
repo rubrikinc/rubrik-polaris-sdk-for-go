@@ -54,6 +54,17 @@ type CloudAccount struct {
 	Features []Feature
 }
 
+// Feature returns the specified feature from the CloudAccount's features.
+func (c CloudAccount) Feature(feature core.CloudAccountFeature) (Feature, bool) {
+	for _, f := range c.Features {
+		if f.Name == feature {
+			return f, true
+		}
+	}
+
+	return Feature{}, false
+}
+
 // Feature for Amazon Web Services accounts.
 type Feature struct {
 	Name     core.CloudAccountFeature
@@ -61,6 +72,106 @@ type Feature struct {
 	RoleArn  string
 	StackArn string
 	Status   core.CloudAccountStatus
+}
+
+// HasRegion returns true if the feature is enabled for the specified region.
+func (f Feature) HasRegion(region string) bool {
+	for _, r := range f.Regions {
+		if r == region {
+			return true
+		}
+	}
+
+	return false
+}
+
+// toCloudAccountID returns the Polaris cloud account id for the specified
+// identity. If the identity is a Polaris cloud account id no remote endpoint
+// is called.
+func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
+	a.gql.Log().Print(log.Trace, "polaris/aws.toCloudAccountID")
+
+	if id == nil {
+		return uuid.Nil, errors.New("polaris: id is not allowed to be nil")
+	}
+	identity, err := id(ctx)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	if identity.internal {
+		id, err := uuid.Parse(identity.id)
+		if err != nil {
+			return uuid.Nil, err
+		}
+
+		return id, nil
+	}
+
+	selectors, err := aws.Wrap(a.gql).CloudAccounts(ctx, core.CloudNativeProtection, identity.id)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if len(selectors) < 1 {
+		return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotFound)
+	}
+	if len(selectors) > 1 {
+		return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotUnique)
+	}
+
+	return selectors[0].Account.ID, nil
+}
+
+// toNativeID returns the AWS account id for the specified identity. If the
+// identity is an AWS account id no remote endpoint is called.
+func (a API) toNativeID(ctx context.Context, id IdentityFunc) (string, error) {
+	a.gql.Log().Print(log.Trace, "polaris/aws.toNativeID")
+
+	if id == nil {
+		return "", errors.New("polaris: id is not allowed to be nil")
+	}
+	identity, err := id(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	if !identity.internal {
+		return identity.id, nil
+	}
+
+	uid, err := uuid.Parse(identity.id)
+	if err != nil {
+		return "", nil
+	}
+
+	selector, err := aws.Wrap(a.gql).CloudAccount(ctx, uid, core.CloudNativeProtection)
+	if err != nil {
+		return "", err
+	}
+
+	return selector.Account.NativeID, nil
+}
+
+// toCloudAccount converts a polaris/graphql/aws CloudAccountSelector to a
+// polaris/aws CloudAccount.
+func toCloudAccount(selector aws.CloudAccountSelector) CloudAccount {
+	features := make([]Feature, 0, len(selector.Features))
+	for _, feature := range selector.Features {
+		features = append(features, Feature{
+			Name:     feature.Name,
+			Regions:  aws.FormatRegions(feature.Regions),
+			RoleArn:  feature.RoleArn,
+			StackArn: feature.StackArn,
+			Status:   feature.Status,
+		})
+	}
+
+	return CloudAccount{
+		ID:       selector.Account.ID,
+		NativeID: selector.Account.NativeID,
+		Name:     selector.Account.Name,
+		Features: features,
+	}
 }
 
 // Account returns the account with specified id and feature.
@@ -75,51 +186,36 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.CloudAcc
 		return CloudAccount{}, err
 	}
 
-	var selector aws.CloudAccountSelector
 	if identity.internal {
 		cloudAccountID, err := uuid.Parse(identity.id)
 		if err != nil {
 			return CloudAccount{}, err
 		}
 
-		selector, err = aws.Wrap(a.gql).CloudAccount(ctx, cloudAccountID, feature)
+		selectors, err := aws.Wrap(a.gql).CloudAccounts(ctx, feature, "")
 		if err != nil {
 			return CloudAccount{}, err
+		}
+
+		for _, selector := range selectors {
+			if selector.Account.ID == cloudAccountID {
+				return toCloudAccount(selector), nil
+			}
 		}
 	} else {
 		selectors, err := aws.Wrap(a.gql).CloudAccounts(ctx, feature, identity.id)
 		if err != nil {
 			return CloudAccount{}, err
 		}
-		if len(selectors) < 1 {
-			return CloudAccount{}, fmt.Errorf("polaris: account %w", graphql.ErrNotFound)
+		if len(selectors) == 1 {
+			return toCloudAccount(selectors[0]), nil
 		}
 		if len(selectors) > 1 {
 			return CloudAccount{}, fmt.Errorf("polaris: account %w", graphql.ErrNotUnique)
 		}
-
-		selector = selectors[0]
 	}
 
-	features := make([]Feature, 0, len(selector.Features))
-	for _, feature := range selector.Features {
-		features = append(features, Feature{
-			Name:     feature.Name,
-			Regions:  aws.FormatRegions(feature.Regions),
-			RoleArn:  feature.RoleArn,
-			StackArn: feature.StackArn,
-			Status:   feature.Status,
-		})
-	}
-
-	account := CloudAccount{
-		ID:       selector.Account.ID,
-		NativeID: selector.Account.NativeID,
-		Name:     selector.Account.Name,
-		Features: features,
-	}
-
-	return account, nil
+	return CloudAccount{}, fmt.Errorf("polaris: account %w", graphql.ErrNotFound)
 }
 
 // Accounts return all accounts with the specified feature matching the filter.
@@ -134,23 +230,7 @@ func (a API) Accounts(ctx context.Context, feature core.CloudAccountFeature, fil
 
 	accounts := make([]CloudAccount, 0, len(selectors))
 	for _, selector := range selectors {
-		features := make([]Feature, 0, len(selector.Features))
-		for _, feature := range selector.Features {
-			features = append(features, Feature{
-				Name:     feature.Name,
-				Regions:  aws.FormatRegions(feature.Regions),
-				RoleArn:  feature.RoleArn,
-				StackArn: feature.StackArn,
-				Status:   feature.Status,
-			})
-		}
-
-		accounts = append(accounts, CloudAccount{
-			ID:       selector.Account.ID,
-			NativeID: selector.Account.NativeID,
-			Name:     selector.Account.Name,
-			Features: features,
-		})
+		accounts = append(accounts, toCloudAccount(selector))
 	}
 
 	return accounts, nil
@@ -193,6 +273,12 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, opts ...Option
 		return uuid.Nil, err
 	}
 
+	// Retrieve the Polaris cloud account id of the newly added account.
+	akkount, err := a.Account(ctx, AccountID(config.id), core.CloudNativeProtection)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
 	a.gql.Log().Printf(log.Debug, "creating CloudFormation stack: %v", accountInit.StackName)
 
 	err = awsUpdateStack(ctx, config.config, accountInit.StackName, accountInit.TemplateURL)
@@ -200,7 +286,7 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, opts ...Option
 		return uuid.Nil, err
 	}
 
-	return accountInit.ExternalID, nil
+	return akkount.ID, nil
 }
 
 // RemoveAccount removes the account with the specified id from Polaris. If

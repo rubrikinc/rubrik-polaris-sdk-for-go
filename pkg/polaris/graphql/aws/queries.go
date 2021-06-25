@@ -83,8 +83,8 @@ var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsN
 }`
 
 // awsCloudAccountSelector GraphQL query
-var awsCloudAccountSelectorQuery = `query SdkGolangAwsCloudAccountSelector($cloudAccountId: String!, $feature: CloudAccountFeatureEnum!) {
-    awsCloudAccountSelector(awsCloudAccountsArg: {features: [$feature], cloudAccountId: $cloudAccountId}) {
+var awsCloudAccountSelectorQuery = `query SdkGolangAwsCloudAccountSelector($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
+    awsCloudAccountSelector(cloudAccountId: $cloudAccountId, awsCloudAccountArg: {features: [$feature]}) {
         awsCloudAccount {
             cloudType
             id

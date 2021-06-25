@@ -1,0 +1,29 @@
+query RubrikPolarisSDKRequest($cloudAccountIDs: [UUID!], $azureExocomputeSearchQueryArg: String!) {
+    azureExocomputeConfigs(cloudAccountIDs: $cloudAccountIDs, AzureExocomputeSearchQueryArg: $azureExocomputeSearchQueryArg) {
+        configs {
+            azureCloudAccount {
+                id
+                name
+                nativeId
+                featureDetail {
+                    feature
+                    regions
+                    status
+                }
+            }
+            configs {
+                configUuid
+                isPolarisManaged
+                message
+                region
+                subnetNativeId
+            }
+            exocomputeEligibleRegions
+            featureDetails {
+                feature
+                regions
+                status
+            }
+        }
+    }
+}

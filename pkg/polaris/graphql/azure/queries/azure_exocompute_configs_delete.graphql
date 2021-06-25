@@ -1,0 +1,6 @@
+mutation RubrikPolarisSDKRequest($azureExocomputeConfigIdsArg: [UUID!]!) {
+    azureExocomputeConfigsDelete(azureExocomputeConfigIdsArg: $azureExocomputeConfigIdsArg) {
+        deletionFailedIds
+        deletionSuccessIds
+    }
+}

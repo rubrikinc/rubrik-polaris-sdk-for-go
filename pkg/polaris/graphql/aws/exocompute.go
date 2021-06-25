@@ -132,6 +132,9 @@ func (a API) CreateExocomputeConfig(ctx context.Context, id uuid.UUID, config Ex
 	if len(payload.Data.Query.Configs) != 1 {
 		return ExocomputeConfig{}, errors.New("polaris: createAwsExocomputeConfigs: no result")
 	}
+	if msg := payload.Data.Query.Configs[0].Message; msg != "" {
+		return ExocomputeConfig{}, fmt.Errorf("polaris: failed to create config: %s", msg)
+	}
 
 	return payload.Data.Query.Configs[0], nil
 }

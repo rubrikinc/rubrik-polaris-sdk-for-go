@@ -127,12 +127,12 @@ func TestLocalUserFromFile(t *testing.T) {
 	}
 
 	// Test with non-existing file.
-	if _, err := AccountFromFile("some-non-existing-file", "my-account"); err == nil {
+	if _, err := AccountFromFile("some-non-existing-file", "my-account", false); err == nil {
 		t.Fatal("LocalUserFromFile should fail with non-existing file")
 	}
 
 	// Test with existing file and existing account.
-	account, err := AccountFromFile(file, "my-account")
+	account, err := AccountFromFile(file, "my-account", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func TestLocalUserFromFile(t *testing.T) {
 	}
 
 	// Test with existing file and non-existing account.
-	if _, err := AccountFromFile(file, "non-existing-account"); err == nil {
+	if _, err := AccountFromFile(file, "non-existing-account", false); err == nil {
 		t.Fatal("LocalUserFromFile should fail with non-existing account")
 	}
 }

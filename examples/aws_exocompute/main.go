@@ -35,7 +35,7 @@ func main() {
 	ctx := context.Background()
 
 	// Load configuration and create client.
-	polAccount, err := polaris.DefaultServiceAccount()
+	polAccount, err := polaris.DefaultServiceAccount(true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,6 +51,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Printf("Account ID: %v\n", accountID)
 
 	// Enable the exocompute feature for the account.
 	err = client.AWS().EnableExocompute(ctx, aws.Default(), "us-east-2")

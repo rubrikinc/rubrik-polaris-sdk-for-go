@@ -32,11 +32,6 @@ import (
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Example showing how to manage an Azure subscription with the Polaris Go SDK.
-//
-// The Polaris service account key file identifying the Polaris account should
-// either be placed at ~/.rubrik/polaris-service-account.json or pointed out by
-// the RUBRIK_POLARIS_SERVICEACCOUNT_FILE environment variable.
 func main() {
 	ctx := context.Background()
 
@@ -60,13 +55,18 @@ func main() {
 	// Add Azure subscription to Polaris.
 	subscription := azure.Subscription(uuid.MustParse("9318aeec-d357-11eb-9b37-5f4e9f79db5d"),
 		"my-domain.onmicrosoft.com")
-	id, err := client.Azure().AddSubscription(ctx, subscription, azure.Regions("eastus2"))
+	accountID, err := client.Azure().AddSubscription(ctx, subscription, azure.Regions("eastus2", "westus2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Lookup the newly added subscription.
-	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.CloudNativeProtection)
+	// Enable the exocompute feature for the account.
+	err = client.Azure().EnableExocompute(ctx, azure.CloudAccountID(accountID), "eastus2")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(accountID), core.Exocompute)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -76,8 +76,31 @@ func main() {
 		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
 	}
 
+	// Add exocompute config for the account.
+	exoID, err := client.Azure().AddExocomputeConfig(ctx, azure.CloudAccountID(accountID),
+		azure.Managed("eastus2", "/subscriptions/9318aeec-d357-11eb-9b37-5f4e9f79db5d/resourceGroups/terraform-test/providers/Microsoft.Network/virtualNetworks/terraform-test/subnets/default"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Exocompute config ID: %v\n", exoID)
+
+	// Retrieve the exocompute config added.
+	exoConfig, err := client.Azure().ExocomputeConfig(ctx, exoID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Exocompute Config: %v\n", exoConfig)
+
+	// Remove the exocompute config.
+	err = client.Azure().RemoveExocomputeConfig(ctx, exoID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Remove subscription.
-	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), false)
+	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(accountID), false)
 	if err != nil {
 		log.Fatal(err)
 	}

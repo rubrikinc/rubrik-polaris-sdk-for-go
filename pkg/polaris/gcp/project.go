@@ -161,8 +161,9 @@ func KeyFileAndProject(keyFile, projectID string) ProjectFunc {
 
 // Project returns a ProjectFunc that initializes the project with the
 // specified values.
-func Project(id, name string, number int64, orgName string) ProjectFunc {
+func Project(id string, number int64) ProjectFunc {
 	return func(ctx context.Context) (project, error) {
-		return project{id: id, number: number, name: name, orgName: orgName}, nil
+		name := strings.Title(strings.ReplaceAll(id, "-", " "))
+		return project{id: id, number: number, name: name, orgName: name + " Org"}, nil
 	}
 }

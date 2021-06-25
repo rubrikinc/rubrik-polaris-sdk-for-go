@@ -25,6 +25,8 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -47,6 +49,7 @@ const (
 type CloudAccountFeature string
 
 const (
+	InvalidFeature        CloudAccountFeature = ""
 	AllFeatures           CloudAccountFeature = "ALL"
 	AppFlows              CloudAccountFeature = "APP_FLOWS"
 	Archival              CloudAccountFeature = "ARCHIVAL"
@@ -57,6 +60,30 @@ const (
 	GCPSharedVPCHost      CloudAccountFeature = "GCP_SHARED_VPC_HOST"
 	RDSProtection         CloudAccountFeature = "RDS_PROTECTION"
 )
+
+var validFeatures = map[CloudAccountFeature]struct{}{
+	InvalidFeature:        {},
+	AllFeatures:           {},
+	AppFlows:              {},
+	Archival:              {},
+	CloudAccounts:         {},
+	CloudNativeArchival:   {},
+	CloudNativeProtection: {},
+	Exocompute:            {},
+	GCPSharedVPCHost:      {},
+	RDSProtection:         {},
+}
+
+// ParseFeature returns the CloudAccountFeature matching the given feature
+// name. Case insensitive.
+func ParseFeature(feature string) (CloudAccountFeature, error) {
+	f := CloudAccountFeature(strings.ToUpper(feature))
+	if _, ok := validFeatures[f]; ok {
+		return f, nil
+	}
+
+	return InvalidFeature, errors.New("polaris: invalid feature")
+}
 
 // CloudAccountStatus represents a Polaris cloud account status.
 type CloudAccountStatus string
