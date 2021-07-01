@@ -82,6 +82,23 @@ var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsN
     }
 }`
 
+// allVpcsByRegionFromAws GraphQL query
+var allVpcsByRegionFromAwsQuery = `query SdkGolangAllVpcsByRegionFromAws($awsAccountRubrikId: UUID!, $region: AwsNativeRegionEnum!) {
+    allVpcsByRegionFromAws(awsAccountRubrikId: $awsAccountRubrikId, region: $region) {
+        id
+        name
+        subnets {
+            id
+            name
+            availabilityZone
+        }
+        securityGroups {
+            id
+            name
+        }
+    }
+}`
+
 // awsCloudAccountSelector GraphQL query
 var awsCloudAccountSelectorQuery = `query SdkGolangAwsCloudAccountSelector($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
     awsCloudAccountSelector(cloudAccountId: $cloudAccountId, awsCloudAccountArg: {features: [$feature]}) {

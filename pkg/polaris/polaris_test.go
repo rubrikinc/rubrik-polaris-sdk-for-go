@@ -238,16 +238,9 @@ func TestAwsExocompute(t *testing.T) {
 		t.Errorf("invalid number of features: %v", n)
 	}
 
-	// Add exocompute config to the account.
-	subnets := []aws.Subnet{{
-		ID:               testAccount.Exocompute.Subnets[0].ID,
-		AvailabilityZone: testAccount.Exocompute.Subnets[0].AvailabilityZone,
-	}, {
-		ID:               testAccount.Exocompute.Subnets[1].ID,
-		AvailabilityZone: testAccount.Exocompute.Subnets[1].AvailabilityZone,
-	}}
 	exoID, err := client.AWS().AddExocomputeConfig(ctx, aws.ID(aws.Default()),
-		aws.Managed("us-east-2", testAccount.Exocompute.VPCID, subnets))
+		aws.Managed("us-east-2", testAccount.Exocompute.VPCID,
+			[]string{testAccount.Exocompute.Subnets[0].ID, testAccount.Exocompute.Subnets[1].ID}))
 	if err != nil {
 		t.Fatal(err)
 	}

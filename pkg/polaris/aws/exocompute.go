@@ -55,28 +55,83 @@ type ExocomputeConfig struct {
 
 // ExoConfigFunc returns an exocompute config initialized from the values
 // passed to the function creating the ExoConfigFunc.
-type ExoConfigFunc func(ctx context.Context) (aws.ExocomputeConfigCreate, error)
+type ExoConfigFunc func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error)
+
+// hasSecurityGroup returns true if a security group with the specified id
+// exists.
+func hasSecurityGroup(vpc aws.VPC, groupID string) bool {
+	for _, group := range vpc.SecurityGroups {
+		if group.ID == groupID {
+			return true
+		}
+	}
+
+	return false
+}
+
+// findVPC returns the VPC with the specified VPC id.
+func findVPC(vpcs []aws.VPC, vpcID string) (aws.VPC, error) {
+	for _, vpc := range vpcs {
+		if vpc.ID == vpcID {
+			return vpc, nil
+		}
+	}
+
+	return aws.VPC{}, fmt.Errorf("polaris: invalid vpc id: %s", vpcID)
+}
+
+// findSubnet returns the subnet with the specified subnet id.
+func findSubnet(vpc aws.VPC, subnetID string) (aws.Subnet, error) {
+	for _, subnet := range vpc.Subnets {
+		if subnet.ID == subnetID {
+			return aws.Subnet{
+				ID:               subnet.ID,
+				AvailabilityZone: subnet.AvailabilityZone,
+			}, nil
+		}
+	}
+
+	return aws.Subnet{}, fmt.Errorf("polaris: invalid subnet id: %s", subnetID)
+}
 
 // Managed returns an ExoConfigFunc that initializes an exocompute config with
 // security groups managed by Polaris using the specified values.
-func Managed(region, vpcID string, subnets []Subnet) ExoConfigFunc {
-	return func(ctx context.Context) (aws.ExocomputeConfigCreate, error) {
-		if len(subnets) != 2 {
-			return aws.ExocomputeConfigCreate{}, errors.New("polaris: there should be exactly 2 subnets")
+func Managed(region, vpcID string, subnetIDs []string) ExoConfigFunc {
+	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
+		reg, err := aws.ParseRegion(region)
+		if err != nil {
+			return aws.ExocomputeConfigCreate{}, err
 		}
 
-		r, err := aws.ParseRegion(region)
+		// Validate VPC.
+		vpcs, err := aws.Wrap(gql).AllVpcsByRegion(ctx, id, reg)
+		if err != nil {
+			return aws.ExocomputeConfigCreate{}, err
+		}
+		vpc, err := findVPC(vpcs, vpcID)
+		if err != nil {
+			return aws.ExocomputeConfigCreate{}, err
+		}
+
+		fmt.Println(vpc)
+
+		// Validate subnets.
+		if len(subnetIDs) != 2 {
+			return aws.ExocomputeConfigCreate{}, errors.New("polaris: there should be exactly 2 subnet ids")
+		}
+		subnet1, err := findSubnet(vpc, subnetIDs[0])
+		if err != nil {
+			return aws.ExocomputeConfigCreate{}, err
+		}
+		subnet2, err := findSubnet(vpc, subnetIDs[1])
 		if err != nil {
 			return aws.ExocomputeConfigCreate{}, err
 		}
 
 		return aws.ExocomputeConfigCreate{
-			Region: r,
-			VPCID:  vpcID,
-			Subnets: []aws.Subnet{
-				{ID: subnets[0].ID, AvailabilityZone: subnets[0].AvailabilityZone},
-				{ID: subnets[1].ID, AvailabilityZone: subnets[1].AvailabilityZone},
-			},
+			Region:           reg,
+			VPCID:            vpcID,
+			Subnets:          []aws.Subnet{subnet1, subnet2},
 			IsPolarisManaged: true,
 		}, nil
 	}
@@ -84,24 +139,50 @@ func Managed(region, vpcID string, subnets []Subnet) ExoConfigFunc {
 
 // Unmanaged returns an ExoConfigFunc that initializes an exocompute config
 // with security groups managed by the user using the specified values.
-func Unmanaged(region, vpcID string, subnets []Subnet, clusterSecurityGroupID, nodeSecurityGroupID string) ExoConfigFunc {
-	return func(ctx context.Context) (aws.ExocomputeConfigCreate, error) {
-		if len(subnets) != 2 {
-			return aws.ExocomputeConfigCreate{}, errors.New("polaris: there should be exactly 2 subnets")
-		}
-
-		r, err := aws.ParseRegion(region)
+func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID, nodeSecurityGroupID string) ExoConfigFunc {
+	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
+		reg, err := aws.ParseRegion(region)
 		if err != nil {
 			return aws.ExocomputeConfigCreate{}, err
 		}
 
+		// Validate VPC.
+		vpcs, err := aws.Wrap(gql).AllVpcsByRegion(ctx, id, reg)
+		if err != nil {
+			return aws.ExocomputeConfigCreate{}, err
+		}
+		vpc, err := findVPC(vpcs, vpcID)
+		if err != nil {
+			return aws.ExocomputeConfigCreate{}, err
+		}
+
+		// Validate subnets.
+		if len(subnetIDs) != 2 {
+			return aws.ExocomputeConfigCreate{}, errors.New("polaris: there should be exactly 2 subnet ids")
+		}
+		subnet1, err := findSubnet(vpc, subnetIDs[0])
+		if err != nil {
+			return aws.ExocomputeConfigCreate{}, err
+		}
+		subnet2, err := findSubnet(vpc, subnetIDs[1])
+		if err != nil {
+			return aws.ExocomputeConfigCreate{}, err
+		}
+
+		// Validate security groups.
+		if hasSecurityGroup(vpc, clusterSecurityGroupID) {
+			return aws.ExocomputeConfigCreate{},
+				fmt.Errorf("polaris: invalid cluster security group id: %s", clusterSecurityGroupID)
+		}
+		if hasSecurityGroup(vpc, nodeSecurityGroupID) {
+			return aws.ExocomputeConfigCreate{},
+				fmt.Errorf("polaris: invalid cluster security group id: %s", clusterSecurityGroupID)
+		}
+
 		return aws.ExocomputeConfigCreate{
-			Region: r,
-			VPCID:  vpcID,
-			Subnets: []aws.Subnet{
-				{ID: subnets[0].ID, AvailabilityZone: subnets[0].AvailabilityZone},
-				{ID: subnets[1].ID, AvailabilityZone: subnets[1].AvailabilityZone},
-			},
+			Region:                 reg,
+			VPCID:                  vpcID,
+			Subnets:                []aws.Subnet{subnet1, subnet2},
 			IsPolarisManaged:       false,
 			ClusterSecurityGroupId: clusterSecurityGroupID,
 			NodeSecurityGroupId:    nodeSecurityGroupID,
@@ -229,12 +310,12 @@ func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]Exocompu
 func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config ExoConfigFunc) (uuid.UUID, error) {
 	a.gql.Log().Print(log.Trace, "polaris/aws.AddExocomputeConfig")
 
-	exoConfig, err := config(ctx)
+	accountID, err := a.toCloudAccountID(ctx, id)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	accountID, err := a.toCloudAccountID(ctx, id)
+	exoConfig, err := config(ctx, a.gql, accountID)
 	if err != nil {
 		return uuid.Nil, err
 	}

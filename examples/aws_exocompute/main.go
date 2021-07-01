@@ -71,12 +71,8 @@ func main() {
 	}
 
 	// Add exocompute config for the account.
-	subnets := []aws.Subnet{
-		{ID: "subnet-ea67b67b", AvailabilityZone: "us-east-2a"},
-		{ID: "subnet-ea43ec78", AvailabilityZone: "us-east-2b"},
-	}
 	exoID, err := client.AWS().AddExocomputeConfig(ctx, aws.ID(aws.Default()),
-		aws.Managed("us-east-2", "vpc-4859acb9", subnets))
+		aws.Managed("us-east-2", "vpc-4859acb9", []string{"subnet-ea67b67b", "subnet-ea43ec78"}))
 	if err != nil {
 		log.Fatal(err)
 	}

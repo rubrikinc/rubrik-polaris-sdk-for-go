@@ -302,15 +302,17 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, deleteSnaps
 		return err
 	}
 
-	akkount, err := a.Account(ctx, AccountID(config.id), core.CloudNativeProtection)
+	akkount, err := a.Account(ctx, AccountID(config.id), core.AllFeatures)
 	if err != nil {
 		return err
 	}
-	if n := len(akkount.Features); n != 1 {
-		return fmt.Errorf("polaris: invalid number of features: %v", n)
+
+	cnpFeature, ok := akkount.Feature(core.CloudNativeProtection)
+	if !ok {
+		return errors.New("polaris: account does not have the cloud native protection feature")
 	}
 
-	if akkount.Features[0].Status != core.Disabled {
+	if cnpFeature.Status != core.Disabled {
 		jobID, err := aws.Wrap(a.gql).StartNativeAccountDisableJob(ctx, akkount.ID, aws.EC2, deleteSnapshots)
 		if err != nil {
 			return err
@@ -325,11 +327,6 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, deleteSnaps
 		}
 	}
 
-	akkount, err = a.Account(ctx, AccountID(config.id), core.AllFeatures)
-	if err != nil {
-		return err
-	}
-
 	cfmURL, err := aws.Wrap(a.gql).PrepareCloudAccountDeletion(ctx, akkount.ID, core.CloudNativeProtection)
 	if err != nil {
 		return err
@@ -337,7 +334,17 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, deleteSnaps
 
 	// For now we don't downgrade the stack, we just remove it if Cloud Native
 	// Protection is the last feature being removed.
-	if len(akkount.Features) > 1 {
+	features := len(akkount.Features)
+	if _, ok := akkount.Feature(core.CloudAccounts); ok {
+		features--
+	}
+	if _, ok := akkount.Feature(core.CloudNativeProtection); ok {
+		features--
+	}
+	if _, ok := akkount.Feature(core.Exocompute); ok {
+		features--
+	}
+	if features == 0 {
 		i := strings.LastIndex(cfmURL, "#/stack/detail") + 1
 		if i == 0 {
 			return errors.New("polaris: CloudFormation url does not contain #/stack/detail")

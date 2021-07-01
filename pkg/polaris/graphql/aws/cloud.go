@@ -332,3 +332,45 @@ func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAct
 
 	return nil
 }
+
+// VPC represents an AWS VPC together with AWS subnets and AWS security groups.
+type VPC struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Subnets []struct {
+		ID               string `json:"id"`
+		Name             string `json:"name"`
+		AvailabilityZone string `json:"availabilityZone"`
+	} `json:"subnets"`
+	SecurityGroups []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"securityGroups"`
+}
+
+// AllVpcsByRegion returns all VPCs including their subnets for the specified
+// Polaris cloud account id.
+func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, regions Region) ([]VPC, error) {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.AllVpcsByRegion")
+
+	buf, err := a.GQL.Request(ctx, allVpcsByRegionFromAwsQuery, struct {
+		ID     uuid.UUID `json:"awsAccountRubrikId"`
+		Region Region    `json:"region"`
+	}{ID: id, Region: regions})
+	if err != nil {
+		return nil, err
+	}
+
+	a.GQL.Log().Printf(log.Debug, "allVpcsByRegionFromAws(%q, %q): %s", id, regions, string(buf))
+
+	var payload struct {
+		Data struct {
+			VPCs []VPC `json:"allVpcsByRegionFromAws"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, err
+	}
+
+	return payload.Data.VPCs, nil
+}

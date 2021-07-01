@@ -1,0 +1,15 @@
+query RubrikPolarisSDKRequest($awsAccountRubrikId: UUID!, $region: AwsNativeRegionEnum!) {
+    allVpcsByRegionFromAws(awsAccountRubrikId: $awsAccountRubrikId, region: $region) {
+        id
+        name
+        subnets {
+            id
+            name
+            availabilityZone
+        }
+        securityGroups {
+            id
+            name
+        }
+    }
+}
