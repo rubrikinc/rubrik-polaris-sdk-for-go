@@ -181,9 +181,9 @@ var azureNativeSubscriptionQuery = `query SdkGolangAzureNativeSubscription($fid:
     }
 }`
 
-// azureNativeSubscriptionConnection GraphQL query
-var azureNativeSubscriptionConnectionQuery = `query SdkGolangAzureNativeSubscriptionConnection($after: String, $filter: String!) {
-    azureNativeSubscriptionConnection(after: $after, subscriptionFilters: {
+// azureNativeSubscriptions GraphQL query
+var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($after: String, $filter: String!) {
+    azureNativeSubscriptions(after: $after, subscriptionFilters: {
         nameSubstringFilter: {
             nameSubstring: $filter
         }
@@ -192,9 +192,9 @@ var azureNativeSubscriptionConnectionQuery = `query SdkGolangAzureNativeSubscrip
         edges {
             node {
                 id
-                nativeId
+                azureSubscriptionNativeId
                 name
-                status
+                azureSubscriptionStatus
                 slaAssignment
                 configuredSlaDomain{
                     id

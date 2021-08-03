@@ -43,8 +43,8 @@ type CloudAccount struct {
 // Feature represents a Polaris Cloud Account feature for GCP, e.g Cloud Native
 // Protection.
 type Feature struct {
-	Name   core.CloudAccountFeature `json:"feature"`
-	Status core.CloudAccountStatus  `json:"status"`
+	Name   core.Feature `json:"feature"`
+	Status core.Status  `json:"status"`
 }
 
 // CloudAccountSelector hold details about a cloud account and the features
@@ -57,12 +57,12 @@ type CloudAccountSelector struct {
 // CloudAccountListProjects returns the cloud accounts matching the specified
 // filter. The filter can be used to search for project id, project name and
 // project number.
-func (a API) CloudAccountListProjects(ctx context.Context, feature core.CloudAccountFeature, filter string) ([]CloudAccountSelector, error) {
+func (a API) CloudAccountListProjects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountSelector, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.CloudAccountListProjects")
 
 	buf, err := a.GQL.Request(ctx, gcpCloudAccountListProjectsQuery, struct {
-		Feature core.CloudAccountFeature `json:"feature"`
-		Filter  string                   `json:"projectSearchText"`
+		Feature core.Feature `json:"feature"`
+		Filter  string       `json:"projectSearchText"`
 	}{Feature: feature, Filter: filter})
 	if err != nil {
 		return nil, err
@@ -83,16 +83,16 @@ func (a API) CloudAccountListProjects(ctx context.Context, feature core.CloudAcc
 }
 
 // CloudAccountAddManualAuthProject adds the GCP project to Polaris.
-func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, projectName string, projectNumber int64, orgName, jwtConfig string, feature core.CloudAccountFeature) error {
+func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, projectName string, projectNumber int64, orgName, jwtConfig string, feature core.Feature) error {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.CloudAccountAddManualAuthProject")
 
 	_, err := a.GQL.Request(ctx, gcpCloudAccountAddManualAuthProjectQuery, struct {
-		Feature   core.CloudAccountFeature `json:"feature"`
-		ID        string                   `json:"gcpNativeProjectId"`
-		Name      string                   `json:"gcpProjectName"`
-		Number    int64                    `json:"gcpProjectNumber"`
-		OrgName   string                   `json:"organizationName,omitempty"`
-		JwtConfig string                   `json:"serviceAccountJwtConfigOptional,omitempty"`
+		Feature   core.Feature `json:"feature"`
+		ID        string       `json:"gcpNativeProjectId"`
+		Name      string       `json:"gcpProjectName"`
+		Number    int64        `json:"gcpProjectNumber"`
+		OrgName   string       `json:"organizationName,omitempty"`
+		JwtConfig string       `json:"serviceAccountJwtConfigOptional,omitempty"`
 	}{Feature: feature, ID: projectID, Name: projectName, Number: projectNumber, OrgName: orgName, JwtConfig: jwtConfig})
 
 	return err
@@ -137,11 +137,11 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 
 // CloudAccountListPermissions list the permissions needed to enable the given
 // Polaris cloud account feature.
-func (a API) CloudAccountListPermissions(ctx context.Context, feature core.CloudAccountFeature) (permissions []string, err error) {
+func (a API) CloudAccountListPermissions(ctx context.Context, feature core.Feature) (permissions []string, err error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.CloudAccountListPermissions")
 
 	buf, err := a.GQL.Request(ctx, gcpCloudAccountListPermissionsQuery, struct {
-		Feature core.CloudAccountFeature `json:"feature"`
+		Feature core.Feature `json:"feature"`
 	}{Feature: feature})
 	if err != nil {
 		return nil, err

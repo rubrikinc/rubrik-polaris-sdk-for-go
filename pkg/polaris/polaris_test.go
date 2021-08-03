@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -38,6 +39,24 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
+
+// requireEnv skips the current test if specified environment variable is not
+// defined or false according to the definition given by strconv.ParseBool.
+func requireEnv(t *testing.T, env string) {
+	val := os.Getenv(env)
+
+	n, err := strconv.ParseInt(val, 10, 64)
+	if err == nil && n > 0 {
+		return
+	}
+
+	b, err := strconv.ParseBool(val)
+	if err == nil && b {
+		return
+	}
+
+	t.Skipf("skip due to %q", env)
+}
 
 // testAwsAccount hold AWS account information used in the integration tests.
 // Normally used to assert that the information read from Polaris is correct.
@@ -107,7 +126,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClient(polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,14 +134,14 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	// Add the default AWS account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	id, err := client.AWS().AddAccount(ctx, aws.Default(), aws.Name(testAccount.Name),
+	id, err := client.AWS().AddAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, aws.Name(testAccount.Name),
 		aws.Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully added.
-	account, err := client.AWS().Account(ctx, aws.CloudAccountID(id), core.CloudNativeProtection)
+	account, err := client.AWS().Account(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection)
 	if err != nil {
 		t.Error(err)
 	}
@@ -147,12 +166,12 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	}
 
 	// Update and verify regions for AWS account.
-	err = client.AWS().UpdateAccount(ctx, aws.ID(aws.Default()), core.CloudNativeProtection,
+	err = client.AWS().UpdateAccount(ctx, aws.ID(aws.Default()), core.FeatureCloudNativeProtection,
 		aws.Regions("us-west-2"))
 	if err != nil {
 		t.Error(err)
 	}
-	account, err = client.AWS().Account(ctx, aws.ID(aws.Default()), core.CloudNativeProtection)
+	account, err = client.AWS().Account(ctx, aws.ID(aws.Default()), core.FeatureCloudNativeProtection)
 	if err != nil {
 		t.Error(err)
 	}
@@ -165,13 +184,13 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	}
 
 	// Remove AWS account from Polaris.
-	err = client.AWS().RemoveAccount(ctx, aws.Default(), false)
+	err = client.AWS().RemoveAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	account, err = client.AWS().Account(ctx, aws.ID(aws.Default()), core.CloudNativeProtection)
+	account, err = client.AWS().Account(ctx, aws.ID(aws.Default()), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
@@ -193,7 +212,7 @@ func TestAwsExocompute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClient(polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,20 +220,23 @@ func TestAwsExocompute(t *testing.T) {
 	// Add the default AWS account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	accountID, err := client.AWS().AddAccount(ctx, aws.Default(), aws.Name(testAccount.Name),
+	accountID, err := client.AWS().AddAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, aws.Name(testAccount.Name),
 		aws.Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Enable the exocompute feature for the account.
-	err = client.AWS().EnableExocompute(ctx, aws.Default(), "us-east-2")
+	exoAccountID, err := client.AWS().AddAccount(ctx, aws.Default(), core.FeatureExocompute, aws.Regions("us-east-2"))
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
+	}
+	if accountID != exoAccountID {
+		t.Fatal("cloud native protection and exocompute added to different cloud accounts")
 	}
 
 	// Verify that the account was successfully added.
-	account, err := client.AWS().Account(ctx, aws.CloudAccountID(accountID), core.Exocompute)
+	account, err := client.AWS().Account(ctx, aws.CloudAccountID(accountID), core.FeatureExocompute)
 	if err != nil {
 		t.Error(err)
 	}
@@ -288,13 +310,13 @@ func TestAwsExocompute(t *testing.T) {
 	}
 
 	// Remove the AWS account from Polaris.
-	err = client.AWS().RemoveAccount(ctx, aws.Default(), false)
+	err = client.AWS().RemoveAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	account, err = client.AWS().Account(ctx, aws.ID(aws.Default()), core.CloudNativeProtection)
+	account, err = client.AWS().Account(ctx, aws.ID(aws.Default()), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
@@ -360,28 +382,28 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClient(polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Add default Azure service principal to Polaris. Usually resolved using
 	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
-	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default())
+	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default(testSubscription.TenantDomain))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Add default Azure subscription to Polaris.
 	subscription := azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
-	id, err := client.Azure().AddSubscription(ctx, subscription, azure.Regions("eastus2"),
-		azure.Name(testSubscription.Name))
+	id, err := client.Azure().AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection,
+		azure.Regions("eastus2"), azure.Name(testSubscription.Name))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the subscription was successfully added.
-	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.CloudNativeProtection)
+	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection)
 	if err != nil {
 		t.Error(err)
 	}
@@ -409,12 +431,12 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Update and verify regions for Azure account.
-	err = client.Azure().UpdateSubscription(ctx, azure.ID(subscription), core.CloudNativeProtection,
+	err = client.Azure().UpdateSubscription(ctx, azure.ID(subscription), core.FeatureCloudNativeProtection,
 		azure.Regions("westus2"))
 	if err != nil {
 		t.Error(err)
 	}
-	account, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.CloudNativeProtection)
+	account, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.FeatureCloudNativeProtection)
 	if err != nil {
 		t.Error(err)
 	}
@@ -427,13 +449,13 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Remove the Azure subscription from Polaris keeping the snapshots.
-	err = client.Azure().RemoveSubscription(ctx, azure.ID(subscription), false)
+	err = client.Azure().RemoveSubscription(ctx, azure.ID(subscription), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	_, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.CloudNativeProtection)
+	_, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
@@ -455,33 +477,36 @@ func TestAzureExocompute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClient(polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Add default Azure service principal to Polaris. Usually resolved using
 	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
-	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default())
+	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default(testSubscription.TenantDomain))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Add default Azure subscription to Polaris.
 	subscription := azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
-	accountID, err := client.Azure().AddSubscription(ctx, subscription, azure.Regions("eastus2"),
-		azure.Name(testSubscription.Name))
+	accountID, err := client.Azure().AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection,
+		azure.Regions("eastus2"), azure.Name(testSubscription.Name))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Enable the exocompute feature for the account.
-	err = client.Azure().EnableExocompute(ctx, azure.CloudAccountID(accountID), "eastus2")
+	exoAccountID, err := client.Azure().AddSubscription(ctx, subscription, core.FeatureExocompute, azure.Regions("eastus2"))
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
+	}
+	if accountID != exoAccountID {
+		t.Fatal("cloud native protection and exocompute added to different cloud accounts")
 	}
 
-	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(accountID), core.Exocompute)
+	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute)
 	if err != nil {
 		t.Error(err)
 	}
@@ -546,13 +571,13 @@ func TestAzureExocompute(t *testing.T) {
 	}
 
 	// Remove subscription.
-	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(accountID), false)
+	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	_, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.CloudNativeProtection)
+	_, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
@@ -605,14 +630,14 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClient(polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Add the default GCP project to Polaris. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
-	id, err := client.GCP().AddProject(ctx, gcp.Default())
+	id, err := client.GCP().AddProject(ctx, gcp.Default(), core.FeatureCloudNativeProtection)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -620,7 +645,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	// Verify that the project was successfully added. ProjectID is compared
 	// in a case-insensitive fashion due to a bug causing the initial project
 	// id to be the same as the name.
-	account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.CloudNativeProtection)
+	account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection)
 	if err != nil {
 		t.Error(err)
 	}
@@ -645,12 +670,12 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	}
 
 	// Remove GCP project from Polaris keeping the snapshots.
-	if err := client.GCP().RemoveProject(ctx, gcp.ID(gcp.Default()), false); err != nil {
+	if err := client.GCP().RemoveProject(ctx, gcp.ID(gcp.Default()), core.FeatureCloudNativeProtection, false); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the project was successfully removed.
-	_, err = client.gcp.Project(ctx, gcp.ID(gcp.Default()), core.CloudNativeProtection)
+	_, err = client.gcp.Project(ctx, gcp.ID(gcp.Default()), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
@@ -695,7 +720,7 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClient(polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -709,13 +734,13 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 	// Add the default GCP project to Polaris. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
 	id, err := client.GCP().AddProject(ctx, gcp.Project(testProject.ProjectID, testProject.ProjectNumber),
-		gcp.Name(testProject.Name), gcp.Organization(testProject.OrganizationName))
+		core.FeatureCloudNativeProtection, gcp.Name(testProject.Name), gcp.Organization(testProject.OrganizationName))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the project was successfully added.
-	account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.CloudNativeProtection)
+	account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection)
 	if err != nil {
 		t.Error(err)
 	}
@@ -740,13 +765,13 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 	}
 
 	// Remove GCP project from Polaris keeping the snapshots.
-	err = client.GCP().RemoveProject(ctx, gcp.ProjectNumber(testProject.ProjectNumber), false)
+	err = client.GCP().RemoveProject(ctx, gcp.ProjectNumber(testProject.ProjectNumber), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the project was successfully removed.
-	_, err = client.GCP().Project(ctx, gcp.ProjectNumber(testProject.ProjectNumber), core.CloudNativeProtection)
+	_, err = client.GCP().Project(ctx, gcp.ProjectNumber(testProject.ProjectNumber), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}

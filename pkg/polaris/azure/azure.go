@@ -18,6 +18,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+// Package azure provides a high level interface to the Azure part of the
+// Polaris platform.
 package azure
 
 import (
@@ -53,11 +55,33 @@ type CloudAccount struct {
 	Features     []Feature
 }
 
+// Feature returns the specified feature from the CloudAccount's features.
+func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
+	for _, f := range c.Features {
+		if f.Name == feature {
+			return f, true
+		}
+	}
+
+	return Feature{}, false
+}
+
 // Feature for Microsoft Azure subscriptions.
 type Feature struct {
-	Name    core.CloudAccountFeature
+	Name    core.Feature
 	Regions []string
-	Status  core.CloudAccountStatus
+	Status  core.Status
+}
+
+// HasRegion returns true if the feature is enabled for the specified region.
+func (f Feature) HasRegion(region string) bool {
+	for _, r := range f.Regions {
+		if r == region {
+			return true
+		}
+	}
+
+	return false
 }
 
 // toCloudAccountID returns the Polaris cloud account id for the specified
@@ -83,13 +107,13 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 		return id, nil
 	}
 
-	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, core.CloudNativeProtection, false)
+	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
 	for _, tenant := range tenants {
-		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.CloudNativeProtection, identity.id)
+		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.FeatureCloudNativeProtection, identity.id)
 		if err != nil {
 			return uuid.Nil, err
 		}
@@ -128,13 +152,13 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error)
 		return uid, nil
 	}
 
-	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, core.CloudNativeProtection, false)
+	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
 	for _, tenant := range tenants {
-		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.CloudNativeProtection, "")
+		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.FeatureCloudNativeProtection, "")
 		if err != nil {
 			return uuid.Nil, err
 		}
@@ -148,9 +172,80 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error)
 	return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotFound)
 }
 
-// Subscription returns the subscription with specified id and feature. Note
-// that this function does not support AllFeatures.
-func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.CloudAccountFeature) (CloudAccount, error) {
+// Polaris does not support the AllFeatures for Azure cloud accounts. We work
+// around this by translating FeatureAll to the following list of features.
+var allFeatures = []core.Feature{
+	core.FeatureCloudNativeArchival,
+	core.FeatureCloudNativeProtection,
+	core.FeatureExocompute,
+}
+
+// subscriptions return all subscriptions for the given feature and filter.
+func (a API) subscriptions(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
+	a.gql.Log().Print(log.Trace, "polaris/azure.subscriptions")
+
+	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, feature, false)
+	if err != nil {
+		return nil, err
+	}
+
+	var accounts []CloudAccount
+	for _, tenant := range tenants {
+		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, feature, filter)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, account := range selector.Accounts {
+			accounts = append(accounts, CloudAccount{
+				ID:           account.ID,
+				NativeID:     account.NativeID,
+				Name:         account.Name,
+				TenantDomain: selector.DomainName,
+				Features: []Feature{{
+					Name:    account.Feature.Name,
+					Regions: azure.FormatRegions(account.Feature.Regions),
+					Status:  account.Feature.Status,
+				}},
+			})
+		}
+	}
+
+	return accounts, nil
+}
+
+// subscriptionsAllFeatures return all subscriptions with all features for
+// the given filter. Note that the organization name of the cloud account is
+// not set.
+func (a API) subscriptionsAllFeatures(ctx context.Context, filter string) ([]CloudAccount, error) {
+	a.gql.Log().Print(log.Trace, "polaris/azure.subscriptionsAllFeatures")
+
+	accountMap := make(map[uuid.UUID]*CloudAccount)
+	for _, feature := range allFeatures {
+		accounts, err := a.subscriptions(ctx, feature, filter)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, account := range accounts {
+			if mapped, ok := accountMap[account.ID]; ok {
+				mapped.Features = append(mapped.Features, account.Features...)
+			} else {
+				accountMap[account.ID] = &account
+			}
+		}
+	}
+
+	accounts := make([]CloudAccount, 0, len(accountMap))
+	for _, account := range accountMap {
+		accounts = append(accounts, *account)
+	}
+
+	return accounts, nil
+}
+
+// Subscription returns the subscription with specified id and feature.
+func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Feature) (CloudAccount, error) {
 	a.gql.Log().Print(log.Trace, "polaris/azure.Subscription")
 
 	if id == nil {
@@ -195,41 +290,19 @@ func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Clo
 
 // Subscriptions return all subscriptions with the specified feature matching
 // the filter. The filter can be used to search for subscription name and
-// subscription id. Note that this function does not support AllFeatures.
-func (a API) Subscriptions(ctx context.Context, feature core.CloudAccountFeature, filter string) ([]CloudAccount, error) {
+// subscription id.
+func (a API) Subscriptions(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
 	a.gql.Log().Print(log.Trace, "polaris/azure.Subscriptions")
 
-	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, feature, false)
+	var accounts []CloudAccount
+	var err error
+	if feature == core.FeatureAll {
+		accounts, err = a.subscriptionsAllFeatures(ctx, filter)
+	} else {
+		accounts, err = a.subscriptions(ctx, feature, filter)
+	}
 	if err != nil {
 		return nil, err
-	}
-
-	var accounts []CloudAccount
-	for _, tenant := range tenants {
-		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, feature, filter)
-		if err != nil {
-			return nil, err
-		}
-		if len(selector.Accounts) == 0 {
-			continue
-		}
-
-		features := make([]Feature, 0, len(selector.Accounts))
-		for _, account := range selector.Accounts {
-			features = append(features, Feature{
-				Name:    account.Feature.Name,
-				Regions: azure.FormatRegions(account.Feature.Regions),
-				Status:  account.Feature.Status,
-			})
-		}
-
-		accounts = append(accounts, CloudAccount{
-			ID:           selector.Accounts[0].ID,
-			NativeID:     selector.Accounts[0].NativeID,
-			Name:         selector.Accounts[0].Name,
-			TenantDomain: selector.DomainName,
-			Features:     features,
-		})
 	}
 
 	return accounts, nil
@@ -238,7 +311,7 @@ func (a API) Subscriptions(ctx context.Context, feature core.CloudAccountFeature
 // AddSubscription adds the specified subscription to Polaris. If name isn't
 // given as an option it's derived from the tenant name. Returns the Polaris
 // cloud account id of the added project.
-func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc, opts ...OptionFunc) (uuid.UUID, error) {
+func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
 	a.gql.Log().Print(log.Trace, "polaris/azure.AddSubscription")
 
 	if subscription == nil {
@@ -259,18 +332,18 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		config.name = options.name
 	}
 
-	perms, err := azure.Wrap(a.gql).CloudAccountPermissionConfig(ctx, core.CloudNativeProtection)
+	perms, err := azure.Wrap(a.gql).CloudAccountPermissionConfig(ctx, feature)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	_, err = azure.Wrap(a.gql).CloudAccountAddWithoutOAuth(ctx, azure.PublicCloud, config.id,
-		core.CloudNativeProtection, config.name, config.tenantDomain, options.regions, perms.PermissionVersion)
+	_, err = azure.Wrap(a.gql).CloudAccountAddWithoutOAuth(ctx, azure.PublicCloud, config.id, feature,
+		config.name, config.tenantDomain, options.regions, perms.PermissionVersion)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	account, err := a.Subscription(ctx, SubscriptionID(config.id), core.CloudNativeProtection)
+	account, err := a.Subscription(ctx, SubscriptionID(config.id), feature)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -281,18 +354,15 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 // RemoveSubscription removes the subscription with the specified id from
 // Polaris. If deleteSnapshots is true the snapshots are deleted otherwise they
 // are kept.
-func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, deleteSnapshots bool) error {
+func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature core.Feature, deleteSnapshots bool) error {
 	a.gql.Log().Print(log.Trace, "polaris/azure.RemoveSubscription")
 
-	account, err := a.Subscription(ctx, id, core.CloudNativeProtection)
+	account, err := a.Subscription(ctx, id, feature)
 	if err != nil {
 		return err
 	}
-	if n := len(account.Features); n != 1 {
-		return fmt.Errorf("polaris: invalid number of features: %v", n)
-	}
 
-	if account.Features[0].Status != core.Disabled {
+	if account.Features[0].Name == core.FeatureCloudNativeProtection && account.Features[0].Status != core.StatusDisabled {
 		// Lookup the Polaris native account id from the Polaris subscription name
 		// and the Azure subscription id. The Polaris native account id is needed
 		// to delete the Polaris native account subscription.
@@ -325,7 +395,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, deleteSnap
 		}
 	}
 
-	err = azure.Wrap(a.gql).CloudAccountDeleteWithoutOAuth(ctx, account.ID, core.CloudNativeProtection)
+	err = azure.Wrap(a.gql).CloudAccountDeleteWithoutOAuth(ctx, account.ID, feature)
 	if err != nil {
 		return err
 	}
@@ -334,7 +404,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, deleteSnap
 }
 
 // UpdateSubscription updates the subscription with the specied id and feature.
-func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature core.CloudAccountFeature, opts ...OptionFunc) error {
+func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature core.Feature, opts ...OptionFunc) error {
 	a.gql.Log().Print(log.Trace, "polaris/azure.UpdateSubscription")
 
 	var options options
@@ -353,6 +423,20 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 	}
 	if options.name == "" {
 		options.name = account.Name
+	}
+
+	// Update only name.
+	if len(options.regions) == 0 {
+		if len(account.Features) == 0 {
+			return errors.New("polaris: invalid cloud account: no features")
+		}
+
+		err := azure.Wrap(a.gql).CloudAccountUpdate(ctx, account.ID, account.Features[0].Name, options.name, []azure.Region{}, []azure.Region{})
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	for _, accountFeature := range account.Features {

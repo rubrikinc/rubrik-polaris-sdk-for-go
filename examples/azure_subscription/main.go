@@ -45,14 +45,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClientFromServiceAccount(polAccount, &polaris_log.StandardLogger{})
+	client, err := polaris.NewClient(polAccount, &polaris_log.StandardLogger{})
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Add default Azure service principal to Polaris. Usually resolved using
 	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
-	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default())
+	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default("my-domain.onmicrosoft.com"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -60,13 +60,13 @@ func main() {
 	// Add Azure subscription to Polaris.
 	subscription := azure.Subscription(uuid.MustParse("9318aeec-d357-11eb-9b37-5f4e9f79db5d"),
 		"my-domain.onmicrosoft.com")
-	id, err := client.Azure().AddSubscription(ctx, subscription, azure.Regions("eastus2"))
+	id, err := client.Azure().AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection, azure.Regions("eastus2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Lookup the newly added subscription.
-	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.CloudNativeProtection)
+	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func main() {
 	}
 
 	// Remove subscription.
-	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), false)
+	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		log.Fatal(err)
 	}

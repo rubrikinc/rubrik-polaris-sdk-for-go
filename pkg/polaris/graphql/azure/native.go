@@ -33,8 +33,8 @@ import (
 type NativeSubscription struct {
 	ID            uuid.UUID          `json:"id"`
 	Name          string             `json:"name"`
-	NativeID      uuid.UUID          `json:"nativeId"`
-	Status        string             `json:"status"`
+	NativeID      uuid.UUID          `json:"azureSubscriptionNativeId"`
+	Status        string             `json:"azureSubscriptionStatus"`
 	SLAAssignment core.SLAAssignment `json:"slaAssignment"`
 	Configured    core.SLADomain     `json:"configuredSlaDomain"`
 	Effective     core.SLADomain     `json:"effectiveSlaDomain"`
@@ -75,7 +75,7 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 	var subscriptions []NativeSubscription
 	var cursor string
 	for {
-		buf, err := a.GQL.Request(ctx, azureNativeSubscriptionConnectionQuery, struct {
+		buf, err := a.GQL.Request(ctx, azureNativeSubscriptionsQuery, struct {
 			After  string `json:"after,omitempty"`
 			Filter string `json:"filter"`
 		}{After: cursor, Filter: filter})
@@ -83,7 +83,7 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 			return nil, err
 		}
 
-		a.GQL.Log().Printf(log.Debug, "azureNativeSubscriptionConnection(%q): %s", filter, string(buf))
+		a.GQL.Log().Printf(log.Debug, "azureNativeSubscriptions(%q): %s", filter, string(buf))
 
 		var payload struct {
 			Data struct {
@@ -96,7 +96,7 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`
 					} `json:"pageInfo"`
-				} `json:"azureNativeSubscriptionConnection"`
+				} `json:"azureNativeSubscriptions"`
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {

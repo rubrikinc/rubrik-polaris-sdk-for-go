@@ -22,13 +22,9 @@ package azure
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -78,41 +74,6 @@ func Unmanaged(region, subnetID string) ExoConfigFunc {
 			IsPolarisManaged: false,
 		}, nil
 	}
-}
-
-// EnableExocompute enables the exocompute feature for the account with the
-// specified id for the given regions. The account must already be added to
-// Polaris. Note that to disable the feature the account must be removed.
-// The returned error will be graphql.ErrAlreadyEnabeled if the feature has
-// already been added for the specified account.
-func (a API) EnableExocompute(ctx context.Context, id IdentityFunc, regions ...string) error {
-	a.gql.Log().Print(log.Trace, "polaris/azure.EnableExocompute")
-
-	regs, err := azure.ParseRegions(regions)
-	if err != nil {
-		return err
-	}
-
-	account, err := a.Subscription(ctx, id, core.Exocompute)
-	if err == nil {
-		return fmt.Errorf("polaris: feature %w", graphql.ErrAlreadyEnabled)
-	}
-	if !errors.Is(err, graphql.ErrNotFound) {
-		return err
-	}
-
-	perms, err := azure.Wrap(a.gql).CloudAccountPermissionConfig(ctx, core.Exocompute)
-	if err != nil {
-		return err
-	}
-
-	_, err = azure.Wrap(a.gql).CloudAccountAddWithoutOAuth(ctx, azure.PublicCloud, account.NativeID,
-		core.Exocompute, account.Name, account.TenantDomain, regs, perms.PermissionVersion)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // toExocomputeConfig converts an polaris/graphql/azure exocompute config to an

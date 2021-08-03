@@ -20,6 +20,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+// Package aws provides a low level interface to the AWS GraphQL queries
+// provided by the Polaris platform.
 package aws
 
 import (

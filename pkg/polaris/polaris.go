@@ -53,25 +53,46 @@ type Client struct {
 	log   log.Logger
 }
 
-// AWS -
+// AWS returns the AWS part of the API.
 func (c *Client) AWS() aws.API {
 	return c.aws
 }
 
-// Azure -
+// Azure returns the Azure part of the API.
 func (c *Client) Azure() azure.API {
 	return c.azure
 }
 
-// GCP -
+// GCP returns the GCP part of the API.
 func (c *Client) GCP() gcp.API {
 	return c.gcp
+}
+
+// Account represents a Polaris account. Implemented by UserAccount and
+// ServiceAccount.
+type Account interface {
+	isAccount()
 }
 
 // NewClient returns a new Client from the specified Account. The log level of
 // the given logger can be changed at runtime using the environment variable
 // RUBRIK_POLARIS_LOGLEVEL.
 func NewClient(account Account, logger log.Logger) (*Client, error) {
+	if serviceAccount, ok := account.(*ServiceAccount); ok {
+		return newClientFromServiceAccount(serviceAccount, logger)
+	}
+
+	if userAccount, ok := account.(*UserAccount); ok {
+		return newClientFromUserAccount(userAccount, logger)
+	}
+
+	return nil, errors.New("polaris: invalid account type")
+}
+
+// newClientFromUserAccount returns a new Client from the specified
+// UserAccount. The log level of the given logger can be changed at runtime
+// using the environment variable RUBRIK_POLARIS_LOGLEVEL.
+func newClientFromUserAccount(account *UserAccount, logger log.Logger) (*Client, error) {
 	apiURL := account.URL
 	if apiURL == "" {
 		apiURL = fmt.Sprintf("https://%s.my.rubrik.com/api", account.Name)
@@ -113,10 +134,10 @@ func NewClient(account Account, logger log.Logger) (*Client, error) {
 	return client, nil
 }
 
-// NewClientFromServiceAccount returns a new Client from the specified
+// newClientFromServiceAccount returns a new Client from the specified
 // ServiceAccount. The log level of the given logger can be changed at runtime
 // using the environment variable RUBRIK_POLARIS_LOGLEVEL.
-func NewClientFromServiceAccount(account ServiceAccount, logger log.Logger) (*Client, error) {
+func newClientFromServiceAccount(account *ServiceAccount, logger log.Logger) (*Client, error) {
 	if account.Name == "" {
 		return nil, errors.New("polaris: invalid name")
 	}

@@ -3,27 +3,8 @@ package polaris
 import (
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 )
-
-// requireEnv skips the current test if specified environment variable is not
-// defined or false according to the definition given by strconv.ParseBool.
-func requireEnv(t *testing.T, env string) {
-	val := os.Getenv(env)
-
-	n, err := strconv.ParseInt(val, 10, 64)
-	if err == nil && n > 0 {
-		return
-	}
-
-	b, err := strconv.ParseBool(val)
-	if err == nil && b {
-		return
-	}
-
-	t.Skipf("skip due to %q", env)
-}
 
 // resetEnv resets the environment variables related to the Polaris SDK. The
 // returned restore function can be used to restore the environment variables.
@@ -52,32 +33,32 @@ func resetEnv() (restore func()) {
 	}
 }
 
-func TestLocalUserFromEnv(t *testing.T) {
+func TestUserAccountFromEnv(t *testing.T) {
 	restore := resetEnv()
 	defer restore()
 
-	if _, err := AccountFromEnv(); err == nil {
-		t.Fatal("LocalUserFromEnv should fail with missing environment variables")
+	if _, err := UserAccountFromEnv(); err == nil {
+		t.Fatal("UserAccountFromEnv should fail with missing environment variables")
 	}
 
 	if err := os.Setenv("RUBRIK_POLARIS_ACCOUNT_NAME", "my-account"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := AccountFromEnv(); err == nil {
-		t.Fatal("LocalUserFromEnv should fail with missing environment variables")
+	if _, err := UserAccountFromEnv(); err == nil {
+		t.Fatal("UserAccountFromEnv should fail with missing environment variables")
 	}
 
 	if err := os.Setenv("RUBRIK_POLARIS_ACCOUNT_USERNAME", "john.doe@rubrik.com"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := AccountFromEnv(); err == nil {
-		t.Fatal("LocalUserFromEnv should fail with missing environment variables")
+	if _, err := UserAccountFromEnv(); err == nil {
+		t.Fatal("UserAccountFromEnv should fail with missing environment variables")
 	}
 
 	if err := os.Setenv("RUBRIK_POLARIS_ACCOUNT_PASSWORD", "Janedoe!"); err != nil {
 		t.Fatal(err)
 	}
-	account, err := AccountFromEnv()
+	account, err := UserAccountFromEnv()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +75,7 @@ func TestLocalUserFromEnv(t *testing.T) {
 	if err := os.Setenv("RUBRIK_POLARIS_ACCOUNT_URL", "https://my-account.dev.my.rubrik-lab.com/api"); err != nil {
 		t.Fatal(err)
 	}
-	account, err = AccountFromEnv()
+	account, err = UserAccountFromEnv()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +84,7 @@ func TestLocalUserFromEnv(t *testing.T) {
 	}
 }
 
-func TestLocalUserFromFile(t *testing.T) {
+func TestUserAccountFromFile(t *testing.T) {
 	restore := resetEnv()
 	defer restore()
 
@@ -127,12 +108,12 @@ func TestLocalUserFromFile(t *testing.T) {
 	}
 
 	// Test with non-existing file.
-	if _, err := AccountFromFile("some-non-existing-file", "my-account", false); err == nil {
-		t.Fatal("LocalUserFromFile should fail with non-existing file")
+	if _, err := UserAccountFromFile("some-non-existing-file", "my-account", false); err == nil {
+		t.Fatal("UserAccountFromFile should fail with non-existing file")
 	}
 
 	// Test with existing file and existing account.
-	account, err := AccountFromFile(file, "my-account", false)
+	account, err := UserAccountFromFile(file, "my-account", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +131,7 @@ func TestLocalUserFromFile(t *testing.T) {
 	}
 
 	// Test with existing file and non-existing account.
-	if _, err := AccountFromFile(file, "non-existing-account", false); err == nil {
-		t.Fatal("LocalUserFromFile should fail with non-existing account")
+	if _, err := UserAccountFromFile(file, "non-existing-account", false); err == nil {
+		t.Fatal("UserAccountFromFile should fail with non-existing account")
 	}
 }

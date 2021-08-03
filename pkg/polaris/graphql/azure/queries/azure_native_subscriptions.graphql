@@ -1,5 +1,5 @@
 query RubrikPolarisSDKRequest($after: String, $filter: String!) {
-    azureNativeSubscriptionConnection(after: $after, subscriptionFilters: {
+    azureNativeSubscriptions(after: $after, subscriptionFilters: {
         nameSubstringFilter: {
             nameSubstring: $filter
         }
@@ -8,9 +8,9 @@ query RubrikPolarisSDKRequest($after: String, $filter: String!) {
         edges {
             node {
                 id
-                nativeId
+                azureSubscriptionNativeId
                 name
-                status
+                azureSubscriptionStatus
                 slaAssignment
                 configuredSlaDomain{
                     id

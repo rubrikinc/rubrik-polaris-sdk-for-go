@@ -42,9 +42,9 @@ type CloudAccount struct {
 // Feature represents a Polaris Cloud Account feature for Azure, e.g Cloud
 // Native Protection.
 type Feature struct {
-	Name    core.CloudAccountFeature `json:"feature"`
-	Regions []Region                 `json:"regions"`
-	Status  core.CloudAccountStatus  `json:"status"`
+	Name    core.Feature `json:"feature"`
+	Regions []Region     `json:"regions"`
+	Status  core.Status  `json:"status"`
 }
 
 // CloudAccountSelector hold details about an Azure tenant and the cloud
@@ -60,13 +60,13 @@ type CloudAccountSelector struct {
 // CloudAccountTenant returns the tenant and cloud accounts for the specified
 // feature and Polaris tenant id. The filter can be used to search for
 // subscription name and subscription id.
-func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.CloudAccountFeature, filter string) (CloudAccountSelector, error) {
+func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.Feature, filter string) (CloudAccountSelector, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.CloudAccountTenant")
 
 	buf, err := a.GQL.Request(ctx, azureCloudAccountTenantQuery, struct {
-		ID      uuid.UUID                `json:"tenantId"`
-		Feature core.CloudAccountFeature `json:"feature"`
-		Filter  string                   `json:"subscriptionSearchText"`
+		ID      uuid.UUID    `json:"tenantId"`
+		Feature core.Feature `json:"feature"`
+		Filter  string       `json:"subscriptionSearchText"`
 	}{ID: id, Feature: feature, Filter: filter})
 	if err != nil {
 		return CloudAccountSelector{}, err
@@ -90,12 +90,12 @@ func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.
 // CloudAccountTenants return all tenants for the specified feature. If
 // includeSubscription is true all cloud accounts for each tenant are also
 // returned. Note that this function does not support AllFeatures.
-func (a API) CloudAccountTenants(ctx context.Context, feature core.CloudAccountFeature, includeSubscriptions bool) ([]CloudAccountSelector, error) {
+func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, includeSubscriptions bool) ([]CloudAccountSelector, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.CloudAccountTenants")
 
 	buf, err := a.GQL.Request(ctx, azureCloudAccountTenantsQuery, struct {
-		Feature              core.CloudAccountFeature `json:"feature"`
-		IncludeSubscriptions bool                     `json:"includeSubscriptionDetails"`
+		Feature              core.Feature `json:"feature"`
+		IncludeSubscriptions bool         `json:"includeSubscriptionDetails"`
 	}{Feature: feature, IncludeSubscriptions: includeSubscriptions})
 	if err != nil {
 		return nil, err
@@ -122,18 +122,18 @@ type addSubscription struct {
 
 // CloudAccountAddWithoutOAuth adds the Azure Subscription cloud account
 // for given feature without OAuth.
-func (a API) CloudAccountAddWithoutOAuth(ctx context.Context, cloud Cloud, id uuid.UUID, feature core.CloudAccountFeature,
+func (a API) CloudAccountAddWithoutOAuth(ctx context.Context, cloud Cloud, id uuid.UUID, feature core.Feature,
 	name, tenantDomain string, regions []Region, policyVersion int) (string, error) {
 
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.CloudAccountAddWithoutOAuth")
 
 	buf, err := a.GQL.Request(ctx, azureCloudAccountAddWithoutOauthQuery, struct {
-		Cloud         Cloud                    `json:"azureCloudType"`
-		Feature       core.CloudAccountFeature `json:"feature"`
-		Subscriptions []addSubscription        `json:"subscriptions"`
-		TenantDomain  string                   `json:"tenantDomainName"`
-		Regions       []Region                 `json:"regions"`
-		PolicyVersion int                      `json:"policyVersion"`
+		Cloud         Cloud             `json:"azureCloudType"`
+		Feature       core.Feature      `json:"feature"`
+		Subscriptions []addSubscription `json:"subscriptions"`
+		TenantDomain  string            `json:"tenantDomainName"`
+		Regions       []Region          `json:"regions"`
+		PolicyVersion int               `json:"policyVersion"`
 	}{Cloud: cloud, Feature: feature, Subscriptions: []addSubscription{{id, name}}, TenantDomain: tenantDomain, Regions: regions, PolicyVersion: policyVersion})
 	if err != nil {
 		return "", err
@@ -169,12 +169,12 @@ func (a API) CloudAccountAddWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 
 // CloudAccountDeleteWithoutOAuth delete the Azure subscriptions cloud
 // account for given feature without OAuth.
-func (a API) CloudAccountDeleteWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.CloudAccountFeature) error {
+func (a API) CloudAccountDeleteWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.CloudAccountDeleteWithoutOAuth")
 
 	buf, err := a.GQL.Request(ctx, azureCloudAccountDeleteWithoutOauthQuery, struct {
-		IDs     []uuid.UUID              `json:"subscriptionIds"`
-		Feature core.CloudAccountFeature `json:"feature"`
+		IDs     []uuid.UUID  `json:"subscriptionIds"`
+		Feature core.Feature `json:"feature"`
 	}{IDs: []uuid.UUID{id}, Feature: feature})
 	if err != nil {
 		return err
@@ -213,20 +213,20 @@ type updateSubscription struct {
 
 // CloudAccountUpdate updates the name and the regions for the cloud account
 // with the specified Polaris cloud account id.
-func (a API) CloudAccountUpdate(ctx context.Context, id uuid.UUID, feature core.CloudAccountFeature, name string, toAdd, toRemove []Region) error {
+func (a API) CloudAccountUpdate(ctx context.Context, id uuid.UUID, feature core.Feature, name string, toAdd, toRemove []Region) error {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.CloudAccountUpdate")
 
 	buf, err := a.GQL.Request(ctx, azureCloudAccountUpdateQuery, struct {
-		Feature       core.CloudAccountFeature `json:"feature"`
-		ToAdd         []Region                 `json:"regionsToAdd,omitempty"`
-		ToRemove      []Region                 `json:"regionsToRemove,omitempty"`
-		Subscriptions []updateSubscription     `json:"subscriptions"`
+		Feature       core.Feature         `json:"feature"`
+		ToAdd         []Region             `json:"regionsToAdd,omitempty"`
+		ToRemove      []Region             `json:"regionsToRemove,omitempty"`
+		Subscriptions []updateSubscription `json:"subscriptions"`
 	}{Feature: feature, ToAdd: toAdd, ToRemove: toRemove, Subscriptions: []updateSubscription{{ID: id, Name: name}}})
 	if err != nil {
 		return err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "azureCloudAccountUpdate(%q, %v, %v %v): %s", id, feature, name, toAdd, toRemove, string(buf))
+	a.GQL.Log().Printf(log.Debug, "azureCloudAccountUpdate(%q, %v, %v %v, %v): %s", id, feature, name, toAdd, toRemove, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -267,11 +267,11 @@ type PermissionConfig struct {
 
 // CloudAccountPermissionConfig returns the permissions and version required to
 // enable the given feature for the Azure subscription.
-func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.CloudAccountFeature) (PermissionConfig, error) {
+func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feature) (PermissionConfig, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.AzureCloudAccountPermissionConfig")
 
 	buf, err := a.GQL.Request(ctx, azureCloudAccountPermissionConfigQuery, struct {
-		Feature core.CloudAccountFeature `json:"feature"`
+		Feature core.Feature `json:"feature"`
 	}{Feature: feature})
 	if err != nil {
 		return PermissionConfig{}, err

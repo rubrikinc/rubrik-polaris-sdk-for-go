@@ -34,6 +34,40 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+func TestParseFeature(t *testing.T) {
+	feature, err := ParseFeature("CLOUD_NATIVE_PROTECTION")
+	if err != nil {
+		t.Error(err)
+	}
+	if feature != FeatureCloudNativeProtection {
+		t.Errorf("invalid feature: %s", feature)
+	}
+
+	feature, err = ParseFeature("cloud_native_protection")
+	if err != nil {
+		t.Error(err)
+	}
+	if feature != FeatureCloudNativeProtection {
+		t.Errorf("invalid feature: %s", feature)
+	}
+
+	feature, err = ParseFeature("cloud-native-protection")
+	if err != nil {
+		t.Error(err)
+	}
+	if feature != FeatureCloudNativeProtection {
+		t.Errorf("invalid feature: %s", feature)
+	}
+
+	feature, err = ParseFeature("invalid-feature")
+	if err == nil {
+		t.Error("expected test to fail")
+	}
+	if feature != FeatureInvalid {
+		t.Errorf("invalid feature: %s", feature)
+	}
+}
+
 func TestKorgTaskChainStatus(t *testing.T) {
 	tmpl, err := template.ParseFiles("testdata/korgtaskchainstatus.json")
 	if err != nil {

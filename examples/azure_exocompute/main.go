@@ -40,14 +40,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClientFromServiceAccount(polAccount, &polaris_log.StandardLogger{})
+	client, err := polaris.NewClient(polAccount, &polaris_log.StandardLogger{})
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Add default Azure service principal to Polaris. Usually resolved using
 	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
-	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default())
+	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default("my-domain.onmicrosoft.com"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,18 +55,22 @@ func main() {
 	// Add Azure subscription to Polaris.
 	subscription := azure.Subscription(uuid.MustParse("9318aeec-d357-11eb-9b37-5f4e9f79db5d"),
 		"my-domain.onmicrosoft.com")
-	accountID, err := client.Azure().AddSubscription(ctx, subscription, azure.Regions("eastus2", "westus2"))
+	accountID, err := client.Azure().AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection, azure.Regions("eastus2", "westus2"))
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Printf("Account ID: %v\n", accountID)
 
 	// Enable the exocompute feature for the account.
-	err = client.Azure().EnableExocompute(ctx, azure.CloudAccountID(accountID), "eastus2")
+	exoAccountID, err := client.Azure().AddSubscription(ctx, subscription, core.FeatureExocompute, azure.Regions("eastus2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(accountID), core.Exocompute)
+	fmt.Printf("Exocompute Account ID: %v\n", exoAccountID)
+
+	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureAll)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -99,8 +103,14 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Disable the exocompute feature for the account.
+	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute, false)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Remove subscription.
-	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(accountID), false)
+	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -28,7 +28,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -188,58 +187,6 @@ func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID,
 			NodeSecurityGroupId:    nodeSecurityGroupID,
 		}, nil
 	}
-}
-
-// EnableExocompute enables the exocompute feature for the account with the
-// specified id for the given regions. The account must already be added to
-// Polaris. Note that to disable the feature the account must be removed.
-// The returned error will be graphql.ErrAlreadyEnabled if the feature has
-// already been enabled for the specified account.
-func (a API) EnableExocompute(ctx context.Context, account AccountFunc, regions ...string) error {
-	a.gql.Log().Print(log.Trace, "polaris/aws.EnableExocompute")
-
-	if account == nil {
-		return errors.New("polaris: account is not allowed to be nil")
-	}
-	config, err := account(ctx)
-	if err != nil {
-		return err
-	}
-
-	regs, err := aws.ParseRegions(regions)
-	if err != nil {
-		return err
-	}
-
-	akkount, err := a.Account(ctx, AccountID(config.id), core.AllFeatures)
-	if err != nil {
-		return err
-	}
-
-	if _, ok := akkount.Feature(core.Exocompute); ok {
-		return fmt.Errorf("polaris: feature %w", graphql.ErrAlreadyEnabled)
-	}
-
-	accountInit, err := aws.Wrap(a.gql).ValidateAndCreateCloudAccount(ctx, akkount.NativeID,
-		akkount.Name, core.Exocompute)
-	if err != nil {
-		return err
-	}
-
-	err = aws.Wrap(a.gql).FinalizeCloudAccountProtection(ctx, akkount.NativeID, akkount.Name,
-		core.Exocompute, regs, accountInit)
-	if err != nil {
-		return err
-	}
-
-	a.gql.Log().Printf(log.Debug, "updating CloudFormation stack: %v", accountInit.StackName)
-
-	err = awsUpdateStack(ctx, config.config, accountInit.StackName, accountInit.TemplateURL)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // toExocomputeConfig converts an polaris/graphql/aws exocompute config to an
