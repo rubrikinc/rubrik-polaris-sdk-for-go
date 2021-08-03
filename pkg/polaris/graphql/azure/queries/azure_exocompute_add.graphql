@@ -1,5 +1,5 @@
 mutation RubrikPolarisSDKRequest($cloudAccountUuid: UUID!, $azureExocomputeAddRequests: [AzureExocomputeAddConfigInputType!]!) {
-    azureExocomputeAdd(cloudAccountId: $cloudAccountId, azureExocomputeAddRequests: $azureExocomputeAddRequests) {
+    azureExocomputeAdd(cloudAccountUuid: $cloudAccountUuid, azureExocomputeAddRequests: $azureExocomputeAddRequests) {
         configs {
             configUuid
             isPolarisManaged

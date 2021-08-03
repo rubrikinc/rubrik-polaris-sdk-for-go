@@ -112,7 +112,7 @@ var azureCloudAccountUpdateQuery = `mutation SdkGolangAzureCloudAccountUpdate($f
 
 // azureExocomputeAdd GraphQL query
 var azureExocomputeAddQuery = `mutation SdkGolangAzureExocomputeAdd($cloudAccountUuid: UUID!, $azureExocomputeAddRequests: [AzureExocomputeAddConfigInputType!]!) {
-    azureExocomputeAdd(cloudAccountId: $cloudAccountId, azureExocomputeAddRequests: $azureExocomputeAddRequests) {
+    azureExocomputeAdd(cloudAccountUuid: $cloudAccountUuid, azureExocomputeAddRequests: $azureExocomputeAddRequests) {
         configs {
             configUuid
             isPolarisManaged
@@ -125,7 +125,7 @@ var azureExocomputeAddQuery = `mutation SdkGolangAzureExocomputeAdd($cloudAccoun
 
 // azureExocomputeConfigs GraphQL query
 var azureExocomputeConfigsQuery = `query SdkGolangAzureExocomputeConfigs($cloudAccountIDs: [UUID!], $azureExocomputeSearchQueryArg: String!) {
-    azureExocomputeConfigs(cloudAccountIDs: $cloudAccountIDs, AzureExocomputeSearchQueryArg: $azureExocomputeSearchQueryArg) {
+    azureExocomputeConfigs(cloudAccountIDs: $cloudAccountIDs, azureExocomputeSearchQueryArg: $azureExocomputeSearchQueryArg) {
         configs {
             azureCloudAccount {
                 id

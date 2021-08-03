@@ -106,6 +106,11 @@ func (a API) EnableExocompute(ctx context.Context, id IdentityFunc, regions ...s
 		return err
 	}
 
+	account, err = a.Subscription(ctx, id, core.CloudNativeProtection)
+	if err != nil {
+		return err
+	}
+
 	_, err = azure.Wrap(a.gql).CloudAccountAddWithoutOAuth(ctx, azure.PublicCloud, account.NativeID,
 		core.Exocompute, account.Name, account.TenantDomain, regs, perms.PermissionVersion)
 	if err != nil {

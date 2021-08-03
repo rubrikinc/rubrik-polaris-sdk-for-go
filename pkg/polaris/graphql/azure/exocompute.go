@@ -80,11 +80,11 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 // ExocomputeConfigCreate represents an exocompute config to be created by
 // Polaris.
 type ExocomputeConfigCreate struct {
-	Region   Region
-	SubnetID string
+	Region   Region `json:"region"`
+	SubnetID string `json:"subnetNativeId"`
 
 	// When true Polaris will manage the security groups.
-	IsPolarisManaged bool
+	IsPolarisManaged bool `json:"isPolarisManaged"`
 }
 
 // ExocomputeAdd creates a new exocompute config for the account with the
