@@ -286,9 +286,53 @@ var azureNativeSubscriptionConnectionQuery = `query SdkGolangAzureNativeSubscrip
     }
 }`
 
+// azureNativeSubscriptions GraphQL query
+var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($filter: String = "") {
+    azureNativeSubscriptions(subscriptionFilters: {
+        nameSubstringFilter: {
+            nameSubstring: $filter
+        }
+    }) {
+        count
+        edges {
+            node {
+                id
+                azureSubscriptionNativeId
+                name
+                azureSubscriptionStatus
+                slaAssignment
+                configuredSlaDomain{
+                    id
+                    name
+                }
+                effectiveSlaDomain{
+                    id
+                    name
+                }
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
 // azureSetCustomerAppCredentials GraphQL query
 var azureSetCustomerAppCredentialsQuery = `mutation SdkGolangAzureSetCustomerAppCredentials($azure_app_id: String!, $azure_app_secret_key: String!, $azure_app_tenant_id: String, $azure_app_name: String, $azure_tenant_domain_name: String, $azure_cloud_type: AzureCloudTypeEnum!) {
     azureSetCustomerAppCredentials(appId: $azure_app_id, appSecretKey: $azure_app_secret_key, appTenantId: $azure_app_tenant_id, appName: $azure_app_name, tenantDomainName: $azure_tenant_domain_name, azureCloudType: $azure_cloud_type)
+}`
+
+// azureStartDisableNativeSubscriptionProtectionJob GraphQL query
+var azureStartDisableNativeSubscriptionProtectionJobQuery = `mutation SdkGolangAzureStartDisableNativeSubscriptionProtectionJob($subscription_id: UUID!, $delete_snapshots: Boolean!) {
+    startDisableAzureNativeSubscriptionProtectionJob(input: {azureSubscriptionRubrikId: $subscription_id, shouldDeleteNativeSnapshots: $delete_snapshots}) {
+        jobId
+    }
+}`
+
+// coreDeploymentVersion GraphQL query
+var coreDeploymentVersionQuery = `query SdkGolangCoreDeploymentVersion {
+    deploymentVersion
 }`
 
 // coreTaskchainStatus GraphQL query

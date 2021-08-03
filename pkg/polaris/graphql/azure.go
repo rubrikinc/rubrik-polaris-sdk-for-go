@@ -301,8 +301,36 @@ func (c *Client) AzureDeleteNativeSubscription(ctx context.Context, subscription
 	return payload.Data.Query.TaskChainUUID, nil
 }
 
-// AzureNativeSubscription -
-type AzureNativeSubscription struct {
+// AzureStartDisableNativeSubscriptionProtectionJob deletes an azure subscription.
+func (c *Client) AzureStartDisableNativeSubscriptionProtectionJob(ctx context.Context, subscriptionID string, deleteSnapshots bool) (TaskChainUUID, error) {
+	c.log.Print(log.Trace, "graphql.Client.AzureStartDisableNativeSubscriptionProtectionJob")
+
+	buf, err := c.Request(ctx, azureStartDisableNativeSubscriptionProtectionJobQuery, struct {
+		SubScriptionID  string `json:"subscription_id"`
+		DeleteSnapshots bool   `json:"delete_snapshots"`
+	}{SubScriptionID: subscriptionID, DeleteSnapshots: deleteSnapshots})
+	if err != nil {
+		return "", err
+	}
+
+	c.log.Printf(log.Debug, "AzureStartDisableNativeSubscriptionProtectionJob(%q, %t): %s", subscriptionID, deleteSnapshots, string(buf))
+
+	var payload struct {
+		Data struct {
+			Query struct {
+				JobID TaskChainUUID `json:"jobId"`
+			} `json:"startDisableAzureNativeSubscriptionProtectionJob"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return "", err
+	}
+
+	return payload.Data.Query.JobID, nil
+}
+
+// azureNativeSubscriptionV0 holds a Polaris native Azure subscription.
+type azureNativeSubscriptionV0 struct {
 	ID            string        `json:"id"`
 	Name          string        `json:"name"`
 	NativeID      string        `json:"nativeId"`
@@ -320,7 +348,26 @@ type AzureNativeSubscription struct {
 	} `json:"effectiveSlaDomain"`
 }
 
-// AzureNativeSubscriptionConnection -
+func toAzureNativeSubscription(subV0 azureNativeSubscriptionV0) AzureNativeSubscription {
+	sub := AzureNativeSubscription{
+		ID:            subV0.ID,
+		Name:          subV0.Name,
+		NativeID:      subV0.NativeID,
+		Status:        subV0.Status,
+		SLAAssignment: subV0.SLAAssignment,
+	}
+
+	sub.ConfiguredSLADomain.ID = subV0.ConfiguredSLADomain.ID
+	sub.ConfiguredSLADomain.Name = subV0.ConfiguredSLADomain.Name
+
+	sub.EffectiveSLADomain.ID = subV0.EffectiveSLADomain.ID
+	sub.EffectiveSLADomain.Name = subV0.EffectiveSLADomain.Name
+
+	return sub
+}
+
+// DEPRECATED, this endpoint has been replaced by AzureNativeSubscriptions.
+// Will be removed in the next release.
 func (c *Client) AzureNativeSubscriptionConnection(ctx context.Context, nameFilter string) ([]AzureNativeSubscription, error) {
 	c.log.Print(log.Trace, "graphql.Client.AzureNativeSubscriptionConnection")
 
@@ -342,13 +389,78 @@ func (c *Client) AzureNativeSubscriptionConnection(ctx context.Context, nameFilt
 				Query struct {
 					Count int `json:"count"`
 					Edges []struct {
-						Node AzureNativeSubscription `json:"node"`
+						Node azureNativeSubscriptionV0 `json:"node"`
 					} `json:"edges"`
 					PageInfo struct {
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`
 					} `json:"pageInfo"`
 				} `json:"azureNativeSubscriptionConnection"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(buf, &payload); err != nil {
+			return nil, err
+		}
+		for _, subscription := range payload.Data.Query.Edges {
+			subscriptions = append(subscriptions, toAzureNativeSubscription(subscription.Node))
+		}
+
+		if !payload.Data.Query.PageInfo.HasNextPage {
+			break
+		}
+		endCursor = payload.Data.Query.PageInfo.EndCursor
+	}
+
+	return subscriptions, nil
+}
+
+// AzureNativeSubscription holds a Polaris native Azure subscription.
+type AzureNativeSubscription struct {
+	ID            string        `json:"id"`
+	Name          string        `json:"name"`
+	NativeID      string        `json:"azureSubscriptionNativeId"`
+	Status        string        `json:"azureSubscriptionStatus"`
+	SLAAssignment SLAAssignment `json:"slaAssignment"`
+
+	ConfiguredSLADomain struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"configuredSlaDomain"`
+
+	EffectiveSLADomain struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"effectiveSlaDomain"`
+}
+
+func (c *Client) AzureNativeSubscriptions(ctx context.Context, nameFilter string) ([]AzureNativeSubscription, error) {
+	c.log.Print(log.Trace, "graphql.Client.AzureNativeSubscriptions")
+
+	subscriptions := make([]AzureNativeSubscription, 0, 10)
+	var endCursor string
+	for {
+		buf, err := c.Request(ctx, azureNativeSubscriptionsQuery, struct {
+			After      string `json:"after,omitempty"`
+			NameFilter string `json:"filter,omitempty"`
+		}{After: endCursor, NameFilter: nameFilter})
+		if err != nil {
+			return nil, err
+		}
+
+		c.log.Printf(log.Debug, "azureNativeSubscriptions(%q): %s", nameFilter, string(buf))
+
+		var payload struct {
+			Data struct {
+				Query struct {
+					Count int `json:"count"`
+					Edges []struct {
+						Node AzureNativeSubscription `json:"node"`
+					} `json:"edges"`
+					PageInfo struct {
+						EndCursor   string `json:"endCursor"`
+						HasNextPage bool   `json:"hasNextPage"`
+					} `json:"pageInfo"`
+				} `json:"azureNativeSubscriptions"`
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {

@@ -133,15 +133,16 @@ func (e gqlError) Error() string {
 
 // Client is used to make GraphQL calls to the Polaris platform.
 type Client struct {
-	app    string
-	gqlURL string
-	client *http.Client
-	log    log.Logger
+	Version string
+	app     string
+	gqlURL  string
+	client  *http.Client
+	log     log.Logger
 }
 
 // NewClientFromLocalUser returns a new Client with the specified configuration.
-func NewClientFromLocalUser(app, apiURL, username, password string, logger log.Logger) *Client {
-	return &Client{
+func NewClientFromLocalUser(ctx context.Context, app, apiURL, username, password string, logger log.Logger) (*Client, error) {
+	client := &Client{
 		app:    app,
 		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
 		client: &http.Client{
@@ -152,11 +153,19 @@ func NewClientFromLocalUser(app, apiURL, username, password string, logger log.L
 		},
 		log: logger,
 	}
+
+	var err error
+	client.Version, err = client.deploymentVersion(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }
 
 // NewClientFromServiceAccount returns a new Client with the specified configuration.
-func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSecret string, logger log.Logger) *Client {
-	return &Client{
+func NewClientFromServiceAccount(ctx context.Context, app, apiURL, accessTokenURI, clientID, clientSecret string, logger log.Logger) (*Client, error) {
+	client := &Client{
 		app:    app,
 		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
 		client: &http.Client{
@@ -167,6 +176,14 @@ func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSe
 		},
 		log: logger,
 	}
+
+	var err error
+	client.Version, err = client.deploymentVersion(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }
 
 // NewTestClient - Intended to be used by unit tests.
@@ -355,4 +372,27 @@ func (c *Client) WaitForTaskChain(ctx context.Context, taskChainID TaskChainUUID
 			return TaskChainInvalid, ctx.Err()
 		}
 	}
+}
+
+// deploymentVersion returns the deployed version of Polaris.
+func (c *Client) deploymentVersion(ctx context.Context) (string, error) {
+	c.log.Print(log.Trace, "graphql.Client.deploymentVersion")
+
+	buf, err := c.Request(ctx, coreDeploymentVersionQuery, struct{}{})
+	if err != nil {
+		return "", err
+	}
+
+	c.log.Printf(log.Debug, "deploymentVersion(): %s", string(buf))
+
+	var payload struct {
+		Data struct {
+			DeploymentVersion string `json:"deploymentVersion"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return "", err
+	}
+
+	return payload.Data.DeploymentVersion, nil
 }

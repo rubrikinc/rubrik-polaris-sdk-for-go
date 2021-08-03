@@ -23,6 +23,7 @@
 package polaris
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -58,7 +59,7 @@ type Client struct {
 // NewClient returns a new Client from the specified Account. The log level of
 // the given logger can be changed at runtime using the environment variable
 // RUBRIK_POLARIS_LOGLEVEL.
-func NewClient(account Account, logger log.Logger) (*Client, error) {
+func NewClient(ctx context.Context, account Account, logger log.Logger) (*Client, error) {
 	apiURL := account.URL
 	if apiURL == "" {
 		apiURL = fmt.Sprintf("https://%s.my.rubrik.com/api", account.Name)
@@ -88,8 +89,13 @@ func NewClient(account Account, logger log.Logger) (*Client, error) {
 		logger = &log.DiscardLogger{}
 	}
 
+	gqlClient, err := graphql.NewClientFromLocalUser(ctx, "custom", apiURL, account.Username, account.Password, logger)
+	if err != nil {
+		return nil, err
+	}
+
 	client := &Client{
-		gql: graphql.NewClientFromLocalUser("custom", apiURL, account.Username, account.Password, logger),
+		gql: gqlClient,
 		log: logger,
 	}
 
@@ -99,7 +105,7 @@ func NewClient(account Account, logger log.Logger) (*Client, error) {
 // NewClientFromServiceAccount returns a new Client from the specified
 // ServiceAccount. The log level of the given logger can be changed at runtime
 // using the environment variable RUBRIK_POLARIS_LOGLEVEL.
-func NewClientFromServiceAccount(account ServiceAccount, logger log.Logger) (*Client, error) {
+func NewClientFromServiceAccount(ctx context.Context, account ServiceAccount, logger log.Logger) (*Client, error) {
 	if account.Name == "" {
 		return nil, errors.New("polaris: invalid name")
 	}
@@ -134,10 +140,14 @@ func NewClientFromServiceAccount(account ServiceAccount, logger log.Logger) (*Cl
 	}
 	apiURL := account.AccessTokenURI[:i]
 
-	gql := graphql.NewClientFromServiceAccount("custom", apiURL, account.AccessTokenURI, account.ClientID,
+	gqlClient, err := graphql.NewClientFromServiceAccount(ctx, "custom", apiURL, account.AccessTokenURI, account.ClientID,
 		account.ClientSecret, logger)
+	if err != nil {
+		return nil, err
+	}
+
 	client := &Client{
-		gql: gql,
+		gql: gqlClient,
 		log: logger,
 	}
 

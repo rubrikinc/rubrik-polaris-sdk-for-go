@@ -42,7 +42,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClientFromServiceAccount(account, &polaris_log.StandardLogger{})
+	client, err := polaris.NewClientFromServiceAccount(ctx, account, &polaris_log.StandardLogger{})
 	if err != nil {
 		log.Fatal(err)
 	}
