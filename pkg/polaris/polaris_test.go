@@ -107,7 +107,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClientFromServiceAccount(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +193,7 @@ func TestAwsExocompute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClientFromServiceAccount(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +360,7 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClientFromServiceAccount(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -455,7 +455,7 @@ func TestAzureExocompute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClientFromServiceAccount(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -605,7 +605,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClientFromServiceAccount(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -650,7 +650,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	}
 
 	// Verify that the project was successfully removed.
-	_, err = client.gcp.Project(ctx, gcp.ID(gcp.Default()), core.CloudNativeProtection)
+	_, err = client.GCP().Project(ctx, gcp.ID(gcp.Default()), core.CloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
@@ -695,7 +695,7 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClientFromServiceAccount(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClientFromServiceAccount(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}

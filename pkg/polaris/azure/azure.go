@@ -35,13 +35,14 @@ import (
 
 // API for Microsoft Azure.
 type API struct {
-	gql *graphql.Client
+	Version string
+	gql     *graphql.Client
 }
 
 // NewAPI returns a new API instance. Note that this is a very cheap call to
 // make.
-func NewAPI(gql *graphql.Client) API {
-	return API{gql: gql}
+func NewAPI(gql *graphql.Client, version string) API {
+	return API{Version: version, gql: gql}
 }
 
 // CloudAccount for Microsoft Azure subscriptions.
@@ -296,10 +297,16 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, deleteSnap
 		// Lookup the Polaris native account id from the Polaris subscription name
 		// and the Azure subscription id. The Polaris native account id is needed
 		// to delete the Polaris native account subscription.
-		natives, err := azure.Wrap(a.gql).NativeSubscriptions(ctx, account.Name)
+		var natives []azure.NativeSubscription
+		if a.Version != "latest" {
+			natives, err = azure.Wrap(a.gql).NativeSubscriptionConnection(ctx, account.Name)
+		} else {
+			natives, err = azure.Wrap(a.gql).NativeSubscriptions(ctx, account.Name)
+		}
 		if err != nil {
 			return err
 		}
+
 		var nativeID uuid.UUID
 		for _, native := range natives {
 			if native.NativeID == account.NativeID {
@@ -308,10 +315,15 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, deleteSnap
 			}
 		}
 		if nativeID == uuid.Nil {
-			return fmt.Errorf("polaris: polaris account: %w", graphql.ErrNotFound)
+			return fmt.Errorf("polaris: account: %w", graphql.ErrNotFound)
 		}
 
-		jobID, err := azure.Wrap(a.gql).DeleteNativeSubscription(ctx, nativeID, deleteSnapshots)
+		var jobID uuid.UUID
+		if a.Version != "latest" {
+			jobID, err = azure.Wrap(a.gql).DeleteNativeSubscription(ctx, nativeID, deleteSnapshots)
+		} else {
+			jobID, err = azure.Wrap(a.gql).StartDisableNativeSubscriptionProtectionJob(ctx, nativeID, deleteSnapshots)
+		}
 		if err != nil {
 			return err
 		}

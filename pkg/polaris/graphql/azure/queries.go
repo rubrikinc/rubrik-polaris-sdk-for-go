@@ -213,6 +213,38 @@ var azureNativeSubscriptionConnectionQuery = `query SdkGolangAzureNativeSubscrip
     }
 }`
 
+// azureNativeSubscriptions GraphQL query
+var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($filter: String = "") {
+    azureNativeSubscriptions(subscriptionFilters: {
+        nameSubstringFilter: {
+            nameSubstring: $filter
+        }
+    }) {
+        count
+        edges {
+            node {
+                id
+                azureSubscriptionNativeId
+                name
+                azureSubscriptionStatus
+                slaAssignment
+                configuredSlaDomain{
+                    id
+                    name
+                }
+                effectiveSlaDomain{
+                    id
+                    name
+                }
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
 // azureSetCustomerAppCredentials GraphQL query
 var azureSetCustomerAppCredentialsQuery = `mutation SdkGolangAzureSetCustomerAppCredentials($azureCloudType: AzureCloudTypeEnum!, $appId: String!, $appName: String, $appSecretKey: String!, $appTenantId: String, $tenantDomainName: String) {
     azureSetCustomerAppCredentials(appId: $appId, appSecretKey: $appSecretKey, appTenantId: $appTenantId, appName: $appName, tenantDomainName: $tenantDomainName, azureCloudType: $azureCloudType)
@@ -222,5 +254,12 @@ var azureSetCustomerAppCredentialsQuery = `mutation SdkGolangAzureSetCustomerApp
 var deleteAzureNativeSubscriptionQuery = `mutation SdkGolangDeleteAzureNativeSubscription($subscriptionId: UUID!, $shouldDeleteNativeSnapshots: Boolean!) {
     deleteAzureNativeSubscription(subscriptionId: $subscriptionId, shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots) {
         taskchainUuid
+    }
+}`
+
+// startDisableAzureNativeSubscriptionProtectionJob GraphQL query
+var startDisableAzureNativeSubscriptionProtectionJobQuery = `mutation SdkGolangStartDisableAzureNativeSubscriptionProtectionJob($azureSubscriptionRubrikId: UUID!, $shouldDeleteNativeSnapshots: Boolean!) {
+    startDisableAzureNativeSubscriptionProtectionJob(input: {azureSubscriptionRubrikId: $azureSubscriptionRubrikId, shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots}) {
+        jobId
     }
 }`

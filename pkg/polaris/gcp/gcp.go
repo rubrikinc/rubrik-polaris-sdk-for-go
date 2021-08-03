@@ -39,13 +39,14 @@ import (
 
 // API for Google Cloud Platform.
 type API struct {
-	gql *graphql.Client
+	Version string
+	gql     *graphql.Client
 }
 
 // NewAPI returns a new API instance. Note that this is a very cheap call to
 // make.
-func NewAPI(gql *graphql.Client) API {
-	return API{gql: gql}
+func NewAPI(gql *graphql.Client, version string) API {
+	return API{Version: version, gql: gql}
 }
 
 // CloudAccount for Google Cloud Platform projects.

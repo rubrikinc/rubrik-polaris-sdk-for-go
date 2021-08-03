@@ -30,11 +30,23 @@ import (
 )
 
 // NativeSubscription represents a Polaris native subscription.
-type NativeSubscription struct {
+// DEPRECATED, replaced by NativeSubscription.
+type nativeSubscriptionV0 struct {
 	ID            uuid.UUID          `json:"id"`
 	Name          string             `json:"name"`
 	NativeID      uuid.UUID          `json:"nativeId"`
 	Status        string             `json:"status"`
+	SLAAssignment core.SLAAssignment `json:"slaAssignment"`
+	Configured    core.SLADomain     `json:"configuredSlaDomain"`
+	Effective     core.SLADomain     `json:"effectiveSlaDomain"`
+}
+
+// NativeSubscription represents a Polaris native subscription.
+type NativeSubscription struct {
+	ID            uuid.UUID          `json:"id"`
+	Name          string             `json:"name"`
+	NativeID      uuid.UUID          `json:"azureSubscriptionNativeId"`
+	Status        string             `json:"azureSubscriptionStatus"`
 	SLAAssignment core.SLAAssignment `json:"slaAssignment"`
 	Configured    core.SLADomain     `json:"configuredSlaDomain"`
 	Effective     core.SLADomain     `json:"effectiveSlaDomain"`
@@ -66,11 +78,12 @@ func (a API) NativeSubscription(ctx context.Context, id uuid.UUID) (NativeSubscr
 	return payload.Data.Subscription, nil
 }
 
-// NativeSubscriptions returns the native subscriptions matching the specified
-// filter. The filter can be used to search for a substring in the subscription
-// name.
-func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSubscription, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.NativeSubscriptions")
+// NativeSubscriptionConnection returns the native subscriptions matching the
+// specified filter. The filter can be used to search for a substring in the
+// subscription name.
+// DEPRECATED, replaced by NativeSubscriptions.
+func (a API) NativeSubscriptionConnection(ctx context.Context, filter string) ([]NativeSubscription, error) {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.NativeSubscriptionConnection")
 
 	var subscriptions []NativeSubscription
 	var cursor string
@@ -90,13 +103,62 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 				Query struct {
 					Count int `json:"count"`
 					Edges []struct {
-						Node NativeSubscription `json:"node"`
+						Node nativeSubscriptionV0 `json:"node"`
 					} `json:"edges"`
 					PageInfo struct {
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`
 					} `json:"pageInfo"`
 				} `json:"azureNativeSubscriptionConnection"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(buf, &payload); err != nil {
+			return nil, err
+		}
+		for _, subscription := range payload.Data.Query.Edges {
+			subscriptions = append(subscriptions, NativeSubscription(subscription.Node))
+		}
+
+		if !payload.Data.Query.PageInfo.HasNextPage {
+			break
+		}
+		cursor = payload.Data.Query.PageInfo.EndCursor
+	}
+
+	return subscriptions, nil
+}
+
+// NativeSubscriptions returns the native subscriptions matching the specified
+// filter. The filter can be used to search for a substring in the subscription
+// name.
+func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSubscription, error) {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.NativeSubscriptions")
+
+	var subscriptions []NativeSubscription
+	var cursor string
+	for {
+		buf, err := a.GQL.Request(ctx, azureNativeSubscriptionsQuery, struct {
+			After  string `json:"after,omitempty"`
+			Filter string `json:"filter"`
+		}{After: cursor, Filter: filter})
+		if err != nil {
+			return nil, err
+		}
+
+		a.GQL.Log().Printf(log.Debug, "azureNativeSubscriptions(%q): %s", filter, string(buf))
+
+		var payload struct {
+			Data struct {
+				Query struct {
+					Count int `json:"count"`
+					Edges []struct {
+						Node NativeSubscription `json:"node"`
+					} `json:"edges"`
+					PageInfo struct {
+						EndCursor   string `json:"endCursor"`
+						HasNextPage bool   `json:"hasNextPage"`
+					} `json:"pageInfo"`
+				} `json:"azureNativeSubscriptions"`
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
@@ -119,6 +181,7 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 // subscription with the specified Polaris native subscription id. If
 // deleteSnapshots is true the snapshots are deleted. Returns the Polaris task
 // chain id.
+// DEPRECATED, replaced by StartDisableNativeSubscriptionProtectionJob.
 func (a API) DeleteNativeSubscription(ctx context.Context, id uuid.UUID, deleteSnapshots bool) (uuid.UUID, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.DeleteNativeSubscription")
 
@@ -144,4 +207,35 @@ func (a API) DeleteNativeSubscription(ctx context.Context, id uuid.UUID, deleteS
 	}
 
 	return payload.Data.Query.TaskChainID, nil
+}
+
+// StartDisableNativeSubscriptionProtectionJob starts a task chain job to
+// disable the native subscription with the specified Polaris native
+// subscription id. If deleteSnapshots is true the snapshots are deleted.
+// Returns the Polaris task chain id.
+func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id uuid.UUID, deleteSnapshots bool) (uuid.UUID, error) {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.StartDisableNativeSubscriptionProtectionJob")
+
+	buf, err := a.GQL.Request(ctx, startDisableAzureNativeSubscriptionProtectionJobQuery, struct {
+		ID              uuid.UUID `json:"azureSubscriptionRubrikId"`
+		DeleteSnapshots bool      `json:"shouldDeleteNativeSnapshots"`
+	}{ID: id, DeleteSnapshots: deleteSnapshots})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	a.GQL.Log().Printf(log.Debug, "startDisableAzureNativeSubscriptionProtectionJob(%q, %t): %s", id, deleteSnapshots, string(buf))
+
+	var payload struct {
+		Data struct {
+			Query struct {
+				JobID uuid.UUID `json:"jobId"`
+			} `json:"startDisableAzureNativeSubscriptionProtectionJob"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, err
+	}
+
+	return payload.Data.Query.JobID, nil
 }
