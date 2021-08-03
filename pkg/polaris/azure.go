@@ -389,14 +389,11 @@ func (c *Client) AzureSubscriptionRemove(ctx context.Context, id AzureSubscripti
 	var jobID graphql.TaskChainUUID
 	if c.gql.Version != "latest" {
 		jobID, err = c.gql.AzureDeleteNativeSubscription(ctx, nativeID, deleteSnapshots)
-		if err != nil {
-			return err
-		}
 	} else {
 		jobID, err = c.gql.AzureStartDisableNativeSubscriptionProtectionJob(ctx, nativeID, deleteSnapshots)
-		if err != nil {
-			return err
-		}
+	}
+	if err != nil {
+		return err
 	}
 
 	state, err := c.gql.WaitForTaskChain(ctx, jobID, 10*time.Second)

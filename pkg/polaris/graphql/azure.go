@@ -411,8 +411,6 @@ func (c *Client) AzureNativeSubscriptionConnection(ctx context.Context, nameFilt
 		endCursor = payload.Data.Query.PageInfo.EndCursor
 	}
 
-	c.log.Printf(log.Debug, "subscriptions: %v", subscriptions)
-
 	return subscriptions, nil
 }
 
@@ -477,8 +475,6 @@ func (c *Client) AzureNativeSubscriptions(ctx context.Context, nameFilter string
 		}
 		endCursor = payload.Data.Query.PageInfo.EndCursor
 	}
-
-	c.log.Printf(log.Debug, "subscriptions: %v", subscriptions)
 
 	return subscriptions, nil
 }
