@@ -367,7 +367,7 @@ func (c *Client) AzureSubscriptionRemove(ctx context.Context, id AzureSubscripti
 	// the Azure subscription ID. The Polaris Native ID is needed to delete
 	// the Polaris Native Account subscription.
 	var nativeSubs []graphql.AzureNativeSubscription
-	if c.gql.Version != "latest" {
+	if VersionOlderThan(c.gql.Version, "master-40644", "v20210803") {
 		nativeSubs, err = c.gql.AzureNativeSubscriptionConnection(ctx, subscription.Name)
 	} else {
 		nativeSubs, err = c.gql.AzureNativeSubscriptions(ctx, subscription.Name)
@@ -387,7 +387,7 @@ func (c *Client) AzureSubscriptionRemove(ctx context.Context, id AzureSubscripti
 	}
 
 	var jobID graphql.TaskChainUUID
-	if c.gql.Version != "latest" {
+	if VersionOlderThan(c.gql.Version, "master-40766", "v20210803") {
 		jobID, err = c.gql.AzureDeleteNativeSubscription(ctx, nativeID, deleteSnapshots)
 	} else {
 		jobID, err = c.gql.AzureStartDisableNativeSubscriptionProtectionJob(ctx, nativeID, deleteSnapshots)
