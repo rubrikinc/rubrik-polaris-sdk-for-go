@@ -34,12 +34,12 @@ import (
 
 // ExocomputeConfig represents a single exocompute config.
 type ExocomputeConfig struct {
-	ID       uuid.UUID `json:"configUuid"`
-	Region   string    `json:"region"`
-	SubnetID string    `json:"subnets"`
+	ID       uuid.UUID
+	Region   string
+	SubnetID string
 
 	// When true Polaris will manage the security groups.
-	PolarisManaged bool `json:"isPolarisManaged"`
+	PolarisManaged bool
 }
 
 // ExoConfigFunc returns an exocompute config initialized from the values
@@ -81,10 +81,10 @@ func Unmanaged(region, subnetID string) ExoConfigFunc {
 }
 
 // EnableExocompute enables the exocompute feature for the account with the
-// specified id for the given regions. The account must already be added to
-// Polaris. Note that to disable the feature the account must be removed.
-// The returned error will be graphql.ErrAlreadyEnabeled if the feature has
-// already been added for the specified account.
+// specified Polaris cloud account id for the given regions. The account must
+// already be added to Polaris. Note that to disable the feature the account
+// must be removed. The returned error will be graphql.ErrAlreadyEnabeled if
+// the feature has already been added for the specified account.
 func (a API) EnableExocompute(ctx context.Context, id IdentityFunc, regions ...string) error {
 	a.gql.Log().Print(log.Trace, "polaris/azure.EnableExocompute")
 
@@ -113,6 +113,24 @@ func (a API) EnableExocompute(ctx context.Context, id IdentityFunc, regions ...s
 
 	_, err = azure.Wrap(a.gql).CloudAccountAddWithoutOAuth(ctx, azure.PublicCloud, account.NativeID,
 		core.Exocompute, account.Name, account.TenantDomain, regs, perms.PermissionVersion)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// DisableExocompute disables the exocompute feature for the account with the
+// specified polaris cloud account id.
+func (a API) DisableExocompute(ctx context.Context, id IdentityFunc) error {
+	a.gql.Log().Print(log.Trace, "polaris/azure.DisableExocompute")
+
+	accountID, err := a.toCloudAccountID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	err = azure.Wrap(a.gql).CloudAccountDeleteWithoutOAuth(ctx, accountID, core.Exocompute)
 	if err != nil {
 		return err
 	}

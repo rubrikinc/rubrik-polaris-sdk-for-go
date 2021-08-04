@@ -34,7 +34,7 @@ import (
 type ExocomputeConfig struct {
 	ID       uuid.UUID `json:"configUuid"`
 	Region   Region    `json:"region"`
-	SubnetID string    `json:"subnets"`
+	SubnetID string    `json:"subnetNativeId"`
 	Message  string    `json:"message"`
 
 	// When true Polaris will manage the security groups.
