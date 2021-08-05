@@ -167,7 +167,7 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 		}
 	}
 
-	return ExocomputeConfig{}, nil
+	return ExocomputeConfig{}, graphql.ErrNotFound
 }
 
 // ExocomputeConfigs returns all exocompute configs for the account with the

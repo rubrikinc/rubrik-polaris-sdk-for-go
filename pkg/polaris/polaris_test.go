@@ -46,7 +46,7 @@ type testAwsAccount struct {
 	AccountID string `json:"accountId"`
 
 	Exocompute struct {
-		VPCID   string `json:"vcpId"`
+		VPCID   string `json:"vpcId"`
 		Subnets []struct {
 			ID               string `json:"id"`
 			AvailabilityZone string `json:"availabilityZone"`
@@ -259,16 +259,16 @@ func TestAwsExocompute(t *testing.T) {
 	if exoConfig.VPCID != testAccount.Exocompute.VPCID {
 		t.Errorf("invalid vpc id: %v", exoConfig.VPCID)
 	}
-	if exoConfig.Subnets[0].ID != testAccount.Exocompute.Subnets[0].ID {
+	if exoConfig.Subnets[0].ID != testAccount.Exocompute.Subnets[0].ID && exoConfig.Subnets[0].ID != testAccount.Exocompute.Subnets[1].ID {
 		t.Errorf("invalid subnet id: %v", exoConfig.Subnets[0].ID)
 	}
-	if exoConfig.Subnets[0].AvailabilityZone != testAccount.Exocompute.Subnets[0].AvailabilityZone {
+	if exoConfig.Subnets[0].AvailabilityZone != testAccount.Exocompute.Subnets[0].AvailabilityZone && exoConfig.Subnets[0].AvailabilityZone != testAccount.Exocompute.Subnets[1].AvailabilityZone {
 		t.Errorf("invalid subnet availability zone: %v", exoConfig.Subnets[0].AvailabilityZone)
 	}
-	if exoConfig.Subnets[1].ID != testAccount.Exocompute.Subnets[1].ID {
+	if exoConfig.Subnets[1].ID != testAccount.Exocompute.Subnets[0].ID && exoConfig.Subnets[1].ID != testAccount.Exocompute.Subnets[1].ID {
 		t.Errorf("invalid subnet id: %v", exoConfig.Subnets[1].ID)
 	}
-	if exoConfig.Subnets[1].AvailabilityZone != testAccount.Exocompute.Subnets[1].AvailabilityZone {
+	if exoConfig.Subnets[1].AvailabilityZone != testAccount.Exocompute.Subnets[0].AvailabilityZone && exoConfig.Subnets[1].AvailabilityZone != testAccount.Exocompute.Subnets[1].AvailabilityZone {
 		t.Errorf("invalid subnet availability zone: %v", exoConfig.Subnets[1].AvailabilityZone)
 	}
 	if !exoConfig.PolarisManaged {
