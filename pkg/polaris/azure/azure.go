@@ -24,7 +24,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -310,10 +309,10 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, deleteSnap
 		// and the Azure subscription id. The Polaris native account id is needed
 		// to delete the Polaris native account subscription.
 		var natives []azure.NativeSubscription
-		if strings.HasPrefix(a.Version, "master") || a.Version == "latest" {
-			natives, err = azure.Wrap(a.gql).NativeSubscriptions(ctx, account.Name)
-		} else {
+		if core.VersionOlderThan(a.Version, "master-40644", "v20210803") {
 			natives, err = azure.Wrap(a.gql).NativeSubscriptionConnection(ctx, account.Name)
+		} else {
+			natives, err = azure.Wrap(a.gql).NativeSubscriptions(ctx, account.Name)
 		}
 		if err != nil {
 			return err
@@ -331,10 +330,10 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, deleteSnap
 		}
 
 		var jobID uuid.UUID
-		if strings.HasPrefix(a.Version, "master") || a.Version == "latest" {
-			jobID, err = azure.Wrap(a.gql).StartDisableNativeSubscriptionProtectionJob(ctx, nativeID, deleteSnapshots)
-		} else {
+		if core.VersionOlderThan(a.Version, "master-40766", "v20210803") {
 			jobID, err = azure.Wrap(a.gql).DeleteNativeSubscription(ctx, nativeID, deleteSnapshots)
+		} else {
+			jobID, err = azure.Wrap(a.gql).StartDisableNativeSubscriptionProtectionJob(ctx, nativeID, deleteSnapshots)
 		}
 		if err != nil {
 			return err

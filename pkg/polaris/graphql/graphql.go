@@ -114,7 +114,7 @@ type Client struct {
 }
 
 // NewClientFromLocalUser returns a new Client with the specified configuration.
-func NewClientFromLocalUser(app, apiURL, username, password string, logger log.Logger) *Client {
+func NewClientFromLocalUser(ctx context.Context, app, apiURL, username, password string, logger log.Logger) *Client {
 	return &Client{
 		app:    app,
 		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
@@ -129,7 +129,7 @@ func NewClientFromLocalUser(app, apiURL, username, password string, logger log.L
 }
 
 // NewClientFromServiceAccount returns a new Client with the specified configuration.
-func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSecret string, logger log.Logger) *Client {
+func NewClientFromServiceAccount(ctx context.Context, app, apiURL, accessTokenURI, clientID, clientSecret string, logger log.Logger) *Client {
 	return &Client{
 		app:    app,
 		gqlURL: fmt.Sprintf("%s/graphql", apiURL),

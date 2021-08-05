@@ -101,7 +101,7 @@ func NewClient(ctx context.Context, account Account, logger log.Logger) (*Client
 		logger = &log.DiscardLogger{}
 	}
 
-	gqlClient := graphql.NewClientFromLocalUser("custom", apiURL, account.Username, account.Password, logger)
+	gqlClient := graphql.NewClientFromLocalUser(ctx, "custom", apiURL, account.Username, account.Password, logger)
 
 	version, err := core.Wrap(gqlClient).DeploymentVersion(ctx)
 	if err != nil {
@@ -155,7 +155,7 @@ func NewClientFromServiceAccount(ctx context.Context, account ServiceAccount, lo
 	}
 	apiURL := account.AccessTokenURI[:i]
 
-	gqlClient := graphql.NewClientFromServiceAccount("custom", apiURL, account.AccessTokenURI, account.ClientID,
+	gqlClient := graphql.NewClientFromServiceAccount(ctx, "custom", apiURL, account.AccessTokenURI, account.ClientID,
 		account.ClientSecret, logger)
 
 	version, err := core.Wrap(gqlClient).DeploymentVersion(ctx)
