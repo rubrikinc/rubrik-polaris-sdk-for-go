@@ -1,7 +1,7 @@
 query RubrikPolarisSDKRequest($feature: CloudAccountFeatureEnum!, $include_subscriptions: Boolean!) {
     result: azureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $include_subscriptions) {
         cloudType
-        azureCloudAccountTenantRubrikId
+        azureCloudAccountTenantRubrikId: id
         domainName
         subscriptionCount
         subscriptions {

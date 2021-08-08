@@ -278,13 +278,13 @@ func (c *Client) AzureSubscriptionAdd(ctx context.Context, subscription AzureSub
 		return err
 	}
 
-	_, status, err := c.gql.AzureCloudAccountAddWithoutOAuth(ctx, subscription.Cloud, subscription.TenantDomain,
+	_, status, err := c.gql.AzureAddCloudAccountWithoutOAuth(ctx, subscription.Cloud, subscription.TenantDomain,
 		subscription.Regions, graphql.CloudNativeProtection, subsIn, permConf.PermissionVersion)
+	if err != nil {
+		return err
+	}
 	if len(status) != 1 {
 		return errors.New("polaris: expected a single response")
-	}
-	if err != nil {
-		return fmt.Errorf("polaris: %s", status[0].Error)
 	}
 
 	return err
@@ -312,7 +312,7 @@ func (c *Client) AzureSubscriptionSetRegions(ctx context.Context, id AzureSubscr
 	}
 
 	regionAdd := make([]graphql.AzureRegion, 0, 10)
-	for region, _ := range regionMap {
+	for region := range regionMap {
 		regionAdd = append(regionAdd, region)
 	}
 
@@ -321,7 +321,7 @@ func (c *Client) AzureSubscriptionSetRegions(ctx context.Context, id AzureSubscr
 		Name: subscription.Name,
 	}}
 
-	status, err := c.gql.AzureCloudAccountUpdate(ctx, graphql.CloudNativeProtection, regionAdd, regionRemove, sub)
+	status, err := c.gql.AzureUpdateCloudAccount(ctx, graphql.CloudNativeProtection, regionAdd, regionRemove, sub)
 	if len(status) != 1 {
 		return errors.New("polaris: expected a single response")
 	}
@@ -344,7 +344,7 @@ func (c *Client) AzureSubscriptionSetName(ctx context.Context, id AzureSubscript
 		Name: name,
 	}}
 
-	status, err := c.gql.AzureCloudAccountUpdate(ctx, graphql.CloudNativeProtection, nil, nil, sub)
+	status, err := c.gql.AzureUpdateCloudAccount(ctx, graphql.CloudNativeProtection, nil, nil, sub)
 	if len(status) != 1 {
 		return errors.New("polaris: expected a single response")
 	}
@@ -363,56 +363,48 @@ func (c *Client) AzureSubscriptionRemove(ctx context.Context, id AzureSubscripti
 		return err
 	}
 
-	// Lookup the Polaris Native ID from the Polaris subscription name and
-	// the Azure subscription ID. The Polaris Native ID is needed to delete
-	// the Polaris Native Account subscription.
-	var nativeSubs []graphql.AzureNativeSubscription
-	if VersionOlderThan(c.gql.Version, "master-40644", "v20210803") {
-		nativeSubs, err = c.gql.AzureNativeSubscriptionConnection(ctx, subscription.Name)
-	} else {
-		nativeSubs, err = c.gql.AzureNativeSubscriptions(ctx, subscription.Name)
-	}
-	if err != nil {
-		return err
-	}
-	var nativeID string
-	for _, nativeSub := range nativeSubs {
-		if nativeSub.NativeID == subscription.NativeID.String() {
-			nativeID = nativeSub.ID
-			break
+	if subscription.Feature.Status != graphql.Disabled {
+		// Lookup the Polaris Native ID from the Polaris subscription name and
+		// the Azure subscription ID. The Polaris Native ID is needed to delete
+		// the Polaris Native Account subscription.
+		nativeSubs, err := c.gql.AzureNativeSubscriptions(ctx, subscription.Name)
+		if err != nil {
+			return err
 		}
-	}
-	if nativeID == "" {
-		return errors.New("polaris: polaris native id not found")
-	}
+		var nativeID string
+		for _, nativeSub := range nativeSubs {
+			if nativeSub.NativeID == subscription.NativeID.String() {
+				nativeID = nativeSub.ID
+				break
+			}
+		}
+		if nativeID == "" {
+			return errors.New("polaris: polaris native id not found")
+		}
 
-	var jobID graphql.TaskChainUUID
-	if VersionOlderThan(c.gql.Version, "master-40766", "v20210803") {
-		jobID, err = c.gql.AzureDeleteNativeSubscription(ctx, nativeID, deleteSnapshots)
-	} else {
-		jobID, err = c.gql.AzureStartDisableNativeSubscriptionProtectionJob(ctx, nativeID, deleteSnapshots)
-	}
-	if err != nil {
-		return err
-	}
+		jobID, err := c.gql.AzureStartDisableNativeSubscriptionProtectionJob(ctx, nativeID, deleteSnapshots)
+		if err != nil {
+			return err
+		}
 
-	state, err := c.gql.WaitForTaskChain(ctx, jobID, 10*time.Second)
-	if err != nil {
-		return err
-	}
-	if state != graphql.TaskChainSucceeded {
-		return fmt.Errorf("polaris: taskchain failed: jobID=%v, state=%v", jobID, state)
+		state, err := c.gql.WaitForTaskChain(ctx, jobID, 10*time.Second)
+		if err != nil {
+			return err
+		}
+		if state != graphql.TaskChainSucceeded {
+			return fmt.Errorf("polaris: taskchain failed: jobID=%v, state=%v", jobID, state)
+		}
 	}
 
 	subscriptions := []string{
 		subscription.ID.String(),
 	}
-	status, err := c.gql.AzureCloudAccountDeleteWithoutOAuth(ctx, subscriptions, graphql.CloudNativeProtection)
+	status, err := c.gql.AzureDeleteCloudAccountWithoutOAuth(ctx, subscriptions, graphql.CloudNativeProtection)
+	if err != nil {
+		return err
+	}
 	if len(status) != 1 {
 		return errors.New("polaris: expected a single response")
-	}
-	if err != nil {
-		return fmt.Errorf("polaris: %s", status[0].Error)
 	}
 
 	return nil
@@ -432,6 +424,6 @@ type AzureServicePrincipal struct {
 // AzureServicePrincipalSet sets the service princiapl to use by subscriptions
 // in the same tenant domain.
 func (c *Client) AzureServicePrincipalSet(ctx context.Context, principal AzureServicePrincipal) error {
-	return c.gql.AzureSetCustomerAppCredentials(ctx, principal.Cloud, principal.AppID.String(),
+	return c.gql.AzureSetCloudAccountCustomerAppCredentials(ctx, principal.Cloud, principal.AppID.String(),
 		principal.AppName, principal.TenantID.String(), principal.TenantDomain, principal.AppSecret)
 }

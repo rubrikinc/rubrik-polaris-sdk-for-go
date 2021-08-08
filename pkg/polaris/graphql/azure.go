@@ -24,11 +24,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// AzureCloud -
+// AzureCloud
 type AzureCloud string
 
 const (
@@ -36,7 +37,7 @@ const (
 	AzurePublic AzureCloud = "AZUREPUBLICCLOUD"
 )
 
-// AzureSubscriptionIn -
+// AzureSubscriptionIn
 type AzureSubscriptionIn struct {
 	ID   string `json:"nativeId"`
 	Name string `json:"name"`
@@ -47,21 +48,24 @@ type AzureSubscriptionIn2 struct {
 	Name string `json:"name"`
 }
 
-// AzureSubscriptionStatus -
+// AzureSubscriptionStatus
 type AzureSubscriptionStatus struct {
-	SubscriptionID       string `json:"subscriptionId"`
-	SubscriptionNativeID string `json:"subscriptionNativeId"`
+	SubscriptionID       string `json:"azureSubscriptionRubrikId"`
+	SubscriptionNativeID string `json:"azureSubscriptionNativeId"`
 	Error                string `json:"error"`
 }
 
-// AzureCloudAccountAddWithoutOAuth adds the Azure Subscription cloud account
+// AzureAddCloudAccountWithoutOAuth adds the Azure Subscription cloud account
 // for given feature without OAuth.
-func (c *Client) AzureCloudAccountAddWithoutOAuth(ctx context.Context, cloud AzureCloud, tenantDomain string,
+func (c *Client) AzureAddCloudAccountWithoutOAuth(ctx context.Context, cloud AzureCloud, tenantDomain string,
 	regions []AzureRegion, feature CloudAccountFeature, subscriptions []AzureSubscriptionIn, policyVersion int) (string, []AzureSubscriptionStatus, error) {
+	c.log.Print(log.Trace, "graphql.Client.AzureAddCloudAccountWithoutOAuth")
 
-	c.log.Print(log.Trace, "graphql.Client.AzureCloudAccountAddWithoutOAuth")
-
-	buf, err := c.Request(ctx, azureCloudAccountAddWithoutOauthQuery, struct {
+	query := azureAddCloudAccountWithoutOauthQuery
+	if VersionOlderThan(c.Version, "master-40839", "v20210810") {
+		query = azureAddCloudAccountWithoutOauthV0Query
+	}
+	buf, err := c.Request(ctx, query, struct {
 		Cloud         AzureCloud            `json:"azure_cloud_type"`
 		TenantDomain  string                `json:"azure_tenant_domain_name"`
 		Regions       []AzureRegion         `json:"azure_regions"`
@@ -73,45 +77,50 @@ func (c *Client) AzureCloudAccountAddWithoutOAuth(ctx context.Context, cloud Azu
 		return "", nil, err
 	}
 
-	c.log.Printf(log.Debug, "AzureCloudAccountAddWithoutOAuth(%q, %q, %q, %q, %q, %d): %s", cloud, tenantDomain, regions,
-		feature, subscriptions, policyVersion, string(buf))
+	c.log.Printf(log.Debug, "%s(%q, %q, %q, %q, %q, %d): %s", queryName(query), cloud, tenantDomain, regions, feature, subscriptions,
+		policyVersion, string(buf))
 
 	var payload struct {
 		Data struct {
-			Query struct {
+			Result struct {
 				TenantID string                    `json:"tenantId"`
 				Status   []AzureSubscriptionStatus `json:"status"`
-			} `json:"azureCloudAccountAddWithoutOAuth"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return "", nil, err
 	}
-	if len(payload.Data.Query.Status) == 0 {
+	if len(payload.Data.Result.Status) == 0 {
 		return "", nil, errors.New("polaris: add returned no status")
 	}
-	for _, status := range payload.Data.Query.Status {
+
+	for _, status := range payload.Data.Result.Status {
 		if status.Error != "" {
-			return payload.Data.Query.TenantID, payload.Data.Query.Status, errors.New("polaris: add failed")
+			return payload.Data.Result.TenantID, payload.Data.Result.Status, fmt.Errorf("polaris: add failed: %s", status.Error)
 		}
 	}
 
-	return payload.Data.Query.TenantID, payload.Data.Query.Status, nil
+	return payload.Data.Result.TenantID, payload.Data.Result.Status, nil
 }
 
-// AzureDeleteStatus -
+// AzureDeleteStatus
 type AzureDeleteStatus struct {
-	SubscriptionID string `json:"subscriptionId"`
-	Success        bool   `json:"success"`
+	SubscriptionID string `json:"azureSubscriptionNativeId"`
+	Success        bool   `json:"isSuccess"`
 	Error          string `json:"error"`
 }
 
-// AzureCloudAccountDeleteWithoutOAuth delete the Azure subscriptions cloud
+// AzureDeleteCloudAccountWithoutOAuth delete the Azure subscriptions cloud
 // account for given feature without OAuth.
-func (c *Client) AzureCloudAccountDeleteWithoutOAuth(ctx context.Context, subscriptionIDs []string, feature CloudAccountFeature) ([]AzureDeleteStatus, error) {
-	c.log.Print(log.Trace, "graphql.Client.AzureCloudAccountDeleteWithoutOAuth")
+func (c *Client) AzureDeleteCloudAccountWithoutOAuth(ctx context.Context, subscriptionIDs []string, feature CloudAccountFeature) ([]AzureDeleteStatus, error) {
+	c.log.Print(log.Trace, "graphql.Client.AzureDeleteCloudAccountWithoutOAuth")
 
-	buf, err := c.Request(ctx, azureCloudAccountDeleteWithoutOauthQuery, struct {
+	query := azureDeleteCloudAccountWithoutOauthQuery
+	if VersionOlderThan(c.Version, "master-40839", "v20210810") {
+		query = azureDeleteCloudAccountWithoutOauthV0Query
+	}
+	buf, err := c.Request(ctx, query, struct {
 		SubscriptionIDs []string            `json:"azure_subscription_ids"`
 		Feature         CloudAccountFeature `json:"feature"`
 	}{SubscriptionIDs: subscriptionIDs, Feature: feature})
@@ -119,42 +128,47 @@ func (c *Client) AzureCloudAccountDeleteWithoutOAuth(ctx context.Context, subscr
 		return nil, err
 	}
 
-	c.log.Printf(log.Debug, "AzureCloudAccountDeleteWithoutOAuth(%v, %q): %s", subscriptionIDs, feature, string(buf))
+	c.log.Printf(log.Debug, "%s(%v, %q): %s", queryName(query), subscriptionIDs, feature, string(buf))
 
 	var payload struct {
 		Data struct {
-			Query struct {
+			Result struct {
 				Status []AzureDeleteStatus `json:"status"`
-			} `json:"azureCloudAccountDeleteWithoutOAuth"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return nil, err
 	}
-	if len(payload.Data.Query.Status) == 0 {
+	if len(payload.Data.Result.Status) == 0 {
 		return nil, errors.New("polaris: delete returned no status")
 	}
-	for _, status := range payload.Data.Query.Status {
+
+	for _, status := range payload.Data.Result.Status {
 		if !status.Success {
-			return payload.Data.Query.Status, errors.New("polaris: delete failed")
+			return payload.Data.Result.Status, fmt.Errorf("polaris: delete failed: %s", status.Error)
 		}
 	}
 
-	return payload.Data.Query.Status, nil
+	return payload.Data.Result.Status, nil
 }
 
-// AzureUpdate -
+// AzureUpdate
 type AzureUpdateStatus struct {
-	SubscriptionID string `json:"subscriptionId"`
-	Success        bool   `json:"success"`
+	SubscriptionID string `json:"azureSubscriptionNativeId"`
+	Success        bool   `json:"isSuccess"`
 }
 
-// AzureCloudAccountUpdate update names of the Azure subscriptions and regions
+// AzureUpdateCloudAccount update names of the Azure subscriptions and regions
 // for the given feature.
-func (c *Client) AzureCloudAccountUpdate(ctx context.Context, feature CloudAccountFeature, regionsToAdd, regionsToRemove []AzureRegion, subscriptions []AzureSubscriptionIn2) ([]AzureUpdateStatus, error) {
-	c.log.Print(log.Trace, "graphql.Client.AzureCloudAccountUpdate")
+func (c *Client) AzureUpdateCloudAccount(ctx context.Context, feature CloudAccountFeature, regionsToAdd, regionsToRemove []AzureRegion, subscriptions []AzureSubscriptionIn2) ([]AzureUpdateStatus, error) {
+	c.log.Print(log.Trace, "graphql.Client.AzureUpdateCloudAccount")
 
-	buf, err := c.Request(ctx, azureCloudAccountUpdateQuery, struct {
+	query := azureUpdateCloudAccountQuery
+	if VersionOlderThan(c.Version, "master-40839", "v20210810") {
+		query = azureUpdateCloudAccountV0Query
+	}
+	buf, err := c.Request(ctx, query, struct {
 		Feature         CloudAccountFeature    `json:"feature"`
 		RegionsToAdd    []AzureRegion          `json:"regions_to_add,omitempty"`
 		RegionsToRemove []AzureRegion          `json:"regions_to_remove,omitempty"`
@@ -164,32 +178,33 @@ func (c *Client) AzureCloudAccountUpdate(ctx context.Context, feature CloudAccou
 		return nil, err
 	}
 
-	c.log.Printf(log.Debug, "AzureCloudAccountUpdate(%q, %v, %v %v): %s", feature, regionsToAdd, regionsToRemove,
+	c.log.Printf(log.Debug, "%s(%q, %v, %v %v): %s", queryName(query), feature, regionsToAdd, regionsToRemove,
 		subscriptions, string(buf))
 
 	var payload struct {
 		Data struct {
-			Query struct {
+			Result struct {
 				Status []AzureUpdateStatus `json:"status"`
-			} `json:"azureCloudAccountUpdate"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return nil, err
 	}
-	if len(payload.Data.Query.Status) == 0 {
+	if len(payload.Data.Result.Status) == 0 {
 		return nil, errors.New("polaris: update returned no status")
 	}
-	for _, status := range payload.Data.Query.Status {
+
+	for _, status := range payload.Data.Result.Status {
 		if !status.Success {
-			return payload.Data.Query.Status, errors.New("polaris: update failed")
+			return payload.Data.Result.Status, errors.New("polaris: update failed")
 		}
 	}
 
-	return payload.Data.Query.Status, nil
+	return payload.Data.Result.Status, nil
 }
 
-// AzureSubscription -
+// AzureSubscription
 type AzureSubscription struct {
 	ID            string `json:"id"`
 	NativeID      string `json:"nativeId"`
@@ -201,10 +216,10 @@ type AzureSubscription struct {
 	} `json:"featureDetail"`
 }
 
-// AzureTenant -
+// AzureTenant
 type AzureTenant struct {
 	Cloud             AzureCloud          `json:"cloutType"`
-	ID                string              `json:"id"`
+	ID                string              `json:"azureCloudAccountTenantRubrikId"`
 	DomainName        string              `json:"domainName"`
 	SubscriptionCount int                 `json:"subscriptionCount"`
 	Subscriptions     []AzureSubscription `json:"subscriptions"`
@@ -215,7 +230,11 @@ type AzureTenant struct {
 func (c *Client) AzureCloudAccountTenants(ctx context.Context, feature CloudAccountFeature, includeSubscriptions bool) ([]AzureTenant, error) {
 	c.log.Print(log.Trace, "graphql.Client.AzureCloudAccountTenants")
 
-	buf, err := c.Request(ctx, azureCloudAccountTenantsQuery, struct {
+	query := azureCloudAccountTenantsQuery
+	if VersionOlderThan(c.Version, "master-40839", "v20210810") {
+		query = azureCloudAccountTenantsV0Query
+	}
+	buf, err := c.Request(ctx, query, struct {
 		Feature              CloudAccountFeature `json:"feature"`
 		IncludeSubscriptions bool                `json:"include_subscriptions"`
 	}{Feature: feature, IncludeSubscriptions: includeSubscriptions})
@@ -223,11 +242,11 @@ func (c *Client) AzureCloudAccountTenants(ctx context.Context, feature CloudAcco
 		return nil, err
 	}
 
-	c.log.Printf(log.Debug, "AzureCloudAccountTenants(%q, %t): %s", feature, includeSubscriptions, string(buf))
+	c.log.Printf(log.Debug, "%s(%q, %t): %s", queryName(query), feature, includeSubscriptions, string(buf))
 
 	var payload struct {
 		Data struct {
-			Result []AzureTenant `json:"azureCloudAccountTenants"`
+			Result []AzureTenant `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
@@ -237,13 +256,17 @@ func (c *Client) AzureCloudAccountTenants(ctx context.Context, feature CloudAcco
 	return payload.Data.Result, nil
 }
 
-// AzureSetCustomerAppCredentials sets the credentials for the customer
-// application for the specified tenant domain. If the tenant domain is empty,
-// set it for all the tenants of the customer.
-func (c *Client) AzureSetCustomerAppCredentials(ctx context.Context, cloud AzureCloud, appID, appName, appTenantID, appTenantDomain, appSecretKey string) error {
-	c.log.Print(log.Trace, "graphql.Client.AzureSetCustomerAppCredentials")
+// AzureSetCloudAccountCustomerAppCredentials sets the credentials for the
+// customer application for the specified tenant domain. If the tenant domain
+// is empty, set it for all the tenants of the customer.
+func (c *Client) AzureSetCloudAccountCustomerAppCredentials(ctx context.Context, cloud AzureCloud, appID, appName, appTenantID, appTenantDomain, appSecretKey string) error {
+	c.log.Print(log.Trace, "graphql.Client.AzureSetCloudAccountCustomerAppCredentials")
 
-	buf, err := c.Request(ctx, azureSetCustomerAppCredentialsQuery, struct {
+	query := azureSetCloudAccountCustomerAppCredentialsQuery
+	if VersionOlderThan(c.Version, "master-40839", "v20210810") {
+		query = azureSetCloudAccountCustomerAppCredentialsV0Query
+	}
+	buf, err := c.Request(ctx, query, struct {
 		Cloud        AzureCloud `json:"azure_cloud_type"`
 		ID           string     `json:"azure_app_id"`
 		Name         string     `json:"azure_app_name"`
@@ -255,17 +278,18 @@ func (c *Client) AzureSetCustomerAppCredentials(ctx context.Context, cloud Azure
 		return err
 	}
 
-	c.log.Printf(log.Debug, "AzureSetCustomerAppCredentials(%q, %q, %q, %q, %q, %q): %s",
-		cloud, appID, appName, appTenantID, appTenantDomain, appSecretKey, string(buf))
+	c.log.Printf(log.Debug, "%s(%q, %q, %q, %q, %q, %q): %s", queryName(query), cloud, appID, appName,
+		appTenantID, appTenantDomain, appSecretKey, string(buf))
 
 	var payload struct {
 		Data struct {
-			Success bool `json:"azureSetCustomerAppCredentials"`
+			Success bool `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return err
 	}
+
 	if !payload.Data.Success {
 		return errors.New("polaris: failed to set customer credentials")
 	}
@@ -273,145 +297,37 @@ func (c *Client) AzureSetCustomerAppCredentials(ctx context.Context, cloud Azure
 	return nil
 }
 
-// AzureDeleteNativeSubscription deletes an azure subscription.
-func (c *Client) AzureDeleteNativeSubscription(ctx context.Context, subscriptionID string, deleteSnapshots bool) (TaskChainUUID, error) {
-	c.log.Print(log.Trace, "graphql.Client.AzureDeleteNativeSubscription")
-
-	buf, err := c.Request(ctx, azureDeleteNativeSubscriptionQuery, struct {
-		SubScriptionID  string `json:"subscription_id"`
-		DeleteSnapshots bool   `json:"delete_snapshots"`
-	}{SubScriptionID: subscriptionID, DeleteSnapshots: deleteSnapshots})
-	if err != nil {
-		return "", err
-	}
-
-	c.log.Printf(log.Debug, "AzureDeleteNativeSubscription(%q, %t): %s", subscriptionID, deleteSnapshots, string(buf))
-
-	var payload struct {
-		Data struct {
-			Query struct {
-				TaskChainUUID TaskChainUUID `json:"taskchainUuid"`
-			} `json:"deleteAzureNativeSubscription"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", err
-	}
-
-	return payload.Data.Query.TaskChainUUID, nil
-}
-
-// AzureStartDisableNativeSubscriptionProtectionJob deletes an azure subscription.
+// AzureStartDisableNativeSubscriptionProtectionJob deletes an azure
+// subscription.
 func (c *Client) AzureStartDisableNativeSubscriptionProtectionJob(ctx context.Context, subscriptionID string, deleteSnapshots bool) (TaskChainUUID, error) {
 	c.log.Print(log.Trace, "graphql.Client.AzureStartDisableNativeSubscriptionProtectionJob")
 
-	buf, err := c.Request(ctx, azureStartDisableNativeSubscriptionProtectionJobQuery, struct {
-		SubScriptionID  string `json:"subscription_id"`
+	query := azureStartDisableNativeSubscriptionProtectionJobQuery
+	if VersionOlderThan(c.Version, "master-40766", "v20210803") {
+		query = azureStartDisableNativeSubscriptionProtectionJobV0Query
+	}
+	buf, err := c.Request(ctx, query, struct {
+		SubscriptionID  string `json:"subscription_id"`
 		DeleteSnapshots bool   `json:"delete_snapshots"`
-	}{SubScriptionID: subscriptionID, DeleteSnapshots: deleteSnapshots})
+	}{SubscriptionID: subscriptionID, DeleteSnapshots: deleteSnapshots})
 	if err != nil {
 		return "", err
 	}
 
-	c.log.Printf(log.Debug, "AzureStartDisableNativeSubscriptionProtectionJob(%q, %t): %s", subscriptionID, deleteSnapshots, string(buf))
+	c.log.Printf(log.Debug, "%s(%q, %t): %s", queryName(query), subscriptionID, deleteSnapshots, string(buf))
 
 	var payload struct {
 		Data struct {
-			Query struct {
+			Result struct {
 				JobID TaskChainUUID `json:"jobId"`
-			} `json:"startDisableAzureNativeSubscriptionProtectionJob"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return "", err
 	}
 
-	return payload.Data.Query.JobID, nil
-}
-
-// azureNativeSubscriptionV0 holds a Polaris native Azure subscription.
-type azureNativeSubscriptionV0 struct {
-	ID            string        `json:"id"`
-	Name          string        `json:"name"`
-	NativeID      string        `json:"nativeId"`
-	Status        string        `json:"status"`
-	SLAAssignment SLAAssignment `json:"slaAssignment"`
-
-	ConfiguredSLADomain struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	} `json:"configuredSlaDomain"`
-
-	EffectiveSLADomain struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	} `json:"effectiveSlaDomain"`
-}
-
-func toAzureNativeSubscription(subV0 azureNativeSubscriptionV0) AzureNativeSubscription {
-	sub := AzureNativeSubscription{
-		ID:            subV0.ID,
-		Name:          subV0.Name,
-		NativeID:      subV0.NativeID,
-		Status:        subV0.Status,
-		SLAAssignment: subV0.SLAAssignment,
-	}
-
-	sub.ConfiguredSLADomain.ID = subV0.ConfiguredSLADomain.ID
-	sub.ConfiguredSLADomain.Name = subV0.ConfiguredSLADomain.Name
-
-	sub.EffectiveSLADomain.ID = subV0.EffectiveSLADomain.ID
-	sub.EffectiveSLADomain.Name = subV0.EffectiveSLADomain.Name
-
-	return sub
-}
-
-// DEPRECATED, this endpoint has been replaced by AzureNativeSubscriptions.
-// Will be removed in the next release.
-func (c *Client) AzureNativeSubscriptionConnection(ctx context.Context, nameFilter string) ([]AzureNativeSubscription, error) {
-	c.log.Print(log.Trace, "graphql.Client.AzureNativeSubscriptionConnection")
-
-	subscriptions := make([]AzureNativeSubscription, 0, 10)
-	var endCursor string
-	for {
-		buf, err := c.Request(ctx, azureNativeSubscriptionConnectionQuery, struct {
-			After      string `json:"after,omitempty"`
-			NameFilter string `json:"filter,omitempty"`
-		}{After: endCursor, NameFilter: nameFilter})
-		if err != nil {
-			return nil, err
-		}
-
-		c.log.Printf(log.Debug, "AzureNativeSubscriptionConnection(%q): %s", nameFilter, string(buf))
-
-		var payload struct {
-			Data struct {
-				Query struct {
-					Count int `json:"count"`
-					Edges []struct {
-						Node azureNativeSubscriptionV0 `json:"node"`
-					} `json:"edges"`
-					PageInfo struct {
-						EndCursor   string `json:"endCursor"`
-						HasNextPage bool   `json:"hasNextPage"`
-					} `json:"pageInfo"`
-				} `json:"azureNativeSubscriptionConnection"`
-			} `json:"data"`
-		}
-		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, err
-		}
-		for _, subscription := range payload.Data.Query.Edges {
-			subscriptions = append(subscriptions, toAzureNativeSubscription(subscription.Node))
-		}
-
-		if !payload.Data.Query.PageInfo.HasNextPage {
-			break
-		}
-		endCursor = payload.Data.Query.PageInfo.EndCursor
-	}
-
-	return subscriptions, nil
+	return payload.Data.Result.JobID, nil
 }
 
 // AzureNativeSubscription holds a Polaris native Azure subscription.
@@ -433,13 +349,19 @@ type AzureNativeSubscription struct {
 	} `json:"effectiveSlaDomain"`
 }
 
+// AzureNativeSubscriptions
 func (c *Client) AzureNativeSubscriptions(ctx context.Context, nameFilter string) ([]AzureNativeSubscription, error) {
 	c.log.Print(log.Trace, "graphql.Client.AzureNativeSubscriptions")
 
-	subscriptions := make([]AzureNativeSubscription, 0, 10)
+	query := azureNativeSubscriptionsQuery
+	if VersionOlderThan(c.Version, "master-40644", "v20210803") {
+		query = azureNativeSubscriptionsV0Query
+	}
+
+	var subscriptions []AzureNativeSubscription
 	var endCursor string
 	for {
-		buf, err := c.Request(ctx, azureNativeSubscriptionsQuery, struct {
+		buf, err := c.Request(ctx, query, struct {
 			After      string `json:"after,omitempty"`
 			NameFilter string `json:"filter,omitempty"`
 		}{After: endCursor, NameFilter: nameFilter})
@@ -447,11 +369,11 @@ func (c *Client) AzureNativeSubscriptions(ctx context.Context, nameFilter string
 			return nil, err
 		}
 
-		c.log.Printf(log.Debug, "azureNativeSubscriptions(%q): %s", nameFilter, string(buf))
+		c.log.Printf(log.Debug, "%s(%q): %s", queryName(query), nameFilter, string(buf))
 
 		var payload struct {
 			Data struct {
-				Query struct {
+				Result struct {
 					Count int `json:"count"`
 					Edges []struct {
 						Node AzureNativeSubscription `json:"node"`
@@ -460,20 +382,20 @@ func (c *Client) AzureNativeSubscriptions(ctx context.Context, nameFilter string
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`
 					} `json:"pageInfo"`
-				} `json:"azureNativeSubscriptions"`
+				} `json:"result"`
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
 			return nil, err
 		}
-		for _, subscription := range payload.Data.Query.Edges {
+		for _, subscription := range payload.Data.Result.Edges {
 			subscriptions = append(subscriptions, subscription.Node)
 		}
 
-		if !payload.Data.Query.PageInfo.HasNextPage {
+		if !payload.Data.Result.PageInfo.HasNextPage {
 			break
 		}
-		endCursor = payload.Data.Query.PageInfo.EndCursor
+		endCursor = payload.Data.Result.PageInfo.EndCursor
 	}
 
 	return subscriptions, nil
@@ -503,7 +425,7 @@ func (c *Client) AzureCloudAccountPermissionConfig(ctx context.Context) (AzurePe
 		return AzurePermissionConfig{}, err
 	}
 
-	c.log.Printf(log.Debug, "AzureCloudAccountPermissionConfig(): %s", string(buf))
+	c.log.Printf(log.Debug, "azureCloudAccountPermissionConfig(): %s", string(buf))
 
 	var payload struct {
 		Data struct {
