@@ -1,6 +1,20 @@
-package polaris
+package graphql
 
 import "testing"
+
+func TestQueryName(t *testing.T) {
+	if name := queryName(azureCloudAccountTenantsQuery); name != "azureCloudAccountTenants" {
+		t.Fatalf("invalid query name: %s", name)
+	}
+
+	if name := queryName(azureCloudAccountTenantsV0Query); name != "azureCloudAccountTenantsV0" {
+		t.Fatalf("invalid query name: %s", name)
+	}
+
+	if name := queryName("invalidquery"); name != "<invalid-query>" {
+		t.Fatalf("invalid query name: %s", name)
+	}
+}
 
 func TestVersionOlderThan(t *testing.T) {
 	// Latest

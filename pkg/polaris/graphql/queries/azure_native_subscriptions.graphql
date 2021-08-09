@@ -1,5 +1,5 @@
 query RubrikPolarisSDKRequest($filter: String = "") {
-    azureNativeSubscriptions(subscriptionFilters: {
+    result: azureNativeSubscriptions(subscriptionFilters: {
         nameSubstringFilter: {
             nameSubstring: $filter
         }
