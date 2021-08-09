@@ -322,11 +322,11 @@ func (c *Client) AzureSubscriptionSetRegions(ctx context.Context, id AzureSubscr
 	}}
 
 	status, err := c.gql.AzureUpdateCloudAccount(ctx, graphql.CloudNativeProtection, regionAdd, regionRemove, sub)
-	if len(status) != 1 {
-		return errors.New("polaris: expected a single response")
-	}
 	if err != nil {
 		return err
+	}
+	if len(status) != 1 {
+		return errors.New("polaris: expected a single response")
 	}
 
 	return nil
@@ -345,11 +345,11 @@ func (c *Client) AzureSubscriptionSetName(ctx context.Context, id AzureSubscript
 	}}
 
 	status, err := c.gql.AzureUpdateCloudAccount(ctx, graphql.CloudNativeProtection, nil, nil, sub)
-	if len(status) != 1 {
-		return errors.New("polaris: expected a single response")
-	}
 	if err != nil {
 		return err
+	}
+	if len(status) != 1 {
+		return errors.New("polaris: expected a single response")
 	}
 
 	return nil
