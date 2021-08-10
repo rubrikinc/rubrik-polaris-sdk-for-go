@@ -66,7 +66,7 @@ pipeline {
                 SDK_GCPPROJECT_FILE = credentials('sdk-test-gcp-project')
             }
             steps {
-                sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -v ./...'
+                sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -timeout=20m -v ./...'
             }
         }
         stage('Coverage') {
