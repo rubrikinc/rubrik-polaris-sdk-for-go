@@ -1,6 +1,20 @@
-package core
+package graphql
 
 import "testing"
+
+func TestQueryName(t *testing.T) {
+	if name := QueryName("query SdkGolangMyQuery {}"); name != "myQuery" {
+		t.Fatalf("invalid query name: %s", name)
+	}
+
+	if name := QueryName("query SdkGolangMyQuery($param: int) {}"); name != "myQuery" {
+		t.Fatalf("invalid query name: %s", name)
+	}
+
+	if name := QueryName("invalidquery"); name != "<invalid-query>" {
+		t.Fatalf("invalid query name: %s", name)
+	}
+}
 
 func TestVersionOlderThan(t *testing.T) {
 	// Latest

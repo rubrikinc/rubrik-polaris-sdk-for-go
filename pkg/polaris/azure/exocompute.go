@@ -111,7 +111,7 @@ func (a API) EnableExocompute(ctx context.Context, id IdentityFunc, regions ...s
 		return err
 	}
 
-	_, err = azure.Wrap(a.gql).CloudAccountAddWithoutOAuth(ctx, azure.PublicCloud, account.NativeID,
+	_, err = azure.Wrap(a.gql).AddCloudAccountWithoutOAuth(ctx, azure.PublicCloud, account.NativeID,
 		core.Exocompute, account.Name, account.TenantDomain, regs, perms.PermissionVersion)
 	if err != nil {
 		return err
@@ -130,7 +130,7 @@ func (a API) DisableExocompute(ctx context.Context, id IdentityFunc) error {
 		return err
 	}
 
-	err = azure.Wrap(a.gql).CloudAccountDeleteWithoutOAuth(ctx, accountID, core.Exocompute)
+	err = azure.Wrap(a.gql).DeleteCloudAccountWithoutOAuth(ctx, accountID, core.Exocompute)
 	if err != nil {
 		return err
 	}

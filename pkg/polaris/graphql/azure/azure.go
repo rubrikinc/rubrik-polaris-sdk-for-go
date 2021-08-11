@@ -202,13 +202,13 @@ func Wrap(gql *graphql.Client) API {
 	return API{GQL: gql}
 }
 
-// SetCustomerAppCredentials sets the credentials for the customer application
-// for the specified tenant domain. If the tenant domain is empty, set it for
-// all the tenants of the customer.
-func (a API) SetCustomerAppCredentials(ctx context.Context, cloud Cloud, appID, appTenantID uuid.UUID, appName, appTenantDomain, appSecretKey string) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.AzureSetCustomerAppCredentials")
+// SetCloudAccountCustomerAppCredentials sets the credentials for the customer
+// application for the specified tenant domain. If the tenant domain is empty,
+// set it for all the tenants of the customer.
+func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cloud, appID, appTenantID uuid.UUID, appName, appTenantDomain, appSecretKey string) error {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.SetCloudAccountCustomerAppCredentials")
 
-	buf, err := a.GQL.Request(ctx, azureSetCustomerAppCredentialsQuery, struct {
+	buf, err := a.GQL.Request(ctx, setAzureCloudAccountCustomerAppCredentialsQuery, struct {
 		Cloud        Cloud     `json:"azureCloudType"`
 		ID           uuid.UUID `json:"appId"`
 		Name         string    `json:"appName"`
@@ -220,18 +220,18 @@ func (a API) SetCustomerAppCredentials(ctx context.Context, cloud Cloud, appID, 
 		return err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "azureSetCustomerAppCredentials(%q, %q, %q, %q, %q, %q): %s", cloud, appID, appName,
+	a.GQL.Log().Printf(log.Debug, "setAzureCloudAccountCustomerAppCredentials(%q, %q, %q, %q, %q, %q): %s", cloud, appID, appName,
 		appSecretKey, appTenantID, appTenantDomain, string(buf))
 
 	var payload struct {
 		Data struct {
-			Success bool `json:"azureSetCustomerAppCredentials"`
+			Result bool `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return err
 	}
-	if !payload.Data.Success {
+	if !payload.Data.Result {
 		return errors.New("polaris: failed to set azure customer credentials")
 	}
 

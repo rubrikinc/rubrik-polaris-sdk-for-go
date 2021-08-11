@@ -1,6 +1,21 @@
-package core
+package graphql
 
-import "regexp"
+import (
+	"regexp"
+	"strings"
+)
+
+var queryPattern *regexp.Regexp = regexp.MustCompile(`^(?:mutation|query) +SdkGolang(.+?) *?(?:\(|{)`)
+
+// QueryName returns the name of the specified GraphQL query.
+func QueryName(query string) string {
+	groups := queryPattern.FindStringSubmatch(query)
+	if len(groups) != 2 {
+		return "<invalid-query>"
+	}
+
+	return strings.ToLower(groups[1][:1]) + groups[1][1:]
+}
 
 var versionPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^master-\d+$`),

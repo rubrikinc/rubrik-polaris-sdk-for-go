@@ -1,7 +1,7 @@
 query RubrikPolarisSDKRequest($tenantId: UUID!, $feature: CloudAccountFeatureEnum!, $subscriptionSearchText: String!) {
-    azureCloudAccountTenant(tenantId: $tenantId, feature: $feature, subscriptionSearchText: $subscriptionSearchText, subscriptionStatusFilters: []) {
+    result: azureCloudAccountTenant(tenantId: $tenantId, feature: $feature, subscriptionSearchText: $subscriptionSearchText, subscriptionStatusFilters: []) {
         cloudType
-        id
+        azureCloudAccountTenantRubrikId
         clientId
         domainName
         subscriptions {

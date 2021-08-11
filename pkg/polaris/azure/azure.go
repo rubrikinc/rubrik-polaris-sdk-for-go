@@ -276,7 +276,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		return uuid.Nil, err
 	}
 
-	_, err = azure.Wrap(a.gql).CloudAccountAddWithoutOAuth(ctx, azure.PublicCloud, config.id,
+	_, err = azure.Wrap(a.gql).AddCloudAccountWithoutOAuth(ctx, azure.PublicCloud, config.id,
 		core.CloudNativeProtection, config.name, config.tenantDomain, options.regions, perms.PermissionVersion)
 	if err != nil {
 		return uuid.Nil, err
@@ -308,12 +308,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, deleteSnap
 		// Lookup the Polaris native account id from the Polaris subscription name
 		// and the Azure subscription id. The Polaris native account id is needed
 		// to delete the Polaris native account subscription.
-		var natives []azure.NativeSubscription
-		if core.VersionOlderThan(a.Version, "master-40644", "v20210803") {
-			natives, err = azure.Wrap(a.gql).NativeSubscriptionConnection(ctx, account.Name)
-		} else {
-			natives, err = azure.Wrap(a.gql).NativeSubscriptions(ctx, account.Name)
-		}
+		natives, err := azure.Wrap(a.gql).NativeSubscriptions(ctx, account.Name)
 		if err != nil {
 			return err
 		}
@@ -329,12 +324,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, deleteSnap
 			return fmt.Errorf("polaris: account: %w", graphql.ErrNotFound)
 		}
 
-		var jobID uuid.UUID
-		if core.VersionOlderThan(a.Version, "master-40766", "v20210803") {
-			jobID, err = azure.Wrap(a.gql).DeleteNativeSubscription(ctx, nativeID, deleteSnapshots)
-		} else {
-			jobID, err = azure.Wrap(a.gql).StartDisableNativeSubscriptionProtectionJob(ctx, nativeID, deleteSnapshots)
-		}
+		jobID, err := azure.Wrap(a.gql).StartDisableNativeSubscriptionProtectionJob(ctx, nativeID, deleteSnapshots)
 		if err != nil {
 			return err
 		}
@@ -348,7 +338,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, deleteSnap
 		}
 	}
 
-	err = azure.Wrap(a.gql).CloudAccountDeleteWithoutOAuth(ctx, account.ID, core.CloudNativeProtection)
+	err = azure.Wrap(a.gql).DeleteCloudAccountWithoutOAuth(ctx, account.ID, core.CloudNativeProtection)
 	if err != nil {
 		return err
 	}
@@ -402,7 +392,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 			add = append(add, region)
 		}
 
-		err = azure.Wrap(a.gql).CloudAccountUpdate(ctx, account.ID, accountFeature.Name, options.name, add, remove)
+		err = azure.Wrap(a.gql).UpdateCloudAccount(ctx, account.ID, accountFeature.Name, options.name, add, remove)
 		if err != nil {
 			return err
 		}
@@ -422,8 +412,8 @@ func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipal
 		return uuid.Nil, err
 	}
 
-	err = azure.Wrap(a.gql).SetCustomerAppCredentials(ctx, azure.PublicCloud, config.appID, config.tenantID, config.appName,
-		config.tenantDomain, config.appSecret)
+	err = azure.Wrap(a.gql).SetCloudAccountCustomerAppCredentials(ctx, azure.PublicCloud, config.appID,
+		config.tenantID, config.appName, config.tenantDomain, config.appSecret)
 	if err != nil {
 		return uuid.Nil, err
 	}
