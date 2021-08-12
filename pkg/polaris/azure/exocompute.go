@@ -24,18 +24,19 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // ExocomputeConfig represents a single exocompute config.
 type ExocomputeConfig struct {
-	ID       uuid.UUID `json:"configUuid"`
-	Region   string    `json:"region"`
-	SubnetID string    `json:"subnets"`
+	ID       uuid.UUID
+	Region   string
+	SubnetID string
 
 	// When true Polaris will manage the security groups.
-	PolarisManaged bool `json:"isPolarisManaged"`
+	PolarisManaged bool
 }
 
 // ExoConfigFunc returns an exocompute config initialized from the values
@@ -105,7 +106,7 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 		}
 	}
 
-	return ExocomputeConfig{}, nil
+	return ExocomputeConfig{}, graphql.ErrNotFound
 }
 
 // ExocomputeConfigs returns all exocompute configs for the account with the
@@ -148,7 +149,7 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 		return uuid.Nil, err
 	}
 
-	exo, err := azure.Wrap(a.gql).ExocomputeAdd(ctx, accountID, exoConfig)
+	exo, err := azure.Wrap(a.gql).AddCloudAccountExocomputeConfigurations(ctx, accountID, exoConfig)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -161,7 +162,7 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 func (a API) RemoveExocomputeConfig(ctx context.Context, id uuid.UUID) error {
 	a.gql.Log().Print(log.Trace, "polaris/azure.RemoveExocomputeConfig")
 
-	err := azure.Wrap(a.gql).ExocomputeConfigsDelete(ctx, id)
+	err := azure.Wrap(a.gql).DeleteCloudAccountExocomputeConfigurations(ctx, id)
 	if err != nil {
 		return err
 	}

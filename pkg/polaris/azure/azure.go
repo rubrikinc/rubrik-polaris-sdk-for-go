@@ -37,13 +37,14 @@ import (
 
 // API for Microsoft Azure.
 type API struct {
-	gql *graphql.Client
+	Version string
+	gql     *graphql.Client
 }
 
 // NewAPI returns a new API instance. Note that this is a very cheap call to
 // make.
-func NewAPI(gql *graphql.Client) API {
-	return API{gql: gql}
+func NewAPI(gql *graphql.Client, version string) API {
+	return API{Version: version, gql: gql}
 }
 
 // CloudAccount for Microsoft Azure subscriptions.
@@ -310,7 +311,7 @@ func (a API) Subscriptions(ctx context.Context, feature core.Feature, filter str
 
 // AddSubscription adds the specified subscription to Polaris. If name isn't
 // given as an option it's derived from the tenant name. Returns the Polaris
-// cloud account id of the added project.
+// cloud account id of the added subscription.
 func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
 	a.gql.Log().Print(log.Trace, "polaris/azure.AddSubscription")
 
@@ -332,20 +333,34 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		config.name = options.name
 	}
 
+	// If there already is a Polaris cloud account for the given Azure
+	// subscription we use the same name when adding the new feature.
+	account, err := a.Subscription(ctx, SubscriptionID(config.id), core.FeatureAll)
+	if err == nil {
+		config.name = account.Name
+	}
+	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
+		return uuid.Nil, err
+	}
+
 	perms, err := azure.Wrap(a.gql).CloudAccountPermissionConfig(ctx, feature)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	_, err = azure.Wrap(a.gql).CloudAccountAddWithoutOAuth(ctx, azure.PublicCloud, config.id, feature,
+	_, err = azure.Wrap(a.gql).AddCloudAccountWithoutOAuth(ctx, azure.PublicCloud, config.id, feature,
 		config.name, config.tenantDomain, options.regions, perms.PermissionVersion)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	account, err := a.Subscription(ctx, SubscriptionID(config.id), feature)
-	if err != nil {
-		return uuid.Nil, err
+	// If the Polaris cloud account did not exist prior we retrieve the Polaris
+	// cloud account id.
+	if account.ID == uuid.Nil {
+		account, err = a.Subscription(ctx, SubscriptionID(config.id), feature)
+		if err != nil {
+			return uuid.Nil, err
+		}
 	}
 
 	return account.ID, nil
@@ -370,6 +385,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 		if err != nil {
 			return err
 		}
+
 		var nativeID uuid.UUID
 		for _, native := range natives {
 			if native.NativeID == account.NativeID {
@@ -378,10 +394,10 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 			}
 		}
 		if nativeID == uuid.Nil {
-			return fmt.Errorf("polaris: polaris account: %w", graphql.ErrNotFound)
+			return fmt.Errorf("polaris: account: %w", graphql.ErrNotFound)
 		}
 
-		jobID, err := azure.Wrap(a.gql).DeleteNativeSubscription(ctx, nativeID, deleteSnapshots)
+		jobID, err := azure.Wrap(a.gql).StartDisableNativeSubscriptionProtectionJob(ctx, nativeID, deleteSnapshots)
 		if err != nil {
 			return err
 		}
@@ -395,7 +411,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 		}
 	}
 
-	err = azure.Wrap(a.gql).CloudAccountDeleteWithoutOAuth(ctx, account.ID, feature)
+	err = azure.Wrap(a.gql).DeleteCloudAccountWithoutOAuth(ctx, account.ID, feature)
 	if err != nil {
 		return err
 	}
@@ -431,7 +447,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 			return errors.New("polaris: invalid cloud account: no features")
 		}
 
-		err := azure.Wrap(a.gql).CloudAccountUpdate(ctx, account.ID, account.Features[0].Name, options.name, []azure.Region{}, []azure.Region{})
+		err := azure.Wrap(a.gql).UpdateCloudAccount(ctx, account.ID, account.Features[0].Name, options.name, []azure.Region{}, []azure.Region{})
 		if err != nil {
 			return err
 		}
@@ -463,7 +479,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 			add = append(add, region)
 		}
 
-		err = azure.Wrap(a.gql).CloudAccountUpdate(ctx, account.ID, accountFeature.Name, options.name, add, remove)
+		err = azure.Wrap(a.gql).UpdateCloudAccount(ctx, account.ID, accountFeature.Name, options.name, add, remove)
 		if err != nil {
 			return err
 		}
@@ -483,8 +499,8 @@ func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipal
 		return uuid.Nil, err
 	}
 
-	err = azure.Wrap(a.gql).SetCustomerAppCredentials(ctx, azure.PublicCloud, config.appID, config.tenantID, config.appName,
-		config.tenantDomain, config.appSecret)
+	err = azure.Wrap(a.gql).SetCloudAccountCustomerAppCredentials(ctx, azure.PublicCloud, config.appID,
+		config.tenantID, config.appName, config.tenantDomain, config.appSecret)
 	if err != nil {
 		return uuid.Nil, err
 	}

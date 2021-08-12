@@ -65,7 +65,7 @@ type testAwsAccount struct {
 	AccountID string `json:"accountId"`
 
 	Exocompute struct {
-		VPCID   string `json:"vcpId"`
+		VPCID   string `json:"vpcId"`
 		Subnets []struct {
 			ID               string `json:"id"`
 			AvailabilityZone string `json:"availabilityZone"`
@@ -126,7 +126,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClient(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestAwsExocompute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClient(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,10 +229,10 @@ func TestAwsExocompute(t *testing.T) {
 	// Enable the exocompute feature for the account.
 	exoAccountID, err := client.AWS().AddAccount(ctx, aws.Default(), core.FeatureExocompute, aws.Regions("us-east-2"))
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	if accountID != exoAccountID {
-		t.Fatal("cloud native protection and exocompute added to different cloud accounts")
+		t.Error("cloud native protection and exocompute added to different cloud accounts")
 	}
 
 	// Verify that the account was successfully added.
@@ -264,7 +264,7 @@ func TestAwsExocompute(t *testing.T) {
 		aws.Managed("us-east-2", testAccount.Exocompute.VPCID,
 			[]string{testAccount.Exocompute.Subnets[0].ID, testAccount.Exocompute.Subnets[1].ID}))
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	// Retrieve the exocompute config added.
@@ -281,16 +281,16 @@ func TestAwsExocompute(t *testing.T) {
 	if exoConfig.VPCID != testAccount.Exocompute.VPCID {
 		t.Errorf("invalid vpc id: %v", exoConfig.VPCID)
 	}
-	if exoConfig.Subnets[0].ID != testAccount.Exocompute.Subnets[0].ID {
+	if exoConfig.Subnets[0].ID != testAccount.Exocompute.Subnets[0].ID && exoConfig.Subnets[0].ID != testAccount.Exocompute.Subnets[1].ID {
 		t.Errorf("invalid subnet id: %v", exoConfig.Subnets[0].ID)
 	}
-	if exoConfig.Subnets[0].AvailabilityZone != testAccount.Exocompute.Subnets[0].AvailabilityZone {
+	if exoConfig.Subnets[0].AvailabilityZone != testAccount.Exocompute.Subnets[0].AvailabilityZone && exoConfig.Subnets[0].AvailabilityZone != testAccount.Exocompute.Subnets[1].AvailabilityZone {
 		t.Errorf("invalid subnet availability zone: %v", exoConfig.Subnets[0].AvailabilityZone)
 	}
-	if exoConfig.Subnets[1].ID != testAccount.Exocompute.Subnets[1].ID {
+	if exoConfig.Subnets[1].ID != testAccount.Exocompute.Subnets[0].ID && exoConfig.Subnets[1].ID != testAccount.Exocompute.Subnets[1].ID {
 		t.Errorf("invalid subnet id: %v", exoConfig.Subnets[1].ID)
 	}
-	if exoConfig.Subnets[1].AvailabilityZone != testAccount.Exocompute.Subnets[1].AvailabilityZone {
+	if exoConfig.Subnets[1].AvailabilityZone != testAccount.Exocompute.Subnets[0].AvailabilityZone && exoConfig.Subnets[1].AvailabilityZone != testAccount.Exocompute.Subnets[1].AvailabilityZone {
 		t.Errorf("invalid subnet availability zone: %v", exoConfig.Subnets[1].AvailabilityZone)
 	}
 	if !exoConfig.PolarisManaged {
@@ -382,7 +382,7 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClient(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -477,7 +477,7 @@ func TestAzureExocompute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClient(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -570,6 +570,18 @@ func TestAzureExocompute(t *testing.T) {
 		t.Error(err)
 	}
 
+	// Remove exocompute feature.
+	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute, false)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Verify that the feature was successfully removed.
+	_, err = client.Azure().Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Error(err)
+	}
+
 	// Remove subscription.
 	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureCloudNativeProtection, false)
 	if err != nil {
@@ -577,7 +589,7 @@ func TestAzureExocompute(t *testing.T) {
 	}
 
 	// Verify that the account was successfully removed.
-	_, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.FeatureCloudNativeProtection)
+	_, err = client.Azure().Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
@@ -630,7 +642,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClient(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -675,7 +687,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	}
 
 	// Verify that the project was successfully removed.
-	_, err = client.gcp.Project(ctx, gcp.ID(gcp.Default()), core.FeatureCloudNativeProtection)
+	_, err = client.GCP().Project(ctx, gcp.ID(gcp.Default()), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
@@ -720,7 +732,7 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := NewClient(polAccount, &polaris_log.DiscardLogger{})
+	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}

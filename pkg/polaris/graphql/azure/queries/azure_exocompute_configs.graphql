@@ -1,5 +1,5 @@
 query RubrikPolarisSDKRequest($cloudAccountIDs: [UUID!], $azureExocomputeSearchQueryArg: String!) {
-    azureExocomputeConfigs(cloudAccountIDs: $cloudAccountIDs, AzureExocomputeSearchQueryArg: $azureExocomputeSearchQueryArg) {
+    azureExocomputeConfigs(cloudAccountIDs: $cloudAccountIDs, azureExocomputeSearchQueryArg: $azureExocomputeSearchQueryArg) {
         configs {
             azureCloudAccount {
                 id

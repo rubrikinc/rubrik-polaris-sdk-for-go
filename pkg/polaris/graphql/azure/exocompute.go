@@ -34,7 +34,7 @@ import (
 type ExocomputeConfig struct {
 	ID       uuid.UUID `json:"configUuid"`
 	Region   Region    `json:"region"`
-	SubnetID string    `json:"subnets"`
+	SubnetID string    `json:"subnetNativeId"`
 	Message  string    `json:"message"`
 
 	// When true Polaris will manage the security groups.
@@ -80,71 +80,72 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 // ExocomputeConfigCreate represents an exocompute config to be created by
 // Polaris.
 type ExocomputeConfigCreate struct {
-	Region   Region
-	SubnetID string
+	Region   Region `json:"region"`
+	SubnetID string `json:"subnetNativeId"`
 
 	// When true Polaris will manage the security groups.
-	IsPolarisManaged bool
+	IsPolarisManaged bool `json:"isPolarisManaged"`
 }
 
-// ExocomputeAdd creates a new exocompute config for the account with the
-// specified Polaris cloud account id. Returns the created exocompute config
-func (a API) ExocomputeAdd(ctx context.Context, id uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.ExocomputeAdd")
+// AddCloudAccountExocomputeConfigurations creates a new exocompute config for
+// the account with the specified Polaris cloud account id. Returns the created
+// exocompute config
+func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.AddCloudAccountExocomputeConfigurations")
 
-	buf, err := a.GQL.Request(ctx, azureExocomputeAddQuery, struct {
-		ID      uuid.UUID                `json:"cloudAccountUuid"`
-		Configs []ExocomputeConfigCreate `json:"azureExocomputeAddRequests"`
+	buf, err := a.GQL.Request(ctx, addAzureCloudAccountExocomputeConfigurationsQuery, struct {
+		ID      uuid.UUID                `json:"cloudAccountId"`
+		Configs []ExocomputeConfigCreate `json:"azureExocomputeRegionConfigs"`
 	}{ID: id, Configs: []ExocomputeConfigCreate{config}})
 	if err != nil {
 		return ExocomputeConfig{}, err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "azureExocomputeAdd(%q, %v): %s", id, config, string(buf))
+	a.GQL.Log().Printf(log.Debug, "addAzureCloudAccountExocomputeConfigurations(%q, %v): %s", id, config, string(buf))
 
 	var payload struct {
 		Data struct {
-			Query struct {
+			Result struct {
 				Configs []ExocomputeConfig `json:"configs"`
-			} `json:"azureExocomputeAdd"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return ExocomputeConfig{}, err
 	}
-	if len(payload.Data.Query.Configs) != 1 {
+	if len(payload.Data.Result.Configs) != 1 {
 		return ExocomputeConfig{}, errors.New("polaris: createAwsExocomputeConfigs: no result")
 	}
 
-	return payload.Data.Query.Configs[0], nil
+	return payload.Data.Result.Configs[0], nil
 }
 
-// ExocomputeConfigsDelete deletes the exocompute config with the specified
-// Polaris exocompute config id.
-func (a API) ExocomputeConfigsDelete(ctx context.Context, id uuid.UUID) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.ExocomputeConfigsDelete")
+// DeleteCloudAccountExocomputeConfigurations deletes the exocompute config
+// with the specified Polaris exocompute config id.
+func (a API) DeleteCloudAccountExocomputeConfigurations(ctx context.Context, id uuid.UUID) error {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.DeleteCloudAccountExocomputeConfigurations")
 
-	buf, err := a.GQL.Request(ctx, azureExocomputeConfigsDeleteQuery, struct {
-		IDs []uuid.UUID `json:"azureExocomputeConfigIdsArg"`
+	buf, err := a.GQL.Request(ctx, deleteAzureCloudAccountExocomputeConfigurationsQuery, struct {
+		IDs []uuid.UUID `json:"cloudAccountIds"`
 	}{IDs: []uuid.UUID{id}})
 	if err != nil {
 		return err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "azureExocomputeConfigsDelete(%q): %s", id, string(buf))
+	a.GQL.Log().Printf(log.Debug, "deleteAzureCloudAccountExocomputeConfigurations(%q): %s", id, string(buf))
 
 	var payload struct {
 		Data struct {
-			Query struct {
+			Result struct {
 				FailIDs    []uuid.UUID `json:"deletionFailedIds"`
 				SuccessIDs []uuid.UUID `json:"deletionSuccessIds"`
-			} `json:"azureExocomputeConfigsDelete"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return err
 	}
-	if ids := payload.Data.Query.SuccessIDs; len(ids) == 1 && ids[0] == id {
+	if ids := payload.Data.Result.SuccessIDs; len(ids) == 1 && ids[0] == id {
 		return nil
 	}
 

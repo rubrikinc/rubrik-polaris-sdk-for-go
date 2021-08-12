@@ -23,6 +23,7 @@
 package polaris
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -33,6 +34,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -46,26 +48,24 @@ const (
 
 // Client is used to make calls to the Polaris platform.
 type Client struct {
-	aws   aws.API
-	azure azure.API
-	gcp   gcp.API
-	gql   *graphql.Client
-	log   log.Logger
+	Version string
+	gql     *graphql.Client
+	log     log.Logger
 }
 
 // AWS returns the AWS part of the API.
 func (c *Client) AWS() aws.API {
-	return c.aws
+	return aws.NewAPI(c.gql, c.Version)
 }
 
 // Azure returns the Azure part of the API.
 func (c *Client) Azure() azure.API {
-	return c.azure
+	return azure.NewAPI(c.gql, c.Version)
 }
 
 // GCP returns the GCP part of the API.
 func (c *Client) GCP() gcp.API {
-	return c.gcp
+	return gcp.NewAPI(c.gql, c.Version)
 }
 
 // Account represents a Polaris account. Implemented by UserAccount and
@@ -77,13 +77,13 @@ type Account interface {
 // NewClient returns a new Client from the specified Account. The log level of
 // the given logger can be changed at runtime using the environment variable
 // RUBRIK_POLARIS_LOGLEVEL.
-func NewClient(account Account, logger log.Logger) (*Client, error) {
+func NewClient(ctx context.Context, account Account, logger log.Logger) (*Client, error) {
 	if serviceAccount, ok := account.(*ServiceAccount); ok {
-		return newClientFromServiceAccount(serviceAccount, logger)
+		return newClientFromServiceAccount(ctx, serviceAccount, logger)
 	}
 
 	if userAccount, ok := account.(*UserAccount); ok {
-		return newClientFromUserAccount(userAccount, logger)
+		return newClientFromUserAccount(ctx, userAccount, logger)
 	}
 
 	return nil, errors.New("polaris: invalid account type")
@@ -92,7 +92,7 @@ func NewClient(account Account, logger log.Logger) (*Client, error) {
 // newClientFromUserAccount returns a new Client from the specified
 // UserAccount. The log level of the given logger can be changed at runtime
 // using the environment variable RUBRIK_POLARIS_LOGLEVEL.
-func newClientFromUserAccount(account *UserAccount, logger log.Logger) (*Client, error) {
+func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger log.Logger) (*Client, error) {
 	apiURL := account.URL
 	if apiURL == "" {
 		apiURL = fmt.Sprintf("https://%s.my.rubrik.com/api", account.Name)
@@ -122,13 +122,17 @@ func newClientFromUserAccount(account *UserAccount, logger log.Logger) (*Client,
 		logger = &log.DiscardLogger{}
 	}
 
-	gql := graphql.NewClientFromLocalUser("custom", apiURL, account.Username, account.Password, logger)
+	gqlClient := graphql.NewClientFromLocalUser(ctx, "custom", apiURL, account.Username, account.Password, logger)
+
+	version, err := core.Wrap(gqlClient).DeploymentVersion(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	client := &Client{
-		aws:   aws.NewAPI(gql),
-		azure: azure.NewAPI(gql),
-		gcp:   gcp.NewAPI(gql),
-		gql:   gql,
-		log:   logger,
+		Version: version,
+		gql:     gqlClient,
+		log:     logger,
 	}
 
 	return client, nil
@@ -137,7 +141,7 @@ func newClientFromUserAccount(account *UserAccount, logger log.Logger) (*Client,
 // newClientFromServiceAccount returns a new Client from the specified
 // ServiceAccount. The log level of the given logger can be changed at runtime
 // using the environment variable RUBRIK_POLARIS_LOGLEVEL.
-func newClientFromServiceAccount(account *ServiceAccount, logger log.Logger) (*Client, error) {
+func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, logger log.Logger) (*Client, error) {
 	if account.Name == "" {
 		return nil, errors.New("polaris: invalid name")
 	}
@@ -172,18 +176,21 @@ func newClientFromServiceAccount(account *ServiceAccount, logger log.Logger) (*C
 	}
 	apiURL := account.AccessTokenURI[:i]
 
-	gql := graphql.NewClientFromServiceAccount("custom", apiURL, account.AccessTokenURI, account.ClientID,
+	gqlClient := graphql.NewClientFromServiceAccount(ctx, "custom", apiURL, account.AccessTokenURI, account.ClientID,
 		account.ClientSecret, logger)
+
+	version, err := core.Wrap(gqlClient).DeploymentVersion(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	client := &Client{
-		aws:   aws.NewAPI(gql),
-		azure: azure.NewAPI(gql),
-		gcp:   gcp.NewAPI(gql),
-		gql:   gql,
-		log:   logger,
+		Version: version,
+		gql:     gqlClient,
+		log:     logger,
 	}
 
 	return client, nil
-
 }
 
 // GQLClient returns the underlaying GraphQL client. Can be used to execute low

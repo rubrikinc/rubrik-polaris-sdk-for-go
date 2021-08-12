@@ -214,3 +214,26 @@ func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Durat
 		}
 	}
 }
+
+// DeploymentVersion returns the deployed version of Polaris.
+func (a API) DeploymentVersion(ctx context.Context) (string, error) {
+	a.GQL.Log().Print(log.Trace, "graphql.Client.DeploymentVersion")
+
+	buf, err := a.GQL.Request(ctx, deploymentVersionQuery, struct{}{})
+	if err != nil {
+		return "", err
+	}
+
+	a.GQL.Log().Printf(log.Debug, "deploymentVersion(): %s", string(buf))
+
+	var payload struct {
+		Data struct {
+			DeploymentVersion string `json:"deploymentVersion"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return "", err
+	}
+
+	return payload.Data.DeploymentVersion, nil
+}

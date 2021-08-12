@@ -112,8 +112,6 @@ func Managed(region, vpcID string, subnetIDs []string) ExoConfigFunc {
 			return aws.ExocomputeConfigCreate{}, err
 		}
 
-		fmt.Println(vpc)
-
 		// Validate subnets.
 		if len(subnetIDs) != 2 {
 			return aws.ExocomputeConfigCreate{}, errors.New("polaris: there should be exactly 2 subnet ids")

@@ -24,6 +24,11 @@
 
 package core
 
+// deploymentVersion GraphQL query
+var deploymentVersionQuery = `query SdkGolangDeploymentVersion {
+    deploymentVersion
+}`
+
 // getKorgTaskchainStatus GraphQL query
 var getKorgTaskchainStatusQuery = `query SdkGolangGetKorgTaskchainStatus($taskchainId: String!){
     getKorgTaskchainStatus(taskchainId: $taskchainId){

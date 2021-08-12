@@ -40,32 +40,6 @@ type NativeSubscription struct {
 	Effective     core.SLADomain     `json:"effectiveSlaDomain"`
 }
 
-// NativeSubscription returns the native subscription with the specified
-// Polaris native subscription id.
-func (a API) NativeSubscription(ctx context.Context, id uuid.UUID) (NativeSubscription, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.NativeSubscription")
-
-	buf, err := a.GQL.Request(ctx, azureNativeSubscriptionQuery, struct {
-		ID uuid.UUID `json:"fid"`
-	}{ID: id})
-	if err != nil {
-		return NativeSubscription{}, err
-	}
-
-	a.GQL.Log().Printf(log.Debug, "azureNativeSubscription(%q): %s", id, string(buf))
-
-	var payload struct {
-		Data struct {
-			Subscription NativeSubscription `json:"azureNativeSubscriptionConnection"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return NativeSubscription{}, err
-	}
-
-	return payload.Data.Subscription, nil
-}
-
 // NativeSubscriptions returns the native subscriptions matching the specified
 // filter. The filter can be used to search for a substring in the subscription
 // name.
@@ -87,7 +61,7 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 
 		var payload struct {
 			Data struct {
-				Query struct {
+				Result struct {
 					Count int `json:"count"`
 					Edges []struct {
 						Node NativeSubscription `json:"node"`
@@ -96,52 +70,52 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`
 					} `json:"pageInfo"`
-				} `json:"azureNativeSubscriptions"`
+				} `json:"result"`
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
 			return nil, err
 		}
-		for _, subscription := range payload.Data.Query.Edges {
+		for _, subscription := range payload.Data.Result.Edges {
 			subscriptions = append(subscriptions, subscription.Node)
 		}
 
-		if !payload.Data.Query.PageInfo.HasNextPage {
+		if !payload.Data.Result.PageInfo.HasNextPage {
 			break
 		}
-		cursor = payload.Data.Query.PageInfo.EndCursor
+		cursor = payload.Data.Result.PageInfo.EndCursor
 	}
 
 	return subscriptions, nil
 }
 
-// DeleteNativeSubscription starts a task chain job to disables the native
-// subscription with the specified Polaris native subscription id. If
-// deleteSnapshots is true the snapshots are deleted. Returns the Polaris task
-// chain id.
-func (a API) DeleteNativeSubscription(ctx context.Context, id uuid.UUID, deleteSnapshots bool) (uuid.UUID, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.DeleteNativeSubscription")
+// StartDisableNativeSubscriptionProtectionJob starts a task chain job to
+// disable the native subscription with the specified Polaris native
+// subscription id. If deleteSnapshots is true the snapshots are deleted.
+// Returns the Polaris task chain id.
+func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id uuid.UUID, deleteSnapshots bool) (uuid.UUID, error) {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.StartDisableNativeSubscriptionProtectionJob")
 
-	buf, err := a.GQL.Request(ctx, deleteAzureNativeSubscriptionQuery, struct {
-		ID              uuid.UUID `json:"subscriptionId"`
+	buf, err := a.GQL.Request(ctx, startDisableAzureNativeSubscriptionProtectionJobQuery, struct {
+		ID              uuid.UUID `json:"azureSubscriptionRubrikId"`
 		DeleteSnapshots bool      `json:"shouldDeleteNativeSnapshots"`
 	}{ID: id, DeleteSnapshots: deleteSnapshots})
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "deleteAzureNativeSubscription(%q, %t): %s", id, deleteSnapshots, string(buf))
+	a.GQL.Log().Printf(log.Debug, "startDisableAzureNativeSubscriptionProtectionJob(%q, %t): %s", id, deleteSnapshots, string(buf))
 
 	var payload struct {
 		Data struct {
-			Query struct {
-				TaskChainID uuid.UUID `json:"taskchainUuid"`
-			} `json:"deleteAzureNativeSubscription"`
+			Result struct {
+				JobID uuid.UUID `json:"jobId"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return uuid.Nil, err
 	}
 
-	return payload.Data.Query.TaskChainID, nil
+	return payload.Data.Result.JobID, nil
 }

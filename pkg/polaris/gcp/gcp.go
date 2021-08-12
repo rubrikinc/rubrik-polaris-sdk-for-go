@@ -38,13 +38,14 @@ import (
 
 // API for Google Cloud Platform.
 type API struct {
-	gql *graphql.Client
+	Version string
+	gql     *graphql.Client
 }
 
 // NewAPI returns a new API instance. Note that this is a very cheap call to
 // make.
-func NewAPI(gql *graphql.Client) API {
-	return API{gql: gql}
+func NewAPI(gql *graphql.Client, version string) API {
+	return API{Version: version, gql: gql}
 }
 
 // CloudAccount for Google Cloud Platform projects.
@@ -237,13 +238,15 @@ func (a API) Projects(ctx context.Context, feature core.Feature, filter string) 
 
 	// Look up organization name for cloud accounts. Note that if the native
 	// project has been disabled we cannot read the organization name and leave
-	// it blank.
+	// it blank. This can happen when RemoveProject times out and gets re-run
+        // with the native project already disabled.
 	for i := range accounts {
 		natives, err := gcp.Wrap(a.gql).NativeProjects(ctx, strconv.FormatInt(accounts[i].ProjectNumber, 10))
 		if err != nil {
 			return nil, err
 		}
 		if len(natives) < 1 {
+                        accounts[i].OrganizationName = "<Native Disabled>"
 			continue
 		}
 		if len(natives) > 1 {
