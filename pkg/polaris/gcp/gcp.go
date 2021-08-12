@@ -133,6 +133,15 @@ func (a API) Projects(ctx context.Context, feature core.CloudAccountFeature, fil
 			if err != nil {
 				return nil, err
 			}
+
+			// If the native project has been disabled we insert an empty
+			// native project to allow the call to succeed. This can happen
+			// when RemoveProject times out and gets re-run with the native
+			// project already disabled.
+			if selector.Feature.Status == core.Disabled {
+				natives = append(natives, gcp.NativeProject{OrganizationName: "<Native Disabled>"})
+			}
+
 			if len(natives) != 1 {
 				return nil, fmt.Errorf("polaris: native project %w", graphql.ErrNotUnique)
 			}

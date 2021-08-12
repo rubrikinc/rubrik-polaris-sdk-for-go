@@ -24,6 +24,21 @@
 
 package azure
 
+// addAzureCloudAccountExocomputeConfigurations GraphQL query
+var addAzureCloudAccountExocomputeConfigurationsQuery = `mutation SdkGolangAddAzureCloudAccountExocomputeConfigurations($cloudAccountId: UUID!, $azureExocomputeRegionConfigs: [AzureExocomputeAddConfigInputType!]!) {
+    result: addAzureCloudAccountExocomputeConfigurations(input: {
+        cloudAccountId: $cloudAccountId, azureExocomputeRegionConfigs: $azureExocomputeRegionConfigs
+    }) {
+        configs {
+            configUuid
+            isPolarisManaged
+            message
+            region
+            subnetNativeId
+        }
+    }
+}`
+
 // addAzureCloudAccountWithoutOauth GraphQL query
 var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAccountWithoutOauth($tenantDomainName: String!, $azureCloudType: AzureCloudTypeEnum!, $regions: [AzureCloudAccountRegionEnum!]!, $feature: CloudAccountFeatureEnum!, $subscriptions: [AzureSubscriptionInput!]!, $policyVersion: Int!) {
     result: addAzureCloudAccountWithoutOAuth(input: {
@@ -96,19 +111,6 @@ var azureCloudAccountTenantsQuery = `query SdkGolangAzureCloudAccountTenants($fe
     }
 }`
 
-// azureExocomputeAdd GraphQL query
-var azureExocomputeAddQuery = `mutation SdkGolangAzureExocomputeAdd($cloudAccountUuid: UUID!, $azureExocomputeAddRequests: [AzureExocomputeAddConfigInputType!]!) {
-    azureExocomputeAdd(cloudAccountUuid: $cloudAccountUuid, azureExocomputeAddRequests: $azureExocomputeAddRequests) {
-        configs {
-            configUuid
-            isPolarisManaged
-            message
-            region
-            subnetNativeId
-        }
-    }
-}`
-
 // azureExocomputeConfigs GraphQL query
 var azureExocomputeConfigsQuery = `query SdkGolangAzureExocomputeConfigs($cloudAccountIDs: [UUID!], $azureExocomputeSearchQueryArg: String!) {
     azureExocomputeConfigs(cloudAccountIDs: $cloudAccountIDs, azureExocomputeSearchQueryArg: $azureExocomputeSearchQueryArg) {
@@ -137,14 +139,6 @@ var azureExocomputeConfigsQuery = `query SdkGolangAzureExocomputeConfigs($cloudA
                 status
             }
         }
-    }
-}`
-
-// azureExocomputeConfigsDelete GraphQL query
-var azureExocomputeConfigsDeleteQuery = `mutation SdkGolangAzureExocomputeConfigsDelete($azureExocomputeConfigIdsArg: [UUID!]!) {
-    azureExocomputeConfigsDelete(azureExocomputeConfigIdsArg: $azureExocomputeConfigIdsArg) {
-        deletionFailedIds
-        deletionSuccessIds
     }
 }`
 
@@ -177,6 +171,16 @@ var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($fi
             endCursor
             hasNextPage
         }
+    }
+}`
+
+// deleteAzureCloudAccountExocomputeConfigurations GraphQL query
+var deleteAzureCloudAccountExocomputeConfigurationsQuery = `mutation SdkGolangDeleteAzureCloudAccountExocomputeConfigurations($cloudAccountIds: [UUID!]!) {
+    result: deleteAzureCloudAccountExocomputeConfigurations(input: {
+        cloudAccountIds: $cloudAccountIds
+    }) {
+        deletionFailedIds
+        deletionSuccessIds
     }
 }`
 

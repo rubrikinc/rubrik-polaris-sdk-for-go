@@ -210,7 +210,7 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 		return uuid.Nil, err
 	}
 
-	exo, err := azure.Wrap(a.gql).ExocomputeAdd(ctx, accountID, exoConfig)
+	exo, err := azure.Wrap(a.gql).AddCloudAccountExocomputeConfigurations(ctx, accountID, exoConfig)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -223,7 +223,7 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 func (a API) RemoveExocomputeConfig(ctx context.Context, id uuid.UUID) error {
 	a.gql.Log().Print(log.Trace, "polaris/azure.RemoveExocomputeConfig")
 
-	err := azure.Wrap(a.gql).ExocomputeConfigsDelete(ctx, id)
+	err := azure.Wrap(a.gql).DeleteCloudAccountExocomputeConfigurations(ctx, id)
 	if err != nil {
 		return err
 	}
