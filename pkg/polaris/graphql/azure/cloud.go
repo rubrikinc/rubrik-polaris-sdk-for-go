@@ -92,7 +92,7 @@ func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.
 func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, includeSubscriptions bool) ([]CloudAccountSelector, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.CloudAccountTenants")
 
-	buf, err := a.GQL.Request(ctx, azureCloudAccountTenantsQuery, struct {
+	buf, err := a.GQL.Request(ctx, allAzureCloudAccountTenantsQuery, struct {
 		Feature              core.Feature `json:"feature"`
 		IncludeSubscriptions bool         `json:"includeSubscriptionDetails"`
 	}{Feature: feature, IncludeSubscriptions: includeSubscriptions})
@@ -100,7 +100,7 @@ func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, incl
 		return nil, err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "azureCloudAccountTenants(%q, %t): %s", feature, includeSubscriptions, string(buf))
+	a.GQL.Log().Printf(log.Debug, "allAzureCloudAccountTenants(%q, %t): %s", feature, includeSubscriptions, string(buf))
 
 	var payload struct {
 		Data struct {

@@ -58,6 +58,55 @@ var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAcco
     }
 }`
 
+// allAzureCloudAccountTenants GraphQL query
+var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenants($feature: CloudAccountFeatureEnum!, $includeSubscriptionDetails: Boolean!) {
+    result: allAzureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $includeSubscriptionDetails) {
+        cloudType
+        azureCloudAccountTenantRubrikId
+        domainName
+        subscriptionCount
+        subscriptions {
+            id
+            name
+            nativeId
+            featureDetail {
+                feature
+                status
+                regions
+            }
+        }
+    }
+}`
+
+// allAzureExocomputeConfigsInAccount GraphQL query
+var allAzureExocomputeConfigsInAccountQuery = `query SdkGolangAllAzureExocomputeConfigsInAccount($cloudAccountIDs: [UUID!], $azureExocomputeSearchQuery: String!) {
+    result: allAzureExocomputeConfigsInAccount(cloudAccountIDs: $cloudAccountIDs, azureExocomputeSearchQuery: $azureExocomputeSearchQuery) {
+        azureCloudAccount {
+            id
+            name
+            nativeId
+            featureDetail {
+                feature
+                regions
+                status
+            }
+        }
+        configs {
+            configUuid
+            isPolarisManaged
+            message
+            region
+            subnetNativeId
+        }
+        exocomputeEligibleRegions
+        featureDetails {
+            feature
+            regions
+            status
+        }
+    }
+}`
+
 // azureCloudAccountPermissionConfig GraphQL query
 var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPermissionConfig($feature: CloudAccountFeatureEnum!) {
     azureCloudAccountPermissionConfig(feature: $feature) {
@@ -83,57 +132,6 @@ var azureCloudAccountTenantQuery = `query SdkGolangAzureCloudAccountTenant($tena
             name
             nativeId
             featureDetail {
-                feature
-                regions
-                status
-            }
-        }
-    }
-}`
-
-// azureCloudAccountTenants GraphQL query
-var azureCloudAccountTenantsQuery = `query SdkGolangAzureCloudAccountTenants($feature: CloudAccountFeatureEnum!, $includeSubscriptionDetails: Boolean!) {
-    result: azureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $includeSubscriptionDetails) {
-        cloudType
-        azureCloudAccountTenantRubrikId
-        clientId
-        domainName
-        subscriptions {
-            id
-            name
-            nativeId
-            featureDetail {
-                feature
-                regions
-                status
-            }
-        }
-    }
-}`
-
-// azureExocomputeConfigs GraphQL query
-var azureExocomputeConfigsQuery = `query SdkGolangAzureExocomputeConfigs($cloudAccountIDs: [UUID!], $azureExocomputeSearchQueryArg: String!) {
-    azureExocomputeConfigs(cloudAccountIDs: $cloudAccountIDs, azureExocomputeSearchQueryArg: $azureExocomputeSearchQueryArg) {
-        configs {
-            azureCloudAccount {
-                id
-                name
-                nativeId
-                featureDetail {
-                    feature
-                    regions
-                    status
-                }
-            }
-            configs {
-                configUuid
-                isPolarisManaged
-                message
-                region
-                subnetNativeId
-            }
-            exocomputeEligibleRegions
-            featureDetails {
                 feature
                 regions
                 status
