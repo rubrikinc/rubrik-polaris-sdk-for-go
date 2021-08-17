@@ -54,27 +54,25 @@ type ExocomputeConfigSelector struct {
 func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigSelector, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.ExocomputeConfigs")
 
-	buf, err := a.GQL.Request(ctx, azureExocomputeConfigsQuery, struct {
-		Filter string `json:"azureExocomputeSearchQueryArg"`
+	buf, err := a.GQL.Request(ctx, allAzureExocomputeConfigsInAccountQuery, struct {
+		Filter string `json:"azureExocomputeSearchQuery"`
 	}{Filter: filter})
 	if err != nil {
 		return nil, err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "azureExocomputeConfigs(%q): %s", filter, string(buf))
+	a.GQL.Log().Printf(log.Debug, "allAzureExocomputeConfigsInAccount(%q): %s", filter, string(buf))
 
 	var payload struct {
 		Data struct {
-			Query struct {
-				Selectors []ExocomputeConfigSelector `json:"configs"`
-			} `json:"azureExocomputeConfigs"`
+			Result []ExocomputeConfigSelector `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return nil, err
 	}
 
-	return payload.Data.Query.Selectors, nil
+	return payload.Data.Result, nil
 }
 
 // ExocomputeConfigCreate represents an exocompute config to be created by
