@@ -58,6 +58,26 @@ var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAcco
     }
 }`
 
+// allAzureCloudAccountTenants GraphQL query
+var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenants($feature: CloudAccountFeatureEnum!, $includeSubscriptionDetails: Boolean!) {
+    result: allAzureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $includeSubscriptionDetails) {
+        cloudType
+        azureCloudAccountTenantRubrikId
+        domainName
+        subscriptionCount
+        subscriptions {
+            id
+            name
+            nativeId
+            featureDetail {
+                feature
+                status
+                regions
+            }
+        }
+    }
+}`
+
 // azureCloudAccountPermissionConfig GraphQL query
 var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPermissionConfig($feature: CloudAccountFeatureEnum!) {
     azureCloudAccountPermissionConfig(feature: $feature) {
@@ -74,26 +94,6 @@ var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPe
 // azureCloudAccountTenant GraphQL query
 var azureCloudAccountTenantQuery = `query SdkGolangAzureCloudAccountTenant($tenantId: UUID!, $feature: CloudAccountFeatureEnum!, $subscriptionSearchText: String!) {
     result: azureCloudAccountTenant(tenantId: $tenantId, feature: $feature, subscriptionSearchText: $subscriptionSearchText, subscriptionStatusFilters: []) {
-        cloudType
-        azureCloudAccountTenantRubrikId
-        clientId
-        domainName
-        subscriptions {
-            id
-            name
-            nativeId
-            featureDetail {
-                feature
-                regions
-                status
-            }
-        }
-    }
-}`
-
-// azureCloudAccountTenants GraphQL query
-var azureCloudAccountTenantsQuery = `query SdkGolangAzureCloudAccountTenants($feature: CloudAccountFeatureEnum!, $includeSubscriptionDetails: Boolean!) {
-    result: azureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $includeSubscriptionDetails) {
         cloudType
         azureCloudAccountTenantRubrikId
         clientId
