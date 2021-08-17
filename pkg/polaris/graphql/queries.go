@@ -212,21 +212,48 @@ var azureAddCloudAccountWithoutOauthV0Query = `mutation SdkGolangAzureAddCloudAc
     }
 }`
 
-// azureCloudAccountPermissionConfig GraphQL query
-var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPermissionConfig($feature: CloudAccountFeatureEnum = CLOUD_NATIVE_PROTECTION) {
-    azureCloudAccountPermissionConfig(feature: $feature) {
-        permissionVersion
-        rolePermissions {
-            excludedActions
-            excludedDataActions
-            includedActions
-            includedDataActions
+// azureAllCloudAccountTenants GraphQL query
+var azureAllCloudAccountTenantsQuery = `query SdkGolangAzureAllCloudAccountTenants($feature: CloudAccountFeatureEnum!, $include_subscriptions: Boolean!) {
+    result: allAzureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $include_subscriptions) {
+        cloudType
+        azureCloudAccountTenantRubrikId
+        domainName
+        subscriptionCount
+        subscriptions {
+            id
+            name
+            nativeId
+            featureDetail {
+                feature
+                status
+                regions
+            }
         }
     }
 }`
 
-// azureCloudAccountTenants GraphQL query
-var azureCloudAccountTenantsQuery = `query SdkGolangAzureCloudAccountTenants($feature: CloudAccountFeatureEnum!, $include_subscriptions: Boolean!) {
+// azureAllCloudAccountTenantsV0 GraphQL query
+var azureAllCloudAccountTenantsV0Query = `query SdkGolangAzureAllCloudAccountTenantsV0($feature: CloudAccountFeatureEnum!, $include_subscriptions: Boolean!) {
+    result: azureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $include_subscriptions) {
+        cloudType
+        azureCloudAccountTenantRubrikId: id
+        domainName
+        subscriptionCount
+        subscriptions {
+            id
+            name
+            nativeId
+            featureDetail {
+                feature
+                status
+                regions
+            }
+        }
+    }
+}`
+
+// azureAllCloudAccountTenantsV1 GraphQL query
+var azureAllCloudAccountTenantsV1Query = `query SdkGolangAzureAllCloudAccountTenantsV1($feature: CloudAccountFeatureEnum!, $include_subscriptions: Boolean!) {
     result: azureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $include_subscriptions) {
         cloudType
         azureCloudAccountTenantRubrikId
@@ -245,22 +272,15 @@ var azureCloudAccountTenantsQuery = `query SdkGolangAzureCloudAccountTenants($fe
     }
 }`
 
-// azureCloudAccountTenantsV0 GraphQL query
-var azureCloudAccountTenantsV0Query = `query SdkGolangAzureCloudAccountTenantsV0($feature: CloudAccountFeatureEnum!, $include_subscriptions: Boolean!) {
-    result: azureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $include_subscriptions) {
-        cloudType
-        azureCloudAccountTenantRubrikId: id
-        domainName
-        subscriptionCount
-        subscriptions {
-            id
-            name
-            nativeId
-            featureDetail {
-                feature
-                status
-                regions
-            }
+// azureCloudAccountPermissionConfig GraphQL query
+var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPermissionConfig($feature: CloudAccountFeatureEnum = CLOUD_NATIVE_PROTECTION) {
+    azureCloudAccountPermissionConfig(feature: $feature) {
+        permissionVersion
+        rolePermissions {
+            excludedActions
+            excludedDataActions
+            includedActions
+            includedDataActions
         }
     }
 }`

@@ -230,9 +230,12 @@ type AzureTenant struct {
 func (c *Client) AzureCloudAccountTenants(ctx context.Context, feature CloudAccountFeature, includeSubscriptions bool) ([]AzureTenant, error) {
 	c.log.Print(log.Trace, "graphql.Client.AzureCloudAccountTenants")
 
-	query := azureCloudAccountTenantsQuery
-	if VersionOlderThan(c.Version, "master-40839", "v20210810") {
-		query = azureCloudAccountTenantsV0Query
+	query := azureAllCloudAccountTenantsQuery
+	switch {
+	case VersionOlderThan(c.Version, "master-40839", "v20210810"):
+		query = azureAllCloudAccountTenantsV0Query
+	case VersionOlderThan(c.Version, "master-41103", "v20210817"):
+		query = azureAllCloudAccountTenantsV1Query
 	}
 	buf, err := c.Request(ctx, query, struct {
 		Feature              CloudAccountFeature `json:"feature"`
