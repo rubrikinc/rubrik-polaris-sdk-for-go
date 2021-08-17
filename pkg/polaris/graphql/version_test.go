@@ -3,11 +3,11 @@ package graphql
 import "testing"
 
 func TestQueryName(t *testing.T) {
-	if name := queryName(azureCloudAccountTenantsQuery); name != "azureCloudAccountTenants" {
+	if name := queryName(azureAllCloudAccountTenantsQuery); name != "azureAllCloudAccountTenants" {
 		t.Fatalf("invalid query name: %s", name)
 	}
 
-	if name := queryName(azureCloudAccountTenantsV0Query); name != "azureCloudAccountTenantsV0" {
+	if name := queryName(azureAllCloudAccountTenantsV0Query); name != "azureAllCloudAccountTenantsV0" {
 		t.Fatalf("invalid query name: %s", name)
 	}
 
