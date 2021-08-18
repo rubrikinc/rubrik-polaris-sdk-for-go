@@ -196,6 +196,23 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	}
 }
 
+// TestAwsAccountAddAndRemove verifies that the SDK can perform the basic AWS
+// account operations on a real Polaris instance.
+//
+// To run this test against a Polaris instance the following environment
+// variables needs to be set:
+//   * SDK_INTEGRATION=1
+//   * SDK_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   * AWS_ACCESS_KEY_ID=<aws-access-key>
+//   * AWS_SECRET_ACCESS_KEY=<aws-secret-key>
+//   * AWS_DEFAULT_REGION=<aws-default-region>
+//
+// The file referred to by SDK_AWSACCOUNT_FILE should contain a single
+// testAwsAccount JSON object.
+//
+// Note that between the project has been added and it has been removed we
+// never fail fatally to allow the project to be removed in case of an error.
 func TestAwsExocompute(t *testing.T) {
 	requireEnv(t, "SDK_INTEGRATION")
 
@@ -359,7 +376,7 @@ func loadTestAzureSubscription() (testAzureSubscription, error) {
 //   * SDK_INTEGRATION=1
 //   * SDK_AZUREACCOUNT_FILE=<path-to-test-azure-subscription-file>
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
-//   * AZURE_SERVICEPRINCIPAL_LOCATION=<path-to-azure-service-principal-file>
+//   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
 //
 // The file referred to by SDK_AWSACCOUNT_FILE should contain a single
 // testAwsAccount JSON object.
@@ -388,7 +405,7 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Add default Azure service principal to Polaris. Usually resolved using
-	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
+	// the environment variable AZURE_AUTH_LOCATION.
 	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default(testSubscription.TenantDomain))
 	if err != nil {
 		t.Fatal(err)
@@ -461,6 +478,21 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	}
 }
 
+// TestAzureSubscriptionAddAndRemove verifies that the SDK can perform the
+// basic AWS account operations on a real Polaris instance.
+//
+// To run this test against a Polaris instance the following environment
+// variables needs to be set:
+//   * SDK_INTEGRATION=1
+//   * SDK_AZUREACCOUNT_FILE=<path-to-test-azure-subscription-file>
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
+//
+// The file referred to by SDK_AWSACCOUNT_FILE should contain a single
+// testAwsAccount JSON object.
+//
+// Between the account has been added and it has been removed we never fail
+// fatally to allow the account to be removed in case of an error.
 func TestAzureExocompute(t *testing.T) {
 	requireEnv(t, "SDK_INTEGRATION")
 
@@ -483,7 +515,7 @@ func TestAzureExocompute(t *testing.T) {
 	}
 
 	// Add default Azure service principal to Polaris. Usually resolved using
-	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
+	// the environment variable AZURE_AUTH_LOCATION.
 	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default(testSubscription.TenantDomain))
 	if err != nil {
 		t.Fatal(err)
