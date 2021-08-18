@@ -196,8 +196,8 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	}
 }
 
-// TestAwsAccountAddAndRemove verifies that the SDK can perform the basic AWS
-// account operations on a real Polaris instance.
+// TestAwsExocompute verifies that the SDK can perform basic Exocompute
+// operations on a real Polaris instance.
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
@@ -369,7 +369,7 @@ func loadTestAzureSubscription() (testAzureSubscription, error) {
 }
 
 // TestAzureSubscriptionAddAndRemove verifies that the SDK can perform the
-// basic AWS account operations on a real Polaris instance.
+// basic Azure account operations on a real Polaris instance.
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
@@ -378,8 +378,8 @@ func loadTestAzureSubscription() (testAzureSubscription, error) {
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
 //
-// The file referred to by SDK_AWSACCOUNT_FILE should contain a single
-// testAwsAccount JSON object.
+// The file referred to by SDK_AZUREACCOUNT_FILE should contain a single
+// testAzureSubscription JSON object.
 //
 // Between the account has been added and it has been removed we never fail
 // fatally to allow the account to be removed in case of an error.
@@ -478,8 +478,8 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	}
 }
 
-// TestAzureSubscriptionAddAndRemove verifies that the SDK can perform the
-// basic AWS account operations on a real Polaris instance.
+// TestAzureExocompute verifies that the SDK can perform basic Exocompute
+// operations on a real Polaris instance.
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
@@ -488,8 +488,8 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
 //
-// The file referred to by SDK_AWSACCOUNT_FILE should contain a single
-// testAwsAccount JSON object.
+// The file referred to by SDK_AZUREACCOUNT_FILE should contain a single
+// testAzureSubscription JSON object.
 //
 // Between the account has been added and it has been removed we never fail
 // fatally to allow the account to be removed in case of an error.
@@ -624,6 +624,45 @@ func TestAzureExocompute(t *testing.T) {
 	_, err = client.Azure().Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
+	}
+}
+
+// TestAzurePermissions verifies that the SDK can read the required Azure
+// permissions from a real Polaris instance.
+//
+// To run this test against a Polaris instance the following environment
+// variables needs to be set:
+//   * SDK_INTEGRATION=1
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+func TestAzurePermissions(t *testing.T) {
+	requireEnv(t, "SDK_INTEGRATION")
+
+	ctx := context.Background()
+
+	// Load configuration and create client. Usually resolved using the
+	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+	polAccount, err := DefaultServiceAccount(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	perms, err := client.Azure().Permissions(ctx, []core.Feature{core.FeatureCloudNativeProtection})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Note that we don't verify the exact permissions returned since they will
+	// change over time.
+	if len(perms.Actions) == 0 {
+		t.Fatal("invalid number of actions: 0")
+	}
+
+	if len(perms.DataActions) == 0 {
+		t.Fatal("invalid number of data actions: 0")
 	}
 }
 
@@ -818,5 +857,40 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 	_, err = client.GCP().Project(ctx, gcp.ProjectNumber(testProject.ProjectNumber), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
+	}
+}
+
+// TestGcpPermissions verifies that the SDK can read the required GCP
+// permissions from a real Polaris instance.
+//
+// To run this test against a Polaris instance the following environment
+// variables needs to be set:
+//   * SDK_INTEGRATION=1
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+func TestGcpPermissions(t *testing.T) {
+	requireEnv(t, "SDK_INTEGRATION")
+
+	ctx := context.Background()
+
+	// Load configuration and create client. Usually resolved using the
+	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+	polAccount, err := DefaultServiceAccount(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	perms, err := client.GCP().Permissions(ctx, []core.Feature{core.FeatureCloudNativeProtection})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Note that we don't verify the exact permissions returned since they will
+	// change over time.
+	if len(perms) == 0 {
+		t.Fatal("invalid number of permissions: 0")
 	}
 }
