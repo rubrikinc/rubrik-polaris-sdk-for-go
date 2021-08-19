@@ -1,5 +1,5 @@
-query RubrikPolarisSDKRequest($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
-    awsCloudAccountSelector(cloudAccountId: $cloudAccountId, awsCloudAccountArg: {features: [$feature]}) {
+query RubrikPolarisSDKRequest($feature: CloudAccountFeatureEnum!, $columnSearchFilter: String!) {
+    result: allAwsCloudAccountsWithFeatures(awsCloudAccountsArg: {columnSearchFilter: $columnSearchFilter, statusFilters: [], feature: $feature}) {
         awsCloudAccount {
             cloudType
             id

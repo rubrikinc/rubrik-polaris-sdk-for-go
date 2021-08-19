@@ -1,16 +1,16 @@
-mutation RubrikPolarisSDKRequest($nativeId: String!, $accountName: String!, $feature: CloudAccountFeatureEnum!) {
-    validateAndCreateAwsCloudAccount(input: {
+mutation RubrikPolarisSDKRequest($nativeId: String!, $accountName: String!, $features: [CloudAccountFeatureEnum!]!) {
+    result: validateAndCreateAwsCloudAccount(input: {
         action: CREATE, 
         awsChildAccounts: [{
             accountName: $accountName,
             nativeId: $nativeId,
         }], 
-        features: [$feature]
+        features: $features
     }) {
         initiateResponse {
             cloudFormationUrl
             externalId
-            featureVersionList {
+            featureVersions {
                 feature
                 version
             }

@@ -115,21 +115,21 @@ func (a API) Project(ctx context.Context, id IdentityFunc, feature core.CloudAcc
 func (a API) Projects(ctx context.Context, feature core.CloudAccountFeature, filter string) ([]CloudAccount, error) {
 	a.gql.Log().Print(log.Trace, "polaris/gcp.Projects")
 
-	selectors, err := gcp.Wrap(a.gql).CloudAccountListProjects(ctx, feature, filter)
+	accountsWithFeature, err := gcp.Wrap(a.gql).CloudAccountListProjects(ctx, feature, filter)
 	if err != nil {
 		return nil, err
 	}
 
 	accountMap := make(map[uuid.UUID]*CloudAccount)
-	for _, selector := range selectors {
-		if account, ok := accountMap[selector.Account.ID]; ok {
+	for _, accountWithFeature := range accountsWithFeature {
+		if account, ok := accountMap[accountWithFeature.Account.ID]; ok {
 			account.Features = append(account.Features, Feature{
-				Name:   selector.Feature.Name,
-				Status: selector.Feature.Status,
+				Name:   accountWithFeature.Feature.Name,
+				Status: accountWithFeature.Feature.Status,
 			})
 		} else {
 			// Look up organization name for cloud account.
-			natives, err := gcp.Wrap(a.gql).NativeProjects(ctx, strconv.FormatInt(selector.Account.ProjectNumber, 10))
+			natives, err := gcp.Wrap(a.gql).NativeProjects(ctx, strconv.FormatInt(accountWithFeature.Account.ProjectNumber, 10))
 			if err != nil {
 				return nil, err
 			}
@@ -138,7 +138,7 @@ func (a API) Projects(ctx context.Context, feature core.CloudAccountFeature, fil
 			// native project to allow the call to succeed. This can happen
 			// when RemoveProject times out and gets re-run with the native
 			// project already disabled.
-			if selector.Feature.Status == core.Disabled {
+			if accountWithFeature.Feature.Status == core.Disabled {
 				natives = append(natives, gcp.NativeProject{OrganizationName: "<Native Disabled>"})
 			}
 
@@ -146,15 +146,15 @@ func (a API) Projects(ctx context.Context, feature core.CloudAccountFeature, fil
 				return nil, fmt.Errorf("polaris: native project %w", graphql.ErrNotUnique)
 			}
 
-			accountMap[selector.Account.ID] = &CloudAccount{
-				ID:               selector.Account.ID,
-				NativeID:         selector.Account.ProjectID,
-				Name:             selector.Account.Name,
-				ProjectNumber:    selector.Account.ProjectNumber,
+			accountMap[accountWithFeature.Account.ID] = &CloudAccount{
+				ID:               accountWithFeature.Account.ID,
+				NativeID:         accountWithFeature.Account.ProjectID,
+				Name:             accountWithFeature.Account.Name,
+				ProjectNumber:    accountWithFeature.Account.ProjectNumber,
 				OrganizationName: natives[0].OrganizationName,
 				Features: []Feature{{
-					Name:   selector.Feature.Name,
-					Status: selector.Feature.Status,
+					Name:   accountWithFeature.Feature.Name,
+					Status: accountWithFeature.Feature.Status,
 				}},
 			}
 		}

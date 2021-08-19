@@ -101,18 +101,18 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 	}
 
 	for _, tenant := range tenants {
-		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.CloudNativeProtection, identity.id)
+		tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.CloudNativeProtection, identity.id)
 		if err != nil {
 			return uuid.Nil, err
 		}
-		if len(selector.Accounts) == 0 {
+		if len(tenantWithAccounts.Accounts) == 0 {
 			continue
 		}
-		if len(selector.Accounts) > 1 {
+		if len(tenantWithAccounts.Accounts) > 1 {
 			return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotUnique)
 		}
 
-		return selector.Accounts[0].ID, nil
+		return tenantWithAccounts.Accounts[0].ID, nil
 	}
 
 	return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotFound)
@@ -146,11 +146,11 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error)
 	}
 
 	for _, tenant := range tenants {
-		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.CloudNativeProtection, "")
+		tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.CloudNativeProtection, "")
 		if err != nil {
 			return uuid.Nil, err
 		}
-		for _, account := range selector.Accounts {
+		for _, account := range tenantWithAccounts.Accounts {
 			if account.ID == uid {
 				return account.ID, nil
 			}
@@ -218,16 +218,16 @@ func (a API) Subscriptions(ctx context.Context, feature core.CloudAccountFeature
 
 	var accounts []CloudAccount
 	for _, tenant := range tenants {
-		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, feature, filter)
+		tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, feature, filter)
 		if err != nil {
 			return nil, err
 		}
-		if len(selector.Accounts) == 0 {
+		if len(tenantWithAccounts.Accounts) == 0 {
 			continue
 		}
 
-		features := make([]Feature, 0, len(selector.Accounts))
-		for _, account := range selector.Accounts {
+		features := make([]Feature, 0, len(tenantWithAccounts.Accounts))
+		for _, account := range tenantWithAccounts.Accounts {
 			features = append(features, Feature{
 				Name:    account.Feature.Name,
 				Regions: azure.FormatRegions(account.Feature.Regions),
@@ -236,10 +236,10 @@ func (a API) Subscriptions(ctx context.Context, feature core.CloudAccountFeature
 		}
 
 		accounts = append(accounts, CloudAccount{
-			ID:           selector.Accounts[0].ID,
-			NativeID:     selector.Accounts[0].NativeID,
-			Name:         selector.Accounts[0].Name,
-			TenantDomain: selector.DomainName,
+			ID:           tenantWithAccounts.Accounts[0].ID,
+			NativeID:     tenantWithAccounts.Accounts[0].NativeID,
+			Name:         tenantWithAccounts.Accounts[0].Name,
+			TenantDomain: tenantWithAccounts.DomainName,
 			Features:     features,
 		})
 	}

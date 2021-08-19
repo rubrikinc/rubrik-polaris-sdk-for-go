@@ -24,9 +24,9 @@
 
 package aws
 
-// allAwsCloudAccounts GraphQL query
-var allAwsCloudAccountsQuery = `query SdkGolangAllAwsCloudAccounts($feature: CloudAccountFeatureEnum!, $columnSearchFilter: String!) {
-    allAwsCloudAccounts(awsCloudAccountsArg: {columnSearchFilter: $columnSearchFilter, statusFilters: [], feature: $feature}) {
+// allAwsCloudAccountsWithFeatures GraphQL query
+var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWithFeatures($feature: CloudAccountFeatureEnum!, $columnSearchFilter: String!) {
+    result: allAwsCloudAccountsWithFeatures(awsCloudAccountsArg: {columnSearchFilter: $columnSearchFilter, statusFilters: [], feature: $feature}) {
         awsCloudAccount {
             cloudType
             id
@@ -46,7 +46,7 @@ var allAwsCloudAccountsQuery = `query SdkGolangAllAwsCloudAccounts($feature: Clo
 
 // allAwsExocomputeConfigs GraphQL query
 var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsNativeAccountIdOrNamePrefix: String!) {
-    allAwsExocomputeConfigs(awsNativeAccountIdOrNamePrefix: $awsNativeAccountIdOrNamePrefix) {
+    result: allAwsExocomputeConfigs(awsNativeAccountIdOrNamePrefix: $awsNativeAccountIdOrNamePrefix) {
         awsCloudAccount {
             cloudType
             id
@@ -72,7 +72,7 @@ var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsN
             vpcId
         }
         exocomputeEligibleRegions
-        featureDetails {
+        featureDetail {
             feature
             roleArn
             stackArn
@@ -99,9 +99,9 @@ var allVpcsByRegionFromAwsQuery = `query SdkGolangAllVpcsByRegionFromAws($awsAcc
     }
 }`
 
-// awsCloudAccountSelector GraphQL query
-var awsCloudAccountSelectorQuery = `query SdkGolangAwsCloudAccountSelector($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
-    awsCloudAccountSelector(cloudAccountId: $cloudAccountId, awsCloudAccountArg: {features: [$feature]}) {
+// awsCloudAccountWithFeatures GraphQL query
+var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatures($cloudAccountId: UUID!, $features: [CloudAccountFeatureEnum!]!) {
+    result: awsCloudAccountWithFeatures(cloudAccountId: $cloudAccountId, awsCloudAccountArg: {features: $features}) {
         awsCloudAccount {
             cloudType
             id
@@ -256,19 +256,19 @@ var updateAwsCloudAccountQuery = `mutation SdkGolangUpdateAwsCloudAccount($actio
 }`
 
 // validateAndCreateAwsCloudAccount GraphQL query
-var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($nativeId: String!, $accountName: String!, $feature: CloudAccountFeatureEnum!) {
-    validateAndCreateAwsCloudAccount(input: {
+var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($nativeId: String!, $accountName: String!, $features: [CloudAccountFeatureEnum!]!) {
+    result: validateAndCreateAwsCloudAccount(input: {
         action: CREATE, 
         awsChildAccounts: [{
             accountName: $accountName,
             nativeId: $nativeId,
         }], 
-        features: [$feature]
+        features: $features
     }) {
         initiateResponse {
             cloudFormationUrl
             externalId
-            featureVersionList {
+            featureVersions {
                 feature
                 version
             }

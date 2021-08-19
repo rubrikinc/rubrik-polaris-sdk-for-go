@@ -262,13 +262,13 @@ func toExocomputeConfig(config aws.ExocomputeConfig) ExocomputeConfig {
 func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConfig, error) {
 	a.gql.Log().Print(log.Trace, "polaris/aws.ExocomputeConfig")
 
-	selectors, err := aws.Wrap(a.gql).ExocomputeConfigs(ctx, "")
+	configsForAccounts, err := aws.Wrap(a.gql).ExocomputeConfigs(ctx, "")
 	if err != nil {
 		return ExocomputeConfig{}, err
 	}
 
-	for _, selector := range selectors {
-		for _, config := range selector.Configs {
+	for _, configsForAccount := range configsForAccounts {
+		for _, config := range configsForAccount.Configs {
 			if config.ID == id {
 				return toExocomputeConfig(config), nil
 			}
@@ -288,14 +288,14 @@ func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]Exocompu
 		return nil, err
 	}
 
-	selectors, err := aws.Wrap(a.gql).ExocomputeConfigs(ctx, nativeID)
+	configsForAccounts, err := aws.Wrap(a.gql).ExocomputeConfigs(ctx, nativeID)
 	if err != nil {
 		return nil, err
 	}
 
 	var exoConfigs []ExocomputeConfig
-	for _, selector := range selectors {
-		for _, config := range selector.Configs {
+	for _, configsForAccount := range configsForAccounts {
+		for _, config := range configsForAccount.Configs {
 			exoConfigs = append(exoConfigs, toExocomputeConfig(config))
 		}
 	}
