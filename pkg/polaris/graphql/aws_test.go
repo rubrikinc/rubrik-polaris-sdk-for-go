@@ -47,7 +47,7 @@ func TestAwsCloudAccounts(t *testing.T) {
 	})
 	defer srv.Shutdown(context.Background())
 
-	accounts, err := client.AwsCloudAccounts(context.Background(), "123456789012")
+	accounts, err := client.AwsCloudAccountsWithFeatures(context.Background(), "123456789012")
 	if err != nil {
 		t.Fatal(err)
 	}

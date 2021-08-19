@@ -24,10 +24,15 @@
 
 package graphql
 
-// awsAllCloudAccounts GraphQL query
-var awsAllCloudAccountsQuery = `query SdkGolangAwsAllCloudAccounts($column_filter: String = "") {
-    allAwsCloudAccounts(awsCloudAccountsArg: {columnSearchFilter: $column_filter, statusFilters: [], feature: CLOUD_NATIVE_PROTECTION}) {
+// awsAllCloudAccountsWithFeatures GraphQL query
+var awsAllCloudAccountsWithFeaturesQuery = `query SdkGolangAwsAllCloudAccountsWithFeatures($column_filter: String = "") {
+    result: allAwsCloudAccountsWithFeatures(awsCloudAccountsArg: {
+        columnSearchFilter: $column_filter,
+        statusFilters:      [],
+        feature:            CLOUD_NATIVE_PROTECTION
+    }) {
         awsCloudAccount {
+            cloudType
             id
             nativeId
             message
@@ -43,10 +48,15 @@ var awsAllCloudAccountsQuery = `query SdkGolangAwsAllCloudAccounts($column_filte
     }
 }`
 
-// awsCloudAccountSelector GraphQL query
-var awsCloudAccountSelectorQuery = `query SdkGolangAwsCloudAccountSelector($cloud_account_id: String!) {
-    awsCloudAccountSelector(awsCloudAccountsArg: {features: [CLOUD_NATIVE_PROTECTION], cloudAccountId: $cloud_account_id}) {
+// awsAllCloudAccountsWithFeaturesV0 GraphQL query
+var awsAllCloudAccountsWithFeaturesV0Query = `query SdkGolangAwsAllCloudAccountsWithFeaturesV0($column_filter: String = "") {
+    result: allAwsCloudAccounts(awsCloudAccountsArg: {
+        columnSearchFilter: $column_filter,
+        statusFilters:      [],
+        feature:            CLOUD_NATIVE_PROTECTION
+    }) {
         awsCloudAccount {
+            cloudType
             id
             nativeId
             message
@@ -148,18 +158,53 @@ var awsUpdateCloudAccountQuery = `mutation SdkGolangAwsUpdateCloudAccount($cloud
 
 // awsValidateAndCreateCloudAccount GraphQL query
 var awsValidateAndCreateCloudAccountQuery = `mutation SdkGolangAwsValidateAndCreateCloudAccount($account_name: String!, $aws_account_id: String!) {
-    validateAndCreateAwsCloudAccount(input: {
-        action: CREATE, 
+    result: validateAndCreateAwsCloudAccount(input: {
+        action: CREATE,
         awsChildAccounts: [{
             accountName: $account_name,
             nativeId: $aws_account_id,
-        }], 
+        }],
         features: [CLOUD_NATIVE_PROTECTION]
     }) {
         initiateResponse {
             cloudFormationUrl
             externalId
-            featureVersionList {
+            featureVersions {
+                feature
+                version
+            }
+            stackName
+            templateUrl
+        }
+        validateResponse {
+            invalidAwsAccounts {
+                accountName
+                nativeId
+                message
+            }
+            invalidAwsAdminAccount {
+                accountName
+                nativeId
+                message
+            }
+        }
+    }
+}`
+
+// awsValidateAndCreateCloudAccountV0 GraphQL query
+var awsValidateAndCreateCloudAccountV0Query = `mutation SdkGolangAwsValidateAndCreateCloudAccountV0($account_name: String!, $aws_account_id: String!) {
+    result: validateAndCreateAwsCloudAccount(input: {
+        action: CREATE,
+        awsChildAccounts: [{
+            accountName: $account_name,
+            nativeId: $aws_account_id,
+        }],
+        features: [CLOUD_NATIVE_PROTECTION]
+    }) {
+        initiateResponse {
+            cloudFormationUrl
+            externalId
+            featureVersions: featureVersionList {
                 feature
                 version
             }

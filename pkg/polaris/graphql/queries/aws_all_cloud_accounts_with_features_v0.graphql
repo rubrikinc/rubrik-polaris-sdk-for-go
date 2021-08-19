@@ -1,6 +1,11 @@
 query RubrikPolarisSDKRequest($column_filter: String = "") {
-    allAwsCloudAccounts(awsCloudAccountsArg: {columnSearchFilter: $column_filter, statusFilters: [], feature: CLOUD_NATIVE_PROTECTION}) {
+    result: allAwsCloudAccounts(awsCloudAccountsArg: {
+        columnSearchFilter: $column_filter,
+        statusFilters:      [],
+        feature:            CLOUD_NATIVE_PROTECTION
+    }) {
         awsCloudAccount {
+            cloudType
             id
             nativeId
             message

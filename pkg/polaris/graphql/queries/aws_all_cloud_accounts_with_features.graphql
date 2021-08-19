@@ -1,0 +1,22 @@
+query RubrikPolarisSDKRequest($column_filter: String = "") {
+    result: allAwsCloudAccountsWithFeatures(awsCloudAccountsArg: {
+        columnSearchFilter: $column_filter,
+        statusFilters:      [],
+        feature:            CLOUD_NATIVE_PROTECTION
+    }) {
+        awsCloudAccount {
+            cloudType
+            id
+            nativeId
+            message
+            accountName
+        }
+        featureDetails {
+            feature
+            roleArn
+            stackArn
+            status
+            awsRegions
+        }
+    }
+}

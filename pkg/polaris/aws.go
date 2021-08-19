@@ -143,7 +143,7 @@ func (c *Client) AwsAccounts(ctx context.Context, queryOpt QueryOption) ([]AwsCl
 	if filter == "" {
 		filter = opts.name
 	}
-	gqlAccounts, err := c.gql.AwsCloudAccounts(ctx, filter)
+	gqlAccounts, err := c.gql.AwsCloudAccountsWithFeatures(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
