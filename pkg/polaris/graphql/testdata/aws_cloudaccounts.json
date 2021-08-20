@@ -1,6 +1,6 @@
 {
     "data": {
-        "allAwsCloudAccounts": [
+        "result": [
             {
                 "awsCloudAccount": {
                     "id": "292e34ac-232c-4e8b-8053-b28cff91d056",

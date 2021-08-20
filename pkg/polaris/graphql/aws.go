@@ -94,7 +94,7 @@ type AwsFeatureVersion struct {
 type AwsCloudAccountInitiate struct {
 	CloudFormationURL string              `json:"cloudFormationUrl"`
 	ExternalID        string              `json:"externalId"`
-	FeatureVersions   []AwsFeatureVersion `json:"featureVersionList"`
+	FeatureVersions   []AwsFeatureVersion `json:"featureVersions"`
 	StackName         string              `json:"stackName"`
 	TemplateURL       string              `json:"templateUrl"`
 }
@@ -149,59 +149,36 @@ func (c *Client) AwsNativeAccounts(ctx context.Context, protectionFeature AwsPro
 	return accounts, nil
 }
 
-// AwsCloudAccount returns the cloud accounts with the specified Polaris cloud
-// account UUID. Note that this call is locked to the cloud native protection
-// feature.
-func (c *Client) AwsCloudAccount(ctx context.Context, cloudAccountUUID string) (AwsCloudAccountSelector, error) {
-	c.log.Print(log.Trace, "graphql.Client.AwsCloudAccount")
+// AwsCloudAccountsWithFeatures returns the cloud accounts matching the
+// specified filters. The columnFilter can be used to search for AWS account
+// ID, account name and role arn. Note that this call is locked to the cloud
+// native protection feature.
+func (c *Client) AwsCloudAccountsWithFeatures(ctx context.Context, columnFilter string) ([]AwsCloudAccountSelector, error) {
+	c.log.Print(log.Trace, "graphql.Client.AwsCloudAccountsWithFeatures")
 
-	buf, err := c.Request(ctx, awsCloudAccountSelectorQuery, struct {
-		CloudAccountUUID string `json:"cloud_account_uuid"`
-	}{CloudAccountUUID: cloudAccountUUID})
-	if err != nil {
-		return AwsCloudAccountSelector{}, err
+	query := awsAllCloudAccountsWithFeaturesQuery
+	if VersionOlderThan(c.Version, "master-41151", "v20210824") {
+		query = awsAllCloudAccountsWithFeaturesV0Query
 	}
-
-	c.log.Printf(log.Debug, "AwsCloudAccount(%q): %s", cloudAccountUUID, string(buf))
-
-	var payload struct {
-		Data struct {
-			Account AwsCloudAccountSelector `json:"awsCloudAccountSelector"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return AwsCloudAccountSelector{}, err
-	}
-
-	return payload.Data.Account, nil
-}
-
-// AwsCloudAccounts returns the cloud accounts matching the specified filters.
-// The columnFilter can be used to search for AWS account ID, account name and
-// role arn. Note that this call is locked to the cloud native protection
-// feature.
-func (c *Client) AwsCloudAccounts(ctx context.Context, columnFilter string) ([]AwsCloudAccountSelector, error) {
-	c.log.Print(log.Trace, "graphql.Client.AwsCloudAccounts")
-
-	buf, err := c.Request(ctx, awsAllCloudAccountsQuery, struct {
+	buf, err := c.Request(ctx, query, struct {
 		ColumnFilter string `json:"column_filter,omitempty"`
 	}{ColumnFilter: columnFilter})
 	if err != nil {
 		return nil, err
 	}
 
-	c.log.Printf(log.Debug, "AwsCloudAccounts(%q): %s", columnFilter, string(buf))
+	c.log.Printf(log.Debug, "%s(%q): %s", queryName(query), columnFilter, string(buf))
 
 	var payload struct {
 		Data struct {
-			Accounts []AwsCloudAccountSelector `json:"allAwsCloudAccounts"`
+			Result []AwsCloudAccountSelector `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return nil, err
 	}
 
-	return payload.Data.Accounts, nil
+	return payload.Data.Result, nil
 }
 
 // AwsValidateAndCreateCloudAccount begins the process of adding the specified
@@ -211,7 +188,11 @@ func (c *Client) AwsCloudAccounts(ctx context.Context, columnFilter string) ([]A
 func (c *Client) AwsValidateAndCreateCloudAccount(ctx context.Context, accountName, awsAccountID string) (AwsCloudAccountInitiate, error) {
 	c.log.Print(log.Trace, "graphql.Client.AwsValidateAndCreateCloudAccount")
 
-	buf, err := c.Request(ctx, awsValidateAndCreateCloudAccountQuery, struct {
+	query := awsValidateAndCreateCloudAccountQuery
+	if VersionOlderThan(c.Version, "master-41151", "v20210824") {
+		query = awsValidateAndCreateCloudAccountV0Query
+	}
+	buf, err := c.Request(ctx, query, struct {
 		AccountName  string `json:"account_name"`
 		AwsAccountID string `json:"aws_account_id"`
 	}{AccountName: accountName, AwsAccountID: awsAccountID})
@@ -219,11 +200,11 @@ func (c *Client) AwsValidateAndCreateCloudAccount(ctx context.Context, accountNa
 		return AwsCloudAccountInitiate{}, err
 	}
 
-	c.log.Printf(log.Debug, "AwsValidateAndCreateCloudAccount(%q, %q): %s", accountName, awsAccountID, string(buf))
+	c.log.Printf(log.Debug, "%s(%q, %q): %s", queryName(query), accountName, awsAccountID, string(buf))
 
 	var payload struct {
 		Data struct {
-			Query struct {
+			Result struct {
 				InitiateResponse AwsCloudAccountInitiate `json:"initiateResponse"`
 				ValidateResponse struct {
 					InvalidAwsAccounts []struct {
@@ -237,22 +218,22 @@ func (c *Client) AwsValidateAndCreateCloudAccount(ctx context.Context, accountNa
 						Message     string `json:"message"`
 					}
 				} `json:"validateReponse"`
-			} `json:"validateAndCreateAwsCloudAccount"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return AwsCloudAccountInitiate{}, err
 	}
-	if len(payload.Data.Query.ValidateResponse.InvalidAwsAccounts) != 0 {
+	if len(payload.Data.Result.ValidateResponse.InvalidAwsAccounts) != 0 {
 		return AwsCloudAccountInitiate{}, errors.New("polaris: invalid aws accounts")
 	}
 
 	// Make sure the InitiateResponse we receive from Polaris isn't empty.
-	if payload.Data.Query.InitiateResponse.FeatureVersions == nil {
+	if payload.Data.Result.InitiateResponse.FeatureVersions == nil {
 		return AwsCloudAccountInitiate{}, errors.New("polaris: invalid initiate response")
 	}
 
-	return payload.Data.Query.InitiateResponse, nil
+	return payload.Data.Result.InitiateResponse, nil
 }
 
 // AwsFinalizeCloudAccountProtection finalizes the process of the adding the
@@ -281,7 +262,7 @@ func (c *Client) AwsFinalizeCloudAccountProtection(ctx context.Context, accountN
 		return err
 	}
 
-	c.log.Printf(log.Debug, "AwsFinalizeCloudAccountProtection(%q, %q, %q, %q, %q, %q): %s", accountName, awsAccountID, awsRegions,
+	c.log.Printf(log.Debug, "AwsFinalizeCloudAccountProtection(%q, %q, %q, %q, %v, %q): %s", accountName, awsAccountID, awsRegions,
 		accountInit.ExternalID, accountInit.FeatureVersions, accountInit.StackName, string(buf))
 
 	var payload struct {
