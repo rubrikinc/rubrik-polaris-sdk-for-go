@@ -64,7 +64,6 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
         cloudType
         azureCloudAccountTenantRubrikId
         domainName
-        subscriptionCount
         subscriptions {
             id
             name

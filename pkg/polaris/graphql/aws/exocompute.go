@@ -54,17 +54,18 @@ type ExocomputeConfig struct {
 	NodeSecurityGroupID    string `json:"nodeSecurityGroupId"`
 }
 
-// ExocomputeConfigs holds all exocompute configs for a specific account.
-type ExocomputeConfigSelector struct {
+// ExocomputeConfigsForAccount holds all exocompute configs for a specific
+// account.
+type ExocomputeConfigsForAccount struct {
 	Account         CloudAccount       `json:"awsCloudAccount"`
 	Configs         []ExocomputeConfig `json:"configs"`
 	EligibleRegions []string           `json:"exocomputeEligibleRegions"`
-	Feature         Feature            `json:"featureDetails"`
+	Feature         Feature            `json:"featureDetail"`
 }
 
 // ExocomputeConfigs returns all exocompute configs matching the specified
 // filter. The filter can be used to search for account name or account id.
-func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigSelector, error) {
+func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigsForAccount, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.ExocomputeConfigs")
 
 	buf, err := a.GQL.Request(ctx, allAwsExocomputeConfigsQuery, struct {
@@ -78,14 +79,14 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 
 	var payload struct {
 		Data struct {
-			Selectors []ExocomputeConfigSelector `json:"allAwsExocomputeConfigs"`
+			Result []ExocomputeConfigsForAccount `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return nil, err
 	}
 
-	return payload.Data.Selectors, nil
+	return payload.Data.Result, nil
 }
 
 // ExocomputeConfigCreate represents an exocompute config to be created by

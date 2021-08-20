@@ -58,47 +58,47 @@ type FeatureVersion struct {
 	Version int    `json:"version"`
 }
 
-// CloudAccountSelector hold details about a cloud account and the features
+// CloudAccountWithFeatures hold details about a cloud account and the features
 // associated with that account.
-type CloudAccountSelector struct {
+type CloudAccountWithFeatures struct {
 	Account  CloudAccount `json:"awsCloudAccount"`
 	Features []Feature    `json:"featureDetails"`
 }
 
-// CloudAccount returns the cloud account with the specified Polaris cloud
-// account id.
-func (a API) CloudAccount(ctx context.Context, id uuid.UUID, feature core.Feature) (CloudAccountSelector, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.CloudAccount")
+// CloudAccountWithFeatures returns the cloud account with the specified
+// Polaris cloud account id.
+func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature core.Feature) (CloudAccountWithFeatures, error) {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.CloudAccountWithFeatures")
 
-	buf, err := a.GQL.Request(ctx, awsCloudAccountSelectorQuery, struct {
-		ID      uuid.UUID    `json:"cloudAccountId"`
-		Feature core.Feature `json:"feature"`
-	}{ID: id, Feature: feature})
+	buf, err := a.GQL.Request(ctx, awsCloudAccountWithFeaturesQuery, struct {
+		ID       uuid.UUID      `json:"cloudAccountId"`
+		Features []core.Feature `json:"features"`
+	}{ID: id, Features: []core.Feature{feature}})
 	if err != nil {
-		return CloudAccountSelector{}, err
+		return CloudAccountWithFeatures{}, err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "awsCloudAccountSelector(%q, %q): %s", id, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "awsCloudAccountWithFeatures(%q, %q): %s", id, feature, string(buf))
 
 	var payload struct {
 		Data struct {
-			Account CloudAccountSelector `json:"awsCloudAccountSelector"`
+			Result CloudAccountWithFeatures `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return CloudAccountSelector{}, err
+		return CloudAccountWithFeatures{}, err
 	}
 
-	return payload.Data.Account, nil
+	return payload.Data.Result, nil
 }
 
-// CloudAccounts returns the cloud accounts matching the specified filter.
-// The filter can be used to search for AWS account id, account name and role
-// arn.
-func (a API) CloudAccounts(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountSelector, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.CloudAccounts")
+// CloudAccountsWithFeatures returns the cloud accounts matching the specified
+// filter. The filter can be used to search for AWS account id, account name
+// and role arn.
+func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountWithFeatures, error) {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.CloudAccountsWithFeatures")
 
-	buf, err := a.GQL.Request(ctx, allAwsCloudAccountsQuery, struct {
+	buf, err := a.GQL.Request(ctx, allAwsCloudAccountsWithFeaturesQuery, struct {
 		Feature core.Feature `json:"feature"`
 		Filter  string       `json:"columnSearchFilter"`
 	}{Filter: filter, Feature: feature})
@@ -106,18 +106,18 @@ func (a API) CloudAccounts(ctx context.Context, feature core.Feature, filter str
 		return nil, err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "allAwsCloudAccounts(%q, %q): %s", filter, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "allAwsCloudAccountsWithFeatures(%q, %q): %s", filter, feature, string(buf))
 
 	var payload struct {
 		Data struct {
-			Accounts []CloudAccountSelector `json:"allAwsCloudAccounts"`
+			Result []CloudAccountWithFeatures `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return nil, err
 	}
 
-	return payload.Data.Accounts, nil
+	return payload.Data.Result, nil
 }
 
 // CloudAccountInitiate holds information about the CloudFormation stack
@@ -126,7 +126,7 @@ func (a API) CloudAccounts(ctx context.Context, feature core.Feature, filter str
 type CloudAccountInitiate struct {
 	CloudFormationURL string           `json:"cloudFormationUrl"`
 	ExternalID        uuid.UUID        `json:"externalId"`
-	FeatureVersions   []FeatureVersion `json:"featureVersionList"`
+	FeatureVersions   []FeatureVersion `json:"featureVersions"`
 	StackName         string           `json:"stackName"`
 	TemplateURL       string           `json:"templateUrl"`
 }
@@ -139,10 +139,10 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.ValidateAndCreateCloudAccount")
 
 	buf, err := a.GQL.Request(ctx, validateAndCreateAwsCloudAccountQuery, struct {
-		ID      string       `json:"nativeId"`
-		Name    string       `json:"accountName"`
-		Feature core.Feature `json:"feature"`
-	}{ID: id, Name: name, Feature: feature})
+		ID       string         `json:"nativeId"`
+		Name     string         `json:"accountName"`
+		Features []core.Feature `json:"features"`
+	}{ID: id, Name: name, Features: []core.Feature{feature}})
 	if err != nil {
 		return CloudAccountInitiate{}, err
 	}
@@ -151,7 +151,7 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 
 	var payload struct {
 		Data struct {
-			Query struct {
+			Result struct {
 				InitiateResponse CloudAccountInitiate `json:"initiateResponse"`
 				ValidateResponse struct {
 					InvalidAwsAccounts []struct {
@@ -165,20 +165,20 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 						Message     string `json:"message"`
 					} `json:"invalidAwsAdminAccount"`
 				} `json:"validateResponse"`
-			} `json:"validateAndCreateAwsCloudAccount"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return CloudAccountInitiate{}, err
 	}
-	if msg := payload.Data.Query.ValidateResponse.InvalidAwsAdminAccount.Message; msg != "" {
+	if msg := payload.Data.Result.ValidateResponse.InvalidAwsAdminAccount.Message; msg != "" {
 		return CloudAccountInitiate{}, fmt.Errorf("polaris: invalid aws admin account: %s", msg)
 	}
-	if accounts := payload.Data.Query.ValidateResponse.InvalidAwsAccounts; len(accounts) != 0 {
+	if accounts := payload.Data.Result.ValidateResponse.InvalidAwsAccounts; len(accounts) != 0 {
 		return CloudAccountInitiate{}, fmt.Errorf("polaris: invalid aws account: %s", accounts[0].Message)
 	}
 
-	return payload.Data.Query.InitiateResponse, nil
+	return payload.Data.Result.InitiateResponse, nil
 }
 
 // FinalizeCloudAccountProtection finalizes the process of the adding the

@@ -111,18 +111,18 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 		return id, nil
 	}
 
-	selectors, err := aws.Wrap(a.gql).CloudAccounts(ctx, core.FeatureCloudNativeProtection, identity.id)
+	accountsWithFeatures, err := aws.Wrap(a.gql).CloudAccountsWithFeatures(ctx, core.FeatureCloudNativeProtection, identity.id)
 	if err != nil {
 		return uuid.Nil, err
 	}
-	if len(selectors) < 1 {
+	if len(accountsWithFeatures) < 1 {
 		return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotFound)
 	}
-	if len(selectors) > 1 {
+	if len(accountsWithFeatures) > 1 {
 		return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotUnique)
 	}
 
-	return selectors[0].Account.ID, nil
+	return accountsWithFeatures[0].Account.ID, nil
 }
 
 // toNativeID returns the AWS account id for the specified identity. If the
@@ -147,19 +147,19 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (string, error) {
 		return "", nil
 	}
 
-	selector, err := aws.Wrap(a.gql).CloudAccount(ctx, uid, core.FeatureCloudNativeProtection)
+	accountWithFeatures, err := aws.Wrap(a.gql).CloudAccountWithFeatures(ctx, uid, core.FeatureCloudNativeProtection)
 	if err != nil {
 		return "", err
 	}
 
-	return selector.Account.NativeID, nil
+	return accountWithFeatures.Account.NativeID, nil
 }
 
-// toCloudAccount converts a polaris/graphql/aws CloudAccountSelector to a
+// toCloudAccount converts a polaris/graphql/aws CloudAccountWithFeatures to a
 // polaris/aws CloudAccount.
-func toCloudAccount(selector aws.CloudAccountSelector) CloudAccount {
-	features := make([]Feature, 0, len(selector.Features))
-	for _, feature := range selector.Features {
+func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccount {
+	features := make([]Feature, 0, len(accountWithFeatures.Features))
+	for _, feature := range accountWithFeatures.Features {
 		features = append(features, Feature{
 			Name:     feature.Name,
 			Regions:  aws.FormatRegions(feature.Regions),
@@ -170,9 +170,9 @@ func toCloudAccount(selector aws.CloudAccountSelector) CloudAccount {
 	}
 
 	return CloudAccount{
-		ID:       selector.Account.ID,
-		NativeID: selector.Account.NativeID,
-		Name:     selector.Account.Name,
+		ID:       accountWithFeatures.Account.ID,
+		NativeID: accountWithFeatures.Account.NativeID,
+		Name:     accountWithFeatures.Account.Name,
 		Features: features,
 	}
 }
@@ -195,25 +195,25 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 			return CloudAccount{}, err
 		}
 
-		selectors, err := aws.Wrap(a.gql).CloudAccounts(ctx, feature, "")
+		accountsWithFeatures, err := aws.Wrap(a.gql).CloudAccountsWithFeatures(ctx, feature, "")
 		if err != nil {
 			return CloudAccount{}, err
 		}
 
-		for _, selector := range selectors {
-			if selector.Account.ID == cloudAccountID {
-				return toCloudAccount(selector), nil
+		for _, accountWithFeatures := range accountsWithFeatures {
+			if accountWithFeatures.Account.ID == cloudAccountID {
+				return toCloudAccount(accountWithFeatures), nil
 			}
 		}
 	} else {
-		selectors, err := aws.Wrap(a.gql).CloudAccounts(ctx, feature, identity.id)
+		accountsWithFeatures, err := aws.Wrap(a.gql).CloudAccountsWithFeatures(ctx, feature, identity.id)
 		if err != nil {
 			return CloudAccount{}, err
 		}
-		if len(selectors) == 1 {
-			return toCloudAccount(selectors[0]), nil
+		if len(accountsWithFeatures) == 1 {
+			return toCloudAccount(accountsWithFeatures[0]), nil
 		}
-		if len(selectors) > 1 {
+		if len(accountsWithFeatures) > 1 {
 			return CloudAccount{}, fmt.Errorf("polaris: account %w", graphql.ErrNotUnique)
 		}
 	}
@@ -226,14 +226,14 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
 	a.gql.Log().Print(log.Trace, "polaris/aws.Accounts")
 
-	selectors, err := aws.Wrap(a.gql).CloudAccounts(ctx, feature, filter)
+	accountsWithFeatures, err := aws.Wrap(a.gql).CloudAccountsWithFeatures(ctx, feature, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	accounts := make([]CloudAccount, 0, len(selectors))
-	for _, selector := range selectors {
-		accounts = append(accounts, toCloudAccount(selector))
+	accounts := make([]CloudAccount, 0, len(accountsWithFeatures))
+	for _, accountWithFeatures := range accountsWithFeatures {
+		accounts = append(accounts, toCloudAccount(accountWithFeatures))
 	}
 
 	return accounts, nil

@@ -41,8 +41,9 @@ type ExocomputeConfig struct {
 	IsPolarisManaged bool `json:"isPolarisManaged"`
 }
 
-// ExocomputeConfigs holds all exocompute configs for a specific account.
-type ExocomputeConfigSelector struct {
+// ExocomputeConfigsForAccount holds all exocompute configs for a specific
+// account.
+type ExocomputeConfigsForAccount struct {
 	Account         CloudAccount       `json:"azureCloudAccount"`
 	Configs         []ExocomputeConfig `json:"configs"`
 	EligibleRegions []string           `json:"exocomputeEligibleRegions"`
@@ -51,7 +52,7 @@ type ExocomputeConfigSelector struct {
 
 // ExocomputeConfigs returns all exocompute configs matching the specified
 // filter. The filter can be used to search for account name or account id.
-func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigSelector, error) {
+func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigsForAccount, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.ExocomputeConfigs")
 
 	buf, err := a.GQL.Request(ctx, allAzureExocomputeConfigsInAccountQuery, struct {
@@ -65,7 +66,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 
 	var payload struct {
 		Data struct {
-			Result []ExocomputeConfigSelector `json:"result"`
+			Result []ExocomputeConfigsForAccount `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {

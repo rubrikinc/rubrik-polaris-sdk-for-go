@@ -47,9 +47,9 @@ type Feature struct {
 	Status  core.Status  `json:"status"`
 }
 
-// CloudAccountSelector hold details about an Azure tenant and the cloud
+// CloudAccountTenant hold details about an Azure tenant and the cloud
 // account associated with that tenant.
-type CloudAccountSelector struct {
+type CloudAccountTenant struct {
 	Cloud      Cloud          `json:"cloudType"`
 	ID         uuid.UUID      `json:"azureCloudAccountTenantRubrikId"`
 	ClientID   uuid.UUID      `json:"clientId"`
@@ -60,7 +60,7 @@ type CloudAccountSelector struct {
 // CloudAccountTenant returns the tenant and cloud accounts for the specified
 // feature and Polaris tenant id. The filter can be used to search for
 // subscription name and subscription id.
-func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.Feature, filter string) (CloudAccountSelector, error) {
+func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.Feature, filter string) (CloudAccountTenant, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.CloudAccountTenant")
 
 	buf, err := a.GQL.Request(ctx, azureCloudAccountTenantQuery, struct {
@@ -69,18 +69,18 @@ func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.
 		Filter  string       `json:"subscriptionSearchText"`
 	}{ID: id, Feature: feature, Filter: filter})
 	if err != nil {
-		return CloudAccountSelector{}, err
+		return CloudAccountTenant{}, err
 	}
 
 	a.GQL.Log().Printf(log.Debug, "azureCloudAccountTenant(%q, %q, %q): %s", id, feature, filter, string(buf))
 
 	var payload struct {
 		Data struct {
-			Result CloudAccountSelector `json:"result"`
+			Result CloudAccountTenant `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return CloudAccountSelector{}, err
+		return CloudAccountTenant{}, err
 	}
 
 	return payload.Data.Result, nil
@@ -89,7 +89,7 @@ func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.
 // CloudAccountTenants return all tenants for the specified feature. If
 // includeSubscription is true all cloud accounts for each tenant are also
 // returned. Note that this function does not support AllFeatures.
-func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, includeSubscriptions bool) ([]CloudAccountSelector, error) {
+func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, includeSubscriptions bool) ([]CloudAccountTenant, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.CloudAccountTenants")
 
 	buf, err := a.GQL.Request(ctx, allAzureCloudAccountTenantsQuery, struct {
@@ -104,7 +104,7 @@ func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, incl
 
 	var payload struct {
 		Data struct {
-			Result []CloudAccountSelector `json:"result"`
+			Result []CloudAccountTenant `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {

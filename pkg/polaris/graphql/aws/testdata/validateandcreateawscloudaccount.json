@@ -1,6 +1,6 @@
 {
     "data": {
-        "validateAndCreateAwsCloudAccount": {
+        "result": {
             "initiateResponse": null,
             "validateResponse": {
                 "invalidAwsAccounts": [

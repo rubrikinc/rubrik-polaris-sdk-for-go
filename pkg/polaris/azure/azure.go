@@ -114,18 +114,18 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 	}
 
 	for _, tenant := range tenants {
-		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.FeatureCloudNativeProtection, identity.id)
+		tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.FeatureCloudNativeProtection, identity.id)
 		if err != nil {
 			return uuid.Nil, err
 		}
-		if len(selector.Accounts) == 0 {
+		if len(tenantWithAccounts.Accounts) == 0 {
 			continue
 		}
-		if len(selector.Accounts) > 1 {
+		if len(tenantWithAccounts.Accounts) > 1 {
 			return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotUnique)
 		}
 
-		return selector.Accounts[0].ID, nil
+		return tenantWithAccounts.Accounts[0].ID, nil
 	}
 
 	return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotFound)
@@ -159,11 +159,11 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error)
 	}
 
 	for _, tenant := range tenants {
-		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.FeatureCloudNativeProtection, "")
+		tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.FeatureCloudNativeProtection, "")
 		if err != nil {
 			return uuid.Nil, err
 		}
-		for _, account := range selector.Accounts {
+		for _, account := range tenantWithAccounts.Accounts {
 			if account.ID == uid {
 				return account.ID, nil
 			}
@@ -192,17 +192,17 @@ func (a API) subscriptions(ctx context.Context, feature core.Feature, filter str
 
 	var accounts []CloudAccount
 	for _, tenant := range tenants {
-		selector, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, feature, filter)
+		tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, feature, filter)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, account := range selector.Accounts {
+		for _, account := range tenantWithAccounts.Accounts {
 			accounts = append(accounts, CloudAccount{
 				ID:           account.ID,
 				NativeID:     account.NativeID,
 				Name:         account.Name,
-				TenantDomain: selector.DomainName,
+				TenantDomain: tenantWithAccounts.DomainName,
 				Features: []Feature{{
 					Name:    account.Feature.Name,
 					Regions: azure.FormatRegions(account.Feature.Regions),

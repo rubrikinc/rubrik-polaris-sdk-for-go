@@ -122,23 +122,23 @@ var allFeatures = []core.Feature{
 // projects return all projects for the given feature and filter. Note that the
 // organization name of the cloud account is not set.
 func (a API) projects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.projectsForFeature")
+	a.gql.Log().Print(log.Trace, "polaris/gcp.projects")
 
-	selectors, err := gcp.Wrap(a.gql).CloudAccountListProjects(ctx, feature, filter)
+	accountsWithFeature, err := gcp.Wrap(a.gql).CloudAccountListProjects(ctx, feature, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	accounts := make([]CloudAccount, 0, len(selectors))
-	for _, selector := range selectors {
+	accounts := make([]CloudAccount, 0, len(accountsWithFeature))
+	for _, accountWithFeature := range accountsWithFeature {
 		accounts = append(accounts, CloudAccount{
-			ID:            selector.Account.ID,
-			NativeID:      selector.Account.ProjectID,
-			Name:          selector.Account.Name,
-			ProjectNumber: selector.Account.ProjectNumber,
+			ID:            accountWithFeature.Account.ID,
+			NativeID:      accountWithFeature.Account.ProjectID,
+			Name:          accountWithFeature.Account.Name,
+			ProjectNumber: accountWithFeature.Account.ProjectNumber,
 			Features: []Feature{{
-				Name:   selector.Feature.Name,
-				Status: selector.Feature.Status,
+				Name:   accountWithFeature.Feature.Name,
+				Status: accountWithFeature.Feature.Status,
 			}},
 		})
 	}
@@ -149,7 +149,7 @@ func (a API) projects(ctx context.Context, feature core.Feature, filter string) 
 // projectsAllFeatures return all projects with all features for the given
 // filter. Note that the organization name of the cloud account is not set.
 func (a API) projectsAllFeatures(ctx context.Context, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.allProjects")
+	a.gql.Log().Print(log.Trace, "polaris/gcp.projectsAllFeatures")
 
 	accountMap := make(map[uuid.UUID]*CloudAccount)
 	for _, feature := range allFeatures {
@@ -239,14 +239,14 @@ func (a API) Projects(ctx context.Context, feature core.Feature, filter string) 
 	// Look up organization name for cloud accounts. Note that if the native
 	// project has been disabled we cannot read the organization name and leave
 	// it blank. This can happen when RemoveProject times out and gets re-run
-        // with the native project already disabled.
+	// with the native project already disabled.
 	for i := range accounts {
 		natives, err := gcp.Wrap(a.gql).NativeProjects(ctx, strconv.FormatInt(accounts[i].ProjectNumber, 10))
 		if err != nil {
 			return nil, err
 		}
 		if len(natives) < 1 {
-                        accounts[i].OrganizationName = "<Native Disabled>"
+			accounts[i].OrganizationName = "<Native Disabled>"
 			continue
 		}
 		if len(natives) > 1 {

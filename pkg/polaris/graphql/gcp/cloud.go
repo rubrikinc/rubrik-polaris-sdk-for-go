@@ -47,9 +47,9 @@ type Feature struct {
 	Status core.Status  `json:"status"`
 }
 
-// CloudAccountSelector hold details about a cloud account and the features
+// CloudAccountWithFeature hold details about a cloud account and the features
 // associated with that account.
-type CloudAccountSelector struct {
+type CloudAccountWithFeature struct {
 	Account CloudAccount `json:"project"`
 	Feature Feature      `json:"featureDetail"`
 }
@@ -57,7 +57,7 @@ type CloudAccountSelector struct {
 // CloudAccountListProjects returns the cloud accounts matching the specified
 // filter. The filter can be used to search for project id, project name and
 // project number.
-func (a API) CloudAccountListProjects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountSelector, error) {
+func (a API) CloudAccountListProjects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountWithFeature, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.CloudAccountListProjects")
 
 	buf, err := a.GQL.Request(ctx, gcpCloudAccountListProjectsQuery, struct {
@@ -72,7 +72,7 @@ func (a API) CloudAccountListProjects(ctx context.Context, feature core.Feature,
 
 	var payload struct {
 		Data struct {
-			Accounts []CloudAccountSelector `json:"gcpCloudAccountListProjects"`
+			Accounts []CloudAccountWithFeature `json:"gcpCloudAccountListProjects"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
