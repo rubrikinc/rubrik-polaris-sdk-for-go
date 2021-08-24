@@ -29,7 +29,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 )
 
 // serviceAccountSource holds all the information needed to obtain a token
@@ -54,7 +53,7 @@ func newServiceAccountSource(accessTokenURL, clientID, clientSecret string) *ser
 
 // token returns a new token from the service account token source.
 func (src *serviceAccountSource) token() (token, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), tokenRequestTimeout)
 	defer cancel()
 
 	// Prepare the token request body.
