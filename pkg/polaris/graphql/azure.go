@@ -58,26 +58,35 @@ type AzureSubscriptionStatus struct {
 // AzureAddCloudAccountWithoutOAuth adds the Azure Subscription cloud account
 // for given feature without OAuth.
 func (c *Client) AzureAddCloudAccountWithoutOAuth(ctx context.Context, cloud AzureCloud, tenantDomain string,
-	regions []AzureRegion, feature CloudAccountFeature, subscriptions []AzureSubscriptionIn, policyVersion int) (string, []AzureSubscriptionStatus, error) {
+	regions []AzureRegion, features []CloudAccountFeature, subscriptions []AzureSubscriptionIn, policyVersion int) (string, []AzureSubscriptionStatus, error) {
 	c.log.Print(log.Trace, "graphql.Client.AzureAddCloudAccountWithoutOAuth")
 
+	var feature CloudAccountFeature
+	if len(features) > 0 {
+		feature = features[0]
+	}
+
 	query := azureAddCloudAccountWithoutOauthQuery
-	if VersionOlderThan(c.Version, "master-40839", "v20210810") {
+	switch {
+	case VersionOlderThan(c.Version, "master-40839", "v20210810"):
 		query = azureAddCloudAccountWithoutOauthV0Query
+	case VersionOlderThan(c.Version, "master-41367", "v20210903"):
+		query = azureAddCloudAccountWithoutOauthV1Query
 	}
 	buf, err := c.Request(ctx, query, struct {
 		Cloud         AzureCloud            `json:"azure_cloud_type"`
 		TenantDomain  string                `json:"azure_tenant_domain_name"`
 		Regions       []AzureRegion         `json:"azure_regions"`
 		Feature       CloudAccountFeature   `json:"feature"`
+		Features      []CloudAccountFeature `json:"features"`
 		Subscriptions []AzureSubscriptionIn `json:"azure_subscriptions"`
 		PolicyVersion int                   `json:"azure_policy_version"`
-	}{Cloud: cloud, TenantDomain: tenantDomain, Regions: regions, Feature: feature, Subscriptions: subscriptions, PolicyVersion: policyVersion})
+	}{Cloud: cloud, TenantDomain: tenantDomain, Regions: regions, Feature: feature, Features: features, Subscriptions: subscriptions, PolicyVersion: policyVersion})
 	if err != nil {
 		return "", nil, err
 	}
 
-	c.log.Printf(log.Debug, "%s(%q, %q, %q, %q, %q, %d): %s", queryName(query), cloud, tenantDomain, regions, feature, subscriptions,
+	c.log.Printf(log.Debug, "%s(%q, %q, %q, %v, %q, %d): %s", queryName(query), cloud, tenantDomain, regions, features, subscriptions,
 		policyVersion, string(buf))
 
 	var payload struct {
