@@ -227,11 +227,11 @@ var awsValidateAndCreateCloudAccountV0Query = `mutation SdkGolangAwsValidateAndC
 }`
 
 // azureAddCloudAccountWithoutOauth GraphQL query
-var azureAddCloudAccountWithoutOauthQuery = `mutation SdkGolangAzureAddCloudAccountWithoutOauth($azure_tenant_domain_name: String!, $azure_cloud_type: AzureCloudTypeEnum!, $azure_regions: [AzureCloudAccountRegionEnum!]!, $feature: CloudAccountFeatureEnum!, $azure_subscriptions: [AzureSubscriptionInput!]!, $azure_policy_version: Int!) {
+var azureAddCloudAccountWithoutOauthQuery = `mutation SdkGolangAzureAddCloudAccountWithoutOauth($azure_tenant_domain_name: String!, $azure_cloud_type: AzureCloudTypeEnum!, $azure_regions: [AzureCloudAccountRegionEnum!]!, $features: [CloudAccountFeatureEnum!]!, $azure_subscriptions: [AzureSubscriptionInput!]!, $azure_policy_version: Int!) {
     result: addAzureCloudAccountWithoutOAuth(input: {
         tenantDomainName: $azure_tenant_domain_name,
         azureCloudType:   $azure_cloud_type,
-        feature:          $feature,
+        features:         $features,
         subscriptions:    $azure_subscriptions,
         regions:          $azure_regions,
         policyVersion:    $azure_policy_version
@@ -252,6 +252,25 @@ var azureAddCloudAccountWithoutOauthV0Query = `mutation SdkGolangAzureAddCloudAc
         status {
             azureSubscriptionRubrikId: subscriptionId
             azureSubscriptionNativeId: subscriptionNativeId
+            error
+        }
+    }
+}`
+
+// azureAddCloudAccountWithoutOauthV1 GraphQL query
+var azureAddCloudAccountWithoutOauthV1Query = `mutation SdkGolangAzureAddCloudAccountWithoutOauthV1($azure_tenant_domain_name: String!, $azure_cloud_type: AzureCloudTypeEnum!, $azure_regions: [AzureCloudAccountRegionEnum!]!, $feature: CloudAccountFeatureEnum!, $azure_subscriptions: [AzureSubscriptionInput!]!, $azure_policy_version: Int!) {
+    result: addAzureCloudAccountWithoutOAuth(input: {
+        tenantDomainName: $azure_tenant_domain_name,
+        azureCloudType:   $azure_cloud_type,
+        feature:          $feature,
+        subscriptions:    $azure_subscriptions,
+        regions:          $azure_regions,
+        policyVersion:    $azure_policy_version
+    }) {
+        tenantId
+        status {
+            azureSubscriptionRubrikId
+            azureSubscriptionNativeId
             error
         }
     }

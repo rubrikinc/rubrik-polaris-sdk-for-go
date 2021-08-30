@@ -278,8 +278,9 @@ func (c *Client) AzureSubscriptionAdd(ctx context.Context, subscription AzureSub
 		return err
 	}
 
+	features := []graphql.CloudAccountFeature{graphql.CloudNativeProtection}
 	_, status, err := c.gql.AzureAddCloudAccountWithoutOAuth(ctx, subscription.Cloud, subscription.TenantDomain,
-		subscription.Regions, graphql.CloudNativeProtection, subsIn, permConf.PermissionVersion)
+		subscription.Regions, features, subsIn, permConf.PermissionVersion)
 	if err != nil {
 		return err
 	}
