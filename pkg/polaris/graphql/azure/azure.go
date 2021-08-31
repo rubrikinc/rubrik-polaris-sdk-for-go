@@ -92,6 +92,7 @@ const (
 	RegionWestIndia          Region = "WESTINDIA"
 	RegionWestUS             Region = "WESTUS"
 	RegionWestUS2            Region = "WESTUS2"
+	RegionWestUS3            Region = "WESTUS3"
 )
 
 // FormatRegion returns the Region as a string formatted in Azure's style, i.e.
@@ -157,6 +158,7 @@ var validRegions = map[Region]struct{}{
 	RegionWestIndia:          {},
 	RegionWestUS:             {},
 	RegionWestUS2:            {},
+	RegionWestUS3:            {},
 }
 
 // ParseRegion returns the Region matching the given region. Accepts both

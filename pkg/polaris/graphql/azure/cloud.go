@@ -128,12 +128,12 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 
 	buf, err := a.GQL.Request(ctx, addAzureCloudAccountWithoutOauthQuery, struct {
 		Cloud         Cloud             `json:"azureCloudType"`
-		Feature       core.Feature      `json:"feature"`
+		Features      []core.Feature    `json:"features"`
 		Subscriptions []addSubscription `json:"subscriptions"`
 		TenantDomain  string            `json:"tenantDomainName"`
 		Regions       []Region          `json:"regions"`
 		PolicyVersion int               `json:"policyVersion"`
-	}{Cloud: cloud, Feature: feature, Subscriptions: []addSubscription{{id, name}}, TenantDomain: tenantDomain, Regions: regions, PolicyVersion: policyVersion})
+	}{Cloud: cloud, Features: []core.Feature{feature}, Subscriptions: []addSubscription{{id, name}}, TenantDomain: tenantDomain, Regions: regions, PolicyVersion: policyVersion})
 	if err != nil {
 		return "", err
 	}
