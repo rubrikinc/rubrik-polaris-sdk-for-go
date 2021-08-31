@@ -258,11 +258,11 @@ var updateAwsCloudAccountQuery = `mutation SdkGolangUpdateAwsCloudAccount($actio
 // validateAndCreateAwsCloudAccount GraphQL query
 var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($nativeId: String!, $accountName: String!, $features: [CloudAccountFeatureEnum!]!) {
     result: validateAndCreateAwsCloudAccount(input: {
-        action: CREATE, 
+        action: CREATE,
         awsChildAccounts: [{
             accountName: $accountName,
             nativeId: $nativeId,
-        }], 
+        }],
         features: $features
     }) {
         initiateResponse {

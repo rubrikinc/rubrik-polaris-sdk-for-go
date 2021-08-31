@@ -127,13 +127,14 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.AddCloudAccountWithoutOAuth")
 
 	buf, err := a.GQL.Request(ctx, addAzureCloudAccountWithoutOauthQuery, struct {
-		Cloud         Cloud                    `json:"azureCloudType"`
-		Feature       core.CloudAccountFeature `json:"feature"`
-		Subscriptions []addSubscription        `json:"subscriptions"`
-		TenantDomain  string                   `json:"tenantDomainName"`
-		Regions       []Region                 `json:"regions"`
-		PolicyVersion int                      `json:"policyVersion"`
-	}{Cloud: cloud, Feature: feature, Subscriptions: []addSubscription{{id, name}}, TenantDomain: tenantDomain, Regions: regions, PolicyVersion: policyVersion})
+		Cloud         Cloud                      `json:"azureCloudType"`
+		Features      []core.CloudAccountFeature `json:"features"`
+		Subscriptions []addSubscription          `json:"subscriptions"`
+		TenantDomain  string                     `json:"tenantDomainName"`
+		Regions       []Region                   `json:"regions"`
+		PolicyVersion int                        `json:"policyVersion"`
+	}{Cloud: cloud, Features: []core.CloudAccountFeature{feature}, Subscriptions: []addSubscription{{id, name}},
+		TenantDomain: tenantDomain, Regions: regions, PolicyVersion: policyVersion})
 	if err != nil {
 		return "", err
 	}
