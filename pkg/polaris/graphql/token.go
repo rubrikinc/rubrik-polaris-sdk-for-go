@@ -29,6 +29,8 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+const tokenRequestTimeout = 15 * time.Second
+
 type token struct {
 	jwtToken *jwt.Token
 }
