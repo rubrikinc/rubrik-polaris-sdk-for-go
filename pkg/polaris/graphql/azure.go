@@ -70,7 +70,7 @@ func (c *Client) AzureAddCloudAccountWithoutOAuth(ctx context.Context, cloud Azu
 	switch {
 	case VersionOlderThan(c.Version, "master-40839", "v20210810"):
 		query = azureAddCloudAccountWithoutOauthV0Query
-	case VersionOlderThan(c.Version, "master-41367", "v20210903"):
+	case VersionOlderThan(c.Version, "master-41367", "v20210831"):
 		query = azureAddCloudAccountWithoutOauthV1Query
 	}
 	buf, err := c.Request(ctx, query, struct {
