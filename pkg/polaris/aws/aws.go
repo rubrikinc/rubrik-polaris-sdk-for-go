@@ -358,7 +358,10 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, deleteSnaps
 		stackID := u.Query().Get("stackId")
 
 		a.gql.Log().Printf(log.Debug, "deleting CloudFormation stack: %s", stackID)
-		awsDeleteStack(ctx, config.config, stackID)
+		err = awsDeleteStack(ctx, config.config, stackID)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = aws.Wrap(a.gql).FinalizeCloudAccountDeletion(ctx, akkount.ID, core.CloudNativeProtection)

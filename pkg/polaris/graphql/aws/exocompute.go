@@ -176,3 +176,36 @@ func (a API) DeleteExocomputeConfig(ctx context.Context, id uuid.UUID) error {
 
 	return nil
 }
+
+// StartExocomputeDisableJob starts a task chain job to disables the Exocompute
+// feature for the accout with the specified Polaris native account id. Returns
+// the Polaris task chain id.
+func (a API) StartExocomputeDisableJob(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.StartExocomputeDisableJob")
+
+	buf, err := a.GQL.Request(ctx, startAwsExocomputeDisableJobQuery, struct {
+		ID uuid.UUID `json:"cloudAccountId"`
+	}{ID: id})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	a.GQL.Log().Printf(log.Debug, "startAwsExocomputeDisableJob(%q): %s", id, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Error string    `json:"error"`
+				JobID uuid.UUID `json:"jobId"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, err
+	}
+	if payload.Data.Result.Error != "" {
+		return uuid.Nil, fmt.Errorf("polaris: %s", payload.Data.Result.Error)
+	}
+
+	return payload.Data.Result.JobID, nil
+}

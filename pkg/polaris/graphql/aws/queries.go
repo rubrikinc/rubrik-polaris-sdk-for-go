@@ -236,6 +236,13 @@ var prepareAwsCloudAccountDeletionQuery = `mutation SdkGolangPrepareAwsCloudAcco
     }
 }`
 
+// startAwsExocomputeDisableJob GraphQL query
+var startAwsExocomputeDisableJobQuery = `mutation SdkGolangStartAwsExocomputeDisableJob($cloudAccountId: UUID!) {
+    startAwsExocomputeDisableJob(input: {cloudAccountId: $cloudAccountId}) {
+        jobId
+    }
+}`
+
 // startAwsNativeAccountDisableJob GraphQL query
 var startAwsNativeAccountDisableJobQuery = `mutation SdkGolangStartAwsNativeAccountDisableJob($awsAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!, $shouldDeleteNativeSnapshots: Boolean!) {
     startAwsNativeAccountDisableJob(input: {
