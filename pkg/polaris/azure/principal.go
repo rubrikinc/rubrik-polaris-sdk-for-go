@@ -24,9 +24,92 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 
 	"github.com/google/uuid"
 )
+
+// principalv0 format is used by v0.1.x versions of the provider.
+type principalV0 struct {
+	AppID        string `json:"app_id"`
+	AppName      string `json:"app_name"`
+	AppSecret    string `json:"app_secret"`
+	TenantID     string `json:"tenant_id"`
+	TenantDomain string `json:"tenant_domain"`
+}
+
+// decodePrincipalV0 decodes the specified string using the v0 format. Returns
+// an error if the decoder encounters unknown fields.
+func decodePrincipalV0(text string) (servicePrincipal, error) {
+	decoder := json.NewDecoder(strings.NewReader(text))
+	decoder.DisallowUnknownFields()
+
+	var v0 principalV0
+	if err := decoder.Decode(&v0); err != nil {
+		return servicePrincipal{}, err
+	}
+
+	appID, err := uuid.Parse(v0.AppID)
+	if err != nil {
+		return servicePrincipal{}, err
+	}
+
+	tenantID, err := uuid.Parse(v0.TenantID)
+	if err != nil {
+		return servicePrincipal{}, err
+	}
+
+	principal := servicePrincipal{
+		appID:        appID,
+		appName:      v0.AppName,
+		appSecret:    v0.AppSecret,
+		tenantID:     tenantID,
+		tenantDomain: v0.TenantDomain,
+	}
+
+	return principal, nil
+}
+
+// principalv1 format is used by v0.1.x versions of the provider.
+type principalV1 struct {
+	AppID        string `json:"appId"`
+	AppName      string `json:"appName"`
+	AppSecret    string `json:"appSecret"`
+	TenantID     string `json:"tenantId"`
+	TenantDomain string `json:"tenantDomain"`
+}
+
+// decodePrincipalV1 decodes the specified string using the v1 format. Returns
+// an error if the decoder encounters unknown fields.
+func decodePrincipalV1(text string) (servicePrincipal, error) {
+	decoder := json.NewDecoder(strings.NewReader(text))
+	decoder.DisallowUnknownFields()
+
+	var v1 principalV1
+	if err := decoder.Decode(&v1); err != nil {
+		return servicePrincipal{}, err
+	}
+
+	appID, err := uuid.Parse(v1.AppID)
+	if err != nil {
+		return servicePrincipal{}, err
+	}
+
+	tenantID, err := uuid.Parse(v1.TenantID)
+	if err != nil {
+		return servicePrincipal{}, err
+	}
+
+	principal := servicePrincipal{
+		appID:        appID,
+		appName:      v1.AppName,
+		appSecret:    v1.AppSecret,
+		tenantID:     tenantID,
+		tenantDomain: v1.TenantDomain,
+	}
+
+	return principal, nil
+}
 
 // ServicePrincipal Azure service principal used by Polaris to access one or
 // more Azure subscriptions.
@@ -57,36 +140,14 @@ func KeyFile(keyFile string) ServicePrincipalFunc {
 			return servicePrincipal{}, err
 		}
 
-		var file struct {
-			AppID        string `json:"appId"`
-			AppName      string `json:"appName"`
-			AppSecret    string `json:"appSecret"`
-			TenantID     string `json:"tenantId"`
-			TenantDomain string `json:"tenantDomain"`
+		if principal, err := decodePrincipalV1(string(buf)); err == nil {
+			return principal, nil
 		}
-		if err := json.Unmarshal(buf, &file); err != nil {
-			return servicePrincipal{}, err
+		if principal, err := decodePrincipalV0(string(buf)); err == nil {
+			return principal, nil
 		}
 
-		appID, err := uuid.Parse(file.AppID)
-		if err != nil {
-			return servicePrincipal{}, err
-		}
-
-		tenantID, err := uuid.Parse(file.TenantID)
-		if err != nil {
-			return servicePrincipal{}, err
-		}
-
-		principal := servicePrincipal{
-			appID:        appID,
-			appName:      file.AppName,
-			appSecret:    file.AppSecret,
-			tenantID:     tenantID,
-			tenantDomain: file.TenantDomain,
-		}
-
-		return principal, nil
+		return servicePrincipal{}, err
 	}
 }
 

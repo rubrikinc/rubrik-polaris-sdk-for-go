@@ -42,8 +42,8 @@ import (
 // testAwsAccount hold AWS account information used in the integration tests.
 // Normally used to assert that the information read from Polaris is correct.
 type testAwsAccount struct {
-	Name      string `json:"name"`
-	AccountID string `json:"accountId"`
+	AccountID   string `json:"accountId"`
+	AccountName string `json:"accountName"`
 
 	Exocompute struct {
 		VPCID   string `json:"vpcId"`
@@ -55,11 +55,11 @@ type testAwsAccount struct {
 }
 
 // Load test account information from the file pointed to by the
-// SDK_AWSACCOUNT_FILE environment variable.
+// TEST_AWSACCOUNT_FILE environment variable.
 func loadTestAwsAccount() (testAwsAccount, error) {
-	buf, err := os.ReadFile(os.Getenv("SDK_AWSACCOUNT_FILE"))
+	buf, err := os.ReadFile(os.Getenv("TEST_AWSACCOUNT_FILE"))
 	if err != nil {
-		return testAwsAccount{}, fmt.Errorf("failed to read file pointed to by SDK_AWSACCOUNT_FILE: %v", err)
+		return testAwsAccount{}, fmt.Errorf("failed to read file pointed to by TEST_AWSACCOUNT_FILE: %v", err)
 	}
 
 	testAccount := testAwsAccount{}
@@ -79,20 +79,20 @@ func loadTestAwsAccount() (testAwsAccount, error) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * SDK_INTEGRATION=1
-//   * SDK_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
+//   * TEST_INTEGRATION=1
+//   * TEST_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * AWS_ACCESS_KEY_ID=<aws-access-key>
 //   * AWS_SECRET_ACCESS_KEY=<aws-secret-key>
 //   * AWS_DEFAULT_REGION=<aws-default-region>
 //
-// The file referred to by SDK_AWSACCOUNT_FILE should contain a single
+// The file referred to by TEST_AWSACCOUNT_FILE should contain a single
 // testAwsAccount JSON object.
 //
 // Note that between the project has been added and it has been removed we
 // never fail fatally to allow the project to be removed in case of an error.
 func TestAwsAccountAddAndRemove(t *testing.T) {
-	requireEnv(t, "SDK_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION")
 
 	ctx := context.Background()
 
@@ -115,7 +115,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	// Add the default AWS account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	id, err := client.AWS().AddAccount(ctx, aws.Default(), aws.Name(testAccount.Name),
+	id, err := client.AWS().AddAccount(ctx, aws.Default(), aws.Name(testAccount.AccountName),
 		aws.Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
@@ -126,7 +126,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if account.Name != testAccount.Name {
+	if account.Name != testAccount.AccountName {
 		t.Errorf("invalid name: %v", account.Name)
 	}
 	if account.NativeID != testAccount.AccountID {
@@ -178,7 +178,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 }
 
 func TestAwsExocompute(t *testing.T) {
-	requireEnv(t, "SDK_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION")
 
 	ctx := context.Background()
 
@@ -201,7 +201,7 @@ func TestAwsExocompute(t *testing.T) {
 	// Add the default AWS account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	accountID, err := client.AWS().AddAccount(ctx, aws.Default(), aws.Name(testAccount.Name),
+	accountID, err := client.AWS().AddAccount(ctx, aws.Default(), aws.Name(testAccount.AccountName),
 		aws.Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
@@ -218,7 +218,7 @@ func TestAwsExocompute(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if account.Name != testAccount.Name {
+	if account.Name != testAccount.AccountName {
 		t.Errorf("invalid name: %v", account.Name)
 	}
 	if account.NativeID != testAccount.AccountID {
@@ -304,9 +304,9 @@ func TestAwsExocompute(t *testing.T) {
 // integration tests. Normally used to assert that the information read from
 // Polaris is correct.
 type testAzureSubscription struct {
-	Name           string    `json:"name"`
-	SubscriptionID uuid.UUID `json:"subscriptionId"`
-	TenantDomain   string    `json:"tenantDomain"`
+	SubscriptionID   uuid.UUID `json:"subscriptionId"`
+	SubscriptionName string    `json:"subscriptionName"`
+	TenantDomain     string    `json:"tenantDomain"`
 
 	Exocompute struct {
 		SubnetID string `json:"subnetId"`
@@ -314,11 +314,11 @@ type testAzureSubscription struct {
 }
 
 // Load test project information from the file pointed to by the
-// SDK_AZURESUBSCRIPTION_FILE environment variable.
+// TEST_AZURESUBSCRIPTION_FILE environment variable.
 func loadTestAzureSubscription() (testAzureSubscription, error) {
-	buf, err := os.ReadFile(os.Getenv("SDK_AZURESUBSCRIPTION_FILE"))
+	buf, err := os.ReadFile(os.Getenv("TEST_AZURESUBSCRIPTION_FILE"))
 	if err != nil {
-		return testAzureSubscription{}, fmt.Errorf("failed to read file pointed to by SDK_AZURESUBSCRIPTION_FILE: %v", err)
+		return testAzureSubscription{}, fmt.Errorf("failed to read file pointed to by TEST_AZURESUBSCRIPTION_FILE: %v", err)
 	}
 
 	testSubscription := testAzureSubscription{}
@@ -334,18 +334,18 @@ func loadTestAzureSubscription() (testAzureSubscription, error) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * SDK_INTEGRATION=1
-//   * SDK_AZUREACCOUNT_FILE=<path-to-test-azure-subscription-file>
+//   * TEST_INTEGRATION=1
+//   * TEST_AZUREACCOUNT_FILE=<path-to-test-azure-subscription-file>
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * AZURE_SERVICEPRINCIPAL_LOCATION=<path-to-azure-service-principal-file>
 //
-// The file referred to by SDK_AWSACCOUNT_FILE should contain a single
+// The file referred to by TEST_AWSACCOUNT_FILE should contain a single
 // testAwsAccount JSON object.
 //
 // Between the account has been added and it has been removed we never fail
 // fatally to allow the account to be removed in case of an error.
 func TestAzureSubscriptionAddAndRemove(t *testing.T) {
-	requireEnv(t, "SDK_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION")
 
 	ctx := context.Background()
 
@@ -375,7 +375,7 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	// Add default Azure subscription to Polaris.
 	subscription := azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
 	id, err := client.Azure().AddSubscription(ctx, subscription, azure.Regions("eastus2"),
-		azure.Name(testSubscription.Name))
+		azure.Name(testSubscription.SubscriptionName))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +385,7 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if account.Name != testSubscription.Name {
+	if account.Name != testSubscription.SubscriptionName {
 		t.Errorf("invalid name: %v", account.Name)
 	}
 	if account.NativeID != testSubscription.SubscriptionID {
@@ -440,7 +440,7 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 }
 
 func TestAzureExocompute(t *testing.T) {
-	requireEnv(t, "SDK_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION")
 
 	ctx := context.Background()
 
@@ -470,7 +470,7 @@ func TestAzureExocompute(t *testing.T) {
 	// Add default Azure subscription to Polaris.
 	subscription := azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
 	accountID, err := client.Azure().AddSubscription(ctx, subscription, azure.Regions("eastus2"),
-		azure.Name(testSubscription.Name))
+		azure.Name(testSubscription.SubscriptionName))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -485,7 +485,7 @@ func TestAzureExocompute(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if account.Name != testSubscription.Name {
+	if account.Name != testSubscription.SubscriptionName {
 		t.Errorf("invalid name: %v", account.Name)
 	}
 	if account.NativeID != testSubscription.SubscriptionID {
@@ -561,7 +561,6 @@ func TestAzureExocompute(t *testing.T) {
 // testGcpProject hold GCP project information used in the integration tests.
 // Normally used to assert that the information read from Polaris is correct.
 type testGcpProject struct {
-	Name             string `json:"name"`
 	ProjectName      string `json:"projectName"`
 	ProjectID        string `json:"projectId"`
 	ProjectNumber    int64  `json:"projectNumber"`
@@ -573,26 +572,26 @@ type testGcpProject struct {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * SDK_INTEGRATION=1
-//   * SDK_GCPPROJECT_FILE=<path-to-test-gcp-project-file>
+//   * TEST_INTEGRATION=1
+//   * TEST_GCPPROJECT_FILE=<path-to-test-gcp-project-file>
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * GOOGLE_APPLICATION_CREDENTIALS=<path-to-gcp-service-account-key-file>
 //
-// The file referred to by SDK_GCPPROJECT_FILE should contain a single
+// The file referred to by TEST_GCPPROJECT_FILE should contain a single
 // testGcpProject JSON object.
 //
 // Note that between the project has been added and it has been removed we
 // never fail fatally to allow the project to be removed in case of an error.
 func TestGcpProjectAddAndRemove(t *testing.T) {
-	requireEnv(t, "SDK_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION")
 
 	ctx := context.Background()
 
 	// Load test project information from the file pointed to by the
-	// SDK_GCPPROJECT_FILE environment variable.
-	buf, err := os.ReadFile(os.Getenv("SDK_GCPPROJECT_FILE"))
+	// TEST_GCPPROJECT_FILE environment variable.
+	buf, err := os.ReadFile(os.Getenv("TEST_GCPPROJECT_FILE"))
 	if err != nil {
-		t.Fatalf("failed to read file pointed to by SDK_GCPPROJECT_FILE: %v", err)
+		t.Fatalf("failed to read file pointed to by TEST_GCPPROJECT_FILE: %v", err)
 	}
 	testProject := testGcpProject{}
 	if err := json.Unmarshal(buf, &testProject); err != nil {
@@ -624,7 +623,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if account.Name != testProject.Name {
+	if account.Name != testProject.ProjectName {
 		t.Errorf("invalid name: %v", account.Name)
 	}
 	if strings.ToLower(account.NativeID) != testProject.ProjectID {
@@ -662,26 +661,26 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * SDK_INTEGRATION=1
-//   * SDK_GCPPROJECT_FILE=<path-to-test-gcp-project-file>
+//   * TEST_INTEGRATION=1
+//   * TEST_GCPPROJECT_FILE=<path-to-test-gcp-project-file>
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * GOOGLE_APPLICATION_CREDENTIALS=<path-to-gcp-service-account-key-file>
 //
-// The file referred to by SDK_GCPPROJECT_FILE should contain a single
+// The file referred to by TEST_GCPPROJECT_FILE should contain a single
 // testGcpProject JSON object.
 //
 // Note that between the project has been added and it has been removed we
 // never fail fatally to allow the project to be removed in case of an error.
 func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
-	requireEnv(t, "SDK_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION")
 
 	ctx := context.Background()
 
 	// Load test project information from the file pointed to by the
 	// SDK_GCPPROJECT_FILE environment variable.
-	buf, err := os.ReadFile(os.Getenv("SDK_GCPPROJECT_FILE"))
+	buf, err := os.ReadFile(os.Getenv("TEST_GCPPROJECT_FILE"))
 	if err != nil {
-		t.Fatalf("failed to read file pointed to by SDK_GCPPROJECT_FILE: %v", err)
+		t.Fatalf("failed to read file pointed to by TEST_GCPPROJECT_FILE: %v", err)
 	}
 
 	testProject := testGcpProject{}
@@ -709,7 +708,7 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 	// Add the default GCP project to Polaris. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
 	id, err := client.GCP().AddProject(ctx, gcp.Project(testProject.ProjectID, testProject.ProjectNumber),
-		gcp.Name(testProject.Name), gcp.Organization(testProject.OrganizationName))
+		gcp.Name(testProject.ProjectName), gcp.Organization(testProject.OrganizationName))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -719,7 +718,7 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if account.Name != testProject.Name {
+	if account.Name != testProject.ProjectName {
 		t.Errorf("invalid name: %v", account.Name)
 	}
 	if strings.ToLower(account.NativeID) != testProject.ProjectID {

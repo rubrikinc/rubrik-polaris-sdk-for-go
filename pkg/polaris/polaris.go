@@ -53,17 +53,17 @@ type Client struct {
 	log     log.Logger
 }
 
-// AWS -
+// AWS returns the AWS part of the API.
 func (c *Client) AWS() aws.API {
 	return aws.NewAPI(c.gql, c.Version)
 }
 
-// Azure -
+// Azure returns the Azure part of the API.
 func (c *Client) Azure() azure.API {
 	return azure.NewAPI(c.gql, c.Version)
 }
 
-// GCP -
+// GCP returns the GCP part of the API.
 func (c *Client) GCP() gcp.API {
 	return gcp.NewAPI(c.gql, c.Version)
 }
