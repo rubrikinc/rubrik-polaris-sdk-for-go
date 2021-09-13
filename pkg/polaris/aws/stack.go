@@ -63,7 +63,7 @@ func awsWaitForStack(ctx context.Context, config aws.Config, stackName string) (
 		stack := stacks.Stacks[0]
 
 		switch stack.StackStatus {
-		case types.StackStatusCreateInProgress, types.StackStatusDeleteInProgress, types.StackStatusUpdateInProgress:
+		case types.StackStatusCreateInProgress, types.StackStatusDeleteInProgress, types.StackStatusRollbackInProgress, types.StackStatusUpdateInProgress:
 		default:
 			return stack.StackStatus, nil
 		}
@@ -101,7 +101,7 @@ func awsUpdateStack(ctx context.Context, config aws.Config, stackName, templateU
 			return err
 		}
 		if stackStatus != types.StackStatusUpdateComplete {
-			return fmt.Errorf("polaris: failed to update CloudFormation stack: %v", *stack.StackId)
+			return fmt.Errorf("polaris: failed to update CloudFormation stack: %v, status: %v", *stack.StackId, stackStatus)
 		}
 	} else {
 		stack, err := client.CreateStack(ctx, &cloudformation.CreateStackInput{
@@ -118,7 +118,7 @@ func awsUpdateStack(ctx context.Context, config aws.Config, stackName, templateU
 			return err
 		}
 		if stackStatus != types.StackStatusCreateComplete {
-			return fmt.Errorf("polaris: failed to create CloudFormation stack: %v", *stack.StackId)
+			return fmt.Errorf("polaris: failed to create CloudFormation stack: %v, status: %v", *stack.StackId, stackStatus)
 		}
 	}
 
