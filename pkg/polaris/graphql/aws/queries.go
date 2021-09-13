@@ -238,7 +238,8 @@ var prepareAwsCloudAccountDeletionQuery = `mutation SdkGolangPrepareAwsCloudAcco
 
 // startAwsExocomputeDisableJob GraphQL query
 var startAwsExocomputeDisableJobQuery = `mutation SdkGolangStartAwsExocomputeDisableJob($cloudAccountId: UUID!) {
-    startAwsExocomputeDisableJob(input: {cloudAccountId: $cloudAccountId}) {
+    result: startAwsExocomputeDisableJob(input: {cloudAccountId: $cloudAccountId}) {
+        error
         jobId
     }
 }`

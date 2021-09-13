@@ -93,6 +93,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Disable the exocompute feature for the account.
+	err = client.AWS().DisableExocompute(ctx, aws.Default())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Remove the AWS account from Polaris.
 	err = client.AWS().RemoveAccount(ctx, aws.Default(), false)
 	if err != nil {

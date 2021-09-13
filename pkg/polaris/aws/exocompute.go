@@ -279,9 +279,9 @@ func (a API) DisableExocompute(ctx context.Context, account AccountFunc) error {
 		return err
 	}
 
-	i := strings.LastIndex(cfmURL, "#/stack/detail") + 1
+	i := strings.LastIndex(cfmURL, "#/stack/update") + 1
 	if i == 0 {
-		return errors.New("polaris: CloudFormation url does not contain #/stack/detail")
+		return errors.New("polaris: CloudFormation url does not contain #/stack/update")
 	}
 
 	u, err := url.Parse(cfmURL[i:])
