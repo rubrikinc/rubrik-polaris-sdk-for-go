@@ -287,6 +287,18 @@ func TestAwsExocompute(t *testing.T) {
 		t.Error(err)
 	}
 
+	// Disable the exocompute feature for the account.
+	err = client.AWS().DisableExocompute(ctx, aws.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the exocompute feature was successfully disabled.
+	account, err = client.AWS().Account(ctx, aws.ID(aws.Default()), core.Exocompute)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal(err)
+	}
+
 	// Remove the AWS account from Polaris.
 	err = client.AWS().RemoveAccount(ctx, aws.Default(), false)
 	if err != nil {
@@ -543,6 +555,18 @@ func TestAzureExocompute(t *testing.T) {
 	exoConfig, err = client.Azure().ExocomputeConfig(ctx, exoID)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Error(err)
+	}
+
+	// Disable the exocompute feature for the account.
+	err = client.Azure().DisableExocompute(ctx, azure.CloudAccountID(accountID))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the exocompute feature was successfully disabled.
+	account, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.Exocompute)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal(err)
 	}
 
 	// Remove subscription.
