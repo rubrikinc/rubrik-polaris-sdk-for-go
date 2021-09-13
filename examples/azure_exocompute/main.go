@@ -99,6 +99,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Disable the exocompute feature for the account.
+	err = client.Azure().DisableExocompute(ctx, azure.CloudAccountID(accountID))
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Remove subscription.
 	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(accountID), false)
 	if err != nil {
