@@ -41,32 +41,29 @@ pipeline {
         }
         stage('Test') {
             environment {
-                // Azure credentials.
-                AZURE_SERVICEPRINCIPAL_LOCATION = credentials('sdk-azure-service-principal')
-                AZURE_SUBSCRIPTION_LOCATION     = credentials('sdk-azure-subscription')
+                // Polaris credentials.
+                RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
 
                 // AWS credentials.
-                AWS_ACCESS_KEY_ID     = credentials('sdk-aws-access-key')
-                AWS_SECRET_ACCESS_KEY = credentials('sdk-aws-secret-key')
-                AWS_DEFAULT_REGION    = 'us-east-2'
+                TEST_AWSACCOUNT_FILE = credentials('tf-sdk-test-aws-account')
+                AWS_CREDENTIALS      = credentials('tf-sdk-test-aws-credentials')
+                AWS_CONFIG           = credentials('tf-sdk-test-aws-config')
+
+                // Azure credentials.
+                TEST_AZURESUBSCRIPTION_FILE     = credentials('tf-sdk-test-azure-subscription')
+                AZURE_SERVICEPRINCIPAL_LOCATION = credentials('tf-sdk-test-azure-service-principal')
 
                 // GCP credentials.
-                GOOGLE_APPLICATION_CREDENTIALS = credentials('sdk-gcp-service-account')
-
-                // Polaris credentials.
-                RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('sdk-polaris-service-account')
+                TEST_GCPPROJECT_FILE           = credentials('tf-sdk-test-gcp-project')
+                GOOGLE_APPLICATION_CREDENTIALS = credentials('tf-sdk-test-gcp-service-account')
 
                 // Run integration tests with the nightly build.
                 TEST_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
-
-                // Cloud resource specific information used to verify the
-                // information read from Polaris.
-                TEST_AWSACCOUNT_FILE        = credentials('sdk-test-aws-account')
-                TEST_AZURESUBSCRIPTION_FILE = credentials('sdk-test-azure-subscription')
-                TEST_GCPPROJECT_FILE        = credentials('sdk-test-gcp-project')
             }
             steps {
+                sh 'mkdir -p ~/.aws && ln -sf $AWS_CREDENTIALS ~/.aws/credentials && ln -sf $AWS_CONFIG ~/.aws/config'
                 sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -timeout=20m -v ./...'
+                sh 'rm -r ~/.aws'
             }
         }
         stage('Coverage') {
