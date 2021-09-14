@@ -63,7 +63,16 @@ func awsWaitForStack(ctx context.Context, config aws.Config, stackName string) (
 		stack := stacks.Stacks[0]
 
 		switch stack.StackStatus {
-		case types.StackStatusCreateInProgress, types.StackStatusDeleteInProgress, types.StackStatusRollbackInProgress, types.StackStatusUpdateInProgress:
+		case types.StackStatusCreateInProgress,
+			types.StackStatusDeleteInProgress,
+			types.StackStatusRollbackInProgress,
+			types.StackStatusUpdateInProgress,
+			types.StackStatusUpdateCompleteCleanupInProgress,
+			types.StackStatusUpdateRollbackInProgress,
+			types.StackStatusUpdateRollbackCompleteCleanupInProgress,
+			types.StackStatusReviewInProgress,
+			types.StackStatusImportInProgress,
+			types.StackStatusImportRollbackInProgress:
 		default:
 			return stack.StackStatus, nil
 		}
