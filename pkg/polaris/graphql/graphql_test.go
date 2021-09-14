@@ -23,62 +23,14 @@ package graphql
 import (
 	"context"
 	"encoding/json"
-	"io"
-	"net"
 	"net/http"
 	"os"
 	"strings"
 	"testing"
 	"text/template"
-	"time"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
-
-// Serve serves the handler function over HTTP by accepting incoming connections
-// on the specified listener.
-func serve(lis net.Listener, handler http.HandlerFunc) *http.Server {
-	server := &http.Server{Handler: handler}
-	go server.Serve(lis)
-	return server
-}
-
-func serveWithToken(lis net.Listener, handler http.HandlerFunc) *http.Server {
-	mux := &http.ServeMux{}
-	mux.HandleFunc("/api/session", func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{
-			"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0",
-			"is_eula_accepted": true
-		}`))
-	})
-	mux.HandleFunc("/api/graphql", func(w http.ResponseWriter, req *http.Request) {
-		handler(w, req)
-	})
-	server := &http.Server{Handler: mux}
-	go server.Serve(lis)
-	return server
-}
-
-// serveJSON serves the handler function using HTTP by accepting incoming
-// connections on the specified listener. The response content-type is set to
-// application/json.
-func serveJSON(lis net.Listener, handler http.HandlerFunc) *http.Server {
-	return serve(lis, func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		handler(w, req)
-	})
-}
-
-// serveWithToken serves the handler function and tokens using HTTP by accepting
-// incoming connections on specified listener. The response content-type is set
-// to application/json.
-func serveJSONWithToken(lis net.Listener, handler http.HandlerFunc) *http.Server {
-	return serveWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		handler(w, req)
-	})
-}
 
 func TestErrorsWithNoError(t *testing.T) {
 	buf := []byte(`{
@@ -168,7 +120,7 @@ func TestRequestUnauthenticated(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 401 and additional details in the body.
-	srv := serveJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := TestServeJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(401)
 		if err := tmpl.Execute(w, nil); err != nil {
 			panic(err)
@@ -194,7 +146,7 @@ func TestRequestWithInternalServerErrorJSONBody(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 500 and additional details in the JSON body.
-	srv := serveJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := TestServeJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
 		if err := tmpl.Execute(w, nil); err != nil {
 			panic(err)
@@ -215,7 +167,7 @@ func TestRequestWithInternalServerErrorNoBody(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 500 and no additional details.
-	srv := serveWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := TestServeWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
 	})
 	defer srv.Shutdown(context.Background())
@@ -233,7 +185,7 @@ func TestRequestWithInternalServerErrorTextBody(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 500 and additional details in the text body.
-	srv := serveWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := TestServeWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(500)
 		w.Write([]byte("database is corrupt"))
@@ -246,110 +198,5 @@ func TestRequestWithInternalServerErrorTextBody(t *testing.T) {
 	}
 	if !strings.HasPrefix(err.Error(), "polaris: 500 Internal Server Error") {
 		t.Fatal(err)
-	}
-}
-
-func TestKorgTaskChainStatus(t *testing.T) {
-	tmpl, err := template.ParseFiles("testdata/korgtaskchainstatus.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
-
-	// Respond with status code 200 and a valid body.
-	srv := serveJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
-		buf, err := io.ReadAll(req.Body)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
-		var payload struct {
-			Query     string `json:"query"`
-			Variables struct {
-				TaskChainID string `json:"taskchainId,omitempty"`
-			} `json:"variables,omitempty"`
-		}
-		if err := json.Unmarshal(buf, &payload); err != nil {
-			t.Fatal(err)
-		}
-
-		err = tmpl.Execute(w, struct {
-			ChainState string
-			ChainUUID  string
-		}{ChainState: "RUNNING", ChainUUID: payload.Variables.TaskChainID})
-		if err != nil {
-			panic(err)
-		}
-	})
-	defer srv.Shutdown(context.Background())
-
-	chainUUID := TaskChainUUID("b48e7ad0-7b86-4c96-b6ba-97eb6a82f765")
-	taskChain, err := client.KorgTaskChainStatus(context.Background(), chainUUID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if taskChain.ID != 12761540 {
-		t.Errorf("invalid task chain id: %v", taskChain.ID)
-	}
-	if taskChain.TaskChainUUID != chainUUID {
-		t.Errorf("invalid task chain uuid: %v", taskChain.TaskChainUUID)
-	}
-	if taskChain.State != TaskChainRunning {
-		t.Errorf("invalid task chain state: %v", taskChain.State)
-	}
-}
-
-func TestWaitForTaskChain(t *testing.T) {
-	tmpl, err := template.ParseFiles("testdata/korgtaskchainstatus.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
-
-	// Respond with status code 200 and a valid body. First 2 reponses have
-	// state RUNNING. Third response is SUCCEEDED.
-	reqCount := 3
-	srv := serveJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
-		buf, err := io.ReadAll(req.Body)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
-		var payload struct {
-			Query     string `json:"query"`
-			Variables struct {
-				TaskChainID string `json:"taskchainId,omitempty"`
-			} `json:"variables,omitempty"`
-		}
-		if err := json.Unmarshal(buf, &payload); err != nil {
-			t.Fatal(err)
-		}
-
-		reqCount--
-		chainState := "RUNNING"
-		if reqCount == 0 {
-			chainState = "SUCCEEDED"
-		}
-		tmpl.Execute(w, struct {
-			ChainState string
-			ChainUUID  string
-		}{ChainState: chainState, ChainUUID: payload.Variables.TaskChainID})
-		if err != nil {
-			panic(err)
-		}
-	})
-	defer srv.Shutdown(context.Background())
-
-	chainUUID := TaskChainUUID("b48e7ad0-7b86-4c96-b6ba-97eb6a82f765")
-	chainState, err := client.WaitForTaskChain(context.Background(), chainUUID, 5*time.Millisecond)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if chainState != "SUCCEEDED" {
-		t.Errorf("nvalid task chain state: %v", chainState)
 	}
 }

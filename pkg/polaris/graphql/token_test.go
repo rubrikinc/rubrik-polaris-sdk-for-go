@@ -73,7 +73,7 @@ func TestTokenSource(t *testing.T) {
 
 	// Respond with 200 and a valid token as long as the correct username and
 	// password are received.
-	srv := serveJSON(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := TestServeJSON(lis, func(w http.ResponseWriter, req *http.Request) {
 		var payload struct {
 			Username string
 			Password string
@@ -113,7 +113,7 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 	src, lis := newLocalUserTestSource("john", "doe")
 
 	// Respond with status code 401 and additional details in the body.
-	srv := serveJSON(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := TestServeJSON(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(401)
 		if err := tmpl.Execute(w, nil); err != nil {
 			panic(err)
@@ -134,7 +134,7 @@ func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
 	src, lis := newLocalUserTestSource("john", "doe")
 
 	// Respond with status code 500 and no additional details.
-	srv := serve(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := TestServe(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
 	})
 	defer srv.Shutdown(context.Background())
@@ -152,7 +152,7 @@ func TestTokenSourceWithInternalServerErrorTextBody(t *testing.T) {
 	src, lis := newLocalUserTestSource("john", "doe")
 
 	// Respond with status code 500 and no additional details.
-	srv := serve(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := TestServe(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Add("Content-Type", "text/plain")
 		w.WriteHeader(500)
 		w.Write([]byte("user database is corrupt"))

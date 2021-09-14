@@ -26,6 +26,8 @@ import (
 	"log"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -39,7 +41,7 @@ func main() {
 	ctx := context.Background()
 
 	// Load configuration and create client.
-	polAccount, err := polaris.DefaultServiceAccount()
+	polAccount, err := polaris.DefaultServiceAccount(true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -49,32 +51,39 @@ func main() {
 	}
 
 	// Add the service account to Polaris.
-	if err = client.GcpServiceAccountSet(ctx, polaris.FromGcpDefault()); err != nil {
+	err = client.GCP().SetServiceAccount(ctx, gcp.Default(), gcp.Name("global"))
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Add the GCP project to Polaris. Usually resolved using the environment
-	// variable GOOGLE_APPLICATION_CREDENTIALS.
-	err = client.GcpProjectAdd(ctx,
-		polaris.FromGcpProject("my-project-id", "My-Project-Name", 123456789012, "My-Organization"))
+	// Retrieve service account name.
+	name, err := client.GCP().ServiceAccount(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Service Account Name: %v\n", name)
+
+	// Add the GCP project to Polaris without any GCP credentials.
+	id, err := client.GCP().AddProject(ctx, gcp.Project("my-project", 123456789012), gcp.Name("My Project"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Lookup the newly added project.
-	project, err := client.GcpProject(ctx, polaris.WithGcpProjectNumber(123456789012))
+	account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.CloudNativeProtection)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Name: %v, ProjectID: %v, ProjectNumber: %v, OrgName: %v\n", project.Name, project.ProjectID,
-		project.ProjectNumber, project.OrganizationName)
-	for _, feature := range project.Features {
-		fmt.Printf("Feature: %v, Status: %v\n", feature.Feature, feature.Status)
+	fmt.Printf("Name: %v, ProjectID: %v, ProjectNumber: %v\n", account.Name, account.ID, account.ProjectNumber)
+	for _, feature := range account.Features {
+		fmt.Printf("Feature: %v, Status: %v\n", feature.Name, feature.Status)
 	}
 
 	// Remove the GCP account from Polaris.
-	if err := client.GcpProjectRemove(ctx, polaris.WithGcpProjectNumber(123456789012), false); err != nil {
+	err = client.GCP().RemoveProject(ctx, gcp.CloudAccountID(id), false)
+	if err != nil {
 		log.Fatal(err)
 	}
 }

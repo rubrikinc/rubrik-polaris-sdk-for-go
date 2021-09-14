@@ -1,0 +1,17 @@
+query RubrikPolarisSDKRequest($fid: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!) {
+	awsNativeAccount(awsNativeProtectionFeature: $awsNativeProtectionFeature, fid: $fid) {
+		id
+		regions
+		status
+		name
+    	slaAssignment
+		configuredSlaDomain {
+			id
+			name
+		}
+		effectiveSlaDomain {
+			id
+			name
+		}
+	}
+}

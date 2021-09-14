@@ -3,15 +3,15 @@ package graphql
 import "testing"
 
 func TestQueryName(t *testing.T) {
-	if name := queryName(azureAllCloudAccountTenantsQuery); name != "azureAllCloudAccountTenants" {
+	if name := QueryName("query SdkGolangMyQuery {}"); name != "myQuery" {
 		t.Fatalf("invalid query name: %s", name)
 	}
 
-	if name := queryName(azureAllCloudAccountTenantsV0Query); name != "azureAllCloudAccountTenantsV0" {
+	if name := QueryName("query SdkGolangMyQuery($param: int) {}"); name != "myQuery" {
 		t.Fatalf("invalid query name: %s", name)
 	}
 
-	if name := queryName("invalidquery"); name != "<invalid-query>" {
+	if name := QueryName("invalidquery"); name != "<invalid-query>" {
 		t.Fatalf("invalid query name: %s", name)
 	}
 }

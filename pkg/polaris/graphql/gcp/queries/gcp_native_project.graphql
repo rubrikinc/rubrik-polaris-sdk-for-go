@@ -1,0 +1,19 @@
+query RubrikPolarisSDKRequest($fid: UUID!) {
+    gcpNativeProject(fid: $fid) {
+        id
+        name
+        nativeId
+        nativeName
+        projectNumber
+        organizationName
+        slaAssignment
+        configuredSlaDomain{
+            id
+            name
+        }
+        effectiveSlaDomain{
+            id
+            name
+        }
+    }
+}

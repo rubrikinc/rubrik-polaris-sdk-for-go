@@ -44,7 +44,10 @@ func (t token) expired() bool {
 
 	claims, ok := t.jwtToken.Claims.(jwt.MapClaims)
 	if ok {
-		return !claims.VerifyExpiresAt(time.Now().Unix(), true)
+		// Compare the expiry to 1 minute into the future to avoid the token
+		// expiring in transit or because clocks being skewed.
+		now := time.Now().Add(1 * time.Minute)
+		return !claims.VerifyExpiresAt(now.Unix(), true)
 	}
 
 	return true

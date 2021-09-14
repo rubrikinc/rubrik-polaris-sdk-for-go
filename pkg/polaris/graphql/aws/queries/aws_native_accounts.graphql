@@ -1,0 +1,26 @@
+query RubrikPolarisSDKRequest($after: String, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!, $filter: String) {
+	awsNativeAccounts(after: $after, awsNativeProtectionFeature: $awsNativeProtectionFeature, accountFilters: {nameSubstringFilter: {nameSubstring: $filter}}) {
+		count
+		edges {
+			node {
+				id
+				regions
+				status
+				name
+				slaAssignment
+				configuredSlaDomain {
+					id
+					name
+				}
+				effectiveSlaDomain {
+					id
+					name
+				}
+			}
+		}
+		pageInfo {
+			endCursor
+			hasNextPage
+		}
+	}
+}

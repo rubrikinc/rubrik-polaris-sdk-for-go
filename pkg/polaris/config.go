@@ -48,10 +48,10 @@ type Account struct {
 // accountFromEnv returns an Account from the current environment.
 func accountFromEnv() Account {
 	return Account{
-		Name:     os.Getenv("RUBRIK_POLARIS_ACCOUNT_NAME"),
-		Username: os.Getenv("RUBRIK_POLARIS_ACCOUNT_USERNAME"),
-		Password: os.Getenv("RUBRIK_POLARIS_ACCOUNT_PASSWORD"),
-		URL:      os.Getenv("RUBRIK_POLARIS_ACCOUNT_URL"),
+		Name:     strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_ACCOUNT_NAME")),
+		Username: strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_ACCOUNT_USERNAME")),
+		Password: strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_ACCOUNT_PASSWORD")),
+		URL:      strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_ACCOUNT_URL")),
 	}
 }
 
@@ -64,13 +64,13 @@ func AccountFromEnv() (Account, error) {
 
 	// Validate.
 	if account.Name == "" {
-		return Account{}, errors.New("polaris: invalid environment variable: RUBRIK_POLARIS_ACCOUNT_NAME")
+		return Account{}, errors.New("polaris: environment variable RUBRIK_POLARIS_ACCOUNT_NAME has an invalid value")
 	}
 	if account.Username == "" {
-		return Account{}, errors.New("polaris: invalid environment variable: RUBRIK_POLARIS_ACCOUNT_USERNAME")
+		return Account{}, errors.New("polaris: environment variable RUBRIK_POLARIS_ACCOUNT_USERNAME has an invalid value")
 	}
 	if account.Password == "" {
-		return Account{}, errors.New("polaris: invalid environment variable: RUBRIK_POLARIS_ACCOUNT_PASSWORD")
+		return Account{}, errors.New("polaris: environment variable RUBRIK_POLARIS_ACCOUNT_PASSWORD has an invalid value")
 	}
 
 	return account, nil
@@ -99,7 +99,7 @@ func accountFromFile(file, name string) (Account, error) {
 
 	account, ok := accounts[name]
 	if !ok {
-		return Account{}, fmt.Errorf("polaris: account %q not found in %q", name, file)
+		return Account{}, fmt.Errorf("polaris: local user account %q not found in %q", name, file)
 	}
 	account.Name = name
 
@@ -122,74 +122,75 @@ func accountFromFile(file, name string) (Account, error) {
 //       "url": "https://polaris-url/api"
 //     }
 //   }
-func AccountFromFile(file, name string) (Account, error) {
-	account, err := accountFromFile(file, name)
-	if err != nil {
-		return Account{}, err
-	}
-
-	// Validate.
-	if account.Name == "" {
-		return Account{}, errors.New("polaris: invalid JSON attribute: name")
-	}
-	if account.Username == "" {
-		return Account{}, errors.New("polaris: invalid JSON attribute: username")
-	}
-	if account.Password == "" {
-		return Account{}, errors.New("polaris: invalid JSON attribute: password")
-	}
-
-	return account, nil
-}
-
-// DefaultAccount returns a new Account read from the default account file.
-// Environment variables can be used to override user information in the file.
-// See AccountFromEnv for details. In addition the environment variable
-// RUBRIK_POLARIS_ACCOUNT_FILE can be used to override the file that the user
-// information is read from.
-func DefaultAccount(name string) (Account, error) {
+//
+// If allowEnvOverride is true environment variables can be used to override
+// user information in the file. See AccountFromEnv for details. In addition
+// the environment variable RUBRIK_POLARIS_ACCOUNT_FILE can be used to override
+// the file that the user information is read from.
+func AccountFromFile(file, name string, allowEnvOverride bool) (Account, error) {
 	envAccount := accountFromEnv()
 
-	// Override the given account name.
-	if envAccount.Name != "" {
-		name = envAccount.Name
-	}
+	if allowEnvOverride {
+		if envAccount.Name != "" {
+			name = envAccount.Name
+		}
 
-	file := DefaultLocalUserFile
-	if envFile := os.Getenv("RUBRIK_POLARIS_ACCOUNT_FILE"); envFile != "" {
-		file = envFile
+		if envFile := os.Getenv("RUBRIK_POLARIS_ACCOUNT_FILE"); envFile != "" {
+			file = envFile
+		}
 	}
 
 	// Ignore errors for now since they might be corrected by what's in the
-	// environment.
-	fileAccount, _ := accountFromFile(file, name)
+	// shell environment.
+	account, err := accountFromFile(file, name)
 
-	// Merge.
-	if envAccount.Name != "" {
-		fileAccount.Name = envAccount.Name
-	}
-	if envAccount.Username != "" {
-		fileAccount.Username = envAccount.Username
-	}
-	if envAccount.Password != "" {
-		fileAccount.Password = envAccount.Password
-	}
-	if envAccount.URL != "" {
-		fileAccount.URL = envAccount.URL
-	}
-
-	// Validate.
-	if fileAccount.Name == "" {
-		return Account{}, errors.New("polaris: missing required field: Name")
-	}
-	if fileAccount.Username == "" {
-		return Account{}, errors.New("polaris: missing required field: Username")
-	}
-	if fileAccount.Password == "" {
-		return Account{}, errors.New("polaris: missing required field: Password")
+	// Merge with shell environment.
+	if allowEnvOverride {
+		if envAccount.Name != "" {
+			account.Name = envAccount.Name
+		}
+		if envAccount.Username != "" {
+			account.Username = envAccount.Username
+		}
+		if envAccount.Password != "" {
+			account.Password = envAccount.Password
+		}
+		if envAccount.URL != "" {
+			account.URL = envAccount.URL
+		}
 	}
 
-	return fileAccount, nil
+	// Validate, note that URL is optional.
+	if strings.TrimSpace(account.Name) == "" {
+		if err != nil {
+			return Account{}, err
+		}
+		return Account{}, errors.New("polaris: local user account has an invalid value for field Name")
+	}
+	if strings.TrimSpace(account.Username) == "" {
+		if err != nil {
+			return Account{}, err
+		}
+		return Account{}, errors.New("polaris: local user account has an invalid value for field Username")
+	}
+	if strings.TrimSpace(account.Password) == "" {
+		if err != nil {
+			return Account{}, err
+		}
+		return Account{}, errors.New("polaris: local user account has an invalid value for field Password")
+	}
+
+	return account, nil
+
+}
+
+// DefaultAccount returns a new Account read from the default account file.
+// If allowEnvOverride is true environment variables can be used to override
+// user information in the file. See AccountFromEnv for details. In addition
+// the environment variable RUBRIK_POLARIS_ACCOUNT_FILE can be used to override
+// the file that the user information is read from.
+func DefaultAccount(name string, allowEnvOverride bool) (Account, error) {
+	return AccountFromFile(DefaultLocalUserFile, name, allowEnvOverride)
 }
 
 // ServiceAccount holds the Polaris ServiceAccount configuration.
@@ -203,10 +204,10 @@ type ServiceAccount struct {
 // serviceAccountFromEnv returns a ServiceAccount from the current environment.
 func serviceAccountFromEnv() ServiceAccount {
 	return ServiceAccount{
-		Name:           os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_NAME"),
-		ClientID:       os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID"),
-		ClientSecret:   os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET"),
-		AccessTokenURI: os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI"),
+		Name:           strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_NAME")),
+		ClientID:       strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID")),
+		ClientSecret:   strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET")),
+		AccessTokenURI: strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI")),
 	}
 }
 
@@ -219,16 +220,16 @@ func ServiceAccountFromEnv() (ServiceAccount, error) {
 
 	// Validate.
 	if account.Name == "" {
-		return ServiceAccount{}, errors.New("polaris: missing environment variable: RUBRIK_POLARIS_SERVICEACCOUNT_NAME")
+		return ServiceAccount{}, errors.New("polaris: environment variable RUBRIK_POLARIS_SERVICEACCOUNT_NAME has an invalid value")
 	}
 	if account.ClientID == "" {
-		return ServiceAccount{}, errors.New("polaris: missing environment variable: RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID")
+		return ServiceAccount{}, errors.New("polaris: environment variable RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID has an invalid value")
 	}
 	if account.ClientSecret == "" {
-		return ServiceAccount{}, errors.New("polaris: missing environment variable: RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET")
+		return ServiceAccount{}, errors.New("polaris: environment variable RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET has an invalid value")
 	}
 	if account.AccessTokenURI == "" {
-		return ServiceAccount{}, errors.New("polaris: missing environment variable: RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI")
+		return ServiceAccount{}, errors.New("polaris: environment variable RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI has an invalid value")
 	}
 
 	return account, nil
@@ -261,73 +262,74 @@ func serviceAccountFromFile(file string) (ServiceAccount, error) {
 // file. Files must be in JSON format and the attributes must have the same
 // name as the ServiceAccount fields but be all lower case and have words
 // separated by underscores.
-func ServiceAccountFromFile(file string) (ServiceAccount, error) {
+// If allowEnvOverride is true environment variables can be used to override
+// account information in the file. See ServiceAccountFromEnv for details. In
+// addition, the environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE can be
+// used to override the file that the service account is read from.
+func ServiceAccountFromFile(file string, allowEnvOverride bool) (ServiceAccount, error) {
+	envAccount := serviceAccountFromEnv()
+
+	if allowEnvOverride {
+		if envFile := os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_FILE"); envFile != "" {
+			file = envFile
+		}
+	}
+
+	// Ignore errors for now since they might be corrected by what's in the
+	// shell environment.
 	account, err := serviceAccountFromFile(file)
-	if err != nil {
-		return ServiceAccount{}, err
+
+	// Merge with shell environment.
+	if allowEnvOverride {
+		if envAccount.Name != "" {
+			account.Name = envAccount.Name
+		}
+		if envAccount.ClientID != "" {
+			account.ClientID = envAccount.ClientID
+		}
+		if envAccount.ClientSecret != "" {
+			account.ClientSecret = envAccount.ClientSecret
+		}
+		if envAccount.AccessTokenURI != "" {
+			account.AccessTokenURI = envAccount.AccessTokenURI
+		}
 	}
 
 	// Validate.
-	if account.Name == "" {
-		return ServiceAccount{}, errors.New("polaris: missing JSON attribute: name")
+	if strings.TrimSpace(account.Name) == "" {
+		if err != nil {
+			return ServiceAccount{}, err
+		}
+		return ServiceAccount{}, errors.New("polaris: service account has an invalid value for field Name")
 	}
-	if account.ClientID == "" {
-		return ServiceAccount{}, errors.New("polaris: missing JSON attribute: client_id")
+	if strings.TrimSpace(account.ClientID) == "" {
+		if err != nil {
+			return ServiceAccount{}, err
+		}
+		return ServiceAccount{}, errors.New("polaris: service account has an invalid value for field ClientID")
 	}
-	if account.ClientSecret == "" {
-		return ServiceAccount{}, errors.New("polaris: missing JSON attribute: client_secret")
+	if strings.TrimSpace(account.ClientSecret) == "" {
+		if err != nil {
+			return ServiceAccount{}, err
+		}
+		return ServiceAccount{}, errors.New("polaris: service account has an invalid value for field ClientSecret")
 	}
-	if account.AccessTokenURI == "" {
-		return ServiceAccount{}, errors.New("polaris: missing JSON attribute: access_token_uri")
+	if strings.TrimSpace(account.AccessTokenURI) == "" {
+		if err != nil {
+			return ServiceAccount{}, err
+		}
+		return ServiceAccount{}, errors.New("polaris: service account has an invalid value for field AccessTokenURI")
 	}
 
 	return account, nil
 }
 
 // DefaultServiceAccount returns a new ServiceAccount read from the default
-// service account file. Environment variables can be used to override account
-// information in the file. See ServiceAccountFromEnv for details. In addition,
-// the environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE can be used to
-// override the file that the service account is read from.
-func DefaultServiceAccount() (ServiceAccount, error) {
-	envAccount := serviceAccountFromEnv()
-
-	file := DefaultServiceAccountFile
-	if envFile := os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_FILE"); envFile != "" {
-		file = envFile
-	}
-
-	// Ignore errors for now since they might be corrected by what's in the
-	// environment.
-	fileAccount, _ := serviceAccountFromFile(file)
-
-	// Merge.
-	if envAccount.Name != "" {
-		fileAccount.Name = envAccount.Name
-	}
-	if envAccount.ClientID != "" {
-		fileAccount.ClientID = envAccount.ClientID
-	}
-	if envAccount.ClientSecret != "" {
-		fileAccount.ClientSecret = envAccount.ClientSecret
-	}
-	if envAccount.AccessTokenURI != "" {
-		fileAccount.AccessTokenURI = envAccount.AccessTokenURI
-	}
-
-	// Validate.
-	if fileAccount.Name == "" {
-		return ServiceAccount{}, errors.New("polaris: missing required field: Name")
-	}
-	if fileAccount.ClientID == "" {
-		return ServiceAccount{}, errors.New("polaris: missing required field: ClientID")
-	}
-	if fileAccount.ClientSecret == "" {
-		return ServiceAccount{}, errors.New("polaris: missing required field: ClientSecret")
-	}
-	if fileAccount.AccessTokenURI == "" {
-		return ServiceAccount{}, errors.New("polaris: missing required field: AccessTokenURI")
-	}
-
-	return fileAccount, nil
+// service account file.
+// If allowEnvOverride is true environment variables can be used to override
+// account information in the file. See ServiceAccountFromEnv for details. In
+// addition, the environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE can be
+// used to override the file that the service account is read from.
+func DefaultServiceAccount(allowEnvOverride bool) (ServiceAccount, error) {
+	return ServiceAccountFromFile(DefaultServiceAccountFile, allowEnvOverride)
 }

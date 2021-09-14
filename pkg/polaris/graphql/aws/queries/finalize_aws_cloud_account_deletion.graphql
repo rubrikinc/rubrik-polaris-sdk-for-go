@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
+    finalizeAwsCloudAccountDeletion(input: {cloudAccountId: $cloudAccountId, feature: $feature}) {
+        message
+    }
+}

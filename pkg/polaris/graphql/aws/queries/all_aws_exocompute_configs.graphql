@@ -1,0 +1,36 @@
+query RubrikPolarisSDKRequest($awsNativeAccountIdOrNamePrefix: String!) {
+    result: allAwsExocomputeConfigs(awsNativeAccountIdOrNamePrefix: $awsNativeAccountIdOrNamePrefix) {
+        awsCloudAccount {
+            cloudType
+            id
+            nativeId
+            message
+            accountName
+        }
+        configs {
+            areSecurityGroupsPolarisManaged
+            clusterSecurityGroupId
+            configUuid
+            message
+            nodeSecurityGroupId
+            region
+            subnet1 {
+                availabilityZone
+                subnetId
+            }
+            subnet2 {
+                availabilityZone
+                subnetId
+             }
+            vpcId
+        }
+        exocomputeEligibleRegions
+        featureDetail {
+            feature
+            roleArn
+            stackArn
+            status
+            awsRegions
+        }
+    }
+}

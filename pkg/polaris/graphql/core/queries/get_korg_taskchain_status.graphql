@@ -1,0 +1,9 @@
+query RubrikPolarisSDKRequest($taskchainId: String!){
+    getKorgTaskchainStatus(taskchainId: $taskchainId){
+        taskchain {
+            id
+            state
+            taskchainUuid
+        }
+    }
+}

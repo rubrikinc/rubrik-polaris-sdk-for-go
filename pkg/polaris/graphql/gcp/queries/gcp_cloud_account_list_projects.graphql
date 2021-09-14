@@ -1,0 +1,15 @@
+query RubrikPolarisSDKRequest($feature: CloudAccountFeatureEnum!, $projectSearchText: String!) {
+    gcpCloudAccountListProjects(feature: $feature, projectStatusFilters: [], projectSearchText: $projectSearchText) {
+        project {
+            id
+            name,
+            projectId,
+            projectNumber,
+            roleId
+        }
+        featureDetail {
+            feature
+            status
+        }
+    }
+}

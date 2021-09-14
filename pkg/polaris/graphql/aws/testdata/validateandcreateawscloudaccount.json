@@ -1,0 +1,17 @@
+{
+    "data": {
+        "result": {
+            "initiateResponse": null,
+            "validateResponse": {
+                "invalidAwsAccounts": [
+                    {
+                        "accountName": "{{ .Name }}",
+                        "nativeId": "{{ .ID }}",
+                        "message": "You do not need to add {{ .ID }} ID as it is already set up with the following features: AWS EC2, EBS Protection."
+                    }
+                ],
+                "invalidAwsAdminAccount": null
+            }
+        }
+    }
+}

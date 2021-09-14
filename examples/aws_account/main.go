@@ -26,6 +26,8 @@ import (
 	"log"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -38,7 +40,7 @@ func main() {
 	ctx := context.Background()
 
 	// Load configuration and create client.
-	polAccount, err := polaris.DefaultServiceAccount()
+	polAccount, err := polaris.DefaultServiceAccount(true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,26 +52,25 @@ func main() {
 	// Add the AWS default account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	err = client.AwsAccountAdd(ctx, polaris.FromAwsDefault(), polaris.WithRegion("us-east-2"))
+	id, err := client.AWS().AddAccount(ctx, aws.Default(), aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Lookup the newly added account.
-	accounts, err := client.AwsAccounts(ctx, polaris.WithName(""))
+	// List the AWS accounts added to Polaris.
+	account, err := client.AWS().Account(ctx, aws.CloudAccountID(id), core.CloudNativeProtection)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, account := range accounts {
-		fmt.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
-		for _, feature := range account.Features {
-			fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Feature, feature.AwsRegions, feature.Status)
-		}
+	fmt.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
+	for _, feature := range account.Features {
+		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
 	}
 
 	// Remove the AWS account from Polaris.
-	if err := client.AwsAccountRemove(ctx, polaris.FromAwsDefault(), false); err != nil {
+	err = client.AWS().RemoveAccount(ctx, aws.Default(), false)
+	if err != nil {
 		log.Fatal(err)
 	}
 }

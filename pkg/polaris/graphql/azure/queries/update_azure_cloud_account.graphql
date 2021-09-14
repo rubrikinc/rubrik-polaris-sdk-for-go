@@ -1,0 +1,13 @@
+mutation RubrikPolarisSDKRequest($feature: CloudAccountFeatureEnum!, $regionsToAdd: [AzureCloudAccountRegionEnum!], $regionsToRemove: [AzureCloudAccountRegionEnum!], $subscriptions: [AzureCloudAccountSubscriptionInput!]!) {
+    result: updateAzureCloudAccount(input: {
+        feature:         $feature,
+        regionsToAdd:    $regionsToAdd,
+        regionsToRemove: $regionsToRemove,
+        subscriptions:   $subscriptions
+    }) {
+        status {
+            azureSubscriptionNativeId
+            isSuccess
+        }
+    }
+}

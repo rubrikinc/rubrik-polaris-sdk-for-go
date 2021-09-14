@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-var queryPattern *regexp.Regexp = regexp.MustCompile(`^(?:mutation|query) SdkGolang(.+)\(`)
+var queryPattern *regexp.Regexp = regexp.MustCompile(`^(?:mutation|query) +SdkGolang(.+?) *?(?:\(|{)`)
 
-// queryName returns the name of the specified query.
-func queryName(query string) string {
+// QueryName returns the name of the specified GraphQL query.
+func QueryName(query string) string {
 	groups := queryPattern.FindStringSubmatch(query)
 	if len(groups) != 2 {
 		return "<invalid-query>"
