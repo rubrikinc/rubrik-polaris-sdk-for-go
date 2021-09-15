@@ -45,9 +45,10 @@ pipeline {
                 RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
 
                 // AWS credentials.
-                TEST_AWSACCOUNT_FILE = credentials('tf-sdk-test-aws-account')
-                AWS_CREDENTIALS      = credentials('tf-sdk-test-aws-credentials')
-                AWS_CONFIG           = credentials('tf-sdk-test-aws-config')
+                TEST_AWSACCOUNT_FILE  = credentials('tf-sdk-test-aws-account')
+                AWS_ACCESS_KEY_ID     = credentials('tf-sdk-test-access-key')
+                AWS_SECRET_ACCESS_KEY = credentials('tf-sdk-test-secret-key')
+                AWS_DEFAULT_REGION    = 'us-east-2'
 
                 // Azure credentials.
                 TEST_AZURESUBSCRIPTION_FILE     = credentials('tf-sdk-test-azure-subscription')
@@ -61,9 +62,7 @@ pipeline {
                 TEST_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
             }
             steps {
-                sh 'mkdir -p ~/.aws && ln -sf $AWS_CREDENTIALS ~/.aws/credentials && ln -sf $AWS_CONFIG ~/.aws/config'
-                sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -timeout=20m -v ./...'
-                sh 'rm -r ~/.aws'
+                sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -timeout=120m -v ./...'
             }
         }
         stage('Coverage') {
