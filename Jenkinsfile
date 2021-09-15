@@ -59,7 +59,7 @@ pipeline {
                 GOOGLE_APPLICATION_CREDENTIALS = credentials('tf-sdk-test-gcp-service-account')
 
                 // Run integration tests with the nightly build.
-                TEST_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
+                TEST_INTEGRATION = 1
             }
             steps {
                 sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -timeout=120m -v ./...'
