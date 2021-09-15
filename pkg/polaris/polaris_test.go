@@ -82,12 +82,12 @@ func loadTestAwsAccount() (testAwsAccount, error) {
 //   * TEST_INTEGRATION=1
 //   * TEST_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
-//   * AWS_ACCESS_KEY_ID=<aws-access-key>
-//   * AWS_SECRET_ACCESS_KEY=<aws-secret-key>
-//   * AWS_DEFAULT_REGION=<aws-default-region>
 //
-// The file referred to by TEST_AWSACCOUNT_FILE should contain a single
-// testAwsAccount JSON object.
+// In addition to the above environment variables a default AWS profile must be
+// defined. As an alternative to the credentials and config files the
+// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
+// AWS_DEFAULT_REGION can be used. The file referred to by TEST_AWSACCOUNT_FILE
+// should contain a single testAwsAccount JSON object.
 //
 // Note that between the project has been added and it has been removed we
 // never fail fatally to allow the project to be removed in case of an error.
