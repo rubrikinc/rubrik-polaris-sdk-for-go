@@ -41,8 +41,8 @@ type API struct {
 
 // NewAPI returns a new API instance. Note that this is a very cheap call to
 // make.
-func NewAPI(gql *graphql.Client, version string) API {
-	return API{Version: version, gql: gql}
+func NewAPI(gql *graphql.Client) API {
+	return API{Version: gql.Version, gql: gql}
 }
 
 // CloudAccount for Microsoft Azure subscriptions.

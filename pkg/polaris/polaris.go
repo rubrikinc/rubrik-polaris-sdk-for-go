@@ -48,24 +48,23 @@ const (
 
 // Client is used to make calls to the Polaris platform.
 type Client struct {
-	Version string
-	gql     *graphql.Client
-	log     log.Logger
+	gql *graphql.Client
+	log log.Logger
 }
 
 // AWS returns the AWS part of the API.
 func (c *Client) AWS() aws.API {
-	return aws.NewAPI(c.gql, c.Version)
+	return aws.NewAPI(c.gql)
 }
 
 // Azure returns the Azure part of the API.
 func (c *Client) Azure() azure.API {
-	return azure.NewAPI(c.gql, c.Version)
+	return azure.NewAPI(c.gql)
 }
 
 // GCP returns the GCP part of the API.
 func (c *Client) GCP() gcp.API {
-	return gcp.NewAPI(c.gql, c.Version)
+	return gcp.NewAPI(c.gql)
 }
 
 // NewClient returns a new Client from the specified Account. The log level of
@@ -101,17 +100,18 @@ func NewClient(ctx context.Context, account Account, logger log.Logger) (*Client
 		logger = &log.DiscardLogger{}
 	}
 
+	// The gql client is initialized without a version. Query cluster to find
+	// out the current version.
 	gqlClient := graphql.NewClientFromLocalUser(ctx, "custom", apiURL, account.Username, account.Password, logger)
-
 	version, err := core.Wrap(gqlClient).DeploymentVersion(ctx)
 	if err != nil {
 		return nil, err
 	}
+	gqlClient.Version = version
 
 	client := &Client{
-		Version: version,
-		gql:     gqlClient,
-		log:     logger,
+		gql: gqlClient,
+		log: logger,
 	}
 
 	return client, nil
@@ -155,18 +155,19 @@ func NewClientFromServiceAccount(ctx context.Context, account ServiceAccount, lo
 	}
 	apiURL := account.AccessTokenURI[:i]
 
+	// The gql client is initialized without a version. Query cluster to find
+	// out the current version.
 	gqlClient := graphql.NewClientFromServiceAccount(ctx, "custom", apiURL, account.AccessTokenURI, account.ClientID,
 		account.ClientSecret, logger)
-
 	version, err := core.Wrap(gqlClient).DeploymentVersion(ctx)
 	if err != nil {
 		return nil, err
 	}
+	gqlClient.Version = version
 
 	client := &Client{
-		Version: version,
-		gql:     gqlClient,
-		log:     logger,
+		gql: gqlClient,
+		log: logger,
 	}
 
 	return client, nil
