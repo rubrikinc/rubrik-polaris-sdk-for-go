@@ -226,9 +226,6 @@ func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.
 	if graphql.VersionOlderThan(a.Version, "master-41845", " v20210921") {
 		query = updateAzureCloudAccountV0Query
 	}
-
-	a.GQL.Log().Print(log.Debug, query)
-
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Feature       core.CloudAccountFeature   `json:"feature"`
 		Features      []core.CloudAccountFeature `json:"features"`
