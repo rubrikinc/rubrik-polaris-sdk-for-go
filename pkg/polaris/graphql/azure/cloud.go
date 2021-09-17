@@ -27,6 +27,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -172,15 +173,20 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 func (a API) DeleteCloudAccountWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.CloudAccountFeature) error {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.DeleteCloudAccountWithoutOAuth")
 
-	buf, err := a.GQL.Request(ctx, deleteAzureCloudAccountWithoutOauthQuery, struct {
-		IDs     []uuid.UUID              `json:"subscriptionIds"`
-		Feature core.CloudAccountFeature `json:"feature"`
-	}{IDs: []uuid.UUID{id}, Feature: feature})
+	query := deleteAzureCloudAccountWithoutOauthQuery
+	if graphql.VersionOlderThan(a.Version, "master-41845", "v20210921") {
+		query = deleteAzureCloudAccountWithoutOauthV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
+		IDs      []uuid.UUID                `json:"subscriptionIds"`
+		Feature  core.CloudAccountFeature   `json:"feature"`
+		Features []core.CloudAccountFeature `json:"features"`
+	}{IDs: []uuid.UUID{id}, Feature: feature, Features: []core.CloudAccountFeature{feature}})
 	if err != nil {
 		return err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "deleteAzureCloudAccountWithoutOauth(%v, %q): %s", id, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%v, %q): %s", graphql.QueryName(query), id, feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -216,17 +222,27 @@ type updateSubscription struct {
 func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.CloudAccountFeature, name string, toAdd, toRemove []Region) error {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.UpdateCloudAccount")
 
-	buf, err := a.GQL.Request(ctx, updateAzureCloudAccountQuery, struct {
-		Feature       core.CloudAccountFeature `json:"feature"`
-		ToAdd         []Region                 `json:"regionsToAdd,omitempty"`
-		ToRemove      []Region                 `json:"regionsToRemove,omitempty"`
-		Subscriptions []updateSubscription     `json:"subscriptions"`
-	}{Feature: feature, ToAdd: toAdd, ToRemove: toRemove, Subscriptions: []updateSubscription{{ID: id, Name: name}}})
+	query := updateAzureCloudAccountQuery
+	if graphql.VersionOlderThan(a.Version, "master-41845", " v20210921") {
+		query = updateAzureCloudAccountV0Query
+	}
+
+	a.GQL.Log().Print(log.Debug, query)
+
+	buf, err := a.GQL.Request(ctx, query, struct {
+		Feature       core.CloudAccountFeature   `json:"feature"`
+		Features      []core.CloudAccountFeature `json:"features"`
+		ToAdd         []Region                   `json:"regionsToAdd,omitempty"`
+		ToRemove      []Region                   `json:"regionsToRemove,omitempty"`
+		Subscriptions []updateSubscription       `json:"subscriptions"`
+	}{Feature: feature, Features: []core.CloudAccountFeature{feature}, ToAdd: toAdd, ToRemove: toRemove,
+		Subscriptions: []updateSubscription{{ID: id, Name: name}}})
 	if err != nil {
 		return err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "updateAzureCloudAccount(%q, %v, %v %v): %s", id, feature, name, toAdd, toRemove, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %v, %v %v): %s", graphql.QueryName(query), id, feature, name, toAdd,
+		toRemove, string(buf))
 
 	var payload struct {
 		Data struct {

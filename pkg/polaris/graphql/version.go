@@ -26,9 +26,12 @@ var versionPatterns = []*regexp.Regexp{
 // (lexicographically before) version tags of the same version format. Note
 // that "latest" is never older than any version tag.
 func VersionOlderThan(version string, versionTags ...string) bool {
+	version = strings.TrimSpace(version)
+
 	for _, pattern := range versionPatterns {
 		if pattern.MatchString(version) {
 			for _, versionTag := range versionTags {
+				versionTag = strings.TrimSpace(versionTag)
 				if pattern.MatchString(versionTag) {
 					return version < versionTag
 				}
