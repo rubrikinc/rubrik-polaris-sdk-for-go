@@ -1,0 +1,6 @@
+mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!) {
+    result: startAwsExocomputeDisableJob(input: {cloudAccountId: $cloudAccountId}) {
+        error
+        jobId
+    }
+}

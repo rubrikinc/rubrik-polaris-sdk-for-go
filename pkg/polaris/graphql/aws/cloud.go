@@ -242,7 +242,7 @@ func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feat
 		return "", err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "prepareAwsCloudAccountDeletion(%q): %s", id, string(buf))
+	a.GQL.Log().Printf(log.Debug, "prepareAwsCloudAccountDeletion(%q, %q): %s", id, feature, string(buf))
 
 	var payload struct {
 		Data struct {

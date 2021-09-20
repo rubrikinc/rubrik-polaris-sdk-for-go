@@ -172,9 +172,9 @@ func (a API) DeleteCloudAccountWithoutOAuth(ctx context.Context, id uuid.UUID, f
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.DeleteCloudAccountWithoutOAuth")
 
 	buf, err := a.GQL.Request(ctx, deleteAzureCloudAccountWithoutOauthQuery, struct {
-		IDs     []uuid.UUID  `json:"subscriptionIds"`
-		Feature core.Feature `json:"feature"`
-	}{IDs: []uuid.UUID{id}, Feature: feature})
+		IDs      []uuid.UUID    `json:"subscriptionIds"`
+		Features []core.Feature `json:"features"`
+	}{IDs: []uuid.UUID{id}, Features: []core.Feature{feature}})
 	if err != nil {
 		return err
 	}
@@ -216,11 +216,11 @@ func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.UpdateCloudAccount")
 
 	buf, err := a.GQL.Request(ctx, updateAzureCloudAccountQuery, struct {
-		Feature       core.Feature         `json:"feature"`
+		Features      []core.Feature       `json:"features"`
 		ToAdd         []Region             `json:"regionsToAdd,omitempty"`
 		ToRemove      []Region             `json:"regionsToRemove,omitempty"`
 		Subscriptions []updateSubscription `json:"subscriptions"`
-	}{Feature: feature, ToAdd: toAdd, ToRemove: toRemove, Subscriptions: []updateSubscription{{ID: id, Name: name}}})
+	}{Features: []core.Feature{feature}, ToAdd: toAdd, ToRemove: toRemove, Subscriptions: []updateSubscription{{ID: id, Name: name}}})
 	if err != nil {
 		return err
 	}

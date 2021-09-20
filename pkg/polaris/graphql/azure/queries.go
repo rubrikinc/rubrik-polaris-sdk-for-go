@@ -182,10 +182,10 @@ var deleteAzureCloudAccountExocomputeConfigurationsQuery = `mutation SdkGolangDe
 }`
 
 // deleteAzureCloudAccountWithoutOauth GraphQL query
-var deleteAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteAzureCloudAccountWithoutOauth($subscriptionIds: [UUID!]!, $feature: CloudAccountFeatureEnum!) {
+var deleteAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteAzureCloudAccountWithoutOauth($subscriptionIds: [UUID!]!, $features: [CloudAccountFeatureEnum!]!) {
     result: deleteAzureCloudAccountWithoutOAuth(input: {
         azureSubscriptionRubrikIds: $subscriptionIds
-        feature:                    $feature,
+        features:                   $features,
     }) {
         status {
             azureSubscriptionNativeId
@@ -218,9 +218,9 @@ var startDisableAzureNativeSubscriptionProtectionJobQuery = `mutation SdkGolangS
  }`
 
 // updateAzureCloudAccount GraphQL query
-var updateAzureCloudAccountQuery = `mutation SdkGolangUpdateAzureCloudAccount($feature: CloudAccountFeatureEnum!, $regionsToAdd: [AzureCloudAccountRegionEnum!], $regionsToRemove: [AzureCloudAccountRegionEnum!], $subscriptions: [AzureCloudAccountSubscriptionInput!]!) {
+var updateAzureCloudAccountQuery = `mutation SdkGolangUpdateAzureCloudAccount($features: [CloudAccountFeatureEnum!]!, $regionsToAdd: [AzureCloudAccountRegionEnum!], $regionsToRemove: [AzureCloudAccountRegionEnum!], $subscriptions: [AzureCloudAccountSubscriptionInput!]!) {
     result: updateAzureCloudAccount(input: {
-        feature:         $feature,
+        features:        $features,
         regionsToAdd:    $regionsToAdd,
         regionsToRemove: $regionsToRemove,
         subscriptions:   $subscriptions

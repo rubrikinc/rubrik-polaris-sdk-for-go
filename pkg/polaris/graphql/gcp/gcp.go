@@ -35,12 +35,13 @@ import (
 
 // API wraps around GraphQL clients to give them the Polaris GCP API.
 type API struct {
-	GQL *graphql.Client
+	Version string
+	GQL     *graphql.Client
 }
 
 // Wrap the GraphQL client in the GCP API.
 func Wrap(gql *graphql.Client) API {
-	return API{GQL: gql}
+	return API{Version: gql.Version, GQL: gql}
 }
 
 // DefaultCredentialsServiceAccount gets the default GCP service account name.

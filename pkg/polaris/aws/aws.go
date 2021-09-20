@@ -45,8 +45,8 @@ type API struct {
 
 // NewAPI returns a new API instance. Note that this is a very cheap call to
 // make.
-func NewAPI(gql *graphql.Client, version string) API {
-	return API{Version: version, gql: gql}
+func NewAPI(gql *graphql.Client) API {
+	return API{Version: gql.Version, gql: gql}
 }
 
 // CloudAccount for Amazon Web Services accounts.
@@ -285,8 +285,7 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 		return uuid.Nil, err
 	}
 
-	a.gql.Log().Printf(log.Debug, "creating CloudFormation stack: %v", accountInit.StackName)
-	err = awsUpdateStack(ctx, config.config, accountInit.StackName, accountInit.TemplateURL)
+	err = awsUpdateStack(ctx, a.gql.Log(), config.config, accountInit.StackName, accountInit.TemplateURL)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -304,10 +303,10 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 }
 
 // RemoveAccount removes the account with the specified id from Polaris for the
-// given feature. If deleteSnapshots is true the snapshots are deleted
-// otherwise they are kept. Note that it's currently not possible to remove an
-// account for the Exocompute feature. To remove the Exocompute feature the
-// Cloud Native Protection feature must be removed.
+// given feature. If the Cloud Native Protection feature is being removed and
+// deleteSnapshots is true the snapshots are deleted otherwise they are kept.
+// Note that removing the Cloud Native Protection feature will also remove the
+// Exocompute feature.
 func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature core.Feature, deleteSnapshots bool) error {
 	a.gql.Log().Print(log.Trace, "polaris/aws.RemoveAccount")
 
@@ -329,22 +328,33 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 		return fmt.Errorf("polaris: feature %s %w", rmFeature, graphql.ErrNotFound)
 	}
 
-	// When the cloud native protection feature is removed we first need to
-	// disable the native (inventory) account.
-	if rmFeature.Name == core.FeatureCloudNativeProtection {
-		if rmFeature.Status != core.StatusDisabled {
-			jobID, err := aws.Wrap(a.gql).StartNativeAccountDisableJob(ctx, akkount.ID, aws.EC2, deleteSnapshots)
-			if err != nil {
-				return err
-			}
+	// Disable the native (inventory) account before removing the feature.
+	switch {
+	case rmFeature.Name == core.FeatureCloudNativeProtection && rmFeature.Status != core.StatusDisabled:
+		jobID, err := aws.Wrap(a.gql).StartNativeAccountDisableJob(ctx, akkount.ID, aws.EC2, deleteSnapshots)
+		if err != nil {
+			return err
+		}
 
-			state, err := core.Wrap(a.gql).WaitForTaskChain(ctx, jobID, 10*time.Second)
-			if err != nil {
-				return err
-			}
-			if state != core.TaskChainSucceeded {
-				return fmt.Errorf("polaris: taskchain failed: jobID=%v, state=%v", jobID, state)
-			}
+		state, err := core.Wrap(a.gql).WaitForTaskChain(ctx, jobID, 10*time.Second)
+		if err != nil {
+			return err
+		}
+		if state != core.TaskChainSucceeded {
+			return fmt.Errorf("polaris: taskchain failed: jobID=%v, state=%v", jobID, state)
+		}
+	case rmFeature.Name == core.FeatureExocompute && rmFeature.Status != core.StatusDisabled:
+		jobID, err := aws.Wrap(a.gql).StartExocomputeDisableJob(ctx, akkount.ID)
+		if err != nil {
+			return err
+		}
+
+		state, err := core.Wrap(a.gql).WaitForTaskChain(ctx, jobID, 10*time.Second)
+		if err != nil {
+			return err
+		}
+		if state != core.TaskChainSucceeded {
+			return fmt.Errorf("polaris: taskchain failed: jobID=%v, state=%v", jobID, state)
 		}
 	}
 
@@ -353,20 +363,41 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 		return err
 	}
 
-	// For now we don't downgrade the stack, we just remove it if Cloud Native
-	// Protection is the last feature being removed. Note that removing Cloud
-	// Native Protection implies removing Exocompute.
-	features := len(akkount.Features)
-	if _, ok := akkount.Feature(core.FeatureCloudAccounts); ok {
+	// Determine the number of features remaining after removing one feature.
+	features := len(akkount.Features) - 1
+
+	// Having Cloud Native Protection or Exocompute implies the Cloud Accounts
+	// feature.
+	if rmFeature.Name != core.FeatureCloudAccounts {
 		features--
 	}
-	if _, ok := akkount.Feature(core.FeatureCloudNativeProtection); ok {
-		features--
+
+	// Removing the Cloud Native Protection feature implies removing the
+	// Exocompute feature.
+	if rmFeature.Name == core.FeatureCloudNativeProtection {
+		if _, ok := akkount.Feature(core.FeatureExocompute); ok {
+			features--
+		}
 	}
-	if _, ok := akkount.Feature(core.FeatureExocompute); ok {
-		features--
-	}
-	if features == 0 {
+
+	if features > 0 {
+		i := strings.LastIndex(cfmURL, "#/stack/update") + 1
+		if i == 0 {
+			return errors.New("polaris: CloudFormation url does not contain #/stack/update")
+		}
+
+		u, err := url.Parse(cfmURL[i:])
+		if err != nil {
+			return err
+		}
+		stackID := u.Query().Get("stackId")
+		tmplURL := u.Query().Get("templateURL")
+
+		err = awsUpdateStack(ctx, a.gql.Log(), config.config, stackID, tmplURL)
+		if err != nil {
+			return err
+		}
+	} else {
 		i := strings.LastIndex(cfmURL, "#/stack/detail") + 1
 		if i == 0 {
 			return errors.New("polaris: CloudFormation url does not contain #/stack/detail")
@@ -378,8 +409,10 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 		}
 		stackID := u.Query().Get("stackId")
 
-		a.gql.Log().Printf(log.Debug, "deleting CloudFormation stack: %s", stackID)
-		awsDeleteStack(ctx, config.config, stackID)
+		err = awsDeleteStack(ctx, a.gql.Log(), config.config, stackID)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = aws.Wrap(a.gql).FinalizeCloudAccountDeletion(ctx, akkount.ID, feature)
@@ -453,8 +486,7 @@ func (a API) UpdatePermissions(ctx context.Context, account AccountFunc, feature
 	}
 	stackID := u.Query().Get("stackId")
 
-	a.gql.Log().Printf(log.Debug, "creating CloudFormation stack: %v", stackID)
-	err = awsUpdateStack(ctx, config.config, stackID, tmplURL)
+	err = awsUpdateStack(ctx, a.gql.Log(), config.config, stackID, tmplURL)
 	if err != nil {
 		return err
 	}

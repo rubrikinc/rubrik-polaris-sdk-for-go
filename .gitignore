@@ -1,12 +1,16 @@
 /aws_account
 /aws_exocompute
 /azure_exocompute
+/azure_permissions
 /azure_subscription
+/gcp_permissions
 /gcp_project
 /gcp_project_with_set_sa
 /examples/aws_account/aws_account
 /examples/aws_exocompute/aws_exocompute
 /examples/azure_exocompute/azure_exocompute
+/examples/azure_permissions/azure_permissions
 /examples/azure_subscription/azure_subscription
+/examples/gcp_project/gcp_permissions
 /examples/gcp_project/gcp_project
 /examples/gcp_project/gcp_project_with_set_sa

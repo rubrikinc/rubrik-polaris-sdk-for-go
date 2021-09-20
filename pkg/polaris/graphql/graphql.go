@@ -107,10 +107,11 @@ func (e gqlError) Error() string {
 
 // Client is used to make GraphQL calls to the Polaris platform.
 type Client struct {
-	app    string
-	gqlURL string
-	client *http.Client
-	log    log.Logger
+	Version string
+	app     string
+	gqlURL  string
+	client  *http.Client
+	log     log.Logger
 }
 
 // NewClientFromLocalUser returns a new Client with the specified configuration.
@@ -248,6 +249,7 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 	return buf, nil
 }
 
+// Log returns the logger used by the client.
 func (c *Client) Log() log.Logger {
 	return c.log
 }

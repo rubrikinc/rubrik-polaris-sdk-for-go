@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // awsStackExist returns true if a CloudFormation stack with the specified name
@@ -63,7 +64,16 @@ func awsWaitForStack(ctx context.Context, config aws.Config, stackName string) (
 		stack := stacks.Stacks[0]
 
 		switch stack.StackStatus {
-		case types.StackStatusCreateInProgress, types.StackStatusDeleteInProgress, types.StackStatusUpdateInProgress:
+		case types.StackStatusCreateInProgress,
+			types.StackStatusDeleteInProgress,
+			types.StackStatusRollbackInProgress,
+			types.StackStatusUpdateInProgress,
+			types.StackStatusUpdateCompleteCleanupInProgress,
+			types.StackStatusUpdateRollbackInProgress,
+			types.StackStatusUpdateRollbackCompleteCleanupInProgress,
+			types.StackStatusReviewInProgress,
+			types.StackStatusImportInProgress,
+			types.StackStatusImportRollbackInProgress:
 		default:
 			return stack.StackStatus, nil
 		}
@@ -78,15 +88,17 @@ func awsWaitForStack(ctx context.Context, config aws.Config, stackName string) (
 
 // awsUpdateStack creates the stack if it doesn't exist, otherwise it's
 // updated.
-func awsUpdateStack(ctx context.Context, config aws.Config, stackName, templateURL string) error {
+func awsUpdateStack(ctx context.Context, logger log.Logger, config aws.Config, stackName, templateURL string) error {
 	client := cloudformation.NewFromConfig(config)
 
+	logger.Printf(log.Debug, "accessing CloudFormation stack: %v", stackName)
 	exist, err := awsStackExist(ctx, config, stackName)
 	if err != nil {
 		return err
 	}
 
 	if exist {
+		logger.Printf(log.Debug, "updating CloudFormation stack: %v", stackName)
 		stack, err := client.UpdateStack(ctx, &cloudformation.UpdateStackInput{
 			StackName:    &stackName,
 			TemplateURL:  &templateURL,
@@ -101,9 +113,10 @@ func awsUpdateStack(ctx context.Context, config aws.Config, stackName, templateU
 			return err
 		}
 		if stackStatus != types.StackStatusUpdateComplete {
-			return fmt.Errorf("polaris: failed to update CloudFormation stack: %v", *stack.StackId)
+			return fmt.Errorf("polaris: failed to update CloudFormation stack: %v, status: %v", *stack.StackId, stackStatus)
 		}
 	} else {
+		logger.Printf(log.Debug, "creating CloudFormation stack: %v", stackName)
 		stack, err := client.CreateStack(ctx, &cloudformation.CreateStackInput{
 			StackName:    &stackName,
 			TemplateURL:  &templateURL,
@@ -118,7 +131,7 @@ func awsUpdateStack(ctx context.Context, config aws.Config, stackName, templateU
 			return err
 		}
 		if stackStatus != types.StackStatusCreateComplete {
-			return fmt.Errorf("polaris: failed to create CloudFormation stack: %v", *stack.StackId)
+			return fmt.Errorf("polaris: failed to create CloudFormation stack: %v, status: %v", *stack.StackId, stackStatus)
 		}
 	}
 
@@ -126,9 +139,10 @@ func awsUpdateStack(ctx context.Context, config aws.Config, stackName, templateU
 }
 
 // awsDeleteStack deletes the stack.
-func awsDeleteStack(ctx context.Context, config aws.Config, stackName string) error {
+func awsDeleteStack(ctx context.Context, logger log.Logger, config aws.Config, stackName string) error {
 	client := cloudformation.NewFromConfig(config)
 
+	logger.Printf(log.Debug, "deleting CloudFormation stack: %v", stackName)
 	_, err := client.DeleteStack(ctx, &cloudformation.DeleteStackInput{StackName: &stackName})
 	if err != nil {
 		return err

@@ -183,7 +183,6 @@ func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount
 	}
 
 	return &account, nil
-
 }
 
 // DefaultUserAccount returns a new UserAccount read from the default account

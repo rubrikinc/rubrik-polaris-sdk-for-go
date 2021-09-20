@@ -156,10 +156,11 @@ func ParseRegions(regions []string) ([]Region, error) {
 
 // API wraps around GraphQL clients to give them the Polaris AWS API.
 type API struct {
-	GQL *graphql.Client
+	Version string
+	GQL     *graphql.Client
 }
 
 // Wrap the GraphQL client in the AWS API.
 func Wrap(gql *graphql.Client) API {
-	return API{GQL: gql}
+	return API{Version: gql.Version, GQL: gql}
 }

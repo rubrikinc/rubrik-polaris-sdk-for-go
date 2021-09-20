@@ -142,12 +142,13 @@ type SLADomain struct {
 
 // API wraps around GraphQL clients to give them the Polaris Core API.
 type API struct {
-	GQL *graphql.Client
+	Version string
+	GQL     *graphql.Client
 }
 
 // Wrap the GraphQL client in the Core API.
 func Wrap(gql *graphql.Client) API {
-	return API{GQL: gql}
+	return API{Version: gql.Version, GQL: gql}
 }
 
 // TaskChain is a collection of sequential tasks that all must complete for the

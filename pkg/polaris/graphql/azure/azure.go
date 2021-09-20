@@ -198,12 +198,13 @@ func ParseRegions(regions []string) ([]Region, error) {
 
 // API wraps around GraphQL clients to give them the Polaris Azure API.
 type API struct {
-	GQL *graphql.Client
+	Version string
+	GQL     *graphql.Client
 }
 
 // Wrap the GraphQL client in the Azure API.
 func Wrap(gql *graphql.Client) API {
-	return API{GQL: gql}
+	return API{Version: gql.Version, GQL: gql}
 }
 
 // SetCloudAccountCustomerAppCredentials sets the credentials for the customer

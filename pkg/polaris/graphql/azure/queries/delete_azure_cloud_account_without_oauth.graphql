@@ -1,7 +1,7 @@
-mutation RubrikPolarisSDKRequest($subscriptionIds: [UUID!]!, $feature: CloudAccountFeatureEnum!) {
+mutation RubrikPolarisSDKRequest($subscriptionIds: [UUID!]!, $features: [CloudAccountFeatureEnum!]!) {
     result: deleteAzureCloudAccountWithoutOAuth(input: {
         azureSubscriptionRubrikIds: $subscriptionIds
-        feature:                    $feature,
+        features:                   $features,
     }) {
         status {
             azureSubscriptionNativeId
