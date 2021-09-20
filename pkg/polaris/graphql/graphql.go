@@ -28,7 +28,7 @@
 //
 // - Names are turned into CamelCase.
 //
-// - CSP ackronyms (e.g. aws) that are part of names are turned into prefixes.
+// - CSP ackronyms (e.g. aws) that are part of names are removed.
 //
 // - Query parameters with values in a well defined range are turned into
 // types.

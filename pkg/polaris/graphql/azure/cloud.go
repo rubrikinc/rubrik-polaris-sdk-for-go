@@ -289,3 +289,37 @@ func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feat
 
 	return payload.Data.PermissionConfig, nil
 }
+
+// UpgradeCloudAccountPermissionsWithoutOAuth notifies Polaris that the
+// permissions for the Azure service prinicpal has been updated for the
+// specified Polaris cloud account id and feature.
+func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.UpgradeCloudAccountPermissionsWithoutOAuth")
+
+	buf, err := a.GQL.Request(ctx, upgradeAzureCloudAccountPermissionsWithoutOauthQuery, struct {
+		ID      uuid.UUID    `json:"cloudAccountId"`
+		Feature core.Feature `json:"feature"`
+	}{ID: id, Feature: feature})
+	if err != nil {
+		return err
+	}
+
+	a.GQL.Log().Printf(log.Debug, "upgradeAzureCloudAccountPermissionsWithoutOauth(%q, %q): %s", id, feature, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Status bool `json:"status"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return err
+	}
+
+	if !payload.Data.Result.Status {
+		return fmt.Errorf("failed to upgrade permissions for cloud account: %v", id)
+	}
+
+	return nil
+}

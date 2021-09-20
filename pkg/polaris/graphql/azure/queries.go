@@ -231,3 +231,13 @@ var updateAzureCloudAccountQuery = `mutation SdkGolangUpdateAzureCloudAccount($f
         }
     }
 }`
+
+// upgradeAzureCloudAccountPermissionsWithoutOauth GraphQL query
+var upgradeAzureCloudAccountPermissionsWithoutOauthQuery = `mutation SdkGolangUpgradeAzureCloudAccountPermissionsWithoutOauth($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
+    result: upgradeAzureCloudAccountPermissionsWithoutOauth(input: {
+        cloudAccountId: $cloudAccountId
+        feature:        $feature,
+    }) {
+        status
+    }
+}`
