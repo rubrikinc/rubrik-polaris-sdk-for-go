@@ -22,7 +22,6 @@ package gcp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -110,32 +109,43 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 	return perms, nil
 }
 
-// PermissionsUpdated should be called after the GCP permissions have been
-// updated as a response to an account having the status
-// StatusMissingPermissions. This will notify Polaris that the permissions have
-// been updated. If features is nil the actual permissions after the update
-// will not be verified.
-func (a API) PermissionsUpdated(ctx context.Context, project ProjectFunc, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.NotifyPermissions")
+// PermissionsUpdated notifies Polaris that the permissions for the GCP
+// service account for the Polaris cloud account with the specified id has
+// been updated. The permissions should be updated when a feature has the
+// status StatusMissingPermissions. Updating the permissions is done outside
+// of this SDK. Note that features is alowed to be nil. When features is nil
+// all features are updated.
+func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
+	a.gql.Log().Print(log.Trace, "polaris/gcp.PermissionsUpdated")
 
-	if project == nil {
-		return errors.New("polaris: project is not allowed to be nil")
+	featureSet := make(map[core.Feature]struct{})
+	for _, feature := range features {
+		featureSet[feature] = struct{}{}
 	}
-	config, err := project(ctx)
+
+	accounts, err := a.Projects(ctx, core.FeatureAll, "")
 	if err != nil {
 		return err
 	}
 
-	// We need both project id and features to check the permissions of the
-	// service account. This is not available when using a
-	if config.id != "" && len(features) > 0 {
-		err = a.gcpCheckPermissions(ctx, config.creds, config.id, features)
-		if err != nil {
-			return err
+	for _, account := range accounts {
+		for _, feature := range account.Features {
+			if feature.Status != core.StatusMissingPermissions {
+				continue
+			}
+
+			// Check that the feature is in the feature set unless the set is
+			// empty which is when all features should be updated.
+			if _, ok := featureSet[feature.Name]; len(featureSet) > 0 && !ok {
+				continue
+			}
+
+			err := gcp.Wrap(a.gql).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
+			if err != nil {
+				return err
+			}
 		}
 	}
-
-	// TODO: Invoke Polaris endpoint.
 
 	return nil
 }

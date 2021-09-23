@@ -173,7 +173,7 @@ func azurePrincipalFromAzFile(ctx context.Context, tenantDomain string) (service
 	return principal, nil
 }
 
-// principalv0 format is used by v0.1.x versions of the Polaris SDK.
+// principalV0 format is used by v0.1.x versions of the Polaris SDK.
 type principalV0 struct {
 	AppID        string `json:"app_id"`
 	AppName      string `json:"app_name"`
@@ -184,26 +184,27 @@ type principalV0 struct {
 
 // decodePrincipalV0 decodes the specified string using the v0 format. Returns
 // an error if the decoder encounters unknown fields.
-func decodePrincipalV0(ctx context.Context, text string) (servicePrincipal, error) {
-	decoder := json.NewDecoder(strings.NewReader(text))
+func decodePrincipalV0(ctx context.Context, data, tenantDomain string) (servicePrincipal, error) {
+	decoder := json.NewDecoder(strings.NewReader(data))
 	decoder.DisallowUnknownFields()
 
 	var v0 principalV0
 	if err := decoder.Decode(&v0); err != nil {
 		return servicePrincipal{}, err
 	}
-
 	appID, err := uuid.Parse(v0.AppID)
 	if err != nil {
 		return servicePrincipal{}, err
 	}
-
 	tenantID, err := uuid.Parse(v0.TenantID)
 	if err != nil {
 		return servicePrincipal{}, err
 	}
+	if tenantDomain != v0.TenantDomain {
+		return servicePrincipal{}, fmt.Errorf("tenant domain mismatch: %s != %s", tenantDomain, v0.TenantDomain)
+	}
 
-	rmConfig := auth.NewClientCredentialsConfig(v0.AppID, v0.AppSecret, v0.TenantDomain)
+	rmConfig := auth.NewClientCredentialsConfig(v0.AppID, v0.AppSecret, tenantDomain)
 	rmAuthorizer, err := rmConfig.Authorizer()
 	if err != nil {
 		return servicePrincipal{}, err
@@ -214,7 +215,7 @@ func decodePrincipalV0(ctx context.Context, text string) (servicePrincipal, erro
 		appName:      v0.AppName,
 		appSecret:    v0.AppSecret,
 		tenantID:     tenantID,
-		tenantDomain: v0.TenantDomain,
+		tenantDomain: tenantDomain,
 		rmAuthorizer: rmAuthorizer,
 	}
 
@@ -241,7 +242,7 @@ func decodePrincipalV0(ctx context.Context, text string) (servicePrincipal, erro
 	return principal, nil
 }
 
-// principalv1 format is used by v0.2.x versions of the Polaris SDK.
+// principalV1 format is used by v0.2.x versions of the Polaris SDK.
 type principalV1 struct {
 	AppID        string `json:"appId"`
 	AppName      string `json:"appName"`
@@ -252,26 +253,27 @@ type principalV1 struct {
 
 // decodePrincipalV1 decodes the specified string using the v1 format. Returns
 // an error if the decoder encounters unknown fields.
-func decodePrincipalV1(ctx context.Context, text string) (servicePrincipal, error) {
-	decoder := json.NewDecoder(strings.NewReader(text))
+func decodePrincipalV1(ctx context.Context, data, tenantDomain string) (servicePrincipal, error) {
+	decoder := json.NewDecoder(strings.NewReader(data))
 	decoder.DisallowUnknownFields()
 
 	var v1 principalV1
 	if err := decoder.Decode(&v1); err != nil {
 		return servicePrincipal{}, err
 	}
-
 	appID, err := uuid.Parse(v1.AppID)
 	if err != nil {
 		return servicePrincipal{}, err
 	}
-
 	tenantID, err := uuid.Parse(v1.TenantID)
 	if err != nil {
 		return servicePrincipal{}, err
 	}
+	if tenantDomain != v1.TenantDomain {
+		return servicePrincipal{}, fmt.Errorf("tenant domain mismatch: %s != %s", tenantDomain, v1.TenantDomain)
+	}
 
-	rmConfig := auth.NewClientCredentialsConfig(v1.AppID, v1.AppSecret, v1.TenantDomain)
+	rmConfig := auth.NewClientCredentialsConfig(v1.AppID, v1.AppSecret, tenantDomain)
 	rmAuthorizer, err := rmConfig.Authorizer()
 	if err != nil {
 		return servicePrincipal{}, err
@@ -282,7 +284,7 @@ func decodePrincipalV1(ctx context.Context, text string) (servicePrincipal, erro
 		appName:      v1.AppName,
 		appSecret:    v1.AppSecret,
 		tenantID:     tenantID,
-		tenantDomain: v1.TenantDomain,
+		tenantDomain: tenantDomain,
 		rmAuthorizer: rmAuthorizer,
 	}
 
@@ -309,9 +311,74 @@ func decodePrincipalV1(ctx context.Context, text string) (servicePrincipal, erro
 	return principal, nil
 }
 
+// principalV2 format is used by v0.3.x versions of the Polaris SDK.
+type principalV2 struct {
+	AppID     string `json:"appId"`
+	AppName   string `json:"appName"`
+	AppSecret string `json:"appSecret"`
+	TenantID  string `json:"tenantId"`
+}
+
+// decodePrincipalV2 decodes the specified string using the v2 format. Returns
+// an error if the decoder encounters unknown fields.
+func decodePrincipalV2(ctx context.Context, data, tenantDomain string) (servicePrincipal, error) {
+	decoder := json.NewDecoder(strings.NewReader(data))
+	decoder.DisallowUnknownFields()
+
+	var v2 principalV2
+	if err := decoder.Decode(&v2); err != nil {
+		return servicePrincipal{}, err
+	}
+	appID, err := uuid.Parse(v2.AppID)
+	if err != nil {
+		return servicePrincipal{}, err
+	}
+	tenantID, err := uuid.Parse(v2.TenantID)
+	if err != nil {
+		return servicePrincipal{}, err
+	}
+
+	rmConfig := auth.NewClientCredentialsConfig(v2.AppID, v2.AppSecret, tenantDomain)
+	rmAuthorizer, err := rmConfig.Authorizer()
+	if err != nil {
+		return servicePrincipal{}, err
+	}
+
+	principal := servicePrincipal{
+		appID:        appID,
+		appName:      v2.AppName,
+		appSecret:    v2.AppSecret,
+		tenantID:     tenantID,
+		tenantDomain: tenantDomain,
+		rmAuthorizer: rmAuthorizer,
+	}
+
+	graphConfig := auth.ClientCredentialsConfig{
+		ClientID:     v2.AppID,
+		ClientSecret: v2.AppSecret,
+		TenantID:     v2.TenantID,
+		Resource:     azure.PublicCloud.GraphEndpoint,
+		AADEndpoint:  azure.PublicCloud.ActiveDirectoryEndpoint,
+	}
+	graphAuthorizer, err := graphConfig.Authorizer()
+	if err != nil {
+		return servicePrincipal{}, err
+	}
+
+	if err := azureGraph(ctx, graphAuthorizer, &principal); err != nil {
+		return servicePrincipal{}, err
+	}
+
+	if v2.AppName != "" {
+		principal.appName = v2.AppName
+	}
+
+	return principal, nil
+}
+
 // azurePrincipalFromKeyFile creates a service principal from the specified key
 // file and information read from the Azure cloud.
-func azurePrincipalFromKeyFile(ctx context.Context, keyFile string) (servicePrincipal, error) {
+func azurePrincipalFromKeyFile(ctx context.Context, keyFile, tenantDomain string) (servicePrincipal, error) {
 	if strings.HasPrefix(keyFile, "~/") {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -326,14 +393,17 @@ func azurePrincipalFromKeyFile(ctx context.Context, keyFile string) (servicePrin
 		return servicePrincipal{}, err
 	}
 
-	if principal, err := decodePrincipalV1(ctx, string(buf)); err == nil {
+	if principal, err := decodePrincipalV2(ctx, string(buf), tenantDomain); err == nil {
 		return principal, nil
 	}
-	if principal, err := decodePrincipalV0(ctx, string(buf)); err == nil {
+	if principal, err := decodePrincipalV1(ctx, string(buf), tenantDomain); err == nil {
+		return principal, nil
+	}
+	if principal, err := decodePrincipalV0(ctx, string(buf), tenantDomain); err == nil {
 		return principal, nil
 	}
 
-	return servicePrincipal{}, err
+	return servicePrincipal{}, fmt.Errorf("polaris: unrecognized file format: %s", keyFile)
 }
 
 // The Azure SDK requires all parameters be given as environment variables.
@@ -356,17 +426,12 @@ func Default(tenantDomain string) ServicePrincipalFunc {
 			if err != nil {
 				return servicePrincipal{}, err
 			}
-
 		case os.Getenv("AZURE_SERVICEPRINCIPAL_LOCATION") != "":
 			keyfile := os.Getenv("AZURE_SERVICEPRINCIPAL_LOCATION")
-			principal, err = azurePrincipalFromKeyFile(ctx, keyfile)
+			principal, err = azurePrincipalFromKeyFile(ctx, keyfile, tenantDomain)
 			if err != nil {
 				return servicePrincipal{}, err
 			}
-			if tenantDomain != "" && tenantDomain != principal.tenantDomain {
-				return servicePrincipal{}, fmt.Errorf("tenant domain does not match key file: %s", principal.tenantDomain)
-			}
-
 		default:
 			principal, err = azurePrincipalFromAzEnv(ctx, tenantDomain)
 			if err != nil {
@@ -380,9 +445,9 @@ func Default(tenantDomain string) ServicePrincipalFunc {
 
 // KeyFile returns a ServicePrincipalFunc that initializes the service
 // principal with values from the specified key file and the Azure cloud.
-func KeyFile(keyFile string) ServicePrincipalFunc {
+func KeyFile(keyFile, tenantDomain string) ServicePrincipalFunc {
 	return func(ctx context.Context) (servicePrincipal, error) {
-		return azurePrincipalFromKeyFile(ctx, keyFile)
+		return azurePrincipalFromKeyFile(ctx, keyFile, tenantDomain)
 	}
 }
 

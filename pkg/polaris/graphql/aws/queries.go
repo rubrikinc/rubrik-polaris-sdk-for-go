@@ -229,18 +229,18 @@ var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloud
     }
 }`
 
-// initiateFeatureUpdateForAwsCloudAccount GraphQL query
-var initiateFeatureUpdateForAwsCloudAccountQuery = `mutation SdkGolangInitiateFeatureUpdateForAwsCloudAccount($cloudAccountUuid: UUID!, $features: [CloudAccountFeatureEnum!]!) {
-    initiateFeatureUpdateForAwsCloudAccount(input: {cloudAccountUuid: $cloudAccountUuid, features: $features}) {
-        cloudFormationUrl
-        templateUrl
-    }
-}`
-
 // prepareAwsCloudAccountDeletion GraphQL query
 var prepareAwsCloudAccountDeletionQuery = `mutation SdkGolangPrepareAwsCloudAccountDeletion($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
     prepareAwsCloudAccountDeletion(input: {cloudAccountId: $cloudAccountId, feature: $feature}) {
         cloudFormationUrl
+    }
+}`
+
+// prepareFeatureUpdateForAwsCloudAccount GraphQL query
+var prepareFeatureUpdateForAwsCloudAccountQuery = `mutation SdkGolangPrepareFeatureUpdateForAwsCloudAccount($cloudAccountId: UUID!, $features: [CloudAccountFeatureEnum!]!) {
+    result: prepareFeatureUpdateForAwsCloudAccount(input: {cloudAccountId: $cloudAccountId, features: $features}) {
+        cloudFormationUrl
+        templateUrl
     }
 }`
 

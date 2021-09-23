@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -71,18 +72,15 @@ func main() {
 		fmt.Println(perm)
 	}
 
-	// List subscriptions already added to Polaris.
-	accounts, err := client.Azure().Subscriptions(ctx, core.FeatureCloudNativeProtection, "")
+	// Notify Polaris about updated permissions for the Cloud Native Protection
+	// feature of the already added subscription.
+	account, err := client.Azure().Subscription(ctx,
+		azure.SubscriptionID(uuid.MustParse("27dce22c-1b84-11ec-9992-a3d4a0eb7b90")), core.FeatureCloudNativeProtection)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// Notify Polaris about updated permissions for the Cloud Native Protection
-	// feature.
-	for _, account := range accounts {
-		err = client.Azure().PermissionsUpdated(ctx, azure.CloudAccountID(account.ID), features)
-		if err != nil {
-			log.Fatal(err)
-		}
+	err = client.Azure().PermissionsUpdated(ctx, azure.CloudAccountID(account.ID), features)
+	if err != nil {
+		log.Fatal(err)
 	}
 }

@@ -375,31 +375,33 @@ func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, regions Region) 
 	return payload.Data.VPCs, nil
 }
 
-// InitiateFeatureUpdateForCloudAccount
-func (a API) InitiateFeatureUpdateForCloudAccount(ctx context.Context, id uuid.UUID, features []core.Feature) (cfmURL string, tmplURL string, err error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.InitiateFeatureUpdateForCloudAccount")
+// PrepareFeatureUpdateForAwsCloudAccount returns a CloudFormation URL and a
+// template URL from Polaris which can be used to update the CloudFormation
+// stack.
+func (a API) PrepareFeatureUpdateForAwsCloudAccount(ctx context.Context, id uuid.UUID, features []core.Feature) (cfmURL string, tmplURL string, err error) {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.PrepareFeatureUpdateForAwsCloudAccount")
 
-	buf, err := a.GQL.Request(ctx, initiateFeatureUpdateForAwsCloudAccountQuery, struct {
-		ID       uuid.UUID      `json:"cloudAccountUuid"`
+	buf, err := a.GQL.Request(ctx, prepareFeatureUpdateForAwsCloudAccountQuery, struct {
+		ID       uuid.UUID      `json:"cloudAccountId"`
 		Features []core.Feature `json:"features"`
 	}{ID: id, Features: features})
 	if err != nil {
 		return "", "", err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "initiateFeatureUpdateForAwsCloudAccount(%q, %v): %s", id, features, string(buf))
+	a.GQL.Log().Printf(log.Debug, "prepareFeatureUpdateForAwsCloudAccount(%q, %v): %s", id, features, string(buf))
 
 	var payload struct {
 		Data struct {
-			Query struct {
+			Result struct {
 				CloudFormationURL string `json:"cloudFormationUrl"`
 				TemplateURL       string `json:"templateUrl"`
-			} `json:"initiateFeatureUpdateForAwsCloudAccount"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return "", "", err
 	}
 
-	return payload.Data.Query.CloudFormationURL, payload.Data.Query.TemplateURL, nil
+	return payload.Data.Result.CloudFormationURL, payload.Data.Result.TemplateURL, nil
 }

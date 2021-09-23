@@ -26,6 +26,7 @@ import (
 	"log"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -59,5 +60,16 @@ func main() {
 	fmt.Println("Permissions requried for Cloud Native Protection:")
 	for _, perm := range perms {
 		fmt.Println(perm)
+	}
+
+	// Notify Polaris about updated permissions for the Cloud Native Protection
+	// feature of the already added default project.
+	account, err := client.GCP().Project(ctx, gcp.ID(gcp.Default()), core.FeatureCloudNativeProtection)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = client.GCP().PermissionsUpdated(ctx, gcp.CloudAccountID(account.ID), features)
+	if err != nil {
+		log.Fatal(err)
 	}
 }

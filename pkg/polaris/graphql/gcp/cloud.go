@@ -167,3 +167,41 @@ func (a API) CloudAccountListPermissions(ctx context.Context, feature core.Featu
 
 	return permissions, nil
 }
+
+// UpgradeCloudAccountPermissionsWithoutOauth notifies Polaris that the
+// permissions for the GCP service account has been updated for the
+// specified Polaris cloud account id and feature.
+func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.UpgradeCloudAccountPermissionsWithoutOauth")
+
+	buf, err := a.GQL.Request(ctx, upgradeGcpCloudAccountPermissionsWithoutOauthQuery, struct {
+		ID      uuid.UUID    `json:"cloudAccountId"`
+		Feature core.Feature `json:"feature"`
+	}{ID: id, Feature: feature})
+	if err != nil {
+		return err
+	}
+
+	a.GQL.Log().Printf(log.Debug, "upgradeGcpCloudAccountPermissionsWithoutOauth(%q, %q): %s",
+		id, feature, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Status struct {
+					ProjectUUID uuid.UUID `json:"projectUuuid"`
+					Success     bool      `json:"success"`
+					Error       string    `json:"error"`
+				} `json:"status"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return err
+	}
+	if !payload.Data.Result.Status.Success {
+		return fmt.Errorf("polaris: %v", payload.Data.Result.Status.Error)
+	}
+
+	return nil
+}
