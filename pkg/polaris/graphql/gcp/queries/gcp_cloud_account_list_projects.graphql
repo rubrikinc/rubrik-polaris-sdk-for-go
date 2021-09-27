@@ -2,9 +2,9 @@ query RubrikPolarisSDKRequest($feature: CloudAccountFeatureEnum!, $projectSearch
     gcpCloudAccountListProjects(feature: $feature, projectStatusFilters: [], projectSearchText: $projectSearchText) {
         project {
             id
-            name,
-            projectId,
-            projectNumber,
+            name
+            projectId
+            projectNumber
             roleId
         }
         featureDetail {

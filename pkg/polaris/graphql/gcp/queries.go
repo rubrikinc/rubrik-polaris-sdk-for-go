@@ -58,9 +58,9 @@ var gcpCloudAccountListProjectsQuery = `query SdkGolangGcpCloudAccountListProjec
     gcpCloudAccountListProjects(feature: $feature, projectStatusFilters: [], projectSearchText: $projectSearchText) {
         project {
             id
-            name,
-            projectId,
-            projectNumber,
+            name
+            projectId
+            projectNumber
             roleId
         }
         featureDetail {

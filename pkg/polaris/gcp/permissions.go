@@ -109,14 +109,54 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 	return perms, nil
 }
 
-// PermissionsUpdated notifies Polaris that the permissions for the GCP
-// service account for the Polaris cloud account with the specified id has
-// been updated. The permissions should be updated when a feature has the
-// status StatusMissingPermissions. Updating the permissions is done outside
-// of this SDK. Note that features is alowed to be nil. When features is nil
-// all features are updated.
+// PermissionsUpdated notifies Polaris that the permissions for the GCP service
+// account for the Polaris cloud account with the specified id has been
+// updated. The permissions should be updated when a feature has the status
+// StatusMissingPermissions. Updating the permissions is done outside of this
+// SDK. The features parameter is alowed to be nil. When features is
+// nil all features are updated. Note that Polaris is only notified about
+// features with status StatusMissingPermissions.
 func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
 	a.gql.Log().Print(log.Trace, "polaris/gcp.PermissionsUpdated")
+
+	featureSet := make(map[core.Feature]struct{})
+	for _, feature := range features {
+		featureSet[feature] = struct{}{}
+	}
+
+	account, err := a.Project(ctx, id, core.FeatureAll)
+	if err != nil {
+		return err
+	}
+
+	for _, feature := range account.Features {
+		if feature.Status != core.StatusMissingPermissions {
+			continue
+		}
+
+		// Check that the feature is in the feature set unless the set is
+		// empty which is when all features should be updated.
+		if _, ok := featureSet[feature.Name]; len(featureSet) > 0 && !ok {
+			continue
+		}
+
+		err := gcp.Wrap(a.gql).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// PermissionsUpdatedForDefault notifies Polaris that the permissions for the
+// default GCP service account has been updated. The permissions should be
+// updated when a feature has the status StatusMissingPermissions. Updating the
+// permissions is done outside of the SDK. The features parameter is alowed to
+// be nil. When features is nil all features are updated. Note that Polaris is
+// only notified about features with status StatusMissingPermissions.
+func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.Feature) error {
+	a.gql.Log().Print(log.Trace, "polaris/gcp.PermissionsUpdatedForDefault")
 
 	featureSet := make(map[core.Feature]struct{})
 	for _, feature := range features {
@@ -129,6 +169,10 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 	}
 
 	for _, account := range accounts {
+		if !account.DefaultServiceAccount {
+			continue
+		}
+
 		for _, feature := range account.Features {
 			if feature.Status != core.StatusMissingPermissions {
 				continue

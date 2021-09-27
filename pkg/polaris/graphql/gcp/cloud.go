@@ -31,13 +31,15 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// CloudAccount represents a Polaris Cloud Account for GCP.
+// CloudAccount represents a Polaris Cloud Account for GCP. If UseGlobalConfig
+// is true the cloud account depends on the default service account.
 type CloudAccount struct {
-	ID            uuid.UUID `json:"id"`
-	Name          string    `json:"name"`
-	ProjectID     string    `json:"projectID"`
-	ProjectNumber int64     `json:"projectNumber"`
-	RoleID        string    `json:"roleId"`
+	ID              uuid.UUID `json:"id"`
+	Name            string    `json:"name"`
+	ProjectID       string    `json:"projectID"`
+	ProjectNumber   int64     `json:"projectNumber"`
+	RoleID          string    `json:"roleId"`
+	UseGlobalConfig bool      `json:"useGlobalConfig"`
 }
 
 // Feature represents a Polaris Cloud Account feature for GCP, e.g Cloud Native

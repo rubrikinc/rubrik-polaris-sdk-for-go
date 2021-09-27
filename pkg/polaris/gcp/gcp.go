@@ -48,14 +48,16 @@ func NewAPI(gql *graphql.Client) API {
 	return API{Version: gql.Version, gql: gql}
 }
 
-// CloudAccount for Google Cloud Platform projects.
+// CloudAccount for Google Cloud Platform projects. If DefaultServiceAccount is
+// true the cloud account depends on the default service account.
 type CloudAccount struct {
-	ID               uuid.UUID
-	NativeID         string
-	Name             string
-	ProjectNumber    int64
-	OrganizationName string
-	Features         []Feature
+	ID                    uuid.UUID
+	NativeID              string
+	Name                  string
+	ProjectNumber         int64
+	OrganizationName      string
+	DefaultServiceAccount bool
+	Features              []Feature
 }
 
 // Feature returns the specified feature from the CloudAccount's features.
@@ -132,10 +134,11 @@ func (a API) projects(ctx context.Context, feature core.Feature, filter string) 
 	accounts := make([]CloudAccount, 0, len(accountsWithFeature))
 	for _, accountWithFeature := range accountsWithFeature {
 		accounts = append(accounts, CloudAccount{
-			ID:            accountWithFeature.Account.ID,
-			NativeID:      accountWithFeature.Account.ProjectID,
-			Name:          accountWithFeature.Account.Name,
-			ProjectNumber: accountWithFeature.Account.ProjectNumber,
+			ID:                    accountWithFeature.Account.ID,
+			NativeID:              accountWithFeature.Account.ProjectID,
+			Name:                  accountWithFeature.Account.Name,
+			ProjectNumber:         accountWithFeature.Account.ProjectNumber,
+			DefaultServiceAccount: accountWithFeature.Account.UseGlobalConfig,
 			Features: []Feature{{
 				Name:   accountWithFeature.Feature.Name,
 				Status: accountWithFeature.Feature.Status,
@@ -286,6 +289,9 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, feature core.F
 	}
 	if options.name != "" {
 		config.name = options.name
+	}
+	if options.orgName != "" {
+		config.orgName = options.orgName
 	}
 
 	// If we got a service account we check that it has all the permissions
