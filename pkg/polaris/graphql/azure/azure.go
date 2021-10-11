@@ -223,8 +223,8 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 		return err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "setAzureCloudAccountCustomerAppCredentials(%q, %q, %q, %q, %q, %q): %s", cloud, appID, appName,
-		appSecretKey, appTenantID, appTenantDomain, string(buf))
+	a.GQL.Log().Printf(log.Debug, "setAzureCloudAccountCustomerAppCredentials(%q, %q, %q, \"<REDACTED>\", %q, %q): %s", cloud,
+		appID, appName, appTenantID, appTenantDomain, string(buf))
 
 	var payload struct {
 		Data struct {
