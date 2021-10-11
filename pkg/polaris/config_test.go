@@ -5,20 +5,20 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 )
 
 // requireEnv skips the current test if specified environment variable is not
 // defined or false according to the definition given by strconv.ParseBool.
-func requireEnv(t *testing.T, env string) {
+func requireEnv(t *testing.T, env string, delay time.Duration) {
 	val := os.Getenv(env)
-
-	n, err := strconv.ParseInt(val, 10, 64)
-	if err == nil && n > 0 {
-		return
-	}
 
 	b, err := strconv.ParseBool(val)
 	if err == nil && b {
+		if delay > 0 {
+			time.Sleep(delay)
+		}
+
 		return
 	}
 
