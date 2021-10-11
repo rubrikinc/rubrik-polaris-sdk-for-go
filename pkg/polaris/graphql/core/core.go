@@ -218,7 +218,7 @@ func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Durat
 
 // DeploymentVersion returns the deployed version of Polaris.
 func (a API) DeploymentVersion(ctx context.Context) (string, error) {
-	a.GQL.Log().Print(log.Trace, "graphql.Client.DeploymentVersion")
+	a.GQL.Log().Print(log.Trace, "polaris/graphql.Client.DeploymentVersion")
 
 	buf, err := a.GQL.Request(ctx, deploymentVersionQuery, struct{}{})
 	if err != nil {
