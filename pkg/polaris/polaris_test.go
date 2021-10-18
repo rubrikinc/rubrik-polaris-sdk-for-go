@@ -30,6 +30,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
@@ -40,18 +41,21 @@ import (
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+// testDelay is the idle time between each test. Executing the test steps too
+// fast in succession causes the auth service to respond with status code 503.
+const testDelay = 10 * time.Second
+
 // requireEnv skips the current test if specified environment variable is not
 // defined or false according to the definition given by strconv.ParseBool.
-func requireEnv(t *testing.T, env string) {
+func requireEnv(t *testing.T, env string, delay time.Duration) {
 	val := os.Getenv(env)
-
-	n, err := strconv.ParseInt(val, 10, 64)
-	if err == nil && n > 0 {
-		return
-	}
 
 	b, err := strconv.ParseBool(val)
 	if err == nil && b {
+		if delay > 0 {
+			time.Sleep(delay)
+		}
+
 		return
 	}
 
@@ -111,7 +115,7 @@ func loadTestAwsAccount() (testAwsAccount, error) {
 // Note that between the project has been added and it has been removed we
 // never fail fatally to allow the project to be removed in case of an error.
 func TestAwsAccountAddAndRemove(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION", testDelay)
 
 	ctx := context.Background()
 
@@ -214,7 +218,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 // Note that between the project has been added and it has been removed we
 // never fail fatally to allow the project to be removed in case of an error.
 func TestAwsExocompute(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION", testDelay)
 
 	ctx := context.Background()
 
@@ -396,7 +400,7 @@ func loadTestAzureSubscription() (testAzureSubscription, error) {
 // Between the account has been added and it has been removed we never fail
 // fatally to allow the account to be removed in case of an error.
 func TestAzureSubscriptionAddAndRemove(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION", testDelay)
 
 	ctx := context.Background()
 
@@ -506,7 +510,7 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 // Between the account has been added and it has been removed we never fail
 // fatally to allow the account to be removed in case of an error.
 func TestAzureExocompute(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION", testDelay)
 
 	ctx := context.Background()
 
@@ -647,7 +651,7 @@ func TestAzureExocompute(t *testing.T) {
 //   * TEST_INTEGRATION=1
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 func TestAzurePermissions(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION", testDelay)
 
 	ctx := context.Background()
 
@@ -703,7 +707,7 @@ type testGcpProject struct {
 // Note that between the project has been added and it has been removed we
 // never fail fatally to allow the project to be removed in case of an error.
 func TestGcpProjectAddAndRemove(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION", testDelay)
 
 	ctx := context.Background()
 
@@ -793,7 +797,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 // Note that between the project has been added and it has been removed we
 // never fail fatally to allow the project to be removed in case of an error.
 func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION", testDelay)
 
 	ctx := context.Background()
 
@@ -880,7 +884,7 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 //   * TEST_INTEGRATION=1
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 func TestGcpPermissions(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION")
+	requireEnv(t, "TEST_INTEGRATION", testDelay)
 
 	ctx := context.Background()
 

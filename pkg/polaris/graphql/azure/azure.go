@@ -43,6 +43,21 @@ const (
 	PublicCloud Cloud = "AZUREPUBLICCLOUD"
 )
 
+// ProtectionFeature represents the protection features of an Azure cloud
+// account.
+type ProtectionFeature string
+
+const (
+	// Azure SQL Database.
+	SQLDB ProtectionFeature = "SQL_DB"
+
+	// Azure SQL Managed Instance.
+	SQLMI ProtectionFeature = "SQL_MI"
+
+	// Azure Virtual Machine.
+	VM ProtectionFeature = "VM"
+)
+
 // Region represents an Azure region in Polaris.
 type Region string
 
@@ -225,8 +240,8 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 		return err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "setAzureCloudAccountCustomerAppCredentials(%q, %q, %q, %q, %q, %q): %s", cloud, appID, appName,
-		appSecretKey, appTenantID, appTenantDomain, string(buf))
+	a.GQL.Log().Printf(log.Debug, "setAzureCloudAccountCustomerAppCredentials(%q, %q, %q, \"<REDACTED>\", %q, %q): %s", cloud,
+		appID, appName, appTenantID, appTenantDomain, string(buf))
 
 	var payload struct {
 		Data struct {

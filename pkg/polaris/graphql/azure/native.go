@@ -93,18 +93,20 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 // disable the native subscription with the specified Polaris native
 // subscription id. If deleteSnapshots is true the snapshots are deleted.
 // Returns the Polaris task chain id.
-func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id uuid.UUID, deleteSnapshots bool) (uuid.UUID, error) {
+func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id uuid.UUID, feature ProtectionFeature, deleteSnapshots bool) (uuid.UUID, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.StartDisableNativeSubscriptionProtectionJob")
 
 	buf, err := a.GQL.Request(ctx, startDisableAzureNativeSubscriptionProtectionJobQuery, struct {
-		ID              uuid.UUID `json:"azureSubscriptionRubrikId"`
-		DeleteSnapshots bool      `json:"shouldDeleteNativeSnapshots"`
-	}{ID: id, DeleteSnapshots: deleteSnapshots})
+		ID              uuid.UUID         `json:"azureSubscriptionRubrikId"`
+		DeleteSnapshots bool              `json:"shouldDeleteNativeSnapshots"`
+		Feature         ProtectionFeature `json:"azureNativeProtectionFeature"`
+	}{ID: id, DeleteSnapshots: deleteSnapshots, Feature: feature})
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "startDisableAzureNativeSubscriptionProtectionJob(%q, %t): %s", id, deleteSnapshots, string(buf))
+	a.GQL.Log().Printf(log.Debug, "startDisableAzureNativeSubscriptionProtectionJob(%q, %q, %t): %s",
+		id, feature, deleteSnapshots, string(buf))
 
 	var payload struct {
 		Data struct {
