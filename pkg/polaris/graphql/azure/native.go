@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -93,18 +94,23 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 // disable the native subscription with the specified Polaris native
 // subscription id. If deleteSnapshots is true the snapshots are deleted.
 // Returns the Polaris task chain id.
-func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id uuid.UUID, deleteSnapshots bool) (uuid.UUID, error) {
+func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id uuid.UUID, feature ProtectionFeature, deleteSnapshots bool) (uuid.UUID, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.StartDisableNativeSubscriptionProtectionJob")
 
-	buf, err := a.GQL.Request(ctx, startDisableAzureNativeSubscriptionProtectionJobQuery, struct {
-		ID              uuid.UUID `json:"azureSubscriptionRubrikId"`
-		DeleteSnapshots bool      `json:"shouldDeleteNativeSnapshots"`
-	}{ID: id, DeleteSnapshots: deleteSnapshots})
+	query := startDisableAzureNativeSubscriptionProtectionJobQuery
+	if graphql.VersionOlderThan(a.Version, "master-42526", " v20211019") {
+		query = startDisableAzureNativeSubscriptionProtectionJobV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ID              uuid.UUID         `json:"azureSubscriptionRubrikId"`
+		DeleteSnapshots bool              `json:"shouldDeleteNativeSnapshots"`
+		Feature         ProtectionFeature `json:"azureNativeProtectionFeature"`
+	}{ID: id, DeleteSnapshots: deleteSnapshots, Feature: feature})
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "startDisableAzureNativeSubscriptionProtectionJob(%q, %t): %s", id, deleteSnapshots, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q, %t): %s", graphql.QueryName(query), id, feature, deleteSnapshots, string(buf))
 
 	var payload struct {
 		Data struct {

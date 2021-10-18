@@ -1,0 +1,8 @@
+mutation RubrikPolarisSDKRequest($azureSubscriptionRubrikId: UUID!, $shouldDeleteNativeSnapshots: Boolean!) {
+    result: startDisableAzureNativeSubscriptionProtectionJob(input: {
+        azureSubscriptionRubrikId:    $azureSubscriptionRubrikId,
+        shouldDeleteNativeSnapshots:  $shouldDeleteNativeSnapshots
+    }) {
+         jobId
+     }
+ }
