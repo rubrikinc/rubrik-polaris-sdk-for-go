@@ -41,6 +41,21 @@ const (
 	PublicCloud Cloud = "AZUREPUBLICCLOUD"
 )
 
+// ProtectionFeature represents the protection features of an Azure cloud
+// account.
+type ProtectionFeature string
+
+const (
+	// Azure SQL Database.
+	SQLDB ProtectionFeature = "SQL_DB"
+
+	// Azure SQL Managed Instance.
+	SQLMI ProtectionFeature = "SQL_MI"
+
+	// Azure Virtual Machine.
+	VM ProtectionFeature = "VM"
+)
+
 // Region represents an Azure region in Polaris.
 type Region string
 

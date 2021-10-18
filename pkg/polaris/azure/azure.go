@@ -324,7 +324,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, deleteSnap
 			return fmt.Errorf("polaris: account: %w", graphql.ErrNotFound)
 		}
 
-		jobID, err := azure.Wrap(a.gql).StartDisableNativeSubscriptionProtectionJob(ctx, nativeID, deleteSnapshots)
+		jobID, err := azure.Wrap(a.gql).StartDisableNativeSubscriptionProtectionJob(ctx, nativeID, azure.VM, deleteSnapshots)
 		if err != nil {
 			return err
 		}

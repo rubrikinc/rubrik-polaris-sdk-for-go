@@ -223,10 +223,21 @@ var setAzureCloudAccountCustomerAppCredentialsQuery = `mutation SdkGolangSetAzur
 }`
 
 // startDisableAzureNativeSubscriptionProtectionJob GraphQL query
-var startDisableAzureNativeSubscriptionProtectionJobQuery = `mutation SdkGolangStartDisableAzureNativeSubscriptionProtectionJob($azureSubscriptionRubrikId: UUID!, $shouldDeleteNativeSnapshots: Boolean!) {
+var startDisableAzureNativeSubscriptionProtectionJobQuery = `mutation SdkGolangStartDisableAzureNativeSubscriptionProtectionJob($azureSubscriptionRubrikId: UUID!, $shouldDeleteNativeSnapshots: Boolean!, $azureNativeProtectionFeature: AzureNativeProtectionFeature!) {
     result: startDisableAzureNativeSubscriptionProtectionJob(input: {
-        azureSubscriptionRubrikId:   $azureSubscriptionRubrikId,
-        shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots
+        azureSubscriptionRubrikId:    $azureSubscriptionRubrikId,
+        shouldDeleteNativeSnapshots:  $shouldDeleteNativeSnapshots,
+        azureNativeProtectionFeature: $azureNativeProtectionFeature,
+    }) {
+         jobId
+     }
+ }`
+
+// startDisableAzureNativeSubscriptionProtectionJobV0 GraphQL query
+var startDisableAzureNativeSubscriptionProtectionJobV0Query = `mutation SdkGolangStartDisableAzureNativeSubscriptionProtectionJobV0($azureSubscriptionRubrikId: UUID!, $shouldDeleteNativeSnapshots: Boolean!) {
+    result: startDisableAzureNativeSubscriptionProtectionJob(input: {
+        azureSubscriptionRubrikId:    $azureSubscriptionRubrikId,
+        shouldDeleteNativeSnapshots:  $shouldDeleteNativeSnapshots
     }) {
          jobId
      }
