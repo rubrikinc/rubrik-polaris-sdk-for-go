@@ -62,8 +62,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Name: %v, ProjectID: %v, ProjectNumber: %v\n", account.Name, account.ID,
-		account.ProjectNumber)
+	fmt.Printf("Name: %v, ProjectID: %v, ProjectNumber: %v, DefaultServiceAccount: %v\n",
+		account.Name, account.ID, account.ProjectNumber, account.DefaultServiceAccount)
 	for _, feature := range account.Features {
 		fmt.Printf("Feature: %v, Status: %v\n", feature.Name, feature.Status)
 	}

@@ -62,6 +62,7 @@ var gcpCloudAccountListProjectsQuery = `query SdkGolangGcpCloudAccountListProjec
             projectId
             projectNumber
             roleId
+            usesGlobalConfig
         }
         featureDetail {
             feature

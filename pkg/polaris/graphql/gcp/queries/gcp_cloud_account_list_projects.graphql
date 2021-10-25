@@ -6,6 +6,7 @@ query RubrikPolarisSDKRequest($feature: CloudAccountFeatureEnum!, $projectSearch
             projectId
             projectNumber
             roleId
+            usesGlobalConfig
         }
         featureDetail {
             feature

@@ -138,7 +138,7 @@ func (a API) projects(ctx context.Context, feature core.Feature, filter string) 
 			NativeID:              accountWithFeature.Account.ProjectID,
 			Name:                  accountWithFeature.Account.Name,
 			ProjectNumber:         accountWithFeature.Account.ProjectNumber,
-			DefaultServiceAccount: accountWithFeature.Account.UseGlobalConfig,
+			DefaultServiceAccount: accountWithFeature.Account.UsesGlobalConfig,
 			Features: []Feature{{
 				Name:   accountWithFeature.Feature.Name,
 				Status: accountWithFeature.Feature.Status,
