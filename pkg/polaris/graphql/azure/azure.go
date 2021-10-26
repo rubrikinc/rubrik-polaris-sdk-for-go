@@ -20,6 +20,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+// Package azure provides a low level interface to the Azure GraphQL queries
+// provided by the Polaris platform.
 package azure
 
 import (

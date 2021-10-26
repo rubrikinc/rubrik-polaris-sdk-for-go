@@ -67,10 +67,31 @@ func (c *Client) GCP() gcp.API {
 	return gcp.NewAPI(c.gql)
 }
 
+// Account represents a Polaris account. Implemented by UserAccount and
+// ServiceAccount.
+type Account interface {
+	isAccount()
+}
+
 // NewClient returns a new Client from the specified Account. The log level of
 // the given logger can be changed at runtime using the environment variable
 // RUBRIK_POLARIS_LOGLEVEL.
 func NewClient(ctx context.Context, account Account, logger log.Logger) (*Client, error) {
+	if serviceAccount, ok := account.(*ServiceAccount); ok {
+		return newClientFromServiceAccount(ctx, serviceAccount, logger)
+	}
+
+	if userAccount, ok := account.(*UserAccount); ok {
+		return newClientFromUserAccount(ctx, userAccount, logger)
+	}
+
+	return nil, errors.New("polaris: invalid account type")
+}
+
+// newClientFromUserAccount returns a new Client from the specified
+// UserAccount. The log level of the given logger can be changed at runtime
+// using the environment variable RUBRIK_POLARIS_LOGLEVEL.
+func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger log.Logger) (*Client, error) {
 	apiURL := account.URL
 	if apiURL == "" {
 		apiURL = fmt.Sprintf("https://%s.my.rubrik.com/api", account.Name)
@@ -117,10 +138,10 @@ func NewClient(ctx context.Context, account Account, logger log.Logger) (*Client
 	return client, nil
 }
 
-// NewClientFromServiceAccount returns a new Client from the specified
+// newClientFromServiceAccount returns a new Client from the specified
 // ServiceAccount. The log level of the given logger can be changed at runtime
 // using the environment variable RUBRIK_POLARIS_LOGLEVEL.
-func NewClientFromServiceAccount(ctx context.Context, account ServiceAccount, logger log.Logger) (*Client, error) {
+func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, logger log.Logger) (*Client, error) {
 	if account.Name == "" {
 		return nil, errors.New("polaris: invalid name")
 	}

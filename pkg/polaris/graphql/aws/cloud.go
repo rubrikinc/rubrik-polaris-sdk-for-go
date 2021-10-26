@@ -45,11 +45,11 @@ type CloudAccount struct {
 // Feature represents a Polaris Cloud Account feature for AWS, e.g Cloud Native
 // Protection.
 type Feature struct {
-	Name     core.CloudAccountFeature `json:"feature"`
-	Regions  []Region                 `json:"awsRegions"`
-	RoleArn  string                   `json:"roleArn"`
-	StackArn string                   `json:"stackArn"`
-	Status   core.CloudAccountStatus  `json:"status"`
+	Name     core.Feature `json:"feature"`
+	Regions  []Region     `json:"awsRegions"`
+	RoleArn  string       `json:"roleArn"`
+	StackArn string       `json:"stackArn"`
+	Status   core.Status  `json:"status"`
 }
 
 // FeatureVersion maps a Polaris Cloud Account feature to a version number.
@@ -67,13 +67,13 @@ type CloudAccountWithFeatures struct {
 
 // CloudAccountWithFeatures returns the cloud account with the specified
 // Polaris cloud account id.
-func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature core.CloudAccountFeature) (CloudAccountWithFeatures, error) {
+func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature core.Feature) (CloudAccountWithFeatures, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.CloudAccountWithFeatures")
 
 	buf, err := a.GQL.Request(ctx, awsCloudAccountWithFeaturesQuery, struct {
-		ID       uuid.UUID                  `json:"cloudAccountId"`
-		Features []core.CloudAccountFeature `json:"features"`
-	}{ID: id, Features: []core.CloudAccountFeature{feature}})
+		ID       uuid.UUID      `json:"cloudAccountId"`
+		Features []core.Feature `json:"features"`
+	}{ID: id, Features: []core.Feature{feature}})
 	if err != nil {
 		return CloudAccountWithFeatures{}, err
 	}
@@ -95,12 +95,12 @@ func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature
 // CloudAccountsWithFeatures returns the cloud accounts matching the specified
 // filter. The filter can be used to search for AWS account id, account name
 // and role arn.
-func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.CloudAccountFeature, filter string) ([]CloudAccountWithFeatures, error) {
+func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountWithFeatures, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.CloudAccountsWithFeatures")
 
 	buf, err := a.GQL.Request(ctx, allAwsCloudAccountsWithFeaturesQuery, struct {
-		Feature core.CloudAccountFeature `json:"feature"`
-		Filter  string                   `json:"columnSearchFilter"`
+		Feature core.Feature `json:"feature"`
+		Filter  string       `json:"columnSearchFilter"`
 	}{Filter: filter, Feature: feature})
 	if err != nil {
 		return nil, err
@@ -135,14 +135,14 @@ type CloudAccountInitiate struct {
 // account to Polaris. The returned CloudAccountInitiate value must be passed
 // on to FinalizeCloudAccountProtection which is the next step in the process
 // of adding an AWS account to Polaris.
-func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string, feature core.CloudAccountFeature) (CloudAccountInitiate, error) {
+func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string, feature core.Feature) (CloudAccountInitiate, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.ValidateAndCreateCloudAccount")
 
 	buf, err := a.GQL.Request(ctx, validateAndCreateAwsCloudAccountQuery, struct {
-		ID       string                     `json:"nativeId"`
-		Name     string                     `json:"accountName"`
-		Features []core.CloudAccountFeature `json:"features"`
-	}{ID: id, Name: name, Features: []core.CloudAccountFeature{feature}})
+		ID       string         `json:"nativeId"`
+		Name     string         `json:"accountName"`
+		Features []core.Feature `json:"features"`
+	}{ID: id, Name: name, Features: []core.Feature{feature}})
 	if err != nil {
 		return CloudAccountInitiate{}, err
 	}
@@ -185,17 +185,17 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 // specified AWS account to Polaris. The message returned by the GraphQL API is
 // converted into a Go error. After this function a CloudFormation stack must
 // be created using the information returned by ValidateAndCreateCloudAccount.
-func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string, feature core.CloudAccountFeature, regions []Region, init CloudAccountInitiate) error {
+func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string, feature core.Feature, regions []Region, init CloudAccountInitiate) error {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.FinalizeCloudAccountProtection")
 
 	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountProtectionQuery, struct {
-		ID             string                   `json:"nativeId"`
-		Name           string                   `json:"accountName"`
-		Regions        []Region                 `json:"awsRegions,omitempty"`
-		ExternalID     uuid.UUID                `json:"externalId"`
-		FeatureVersion []FeatureVersion         `json:"featureVersion"`
-		Feature        core.CloudAccountFeature `json:"feature"`
-		StackName      string                   `json:"stackName"`
+		ID             string           `json:"nativeId"`
+		Name           string           `json:"accountName"`
+		Regions        []Region         `json:"awsRegions,omitempty"`
+		ExternalID     uuid.UUID        `json:"externalId"`
+		FeatureVersion []FeatureVersion `json:"featureVersion"`
+		Feature        core.Feature     `json:"feature"`
+		StackName      string           `json:"stackName"`
 	}{ID: id, Name: name, Regions: regions, ExternalID: init.ExternalID, FeatureVersion: init.FeatureVersions, Feature: feature, StackName: init.StackName})
 	if err != nil {
 		return err
@@ -231,18 +231,18 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string
 // PrepareCloudAccountDeletion prepares the deletion of the cloud account
 // identified by the specified Polaris cloud account id.
 // FinalizeCloudAccountDeletion is the next step in the process.
-func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feature core.CloudAccountFeature) (cloudFormationURL string, err error) {
+func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feature core.Feature) (cloudFormationURL string, err error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.PrepareCloudAccountDeletion")
 
 	buf, err := a.GQL.Request(ctx, prepareAwsCloudAccountDeletionQuery, struct {
-		ID      uuid.UUID                `json:"cloudAccountId"`
-		Feature core.CloudAccountFeature `json:"feature"`
+		ID      uuid.UUID    `json:"cloudAccountId"`
+		Feature core.Feature `json:"feature"`
 	}{ID: id, Feature: feature})
 	if err != nil {
 		return "", err
 	}
 
-	a.GQL.Log().Printf(log.Debug, "prepareAwsCloudAccountDeletion(%q): %s", id, string(buf))
+	a.GQL.Log().Printf(log.Debug, "prepareAwsCloudAccountDeletion(%q, %q): %s", id, feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -264,12 +264,12 @@ func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feat
 // FinalizeCloudAccountDeletion finalizes the deletion of the cloud account
 // identified by the specified Polaris cloud account id. The message returned
 // by the GraphQL API call is converted into a Go error.
-func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, feature core.CloudAccountFeature) error {
+func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, feature core.Feature) error {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.FinalizeCloudAccountDeletion")
 
 	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountDeletionQuery, struct {
-		ID      uuid.UUID                `json:"cloudAccountId"`
-		Feature core.CloudAccountFeature `json:"feature"`
+		ID      uuid.UUID    `json:"cloudAccountId"`
+		Feature core.Feature `json:"feature"`
 	}{ID: id, Feature: feature})
 	if err != nil {
 		return err
@@ -299,14 +299,14 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 // UpdateCloudAccount updates the settings of the cloud account. The message
 // returned by the GraphQL API call is converted into a Go error. At this time
 // only the regions can be updated.
-func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAction, id uuid.UUID, feature core.CloudAccountFeature, regions []Region) error {
+func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAction, id uuid.UUID, feature core.Feature, regions []Region) error {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.UpdateCloudAccount")
 
 	buf, err := a.GQL.Request(ctx, updateAwsCloudAccountQuery, struct {
-		Action  core.CloudAccountAction  `json:"action"`
-		ID      uuid.UUID                `json:"cloudAccountId"`
-		Regions []Region                 `json:"awsRegions"`
-		Feature core.CloudAccountFeature `json:"feature"`
+		Action  core.CloudAccountAction `json:"action"`
+		ID      uuid.UUID               `json:"cloudAccountId"`
+		Regions []Region                `json:"awsRegions"`
+		Feature core.Feature            `json:"feature"`
 	}{Action: action, ID: id, Regions: regions, Feature: feature})
 	if err != nil {
 		return err
@@ -373,4 +373,35 @@ func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, regions Region) 
 	}
 
 	return payload.Data.VPCs, nil
+}
+
+// PrepareFeatureUpdateForAwsCloudAccount returns a CloudFormation URL and a
+// template URL from Polaris which can be used to update the CloudFormation
+// stack.
+func (a API) PrepareFeatureUpdateForAwsCloudAccount(ctx context.Context, id uuid.UUID, features []core.Feature) (cfmURL string, tmplURL string, err error) {
+	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.PrepareFeatureUpdateForAwsCloudAccount")
+
+	buf, err := a.GQL.Request(ctx, prepareFeatureUpdateForAwsCloudAccountQuery, struct {
+		ID       uuid.UUID      `json:"cloudAccountId"`
+		Features []core.Feature `json:"features"`
+	}{ID: id, Features: features})
+	if err != nil {
+		return "", "", err
+	}
+
+	a.GQL.Log().Printf(log.Debug, "prepareFeatureUpdateForAwsCloudAccount(%q, %v): %s", id, features, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				CloudFormationURL string `json:"cloudFormationUrl"`
+				TemplateURL       string `json:"templateUrl"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return "", "", err
+	}
+
+	return payload.Data.Result.CloudFormationURL, payload.Data.Result.TemplateURL, nil
 }

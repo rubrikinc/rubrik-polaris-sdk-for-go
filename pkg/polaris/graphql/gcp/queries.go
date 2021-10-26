@@ -58,10 +58,11 @@ var gcpCloudAccountListProjectsQuery = `query SdkGolangGcpCloudAccountListProjec
     gcpCloudAccountListProjects(feature: $feature, projectStatusFilters: [], projectSearchText: $projectSearchText) {
         project {
             id
-            name,
-            projectId,
-            projectNumber,
+            name
+            projectId
+            projectNumber
             roleId
+            usesGlobalConfig
         }
         featureDetail {
             feature
@@ -136,4 +137,18 @@ var gcpNativeProjectConnectionQuery = `query SdkGolangGcpNativeProjectConnection
 // gcpSetDefaultServiceAccountJwtConfig GraphQL query
 var gcpSetDefaultServiceAccountJwtConfigQuery = `mutation SdkGolangGcpSetDefaultServiceAccountJwtConfig($serviceAccountName: String!, $serviceAccountJWTConfig: String!) {
     gcpSetDefaultServiceAccountJwtConfig(serviceAccountJWTConfig: $serviceAccountJWTConfig, serviceAccountName: $serviceAccountName)
+}`
+
+// upgradeGcpCloudAccountPermissionsWithoutOauth GraphQL query
+var upgradeGcpCloudAccountPermissionsWithoutOauthQuery = `mutation SdkGolangUpgradeGcpCloudAccountPermissionsWithoutOauth($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
+    result: upgradeGcpCloudAccountPermissionsWithoutOauth(input: {
+        cloudAccountId: $cloudAccountId,
+        feature:        $feature
+    }) {
+        status {
+            projectUuid
+            success
+            error
+        }
+    }
 }`

@@ -25,13 +25,15 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Example showing how to manage an AWS account with the Polaris Go SDK.
+// Example showing how to manage permissions for an Azure subscription with the
+// Polaris Go SDK.
 //
 // The Polaris service account key file identifying the Polaris account should
 // either be placed at ~/.rubrik/polaris-service-account.json or pointed out by
@@ -49,27 +51,35 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Add the AWS default account to Polaris. Usually resolved using the
-	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
-	// AWS_DEFAULT_REGION.
-	id, err := client.AWS().AddAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, aws.Regions("us-east-2"))
+	// List Azure permissions needed for features.
+	features := []core.Feature{core.FeatureCloudNativeProtection}
+	perms, err := client.Azure().Permissions(ctx, features)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// List the AWS accounts added to Polaris.
-	account, err := client.AWS().Account(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection)
+	fmt.Println("Permissions requried for Cloud Native Protection:")
+	for _, perm := range perms.Actions {
+		fmt.Println(perm)
+	}
+	for _, perm := range perms.NotActions {
+		fmt.Println(perm)
+	}
+	for _, perm := range perms.DataActions {
+		fmt.Println(perm)
+	}
+	for _, perm := range perms.NotDataActions {
+		fmt.Println(perm)
+	}
+
+	// Notify Polaris about updated permissions for the Cloud Native Protection
+	// feature of the already added subscription.
+	account, err := client.Azure().Subscription(ctx,
+		azure.SubscriptionID(uuid.MustParse("27dce22c-1b84-11ec-9992-a3d4a0eb7b90")), core.FeatureCloudNativeProtection)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
-	for _, feature := range account.Features {
-		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
-	}
-
-	// Remove the AWS account from Polaris.
-	err = client.AWS().RemoveAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, false)
+	err = client.Azure().PermissionsUpdated(ctx, azure.CloudAccountID(account.ID), features)
 	if err != nil {
 		log.Fatal(err)
 	}

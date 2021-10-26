@@ -24,14 +24,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
-	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -189,115 +185,6 @@ func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID,
 			NodeSecurityGroupId:    nodeSecurityGroupID,
 		}, nil
 	}
-}
-
-// EnableExocompute enables the exocompute feature for the account with the
-// specified id for the given regions. The account must already be added to
-// Polaris. Note that to disable the feature the account must be removed.
-// The returned error will be graphql.ErrAlreadyEnabled if the feature has
-// already been enabled for the specified account.
-func (a API) EnableExocompute(ctx context.Context, account AccountFunc, regions ...string) error {
-	a.gql.Log().Print(log.Trace, "polaris/aws.EnableExocompute")
-
-	if account == nil {
-		return errors.New("polaris: account is not allowed to be nil")
-	}
-	config, err := account(ctx)
-	if err != nil {
-		return err
-	}
-
-	regs, err := aws.ParseRegions(regions)
-	if err != nil {
-		return err
-	}
-
-	akkount, err := a.Account(ctx, AccountID(config.id), core.AllFeatures)
-	if err != nil {
-		return err
-	}
-
-	if _, ok := akkount.Feature(core.Exocompute); ok {
-		return fmt.Errorf("polaris: feature %w", graphql.ErrAlreadyEnabled)
-	}
-
-	accountInit, err := aws.Wrap(a.gql).ValidateAndCreateCloudAccount(ctx, akkount.NativeID,
-		akkount.Name, core.Exocompute)
-	if err != nil {
-		return err
-	}
-
-	err = aws.Wrap(a.gql).FinalizeCloudAccountProtection(ctx, akkount.NativeID, akkount.Name,
-		core.Exocompute, regs, accountInit)
-	if err != nil {
-		return err
-	}
-
-	a.gql.Log().Printf(log.Debug, "updating CloudFormation stack: %v", accountInit.StackName)
-
-	err = awsUpdateStack(ctx, config.config, accountInit.StackName, accountInit.TemplateURL)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// DisableExocompute disables the exocompute feature for the account with the
-// specified polaris cloud account id.
-func (a API) DisableExocompute(ctx context.Context, account AccountFunc) error {
-	a.gql.Log().Print(log.Trace, "polaris/aws.DisableExocompute")
-
-	if account == nil {
-		return errors.New("polaris: account is not allowed to be nil")
-	}
-	config, err := account(ctx)
-	if err != nil {
-		return err
-	}
-
-	accountID, err := a.toCloudAccountID(ctx, AccountID(config.id))
-	if err != nil {
-		return err
-	}
-
-	jobID, err := aws.Wrap(a.gql).StartExocomputeDisableJob(ctx, accountID)
-	if err != nil {
-		return err
-	}
-
-	state, err := core.Wrap(a.gql).WaitForTaskChain(ctx, jobID, 10*time.Second)
-	if err != nil {
-		return err
-	}
-	if state != core.TaskChainSucceeded {
-		return fmt.Errorf("polaris: taskchain failed: jobID=%v, state=%v", jobID, state)
-	}
-
-	cfmURL, err := aws.Wrap(a.gql).PrepareCloudAccountDeletion(ctx, accountID, core.Exocompute)
-	if err != nil {
-		return err
-	}
-
-	i := strings.LastIndex(cfmURL, "#/stack/update") + 1
-	if i == 0 {
-		return errors.New("polaris: CloudFormation url does not contain #/stack/update")
-	}
-
-	u, err := url.Parse(cfmURL[i:])
-	if err != nil {
-		return err
-	}
-	stackID := u.Query().Get("stackId")
-	tmplURL := u.Query().Get("templateURL")
-
-	a.gql.Log().Printf(log.Debug, "updating CloudFormation stack: %s", stackID)
-	err = awsUpdateStack(ctx, config.config, stackID, tmplURL)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // toExocomputeConfig converts an polaris/graphql/aws exocompute config to an

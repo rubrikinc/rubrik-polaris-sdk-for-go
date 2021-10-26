@@ -20,12 +20,14 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+// Package core provides a low level interface to core GraphQL queries provided
+// by the Polaris platform. E.g. task chains and enum definitions.
 package core
 
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -45,56 +47,69 @@ const (
 	UpdateRegions       CloudAccountAction = "UPDATE_REGIONS"
 )
 
-// CloudAccountFeature represents a Polaris cloud account feature.
-type CloudAccountFeature string
+// Feature represents a Polaris cloud account feature.
+type Feature string
 
 const (
-	InvalidFeature        CloudAccountFeature = ""
-	AllFeatures           CloudAccountFeature = "ALL"
-	AppFlows              CloudAccountFeature = "APP_FLOWS"
-	Archival              CloudAccountFeature = "ARCHIVAL"
-	CloudAccounts         CloudAccountFeature = "CLOUDACCOUNTS"
-	CloudNativeArchival   CloudAccountFeature = "CLOUD_NATIVE_ARCHIVAL"
-	CloudNativeProtection CloudAccountFeature = "CLOUD_NATIVE_PROTECTION"
-	Exocompute            CloudAccountFeature = "EXOCOMPUTE"
-	GCPSharedVPCHost      CloudAccountFeature = "GCP_SHARED_VPC_HOST"
-	RDSProtection         CloudAccountFeature = "RDS_PROTECTION"
+	FeatureInvalid               Feature = ""
+	FeatureAll                   Feature = "ALL"
+	FeatureAppFlows              Feature = "APP_FLOWS"
+	FeatureArchival              Feature = "ARCHIVAL"
+	FeatureCloudAccounts         Feature = "CLOUDACCOUNTS"
+	FeatureCloudNativeArchival   Feature = "CLOUD_NATIVE_ARCHIVAL"
+	FeatureCloudNativeProtection Feature = "CLOUD_NATIVE_PROTECTION"
+	FeatureExocompute            Feature = "EXOCOMPUTE"
+	FeatureGCPSharedVPCHost      Feature = "GCP_SHARED_VPC_HOST"
+	FeatureRDSProtection         Feature = "RDS_PROTECTION"
 )
 
-var validFeatures = map[CloudAccountFeature]struct{}{
-	InvalidFeature:        {},
-	AllFeatures:           {},
-	AppFlows:              {},
-	Archival:              {},
-	CloudAccounts:         {},
-	CloudNativeArchival:   {},
-	CloudNativeProtection: {},
-	Exocompute:            {},
-	GCPSharedVPCHost:      {},
-	RDSProtection:         {},
+var validFeatures = map[Feature]struct{}{
+	FeatureAll:                   {},
+	FeatureAppFlows:              {},
+	FeatureArchival:              {},
+	FeatureCloudAccounts:         {},
+	FeatureCloudNativeArchival:   {},
+	FeatureCloudNativeProtection: {},
+	FeatureExocompute:            {},
+	FeatureGCPSharedVPCHost:      {},
+	FeatureRDSProtection:         {},
 }
 
-// ParseFeature returns the CloudAccountFeature matching the given feature
-// name. Case insensitive.
-func ParseFeature(feature string) (CloudAccountFeature, error) {
-	f := CloudAccountFeature(strings.ToUpper(feature))
+// FormatFeature returns the Feature as a string using lower case and with
+// hyphen as a separator.
+func FormatFeature(feature Feature) string {
+	return strings.ReplaceAll(strings.ToLower(string(feature)), "_", "-")
+}
+
+// ParseFeature returns the Feature matching the given feature name. Case
+// insensitive.
+func ParseFeature(feature string) (Feature, error) {
+	feature = strings.ReplaceAll(feature, "-", "_")
+
+	f := Feature(strings.ToUpper(feature))
 	if _, ok := validFeatures[f]; ok {
 		return f, nil
 	}
 
-	return InvalidFeature, errors.New("polaris: invalid feature")
+	return FeatureInvalid, fmt.Errorf("polaris: invalid feature: %s", feature)
 }
 
-// CloudAccountStatus represents a Polaris cloud account status.
-type CloudAccountStatus string
+// Status represents a Polaris cloud account status.
+type Status string
 
 const (
-	Connected          CloudAccountStatus = "CONNECTED"
-	Connecting         CloudAccountStatus = "CONNECTING"
-	Disabled           CloudAccountStatus = "DISABLED"
-	Disconnected       CloudAccountStatus = "DISCONNECTED"
-	MissingPermissions CloudAccountStatus = "MISSING_PERMISSIONS"
+	StatusConnected          Status = "CONNECTED"
+	StatusConnecting         Status = "CONNECTING"
+	StatusDisabled           Status = "DISABLED"
+	StatusDisconnected       Status = "DISCONNECTED"
+	StatusMissingPermissions Status = "MISSING_PERMISSIONS"
 )
+
+// FormatStatus returns the Status as a string using lower case and with hyphen
+// as a separator.
+func FormatStatus(status Status) string {
+	return strings.ReplaceAll(strings.ToLower(string(status)), "_", "-")
+}
 
 // TaskChainState represents the state of a Polaris task chain.
 type TaskChainState string
@@ -203,7 +218,7 @@ func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Durat
 
 // DeploymentVersion returns the deployed version of Polaris.
 func (a API) DeploymentVersion(ctx context.Context) (string, error) {
-	a.GQL.Log().Print(log.Trace, "graphql.Client.DeploymentVersion")
+	a.GQL.Log().Print(log.Trace, "polaris/graphql.Client.DeploymentVersion")
 
 	buf, err := a.GQL.Request(ctx, deploymentVersionQuery, struct{}{})
 	if err != nil {

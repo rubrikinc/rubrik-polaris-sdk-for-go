@@ -39,7 +39,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClientFromServiceAccount(ctx, polAccount, &polaris_log.StandardLogger{})
+	client, err := polaris.NewClient(ctx, polAccount, &polaris_log.StandardLogger{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,20 +47,24 @@ func main() {
 	// Add the AWS default account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	accountID, err := client.AWS().AddAccount(ctx, aws.Default(), aws.Regions("us-east-2", "us-west-2"))
+	accountID, err := client.AWS().AddAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, aws.Regions("us-east-2", "us-west-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Printf("Account ID: %v\n", accountID)
 
-	// Enable the exocompute feature for the account.
-	err = client.AWS().EnableExocompute(ctx, aws.Default(), "us-east-2")
+	// Enable the exocompute feature for the account. Note that the
+	// cnpAccountID and exoAccountID should be the same, they refer to the same
+	// Polaris cloud account.
+	exoAccountID, err := client.AWS().AddAccount(ctx, aws.Default(), core.FeatureExocompute, aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	account, err := client.AWS().Account(ctx, aws.CloudAccountID(accountID), core.AllFeatures)
+	fmt.Printf("Exocompute Account ID: %v\n", exoAccountID)
+
+	account, err := client.AWS().Account(ctx, aws.CloudAccountID(accountID), core.FeatureAll)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -94,13 +98,13 @@ func main() {
 	}
 
 	// Disable the exocompute feature for the account.
-	err = client.AWS().DisableExocompute(ctx, aws.Default())
+	err = client.AWS().RemoveAccount(ctx, aws.Default(), core.FeatureExocompute, false)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Remove the AWS account from Polaris.
-	err = client.AWS().RemoveAccount(ctx, aws.Default(), false)
+	err = client.AWS().RemoveAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		log.Fatal(err)
 	}

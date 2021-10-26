@@ -18,9 +18,9 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package graphql contains code to interact directly with the Polaris GraphQL
-// API. Can be used to execute both raw queries and prepared low level queries
-// used by the high level part of the SDK.
+// Package graphql provides direct access to the Polaris GraphQL API. Can be
+// used to execute both raw queries and prepared low level queries used by the
+// high level part of the SDK.
 //
 // The graphql package tries to stay as close as possible to the GraphQL API:
 //
@@ -28,7 +28,7 @@
 //
 // - Names are turned into CamelCase.
 //
-// - CSP ackronyms (e.g. aws) that are part of names are turned into prefixes.
+// - CSP ackronyms (e.g. aws) that are part of names are removed.
 //
 // - Query parameters with values in a well defined range are turned into
 // types.

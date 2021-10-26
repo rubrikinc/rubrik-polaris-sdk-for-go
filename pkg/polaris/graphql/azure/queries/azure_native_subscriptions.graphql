@@ -1,5 +1,5 @@
-query RubrikPolarisSDKRequest($filter: String = "") {
-    result: azureNativeSubscriptions(subscriptionFilters: {
+query RubrikPolarisSDKRequest($after: String, $filter: String!) {
+    result: azureNativeSubscriptions(after: $after, subscriptionFilters: {
         nameSubstringFilter: {
             nameSubstring: $filter
         }
@@ -12,11 +12,11 @@ query RubrikPolarisSDKRequest($filter: String = "") {
                 name
                 azureSubscriptionStatus
                 slaAssignment
-                configuredSlaDomain{
+                configuredSlaDomain {
                     id
                     name
                 }
-                effectiveSlaDomain{
+                effectiveSlaDomain {
                     id
                     name
                 }

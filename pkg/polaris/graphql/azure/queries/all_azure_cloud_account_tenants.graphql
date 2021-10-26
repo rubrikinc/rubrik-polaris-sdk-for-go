@@ -3,7 +3,6 @@ query RubrikPolarisSDKRequest($feature: CloudAccountFeatureEnum!, $includeSubscr
         cloudType
         azureCloudAccountTenantRubrikId
         domainName
-        subscriptionCount
         subscriptions {
             id
             name

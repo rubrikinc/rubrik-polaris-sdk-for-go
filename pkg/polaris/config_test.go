@@ -3,29 +3,10 @@ package polaris
 import (
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
-	"time"
 )
 
-// requireEnv skips the current test if specified environment variable is not
-// defined or false according to the definition given by strconv.ParseBool.
-func requireEnv(t *testing.T, env string, delay time.Duration) {
-	val := os.Getenv(env)
-
-	b, err := strconv.ParseBool(val)
-	if err == nil && b {
-		if delay > 0 {
-			time.Sleep(delay)
-		}
-
-		return
-	}
-
-	t.Skipf("skip due to %q", env)
-}
-
-func TestLocalUserFromFile(t *testing.T) {
+func TestUserAccountFromFile(t *testing.T) {
 	path, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatal(err)
@@ -46,12 +27,12 @@ func TestLocalUserFromFile(t *testing.T) {
 	}
 
 	// Test with non-existing file.
-	if _, err := AccountFromFile("some-non-existing-file", "my-account", false); err == nil {
-		t.Fatal("LocalUserFromFile should fail with non-existing file")
+	if _, err := UserAccountFromFile("some-non-existing-file", "my-account", false); err == nil {
+		t.Fatal("UserAccountFromFile should fail with non-existing file")
 	}
 
 	// Test with existing file and existing account.
-	account, err := AccountFromFile(file, "my-account", false)
+	account, err := UserAccountFromFile(file, "my-account", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +50,7 @@ func TestLocalUserFromFile(t *testing.T) {
 	}
 
 	// Test with existing file and non-existing account.
-	if _, err := AccountFromFile(file, "non-existing-account", false); err == nil {
-		t.Fatal("LocalUserFromFile should fail with non-existing account")
+	if _, err := UserAccountFromFile(file, "non-existing-account", false); err == nil {
+		t.Fatal("UserAccountFromFile should fail with non-existing account")
 	}
 }

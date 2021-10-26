@@ -64,7 +64,6 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
         cloudType
         azureCloudAccountTenantRubrikId
         domainName
-        subscriptionCount
         subscriptions {
             id
             name
@@ -141,8 +140,8 @@ var azureCloudAccountTenantQuery = `query SdkGolangAzureCloudAccountTenant($tena
 }`
 
 // azureNativeSubscriptions GraphQL query
-var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($filter: String = "") {
-    result: azureNativeSubscriptions(subscriptionFilters: {
+var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($after: String, $filter: String!) {
+    result: azureNativeSubscriptions(after: $after, subscriptionFilters: {
         nameSubstringFilter: {
             nameSubstring: $filter
         }
@@ -155,11 +154,11 @@ var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($fi
                 name
                 azureSubscriptionStatus
                 slaAssignment
-                configuredSlaDomain{
+                configuredSlaDomain {
                     id
                     name
                 }
-                effectiveSlaDomain{
+                effectiveSlaDomain {
                     id
                     name
                 }
@@ -196,20 +195,6 @@ var deleteAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteAzureClo
     }
 }`
 
-// deleteAzureCloudAccountWithoutOauthV0 GraphQL query
-var deleteAzureCloudAccountWithoutOauthV0Query = `mutation SdkGolangDeleteAzureCloudAccountWithoutOauthV0($subscriptionIds: [UUID!]!, $feature: CloudAccountFeatureEnum!) {
-    result: deleteAzureCloudAccountWithoutOAuth(input: {
-        azureSubscriptionRubrikIds: $subscriptionIds
-        feature:                    $feature,
-    }) {
-        status {
-            azureSubscriptionNativeId
-            isSuccess
-            error
-        }
-    }
-}`
-
 // setAzureCloudAccountCustomerAppCredentials GraphQL query
 var setAzureCloudAccountCustomerAppCredentialsQuery = `mutation SdkGolangSetAzureCloudAccountCustomerAppCredentials($azureCloudType: AzureCloudTypeEnum!, $appId: String!, $appName: String, $appSecretKey: String!, $appTenantId: String, $tenantDomainName: String) {
     result: setAzureCloudAccountCustomerAppCredentials(input: {
@@ -233,16 +218,6 @@ var startDisableAzureNativeSubscriptionProtectionJobQuery = `mutation SdkGolangS
      }
  }`
 
-// startDisableAzureNativeSubscriptionProtectionJobV0 GraphQL query
-var startDisableAzureNativeSubscriptionProtectionJobV0Query = `mutation SdkGolangStartDisableAzureNativeSubscriptionProtectionJobV0($azureSubscriptionRubrikId: UUID!, $shouldDeleteNativeSnapshots: Boolean!) {
-    result: startDisableAzureNativeSubscriptionProtectionJob(input: {
-        azureSubscriptionRubrikId:    $azureSubscriptionRubrikId,
-        shouldDeleteNativeSnapshots:  $shouldDeleteNativeSnapshots
-    }) {
-         jobId
-     }
- }`
-
 // updateAzureCloudAccount GraphQL query
 var updateAzureCloudAccountQuery = `mutation SdkGolangUpdateAzureCloudAccount($features: [CloudAccountFeatureEnum!]!, $regionsToAdd: [AzureCloudAccountRegionEnum!], $regionsToRemove: [AzureCloudAccountRegionEnum!], $subscriptions: [AzureCloudAccountSubscriptionInput!]!) {
     result: updateAzureCloudAccount(input: {
@@ -258,17 +233,12 @@ var updateAzureCloudAccountQuery = `mutation SdkGolangUpdateAzureCloudAccount($f
     }
 }`
 
-// updateAzureCloudAccountV0 GraphQL query
-var updateAzureCloudAccountV0Query = `mutation SdkGolangUpdateAzureCloudAccountV0($feature: CloudAccountFeatureEnum!, $regionsToAdd: [AzureCloudAccountRegionEnum!], $regionsToRemove: [AzureCloudAccountRegionEnum!], $subscriptions: [AzureCloudAccountSubscriptionInput!]!) {
-    result: updateAzureCloudAccount(input: {
-        feature:         $feature,
-        regionsToAdd:    $regionsToAdd,
-        regionsToRemove: $regionsToRemove,
-        subscriptions:   $subscriptions
+// upgradeAzureCloudAccountPermissionsWithoutOauth GraphQL query
+var upgradeAzureCloudAccountPermissionsWithoutOauthQuery = `mutation SdkGolangUpgradeAzureCloudAccountPermissionsWithoutOauth($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
+    result: upgradeAzureCloudAccountPermissionsWithoutOauth(input: {
+        cloudAccountId: $cloudAccountId
+        feature:        $feature,
     }) {
-        status {
-            azureSubscriptionNativeId
-            isSuccess
-        }
+        status
     }
 }`

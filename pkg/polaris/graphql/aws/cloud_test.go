@@ -69,7 +69,7 @@ func TestValidateAndCreateAWSCloudAccountWithDuplicate(t *testing.T) {
 	defer srv.Shutdown(context.Background())
 
 	_, err := Wrap(client).ValidateAndCreateCloudAccount(context.Background(),
-		"123456789012", "123456789012 : default", core.CloudNativeProtection)
+		"123456789012", "123456789012 : default", core.FeatureCloudNativeProtection)
 	if err == nil {
 		t.Fatal("expected ValidateAndCreateCloudAccount to fail")
 	}
