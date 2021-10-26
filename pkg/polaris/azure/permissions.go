@@ -83,7 +83,7 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 // service principal for the Polaris cloud account with the specified id has
 // been updated. The permissions should be updated when a feature has the
 // status StatusMissingPermissions. Updating the permissions is done outside
-// of this SDK. The features parameter is alowed to be nil. When features is
+// of this SDK. The features parameter is allowed to be nil. When features is
 // nil all features are updated. Note that Polaris is only notified about
 // features with status StatusMissingPermissions.
 func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
@@ -123,7 +123,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 // for the Azure service principal in a tenant domain has been updated. The
 // permissions should be updated when a feature has the status
 // StatusMissingPermissions. Updating the permissions is done outside of the
-// SDK. The features parameter is alowed to be nil. When features is nil all
+// SDK. The features parameter is allowed to be nil. When features is nil all
 // features are updated. Note that Polaris is only notified about features
 // with status StatusMissingPermissions.
 func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain string, features []core.Feature) error {

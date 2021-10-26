@@ -113,7 +113,7 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 // account for the Polaris cloud account with the specified id has been
 // updated. The permissions should be updated when a feature has the status
 // StatusMissingPermissions. Updating the permissions is done outside of this
-// SDK. The features parameter is alowed to be nil. When features is
+// SDK. The features parameter is allowed to be nil. When features is
 // nil all features are updated. Note that Polaris is only notified about
 // features with status StatusMissingPermissions.
 func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
@@ -152,7 +152,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 // PermissionsUpdatedForDefault notifies Polaris that the permissions for the
 // default GCP service account has been updated. The permissions should be
 // updated when a feature has the status StatusMissingPermissions. Updating the
-// permissions is done outside of the SDK. The features parameter is alowed to
+// permissions is done outside of the SDK. The features parameter is allowed to
 // be nil. When features is nil all features are updated. Note that Polaris is
 // only notified about features with status StatusMissingPermissions.
 func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.Feature) error {
