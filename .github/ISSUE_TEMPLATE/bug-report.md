@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug encountered while using the API Capture Chrome Extension.
+about: Report a bug encountered while using the Rubrik Polaris SDK for Go.
 title: ''
 labels: kind-bug
 assignees: ''

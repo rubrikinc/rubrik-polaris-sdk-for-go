@@ -1,6 +1,6 @@
 ---
 name: Enhancement Request
-about: Suggest an enhancement to the API Capture Chrome Extension.
+about: Suggest an enhancement to the Rubrik Polaris SDK for Go.
 title: ''
 labels: kind-enhancement
 assignees: ''
