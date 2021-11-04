@@ -1,0 +1,101 @@
+enum SlaAssignTypeEnum {
+  doNotProtect
+  noAssignment
+  protectWithSlaId
+}
+
+enum SnappableLevelHierarchyTypeEnum {
+  AllSubHierarchyType
+  AwsNativeEbsVolume
+  AwsNativeEc2Instance
+  AwsNativeRdsInstance
+  AzureNativeManagedDisk
+  AzureNativeVirtualMachine
+  AzureSqlDatabaseDb
+  AzureSqlManagedInstanceDb
+  GcpNativeGCEInstance
+  KuprNamespace
+  O365Mailbox
+  O365Onedrive
+  O365SharePointDrive
+  O365SharePointList
+  O365Site
+  O365Teams
+}
+
+enum GlobalExistingSnapshotRetentionEnum {
+  # Expire immediately
+  EXPIRE_IMMEDIATELY
+
+  # Keep forever
+  KEEP_FOREVER
+  NOT_APPLICABLE
+
+  # Preserve retention from previous SLA
+  RETAIN_SNAPSHOTS
+}
+
+type SlaAssignResult {
+  success: Boolean!
+}
+
+scalar UUID
+
+type Mutation {
+    assignSlasForSnappableHierarchies(
+        # Corresponds to optional global SLA forever UUID in Polaris tables
+        globalSlaOptionalFid: UUID,
+
+        # Corresponds to the assignment type for the global SLA
+        globalSlaAssignType: SlaAssignTypeEnum!,
+
+        # Provide list of object forever IDS you want to assign Global SLA
+        objectIds: [UUID!]!,
+
+        # Provide optional snappable types under the object for SLA assignment. This is meant to be used only for objects that support multiple snappable hierarchies. See 'applicableSnappableType' for more details. If more than one is provided, the SLA will be assigned to all.
+        applicableSnappableTypes: [SnappableLevelHierarchyTypeEnum!],
+
+        # Boolean value to indicate whether to apply changes made to the SLA to existing snapshots.
+        shouldApplyToExistingSnapshots: Boolean,
+
+        # Boolean value to indicate if the new configuration keeps existing, non-policy snapshots of data sources retained by this SLA Domain.
+        shouldApplyToNonPolicySnapshots: Boolean,
+
+        # Choose what to do with existing snapshot in case of do not protect slas
+        globalExistingSnapshotRetention: GlobalExistingSnapshotRetentionEnum): [SlaAssignResult!]!
+}
+
+mutation RubrikPolarisSDKRequest(
+    $globalSlaOptionalFid: UUID,
+    $globalSlaAssignType: SlaAssignTypeEnum!,
+    $objectIds: [UUID!]!,
+    $applicableSnappableTypes: [SnappableLevelHierarchyTypeEnum!],
+    $shouldApplyToExistingSnapshots: Boolean,
+    $shouldApplyToNonPolicySnapshots: Boolean,
+    $globalExistingSnapshotRetention: GlobalExistingSnapshotRetentionEnum) {
+        assignSlasForSnappableHierarchies(
+            # Corresponds to optional global SLA forever UUID in Polaris tables
+            globalSlaOptionalFid: $globalSlaOptionalFid,
+
+            # Corresponds to the assignment type for the global SLA
+            globalSlaAssignType: $globalSlaAssignType,
+
+            # Provide list of object forever IDS you want to assign Global SLA
+            objectIds: $objectIds,
+
+            # Provide optional snappable types under the object for SLA assignment. This is meant to be used only for objects that support multiple snappable hierarchies. See 'applicableSnappableType' for more details. If more than one is provided, the SLA will be assigned to all.
+            applicableSnappableTypes: $applicableSnappableTypes,
+
+            # Boolean value to indicate whether to apply changes made to the SLA to existing snapshots.
+            shouldApplyToExistingSnapshots: $shouldApplyToExistingSnapshots,
+
+            # Boolean value to indicate if the new configuration keeps existing, non-policy snapshots of data sources retained by this SLA Domain.
+            shouldApplyToNonPolicySnapshots: $shouldApplyToNonPolicySnapshots,
+
+            # Choose what to do with existing snapshot in case of do not protect slas
+            globalExistingSnapshotRetention: $globalExistingSnapshotRetention
+        ) {
+            success
+        }
+
+}
