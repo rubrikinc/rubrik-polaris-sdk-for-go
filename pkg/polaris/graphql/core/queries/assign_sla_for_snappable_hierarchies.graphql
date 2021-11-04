@@ -74,25 +74,12 @@ mutation RubrikPolarisSDKRequest(
     $shouldApplyToNonPolicySnapshots: Boolean,
     $globalExistingSnapshotRetention: GlobalExistingSnapshotRetentionEnum) {
         assignSlasForSnappableHierarchies(
-            # Corresponds to optional global SLA forever UUID in Polaris tables
             globalSlaOptionalFid: $globalSlaOptionalFid,
-
-            # Corresponds to the assignment type for the global SLA
             globalSlaAssignType: $globalSlaAssignType,
-
-            # Provide list of object forever IDS you want to assign Global SLA
             objectIds: $objectIds,
-
-            # Provide optional snappable types under the object for SLA assignment. This is meant to be used only for objects that support multiple snappable hierarchies. See 'applicableSnappableType' for more details. If more than one is provided, the SLA will be assigned to all.
             applicableSnappableTypes: $applicableSnappableTypes,
-
-            # Boolean value to indicate whether to apply changes made to the SLA to existing snapshots.
             shouldApplyToExistingSnapshots: $shouldApplyToExistingSnapshots,
-
-            # Boolean value to indicate if the new configuration keeps existing, non-policy snapshots of data sources retained by this SLA Domain.
             shouldApplyToNonPolicySnapshots: $shouldApplyToNonPolicySnapshots,
-
-            # Choose what to do with existing snapshot in case of do not protect slas
             globalExistingSnapshotRetention: $globalExistingSnapshotRetention
         ) {
             success
