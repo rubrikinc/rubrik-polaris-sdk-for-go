@@ -81,6 +81,11 @@ pipeline {
             script {
                 if (currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0) {
                     slackSend(
+                        channel: '#rubrik-polaris-sdk-for-go',
+                        color: 'good',
+                        message: "The pipeline ${currentBuild.fullDisplayName} succeeded (runtime: ${currentBuild.durationString.minus(' and counting')})\n${currentBuild.absoluteUrl}"
+                    )
+                    slackSend(
                         channel: '#terraform-provider-development',
                         color: 'good',
                         message: "The pipeline ${currentBuild.fullDisplayName} succeeded (runtime: ${currentBuild.durationString.minus(' and counting')})\n${currentBuild.absoluteUrl}"
@@ -91,6 +96,11 @@ pipeline {
         failure {
             script {
                 if (currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0) {
+                    slackSend(
+                        channel: '#rubrik-polaris-sdk-for-go',
+                        color: 'danger',
+                        message: "The pipeline ${currentBuild.fullDisplayName} failed (runtime: ${currentBuild.durationString.minus(' and counting')})\n${currentBuild.absoluteUrl}"
+                    )
                     slackSend(
                         channel: '#terraform-provider-development',
                         color: 'danger',
