@@ -30,7 +30,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
@@ -41,25 +40,36 @@ import (
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// testDelay is the idle time between each test. Executing the test steps too
-// fast in succession causes the auth service to respond with status code 503.
-const testDelay = 10 * time.Second
+// client is the common Polaris client used for tests. By reusing the same client we
+// reduce the risk of hitting rate limits when access tokens are creted.
+var client *Client
 
-// requireEnv skips the current test if specified environment variable is not
-// defined or false according to the definition given by strconv.ParseBool.
-func requireEnv(t *testing.T, env string, delay time.Duration) {
+func TestMain(m *testing.M) {
+	if boolEnvSet("TEST_INTEGRATION") {
+		// Load configuration and create client. Usually resolved using the
+		// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+		polAccount, err := DefaultServiceAccount(true)
+		if err != nil {
+			fmt.Printf("failed to get default service account: %v\n", err)
+			os.Exit(1)
+		}
+		client, err = NewClient(context.Background(), polAccount, &polaris_log.DiscardLogger{})
+		if err != nil {
+			fmt.Printf("failed to create polaris client: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	os.Exit(m.Run())
+}
+
+// boolEnvSet returns true if the provided argument is defined and true
+// according to the definition given by strconv.ParseBool.
+func boolEnvSet(env string) bool {
 	val := os.Getenv(env)
 
 	b, err := strconv.ParseBool(val)
-	if err == nil && b {
-		if delay > 0 {
-			time.Sleep(delay)
-		}
-
-		return
-	}
-
-	t.Skipf("skip due to %q", env)
+	return err == nil && b
 }
 
 // testAwsAccount hold AWS account information used in the integration tests.
@@ -115,22 +125,13 @@ func loadTestAwsAccount() (testAwsAccount, error) {
 // Note that between the project has been added and it has been removed we
 // never fail fatally to allow the project to be removed in case of an error.
 func TestAwsAccountAddAndRemove(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION", testDelay)
+	if !boolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
 
 	ctx := context.Background()
 
 	testAccount, err := loadTestAwsAccount()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Load configuration and create client. Usually resolved using the
-	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	polAccount, err := DefaultServiceAccount(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,22 +219,13 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 // Note that between the project has been added and it has been removed we
 // never fail fatally to allow the project to be removed in case of an error.
 func TestAwsExocompute(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION", testDelay)
+	if !boolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
 
 	ctx := context.Background()
 
 	testAccount, err := loadTestAwsAccount()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Load configuration and create client. Usually resolved using the
-	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	polAccount, err := DefaultServiceAccount(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -400,22 +392,13 @@ func loadTestAzureSubscription() (testAzureSubscription, error) {
 // Between the account has been added and it has been removed we never fail
 // fatally to allow the account to be removed in case of an error.
 func TestAzureSubscriptionAddAndRemove(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION", testDelay)
+	if !boolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
 
 	ctx := context.Background()
 
 	testSubscription, err := loadTestAzureSubscription()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Load configuration and create client. Usually resolved using the
-	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	polAccount, err := DefaultServiceAccount(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -510,22 +493,13 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 // Between the account has been added and it has been removed we never fail
 // fatally to allow the account to be removed in case of an error.
 func TestAzureExocompute(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION", testDelay)
+	if !boolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
 
 	ctx := context.Background()
 
 	testSubscription, err := loadTestAzureSubscription()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Load configuration and create client. Usually resolved using the
-	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	polAccount, err := DefaultServiceAccount(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -651,20 +625,11 @@ func TestAzureExocompute(t *testing.T) {
 //   * TEST_INTEGRATION=1
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 func TestAzurePermissions(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION", testDelay)
+	if !boolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
 
 	ctx := context.Background()
-
-	// Load configuration and create client. Usually resolved using the
-	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	polAccount, err := DefaultServiceAccount(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	perms, err := client.Azure().Permissions(ctx, []core.Feature{core.FeatureCloudNativeProtection})
 	if err != nil {
@@ -707,7 +672,9 @@ type testGcpProject struct {
 // Note that between the project has been added and it has been removed we
 // never fail fatally to allow the project to be removed in case of an error.
 func TestGcpProjectAddAndRemove(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION", testDelay)
+	if !boolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
 
 	ctx := context.Background()
 
@@ -719,17 +686,6 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	}
 	testProject := testGcpProject{}
 	if err := json.Unmarshal(buf, &testProject); err != nil {
-		t.Fatal(err)
-	}
-
-	// Load configuration and create client. Usually resolved using the
-	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	polAccount, err := DefaultServiceAccount(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
-	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -797,7 +753,9 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 // Note that between the project has been added and it has been removed we
 // never fail fatally to allow the project to be removed in case of an error.
 func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION", testDelay)
+	if !boolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
 
 	ctx := context.Background()
 
@@ -810,17 +768,6 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 
 	testProject := testGcpProject{}
 	if err := json.Unmarshal(buf, &testProject); err != nil {
-		t.Fatal(err)
-	}
-
-	// Load configuration and create client. Usually resolved using the
-	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	polAccount, err := DefaultServiceAccount(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
-	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -884,20 +831,11 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 //   * TEST_INTEGRATION=1
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 func TestGcpPermissions(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION", testDelay)
+	if !boolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
 
 	ctx := context.Background()
-
-	// Load configuration and create client. Usually resolved using the
-	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	polAccount, err := DefaultServiceAccount(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	perms, err := client.GCP().Permissions(ctx, []core.Feature{core.FeatureCloudNativeProtection})
 	if err != nil {
