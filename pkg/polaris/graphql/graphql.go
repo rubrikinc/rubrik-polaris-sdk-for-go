@@ -124,7 +124,7 @@ func NewClientFromLocalUser(ctx context.Context, app, apiURL, username, password
 		client: &http.Client{
 			Transport: &tokenTransport{
 				next: http.DefaultTransport,
-				src:  newLocalUserSource(apiURL, username, password),
+				src:  newLocalUserSource(apiURL, username, password, logger),
 			},
 		},
 		log: logger,
@@ -141,7 +141,7 @@ func NewClientFromServiceAccount(ctx context.Context, app, apiURL, accessTokenUR
 		client: &http.Client{
 			Transport: &tokenTransport{
 				next: http.DefaultTransport,
-				src:  newServiceAccountSource(accessTokenURI, clientID, clientSecret),
+				src:  newServiceAccountSource(accessTokenURI, clientID, clientSecret, logger),
 			},
 		},
 		log: logger,
@@ -150,7 +150,7 @@ func NewClientFromServiceAccount(ctx context.Context, app, apiURL, accessTokenUR
 
 // NewTestClient - Intended to be used by unit tests.
 func NewTestClient(username, password string, logger log.Logger) (*Client, *TestListener) {
-	src, lis := newLocalUserTestSource(username, password)
+	src, lis := newLocalUserTestSource(username, password, logger)
 
 	client := &Client{
 		gqlURL: "http://test/api/graphql",
