@@ -21,15 +21,29 @@
 package graphql
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 )
 
-const tokenRequestTimeout = 15 * time.Second
+const (
+	// per request timeout
+	tokenRequestTimeout = 15 * time.Second
+
+	// number of attempts before failing timed-out token requests
+	tokenRequestAttempts = 3
+)
+
+var errTokenRequestTimeout = errors.New("token request timeout")
 
 type token struct {
 	jwtToken *jwt.Token
@@ -125,4 +139,69 @@ func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// request body.
 	closeBody = false
 	return t.next.RoundTrip(authReq)
+}
+
+// requestToken tries to acquire a token using provided parameters. It returns
+// errTokenRequestTimeout if the request exceeds tokenRequestTimeout.
+func requestToken(client *http.Client, tokenURL string, requestBody []byte) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), tokenRequestTimeout)
+	defer cancel()
+
+	// Request an access token from the remote token endpoint.
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, bytes.NewReader(requestBody))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Add("Accept", "application/json")
+	res, err := client.Do(req)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, errTokenRequestTimeout
+		}
+		return nil, err
+	}
+	defer res.Body.Close()
+	// Remote responded without a body. For status code 200 this means we are
+	// missing the token. For an error we have no additional details.
+	if res.ContentLength == 0 {
+		if res.StatusCode == 200 {
+			return nil, errors.New("polaris: no body")
+		}
+		return nil, fmt.Errorf("polaris: %s", res.Status)
+	}
+
+	respBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, errTokenRequestTimeout
+		}
+		return nil, err
+	}
+
+	// Verify that the content type of the body is JSON. For status code 200
+	// this mean we received something that isn't JSON. For an error we have no
+	// additional JSON details.
+	contentType := res.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "application/json") {
+		if res.StatusCode == 200 {
+			return nil, fmt.Errorf("polaris: wrong content-type: %s", contentType)
+		}
+		return nil, fmt.Errorf("polaris: %s - %s", res.Status, respBody)
+	}
+
+	// Remote responded with a JSON document. Try to parse it as an error
+	// message.
+	var jsonErr jsonError
+	if err := json.Unmarshal(respBody, &jsonErr); err != nil {
+		return nil, err
+	}
+	if jsonErr.isError() {
+		return nil, jsonErr
+	}
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf("polaris: %s", res.Status)
+	}
+
+	return respBody, nil
 }

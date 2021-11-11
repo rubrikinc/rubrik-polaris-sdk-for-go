@@ -27,6 +27,8 @@ import (
 	"strings"
 	"testing"
 	"text/template"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 func TestTokenExpired(t *testing.T) {
@@ -69,7 +71,7 @@ func TestTokenSetAsHeader(t *testing.T) {
 }
 
 func TestTokenSource(t *testing.T) {
-	src, lis := newLocalUserTestSource("john", "doe")
+	src, lis := newLocalUserTestSource("john", "doe", &log.StandardLogger{})
 
 	// Respond with 200 and a valid token as long as the correct username and
 	// password are received.
@@ -110,7 +112,7 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	src, lis := newLocalUserTestSource("john", "doe")
+	src, lis := newLocalUserTestSource("john", "doe", &log.StandardLogger{})
 
 	// Respond with status code 401 and additional details in the body.
 	srv := TestServeJSON(lis, func(w http.ResponseWriter, req *http.Request) {
@@ -131,7 +133,7 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 }
 
 func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
-	src, lis := newLocalUserTestSource("john", "doe")
+	src, lis := newLocalUserTestSource("john", "doe", &log.StandardLogger{})
 
 	// Respond with status code 500 and no additional details.
 	srv := TestServe(lis, func(w http.ResponseWriter, req *http.Request) {
@@ -149,7 +151,7 @@ func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
 }
 
 func TestTokenSourceWithInternalServerErrorTextBody(t *testing.T) {
-	src, lis := newLocalUserTestSource("john", "doe")
+	src, lis := newLocalUserTestSource("john", "doe", &log.StandardLogger{})
 
 	// Respond with status code 500 and no additional details.
 	srv := TestServe(lis, func(w http.ResponseWriter, req *http.Request) {

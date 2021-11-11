@@ -21,19 +21,17 @@
 package graphql
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
-	"strings"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // serviceAccountSource holds all the information needed to obtain a token
 // for a service account.
 type serviceAccountSource struct {
+	logger       log.Logger
 	client       *http.Client
 	tokenURL     string
 	clientID     string
@@ -42,8 +40,9 @@ type serviceAccountSource struct {
 
 // newServiceAccountSource returns a new token source that uses the
 // http.DefaultClient to obtain tokens.
-func newServiceAccountSource(accessTokenURL, clientID, clientSecret string) *serviceAccountSource {
+func newServiceAccountSource(accessTokenURL, clientID, clientSecret string, logger log.Logger) *serviceAccountSource {
 	return &serviceAccountSource{
+		logger:       logger,
 		client:       http.DefaultClient,
 		tokenURL:     accessTokenURL,
 		clientID:     clientID,
@@ -53,11 +52,8 @@ func newServiceAccountSource(accessTokenURL, clientID, clientSecret string) *ser
 
 // token returns a new token from the service account token source.
 func (src *serviceAccountSource) token() (token, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), tokenRequestTimeout)
-	defer cancel()
-
 	// Prepare the token request body.
-	buf, err := json.Marshal(struct {
+	body, err := json.Marshal(struct {
 		GrantType    string `json:"grant_type"`
 		ClientID     string `json:"client_id"`
 		ClientSecret string `json:"client_secret"`
@@ -66,55 +62,16 @@ func (src *serviceAccountSource) token() (token, error) {
 		return token{}, err
 	}
 
-	// Request an access token from the remote token endpoint.
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, src.tokenURL, bytes.NewReader(buf))
-	if err != nil {
-		return token{}, err
-	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Add("Accept", "application/json")
-	res, err := src.client.Do(req)
-	if err != nil {
-		return token{}, err
-	}
-	defer res.Body.Close()
-
-	// Remote responded without a body. For status code 200 this means we are
-	// missing the token. For an error we have no additional details.
-	if res.ContentLength == 0 {
-		if res.StatusCode == 200 {
-			return token{}, errors.New("polaris: no body")
+	var resp []byte
+	for attempt := 1; ; attempt++ {
+		src.logger.Printf(log.Debug, "acquire access token (attempt: %d)", attempt)
+		resp, err = requestToken(src.client, src.tokenURL, body)
+		if err == nil {
+			break
 		}
-		return token{}, fmt.Errorf("polaris: %s", res.Status)
-	}
-
-	buf, err = io.ReadAll(res.Body)
-	if err != nil {
-		return token{}, err
-	}
-
-	// Verify that the content type of the body is JSON. For status code 200
-	// this mean we received something that isn't JSON. For an error we have no
-	// additional JSON details.
-	contentType := res.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "application/json") {
-		if res.StatusCode == 200 {
-			return token{}, fmt.Errorf("polaris: wrong content-type: %s", contentType)
+		if !errors.Is(err, errTokenRequestTimeout) || attempt == tokenRequestAttempts {
+			return token{}, err
 		}
-		return token{}, fmt.Errorf("polaris: %s - %s", res.Status, string(buf))
-	}
-
-	// Remote responded with a JSON document. Try to parse it as an error
-	// message.
-	var jsonErr jsonError
-	if err := json.Unmarshal(buf, &jsonErr); err != nil {
-		return token{}, err
-	}
-	if jsonErr.isError() {
-		return token{}, jsonErr
-	}
-	if res.StatusCode != 200 {
-		return token{}, fmt.Errorf("polaris: %s", res.Status)
 	}
 
 	// Try to parse the JSON document as an access token. Verify that the
@@ -123,7 +80,7 @@ func (src *serviceAccountSource) token() (token, error) {
 		ClientID    string `json:"client_id"`
 		AccessToken string `json:"access_token"`
 	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
+	if err := json.Unmarshal(resp, &payload); err != nil {
 		return token{}, err
 	}
 	if payload.ClientID != src.clientID {
