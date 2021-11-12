@@ -1,0 +1,47 @@
+query RubrikPolarisSDKRequest(
+  $first: Int,
+  $after: String,
+  $last: Int,
+  $before: String,
+  $sortBy: SLAQuerySortByFieldEnum,
+  $sortOrder: SLAQuerySortByOrderEnum,
+  $filter: [GlobalSlaFilterInput!],
+  $contextFilter: ContextFilterTypeEnum,
+  $contextFilterInput: [ContextFilterInputField!],
+  $showSyncStatus: Boolean,
+  $showProtectedObjectCount: Boolean,
+  $showUpgradeInfo: Boolean) {
+    globalSlaConnection(
+      first: $first,
+      after: $after,
+      last: $last,
+      before: $before,
+      sortBy: $sortBy,
+      sortOrder: $sortOrder,
+      filter: $filter,
+      contextFilter: $contextFilter,
+      contextFilterInput: $contextFilterInput,
+      showSyncStatus: $showSyncStatus,
+      showProtectedObjectCount: $showProtectedObjectCount,
+      showUpgradeInfo: $showUpgradeInfo
+    ) {
+      edges {
+        node {
+          id,
+          name,
+          ... on GlobalSla {
+            baseFrequency {
+              duration,
+              unit,
+            },
+            objectTypeList,
+          }
+        }
+      }
+      pageInfo {
+        endCursor,
+        hasNextPage,
+      },
+      count,
+    }
+}

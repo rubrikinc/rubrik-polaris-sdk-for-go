@@ -148,6 +148,12 @@ type API struct {
 	GQL     *graphql.Client
 }
 
+// NewAPI returns a new API instance. Note that this is a very cheap call to
+// make.
+func NewAPI(gql *graphql.Client) API {
+	return API{Version: gql.Version, GQL: gql}
+}
+
 // Wrap the GraphQL client in the Core API.
 func Wrap(gql *graphql.Client) API {
 	return API{Version: gql.Version, GQL: gql}

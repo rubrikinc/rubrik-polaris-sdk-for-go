@@ -983,3 +983,61 @@ func TestGcpPermissions(t *testing.T) {
 		t.Fatal("invalid number of permissions: 0")
 	}
 }
+
+// TestListSLA verifies that the SDK can list the default SLAs - Gold, Silver
+// and Bronze.
+//
+// To run this test against a Polaris instance the following environment
+// variables needs to be set:
+//   * TEST_INTEGRATION=1
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+func TestListSLA(t *testing.T) {
+	requireEnv(t, "TEST_INTEGRATION", testDelay)
+
+	ctx := context.Background()
+
+	// Load configuration and create client. Usually resolved using the
+	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+	polAccount, err := DefaultServiceAccount(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	client, err := NewClient(ctx, polAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	slaDomains, err := client.Core().ListSLA(
+		ctx,
+		core.SortByName,
+		core.ASC,
+		[]core.GlobalSLAFilterInput{
+			{
+				Field: core.ObjectType,
+				Text: "",
+				ObjectTypeList: []core.SLAObjectType{
+					core.KuprObjectType,
+				},
+			},
+		},
+		core.Default,
+		[]core.ContextFilterInputField{{"", ""}},
+		false,
+		false,
+		false,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	basicCheck := make(map[string]bool)
+	for _, slaDomain := range slaDomains {
+		if slaDomain.Name == "Gold" || slaDomain.Name == "Silver" || slaDomain.Name =="Bronze" {
+			basicCheck[slaDomain.Name] = true
+		}
+	}
+	if !basicCheck["Gold"] || !basicCheck["Silver"] || !basicCheck["Bronze"] {
+		t.Errorf("failed to list default SLAs: %v", basicCheck)
+	}
+}

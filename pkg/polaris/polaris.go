@@ -67,6 +67,10 @@ func (c *Client) GCP() gcp.API {
 	return gcp.NewAPI(c.gql)
 }
 
+func (c *Client) Core() core.API {
+	return core.NewAPI(c.gql)
+}
+
 // Account represents a Polaris account. Implemented by UserAccount and
 // ServiceAccount.
 type Account interface {
