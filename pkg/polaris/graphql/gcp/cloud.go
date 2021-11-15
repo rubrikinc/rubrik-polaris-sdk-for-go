@@ -27,6 +27,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -60,7 +61,7 @@ type CloudAccountWithFeature struct {
 // filter. The filter can be used to search for project id, project name and
 // project number.
 func (a API) CloudAccountListProjects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountWithFeature, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.CloudAccountListProjects")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, gcpCloudAccountListProjectsQuery, struct {
 		Feature core.Feature `json:"feature"`
@@ -86,7 +87,7 @@ func (a API) CloudAccountListProjects(ctx context.Context, feature core.Feature,
 
 // CloudAccountAddManualAuthProject adds the GCP project to Polaris.
 func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, projectName string, projectNumber int64, orgName, jwtConfig string, feature core.Feature) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.CloudAccountAddManualAuthProject")
+	a.GQL.Log().Print(log.Trace)
 
 	_, err := a.GQL.Request(ctx, gcpCloudAccountAddManualAuthProjectQuery, struct {
 		Feature   core.Feature `json:"feature"`
@@ -103,7 +104,7 @@ func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, pr
 // CloudAccountDeleteProject delete cloud account for the given Polaris cloud
 // account id.
 func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.CloudAccountDeleteProject")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, gcpCloudAccountDeleteProjectsQuery, struct {
 		IDs []uuid.UUID `json:"nativeProtectionProjectUuids"`
@@ -140,7 +141,7 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 // CloudAccountListPermissions list the permissions needed to enable the given
 // Polaris cloud account feature.
 func (a API) CloudAccountListPermissions(ctx context.Context, feature core.Feature) (permissions []string, err error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.CloudAccountListPermissions")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, gcpCloudAccountListPermissionsQuery, struct {
 		Feature core.Feature `json:"feature"`
@@ -174,7 +175,7 @@ func (a API) CloudAccountListPermissions(ctx context.Context, feature core.Featu
 // permissions for the GCP service account has been updated for the
 // specified Polaris cloud account id and feature.
 func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.UpgradeCloudAccountPermissionsWithoutOauth")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, upgradeGcpCloudAccountPermissionsWithoutOauthQuery, struct {
 		ID      uuid.UUID    `json:"cloudAccountId"`

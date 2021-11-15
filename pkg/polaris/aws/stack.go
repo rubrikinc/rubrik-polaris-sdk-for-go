@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -91,14 +92,14 @@ func awsWaitForStack(ctx context.Context, config aws.Config, stackName string) (
 func awsUpdateStack(ctx context.Context, logger log.Logger, config aws.Config, stackName, templateURL string) error {
 	client := cloudformation.NewFromConfig(config)
 
-	logger.Printf(log.Debug, "accessing CloudFormation stack: %v", stackName)
+	logger.Printf(log.Debug, "Accessing CloudFormation stack: %v", stackName)
 	exist, err := awsStackExist(ctx, config, stackName)
 	if err != nil {
 		return err
 	}
 
 	if exist {
-		logger.Printf(log.Debug, "updating CloudFormation stack: %v", stackName)
+		logger.Printf(log.Debug, "Updating CloudFormation stack: %v", stackName)
 		stack, err := client.UpdateStack(ctx, &cloudformation.UpdateStackInput{
 			StackName:    &stackName,
 			TemplateURL:  &templateURL,
@@ -116,7 +117,7 @@ func awsUpdateStack(ctx context.Context, logger log.Logger, config aws.Config, s
 			return fmt.Errorf("polaris: failed to update CloudFormation stack: %v, status: %v", *stack.StackId, stackStatus)
 		}
 	} else {
-		logger.Printf(log.Debug, "creating CloudFormation stack: %v", stackName)
+		logger.Printf(log.Debug, "Creating CloudFormation stack: %v", stackName)
 		stack, err := client.CreateStack(ctx, &cloudformation.CreateStackInput{
 			StackName:    &stackName,
 			TemplateURL:  &templateURL,
@@ -142,7 +143,7 @@ func awsUpdateStack(ctx context.Context, logger log.Logger, config aws.Config, s
 func awsDeleteStack(ctx context.Context, logger log.Logger, config aws.Config, stackName string) error {
 	client := cloudformation.NewFromConfig(config)
 
-	logger.Printf(log.Debug, "deleting CloudFormation stack: %v", stackName)
+	logger.Printf(log.Debug, "Deleting CloudFormation stack: %v", stackName)
 	_, err := client.DeleteStack(ctx, &cloudformation.DeleteStackInput{StackName: &stackName})
 	if err != nil {
 		return err

@@ -121,6 +121,8 @@ func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger 
 		logger = &log.DiscardLogger{}
 	}
 
+	logger.Printf(log.Info, "Polaris API URL: %s", apiURL)
+
 	// The gql client is initialized without a version. Query cluster to find
 	// out the current version.
 	gqlClient := graphql.NewClientFromLocalUser(ctx, "custom", apiURL, account.Username, account.Password, logger)
@@ -129,6 +131,8 @@ func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger 
 		return nil, err
 	}
 	gqlClient.Version = version
+
+	logger.Printf(log.Info, "Polaris version: %s", version)
 
 	client := &Client{
 		gql: gqlClient,
@@ -176,6 +180,8 @@ func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, l
 	}
 	apiURL := account.AccessTokenURI[:i]
 
+	logger.Printf(log.Info, "Polaris API URL: %s", apiURL)
+
 	// The gql client is initialized without a version. Query cluster to find
 	// out the current version.
 	gqlClient := graphql.NewClientFromServiceAccount(ctx, "custom", apiURL, account.AccessTokenURI, account.ClientID,
@@ -185,6 +191,8 @@ func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, l
 		return nil, err
 	}
 	gqlClient.Version = version
+
+	logger.Printf(log.Info, "Polaris version: %s", version)
 
 	client := &Client{
 		gql: gqlClient,

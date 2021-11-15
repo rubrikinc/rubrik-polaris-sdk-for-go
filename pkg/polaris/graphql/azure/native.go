@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -44,7 +45,7 @@ type NativeSubscription struct {
 // filter. The filter can be used to search for a substring in the subscription
 // name.
 func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSubscription, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.NativeSubscriptions")
+	a.GQL.Log().Print(log.Trace)
 
 	var subscriptions []NativeSubscription
 	var cursor string
@@ -94,7 +95,7 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 // subscription id. If deleteSnapshots is true the snapshots are deleted.
 // Returns the Polaris task chain id.
 func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id uuid.UUID, feature ProtectionFeature, deleteSnapshots bool) (uuid.UUID, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.StartDisableNativeSubscriptionProtectionJob")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, startDisableAzureNativeSubscriptionProtectionJobQuery, struct {
 		ID              uuid.UUID         `json:"azureSubscriptionRubrikId"`

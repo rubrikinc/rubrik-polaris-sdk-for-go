@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/gcp"
@@ -80,7 +81,7 @@ type Feature struct {
 // toNativeID returns the GCP project id for the specified identity. If the
 // identity is a GCP project id no remote endpoint is called.
 func (a API) toNativeID(ctx context.Context, id IdentityFunc) (string, error) {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.toNativeID")
+	a.gql.Log().Print(log.Trace)
 
 	if id == nil {
 		return "", errors.New("polaris: id is not allowed to be nil")
@@ -124,7 +125,7 @@ var allFeatures = []core.Feature{
 // projects return all projects for the given feature and filter. Note that the
 // organization name of the cloud account is not set.
 func (a API) projects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.projects")
+	a.gql.Log().Print(log.Trace)
 
 	accountsWithFeature, err := gcp.Wrap(a.gql).CloudAccountListProjects(ctx, feature, filter)
 	if err != nil {
@@ -152,7 +153,7 @@ func (a API) projects(ctx context.Context, feature core.Feature, filter string) 
 // projectsAllFeatures return all projects with all features for the given
 // filter. Note that the organization name of the cloud account is not set.
 func (a API) projectsAllFeatures(ctx context.Context, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.projectsAllFeatures")
+	a.gql.Log().Print(log.Trace)
 
 	accountMap := make(map[uuid.UUID]*CloudAccount)
 	for _, feature := range allFeatures {
@@ -180,7 +181,7 @@ func (a API) projectsAllFeatures(ctx context.Context, filter string) ([]CloudAcc
 
 // Project returns the project with specified id.
 func (a API) Project(ctx context.Context, id IdentityFunc, feature core.Feature) (CloudAccount, error) {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.Project")
+	a.gql.Log().Print(log.Trace)
 
 	if id == nil {
 		return CloudAccount{}, errors.New("polaris: id is not allowed to be nil")
@@ -226,7 +227,7 @@ func (a API) Project(ctx context.Context, id IdentityFunc, feature core.Feature)
 // The filter can be used to search for project id, project name and project
 // number.
 func (a API) Projects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.Projects")
+	a.gql.Log().Print(log.Trace)
 
 	var accounts []CloudAccount
 	var err error
@@ -267,7 +268,7 @@ func (a API) Projects(ctx context.Context, feature core.Feature, filter string) 
 // information in the cloud. The result can vary slightly depending on
 // permissions. Returns the Polaris cloud account id of the added project.
 func (a API) AddProject(ctx context.Context, project ProjectFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.AddProject")
+	a.gql.Log().Print(log.Trace)
 
 	if feature != core.FeatureCloudNativeProtection {
 		return uuid.Nil, fmt.Errorf("polaris: feature not supported on gcp: %v", core.FormatFeature(feature))
@@ -326,7 +327,7 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, feature core.F
 // they are kept. Note that snapshots are only considered to be deleted when
 // removing the cloud native protection feature.
 func (a API) RemoveProject(ctx context.Context, id IdentityFunc, feature core.Feature, deleteSnapshots bool) error {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.RemoveProject")
+	a.gql.Log().Print(log.Trace)
 
 	account, err := a.Project(ctx, id, feature)
 	if err != nil {
@@ -375,7 +376,7 @@ func (a API) RemoveProject(ctx context.Context, id IdentityFunc, feature core.Fe
 // ServiceAccount returns the default service account name. If no default
 // service account has been set an empty string is returned.
 func (a API) ServiceAccount(ctx context.Context) (string, error) {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.ServiceAccount")
+	a.gql.Log().Print(log.Trace)
 
 	return gcp.Wrap(a.gql).DefaultCredentialsServiceAccount(ctx)
 }
@@ -387,7 +388,7 @@ func (a API) ServiceAccount(ctx context.Context) (string, error) {
 // option does nothing. Note that it's not possible to remove a service account
 // once it has been set.
 func (a API) SetServiceAccount(ctx context.Context, project ProjectFunc, opts ...OptionFunc) error {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.SetServiceAccount")
+	a.gql.Log().Print(log.Trace)
 
 	if project == nil {
 		return errors.New("polaris: project is not allowed to be nil")

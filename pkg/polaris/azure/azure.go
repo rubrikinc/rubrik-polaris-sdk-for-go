@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -89,7 +90,7 @@ func (f Feature) HasRegion(region string) bool {
 // identity. If the identity is a Polaris cloud account id no remote endpoint
 // is called.
 func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace, "polaris/azure.toCloudAccountID")
+	a.gql.Log().Print(log.Trace)
 
 	if id == nil {
 		return uuid.Nil, errors.New("polaris: id is not allowed to be nil")
@@ -134,7 +135,7 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 // toNativeID returns the Azure subscription id for the specified identity.
 // If the identity is an Azure subscription id no remote endpoint is called.
 func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace, "polaris/azure.toNativeID")
+	a.gql.Log().Print(log.Trace)
 
 	if id == nil {
 		return uuid.Nil, errors.New("polaris: id is not allowed to be nil")
@@ -183,7 +184,7 @@ var allFeatures = []core.Feature{
 
 // subscriptions return all subscriptions for the given feature and filter.
 func (a API) subscriptions(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace, "polaris/azure.subscriptions")
+	a.gql.Log().Print(log.Trace)
 
 	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, feature, false)
 	if err != nil {
@@ -219,7 +220,7 @@ func (a API) subscriptions(ctx context.Context, feature core.Feature, filter str
 // the given filter. Note that the organization name of the cloud account is
 // not set.
 func (a API) subscriptionsAllFeatures(ctx context.Context, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace, "polaris/azure.subscriptionsAllFeatures")
+	a.gql.Log().Print(log.Trace)
 
 	accountMap := make(map[uuid.UUID]*CloudAccount)
 	for _, feature := range allFeatures {
@@ -247,7 +248,7 @@ func (a API) subscriptionsAllFeatures(ctx context.Context, filter string) ([]Clo
 
 // Subscription returns the subscription with specified id and feature.
 func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Feature) (CloudAccount, error) {
-	a.gql.Log().Print(log.Trace, "polaris/azure.Subscription")
+	a.gql.Log().Print(log.Trace)
 
 	if id == nil {
 		return CloudAccount{}, errors.New("polaris: id is not allowed to be nil")
@@ -293,7 +294,7 @@ func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Fea
 // the filter. The filter can be used to search for subscription name and
 // subscription id.
 func (a API) Subscriptions(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace, "polaris/azure.Subscriptions")
+	a.gql.Log().Print(log.Trace)
 
 	var accounts []CloudAccount
 	var err error
@@ -313,7 +314,7 @@ func (a API) Subscriptions(ctx context.Context, feature core.Feature, filter str
 // given as an option it's derived from the tenant name. Returns the Polaris
 // cloud account id of the added subscription.
 func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace, "polaris/azure.AddSubscription")
+	a.gql.Log().Print(log.Trace)
 
 	if subscription == nil {
 		return uuid.Nil, errors.New("polaris: subscription is not allowed to be nil")
@@ -370,7 +371,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 // Polaris. If deleteSnapshots is true the snapshots are deleted otherwise they
 // are kept.
 func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature core.Feature, deleteSnapshots bool) error {
-	a.gql.Log().Print(log.Trace, "polaris/azure.RemoveSubscription")
+	a.gql.Log().Print(log.Trace)
 
 	account, err := a.Subscription(ctx, id, feature)
 	if err != nil {
@@ -421,7 +422,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 
 // UpdateSubscription updates the subscription with the specied id and feature.
 func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature core.Feature, opts ...OptionFunc) error {
-	a.gql.Log().Print(log.Trace, "polaris/azure.UpdateSubscription")
+	a.gql.Log().Print(log.Trace)
 
 	var options options
 	for _, option := range opts {
@@ -492,7 +493,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 // possible to remove a service account once it has been set. Returns the
 // application id of the service principal set.
 func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipalFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace, "polaris/azure.SetServicePrincipal")
+	a.gql.Log().Print(log.Trace)
 
 	config, err := principal(ctx)
 	if err != nil {

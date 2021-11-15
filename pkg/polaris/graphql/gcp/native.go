@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -45,7 +46,7 @@ type NativeProject struct {
 // NativeProject returns the native project with the specified Polaris native
 // project id.
 func (a API) NativeProject(ctx context.Context, id uuid.UUID) (NativeProject, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.NativeProject")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, gcpNativeProjectQuery, struct {
 		ID uuid.UUID `json:"fid"`
@@ -71,7 +72,7 @@ func (a API) NativeProject(ctx context.Context, id uuid.UUID) (NativeProject, er
 // NativeProjects returns the native projects matching the specified filter.
 // The filter can be used to search for a substring in project name or number.
 func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.NativeProjects")
+	a.GQL.Log().Print(log.Trace)
 
 	var accounts []NativeProject
 	var cursor string
@@ -120,7 +121,7 @@ func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject
 // with the specified Polaris native project id. If deleteSnapshots is true the
 // snapshots are deleted. Returns the Polaris task chain id.
 func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnapshots bool) (uuid.UUID, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.NativeDisableProject")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, gcpNativeDisableProjectQuery, struct {
 		ID              uuid.UUID `json:"projectId"`

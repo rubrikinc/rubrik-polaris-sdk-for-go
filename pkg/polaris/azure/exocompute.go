@@ -24,6 +24,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -91,7 +92,7 @@ func toExocomputeConfig(config azure.ExocomputeConfig) ExocomputeConfig {
 // ExocomputeConfig returns the exocompute config with the specified exocompute
 // config id.
 func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConfig, error) {
-	a.gql.Log().Print(log.Trace, "polaris/azure.ExocomputeConfig")
+	a.gql.Log().Print(log.Trace)
 
 	configsForAccounts, err := azure.Wrap(a.gql).ExocomputeConfigs(ctx, "")
 	if err != nil {
@@ -112,7 +113,7 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 // ExocomputeConfigs returns all exocompute configs for the account with the
 // specified id.
 func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]ExocomputeConfig, error) {
-	a.gql.Log().Print(log.Trace, "polaris/azure.ExocomputeConfigs")
+	a.gql.Log().Print(log.Trace)
 
 	nativeID, err := a.toNativeID(ctx, id)
 	if err != nil {
@@ -137,7 +138,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]Exocompu
 // AddExocomputeConfig adds the exocompute config to the account with the
 // specified id. Returns the id of the added exocompute config.
 func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config ExoConfigFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace, "polaris/azure.AddExocomputeConfig")
+	a.gql.Log().Print(log.Trace)
 
 	exoConfig, err := config(ctx)
 	if err != nil {
@@ -160,7 +161,7 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 // RemoveExocomputeConfig removes the exocompute config with the specified
 // exocompute config id.
 func (a API) RemoveExocomputeConfig(ctx context.Context, id uuid.UUID) error {
-	a.gql.Log().Print(log.Trace, "polaris/azure.RemoveExocomputeConfig")
+	a.gql.Log().Print(log.Trace)
 
 	err := azure.Wrap(a.gql).DeleteCloudAccountExocomputeConfigurations(ctx, id)
 	if err != nil {

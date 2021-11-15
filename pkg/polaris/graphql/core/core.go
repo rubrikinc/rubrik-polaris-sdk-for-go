@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -164,7 +165,7 @@ type TaskChain struct {
 // might not have reached ready yet. This can be detected by state being
 // TaskChainInvalid and error is nil.
 func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/core.KorgTaskChainStatus")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, getKorgTaskchainStatusQuery, struct {
 		TaskChainID uuid.UUID `json:"taskchainId,omitempty"`
@@ -194,7 +195,7 @@ func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, 
 // task chain is returned. The wait parameter specifies the amount of time to
 // wait before requesting another task status update.
 func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Duration) (TaskChainState, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/core.WaitForTaskChain")
+	a.GQL.Log().Print(log.Trace)
 
 	for {
 		taskChain, err := a.KorgTaskChainStatus(ctx, id)
@@ -218,7 +219,7 @@ func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Durat
 
 // DeploymentVersion returns the deployed version of Polaris.
 func (a API) DeploymentVersion(ctx context.Context) (string, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql.Client.DeploymentVersion")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, deploymentVersionQuery, struct{}{})
 	if err != nil {

@@ -27,6 +27,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -66,7 +67,7 @@ type ExocomputeConfigsForAccount struct {
 // ExocomputeConfigs returns all exocompute configs matching the specified
 // filter. The filter can be used to search for account name or account id.
 func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigsForAccount, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.ExocomputeConfigs")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, allAwsExocomputeConfigsQuery, struct {
 		Filter string `json:"awsNativeAccountIdOrNamePrefix"`
@@ -108,7 +109,7 @@ type ExocomputeConfigCreate struct {
 // CreateExocomputeConfig creates a new exocompute config for the account with
 // the specified Polaris cloud account id. Returns the created exocompute config
 func (a API) CreateExocomputeConfig(ctx context.Context, id uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.CreateExocomputeConfig")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, createAwsExocomputeConfigsQuery, struct {
 		ID      uuid.UUID                `json:"cloudAccountId"`
@@ -143,7 +144,7 @@ func (a API) CreateExocomputeConfig(ctx context.Context, id uuid.UUID, config Ex
 // DeleteExocomputeConfig deletes the exocompute config with the specified
 // Polaris exocompute config id.
 func (a API) DeleteExocomputeConfig(ctx context.Context, id uuid.UUID) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.DeleteExocomputeConfig")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, deleteAwsExocomputeConfigsQuery, struct {
 		IDs []uuid.UUID `json:"configIdsToBeDeleted"`
@@ -181,7 +182,7 @@ func (a API) DeleteExocomputeConfig(ctx context.Context, id uuid.UUID) error {
 // feature for the accout with the specified Polaris native account id. Returns
 // the Polaris task chain id.
 func (a API) StartExocomputeDisableJob(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.StartExocomputeDisableJob")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, startAwsExocomputeDisableJobQuery, struct {
 		ID uuid.UUID `json:"cloudAccountId"`

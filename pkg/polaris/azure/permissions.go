@@ -59,7 +59,7 @@ func stringsDiff(lhs, rhs []string) []string {
 // Permissions returns all Azure permissions required to use the specified
 // Polaris features.
 func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissions, error) {
-	a.gql.Log().Print(log.Trace, "polaris/azure.Permissions")
+	a.gql.Log().Print(log.Trace)
 
 	perms := Permissions{}
 	for _, feature := range features {
@@ -87,7 +87,7 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 // nil all features are updated. Note that Polaris is only notified about
 // features with status StatusMissingPermissions.
 func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace, "polaris/azure.PermissionsUpdated")
+	a.gql.Log().Print(log.Trace)
 
 	featureSet := make(map[core.Feature]struct{})
 	for _, feature := range features {
@@ -127,7 +127,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 // features are updated. Note that Polaris is only notified about features
 // with status StatusMissingPermissions.
 func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain string, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace, "polaris/azure.PermissionsUpdatedForTenantDomain")
+	a.gql.Log().Print(log.Trace)
 
 	featureSet := make(map[core.Feature]struct{})
 	for _, feature := range features {

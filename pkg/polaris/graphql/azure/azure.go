@@ -31,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -226,7 +227,7 @@ func Wrap(gql *graphql.Client) API {
 // application for the specified tenant domain. If the tenant domain is empty,
 // set it for all the tenants of the customer.
 func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cloud, appID, appTenantID uuid.UUID, appName, appTenantDomain, appSecretKey string) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.SetCloudAccountCustomerAppCredentials")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, setAzureCloudAccountCustomerAppCredentialsQuery, struct {
 		Cloud        Cloud     `json:"azureCloudType"`

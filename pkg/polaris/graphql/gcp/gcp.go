@@ -47,7 +47,7 @@ func Wrap(gql *graphql.Client) API {
 // DefaultCredentialsServiceAccount gets the default GCP service account name.
 // If no default GCP service account has been set an empty string is returned.
 func (a API) DefaultCredentialsServiceAccount(ctx context.Context) (name string, err error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.DefaultCredentialsServiceAccount")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, gcpGetDefaultCredentialsServiceAccountQuery, nil)
 	if err != nil {
@@ -72,7 +72,7 @@ func (a API) DefaultCredentialsServiceAccount(ctx context.Context) (name string,
 // service account will be used for GCP projects added without a service
 // account key file.
 func (a API) SetDefaultServiceAccount(ctx context.Context, name, jwtConfig string) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.SetDefaultServiceAccount")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, gcpSetDefaultServiceAccountJwtConfigQuery, struct {
 		Name      string `json:"serviceAccountName"`

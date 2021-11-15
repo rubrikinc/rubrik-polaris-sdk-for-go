@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -92,7 +93,7 @@ func (f Feature) HasRegion(region string) bool {
 // identity. If the identity is a Polaris cloud account id no remote endpoint
 // is called.
 func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace, "polaris/aws.toCloudAccountID")
+	a.gql.Log().Print(log.Trace)
 
 	if id == nil {
 		return uuid.Nil, errors.New("polaris: id is not allowed to be nil")
@@ -128,7 +129,7 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 // toNativeID returns the AWS account id for the specified identity. If the
 // identity is an AWS account id no remote endpoint is called.
 func (a API) toNativeID(ctx context.Context, id IdentityFunc) (string, error) {
-	a.gql.Log().Print(log.Trace, "polaris/aws.toNativeID")
+	a.gql.Log().Print(log.Trace)
 
 	if id == nil {
 		return "", errors.New("polaris: id is not allowed to be nil")
@@ -179,7 +180,7 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 
 // Account returns the account with specified id and feature.
 func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature) (CloudAccount, error) {
-	a.gql.Log().Print(log.Trace, "polaris/aws.Account")
+	a.gql.Log().Print(log.Trace)
 
 	if id == nil {
 		return CloudAccount{}, errors.New("polaris: id is not allowed to be nil")
@@ -224,7 +225,7 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 // Accounts return all accounts with the specified feature matching the filter.
 // The filter can be used to search for account id, account name and role arn.
 func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace, "polaris/aws.Accounts")
+	a.gql.Log().Print(log.Trace)
 
 	accountsWithFeatures, err := aws.Wrap(a.gql).CloudAccountsWithFeatures(ctx, feature, filter)
 	if err != nil {
@@ -244,7 +245,7 @@ func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) 
 // result can vary slightly depending on permissions. Returns the Polaris cloud
 // account id of the added account.
 func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace, "polaris/aws.AddAccount")
+	a.gql.Log().Print(log.Trace)
 
 	if account == nil {
 		return uuid.Nil, errors.New("polaris: account is not allowed to be nil")
@@ -308,7 +309,7 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 // Note that removing the Cloud Native Protection feature will also remove the
 // Exocompute feature.
 func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature core.Feature, deleteSnapshots bool) error {
-	a.gql.Log().Print(log.Trace, "polaris/aws.RemoveAccount")
+	a.gql.Log().Print(log.Trace)
 
 	if account == nil {
 		return errors.New("polaris: account is not allowed to be nil")
@@ -426,7 +427,7 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 // UpdateAccount updates the account with the specified id and feature. It's
 // currently not possible to update the account name.
 func (a API) UpdateAccount(ctx context.Context, id IdentityFunc, feature core.Feature, opts ...OptionFunc) error {
-	a.gql.Log().Print(log.Trace, "polaris/aws.UpdateAccount")
+	a.gql.Log().Print(log.Trace)
 
 	var options options
 	for _, option := range opts {

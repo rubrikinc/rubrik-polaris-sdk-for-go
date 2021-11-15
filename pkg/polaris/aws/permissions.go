@@ -14,7 +14,7 @@ import (
 // UpdatePermissions updates the permissions of the CloudFormation stack in
 // AWS.
 func (a API) UpdatePermissions(ctx context.Context, account AccountFunc, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace, "polaris/aws.UpdatePermissions")
+	a.gql.Log().Print(log.Trace)
 
 	if account == nil {
 		return errors.New("polaris: account is not allowed to be nil")

@@ -27,6 +27,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -61,7 +62,7 @@ type CloudAccountTenant struct {
 // feature and Polaris tenant id. The filter can be used to search for
 // subscription name and subscription id.
 func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.Feature, filter string) (CloudAccountTenant, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.CloudAccountTenant")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, azureCloudAccountTenantQuery, struct {
 		ID      uuid.UUID    `json:"tenantId"`
@@ -90,7 +91,7 @@ func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.
 // includeSubscription is true all cloud accounts for each tenant are also
 // returned. Note that this function does not support AllFeatures.
 func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, includeSubscriptions bool) ([]CloudAccountTenant, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.CloudAccountTenants")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, allAzureCloudAccountTenantsQuery, struct {
 		Feature              core.Feature `json:"feature"`
@@ -124,7 +125,7 @@ type addSubscription struct {
 func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uuid.UUID, feature core.Feature,
 	name, tenantDomain string, regions []Region, policyVersion int) (string, error) {
 
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.AddCloudAccountWithoutOAuth")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, addAzureCloudAccountWithoutOauthQuery, struct {
 		Cloud         Cloud             `json:"azureCloudType"`
@@ -169,7 +170,7 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 // DeleteCloudAccountWithoutOAuth delete the Azure subscription cloud account
 // feature with the specified Polaris cloud account id
 func (a API) DeleteCloudAccountWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.DeleteCloudAccountWithoutOAuth")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, deleteAzureCloudAccountWithoutOauthQuery, struct {
 		IDs      []uuid.UUID    `json:"subscriptionIds"`
@@ -213,7 +214,7 @@ type updateSubscription struct {
 // UpdateCloudAccount updates the name and the regions for the cloud account
 // with the specified Polaris cloud account id.
 func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.Feature, name string, toAdd, toRemove []Region) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.UpdateCloudAccount")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, updateAzureCloudAccountQuery, struct {
 		Features      []core.Feature       `json:"features"`
@@ -267,7 +268,7 @@ type PermissionConfig struct {
 // CloudAccountPermissionConfig returns the permissions and version required to
 // enable the given feature for the Azure subscription.
 func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feature) (PermissionConfig, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.CloudAccountPermissionConfig")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, azureCloudAccountPermissionConfigQuery, struct {
 		Feature core.Feature `json:"feature"`
@@ -294,7 +295,7 @@ func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feat
 // permissions for the Azure service prinicpal has been updated for the
 // specified Polaris cloud account id and feature.
 func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.UpgradeCloudAccountPermissionsWithoutOAuth")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, upgradeAzureCloudAccountPermissionsWithoutOauthQuery, struct {
 		ID      uuid.UUID    `json:"cloudAccountId"`

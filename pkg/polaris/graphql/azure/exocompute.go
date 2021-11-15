@@ -27,6 +27,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -53,7 +54,7 @@ type ExocomputeConfigsForAccount struct {
 // ExocomputeConfigs returns all exocompute configs matching the specified
 // filter. The filter can be used to search for account name or account id.
 func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigsForAccount, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.ExocomputeConfigs")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, allAzureExocomputeConfigsInAccountQuery, struct {
 		Filter string `json:"azureExocomputeSearchQuery"`
@@ -90,7 +91,7 @@ type ExocomputeConfigCreate struct {
 // the account with the specified Polaris cloud account id. Returns the created
 // exocompute config
 func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.AddCloudAccountExocomputeConfigurations")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, addAzureCloudAccountExocomputeConfigurationsQuery, struct {
 		ID      uuid.UUID                `json:"cloudAccountId"`
@@ -122,7 +123,7 @@ func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uui
 // DeleteCloudAccountExocomputeConfigurations deletes the exocompute config
 // with the specified Polaris exocompute config id.
 func (a API) DeleteCloudAccountExocomputeConfigurations(ctx context.Context, id uuid.UUID) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.DeleteCloudAccountExocomputeConfigurations")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, deleteAzureCloudAccountExocomputeConfigurationsQuery, struct {
 		IDs []uuid.UUID `json:"cloudAccountIds"`

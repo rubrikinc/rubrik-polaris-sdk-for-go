@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -44,7 +45,7 @@ type NativeAccount struct {
 // NativeAccount returns the native account with the specified Polaris native
 // account id.
 func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature ProtectionFeature) (NativeAccount, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.NativeAccount")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, awsNativeAccountQuery, struct {
 		ID      uuid.UUID         `json:"fid"`
@@ -71,7 +72,7 @@ func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature Protection
 // NativeAccounts returns the native accounts matching the specified filter.
 // The filter can be used to search for a substring in account name.
 func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filter string) ([]NativeAccount, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.NativeAccounts")
+	a.GQL.Log().Print(log.Trace)
 
 	var accounts []NativeAccount
 	var cursor string
@@ -121,7 +122,7 @@ func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filt
 // account with the specified Polaris native account id. Returns the Polaris
 // task chain id.
 func (a API) StartNativeAccountDisableJob(ctx context.Context, id uuid.UUID, feature ProtectionFeature, deleteSnapshots bool) (uuid.UUID, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.StartNativeAccountDisableJob")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, startAwsNativeAccountDisableJobQuery, struct {
 		ID              uuid.UUID         `json:"awsAccountRubrikId"`

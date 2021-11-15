@@ -64,7 +64,7 @@ func (src *serviceAccountSource) token() (token, error) {
 
 	var resp []byte
 	for attempt := 1; ; attempt++ {
-		src.logger.Printf(log.Debug, "acquire access token (attempt: %d)", attempt)
+		src.logger.Printf(log.Debug, "Acquire access token (attempt: %d)", attempt)
 		resp, err = requestToken(src.client, src.tokenURL, body)
 		if err == nil {
 			break

@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -68,7 +69,7 @@ type CloudAccountWithFeatures struct {
 // CloudAccountWithFeatures returns the cloud account with the specified
 // Polaris cloud account id.
 func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature core.Feature) (CloudAccountWithFeatures, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.CloudAccountWithFeatures")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, awsCloudAccountWithFeaturesQuery, struct {
 		ID       uuid.UUID      `json:"cloudAccountId"`
@@ -96,7 +97,7 @@ func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature
 // filter. The filter can be used to search for AWS account id, account name
 // and role arn.
 func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountWithFeatures, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.CloudAccountsWithFeatures")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, allAwsCloudAccountsWithFeaturesQuery, struct {
 		Feature core.Feature `json:"feature"`
@@ -136,7 +137,7 @@ type CloudAccountInitiate struct {
 // on to FinalizeCloudAccountProtection which is the next step in the process
 // of adding an AWS account to Polaris.
 func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string, feature core.Feature) (CloudAccountInitiate, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.ValidateAndCreateCloudAccount")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, validateAndCreateAwsCloudAccountQuery, struct {
 		ID       string         `json:"nativeId"`
@@ -186,7 +187,7 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 // converted into a Go error. After this function a CloudFormation stack must
 // be created using the information returned by ValidateAndCreateCloudAccount.
 func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string, feature core.Feature, regions []Region, init CloudAccountInitiate) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.FinalizeCloudAccountProtection")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountProtectionQuery, struct {
 		ID             string           `json:"nativeId"`
@@ -232,7 +233,7 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string
 // identified by the specified Polaris cloud account id.
 // FinalizeCloudAccountDeletion is the next step in the process.
 func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feature core.Feature) (cloudFormationURL string, err error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.PrepareCloudAccountDeletion")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, prepareAwsCloudAccountDeletionQuery, struct {
 		ID      uuid.UUID    `json:"cloudAccountId"`
@@ -265,7 +266,7 @@ func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feat
 // identified by the specified Polaris cloud account id. The message returned
 // by the GraphQL API call is converted into a Go error.
 func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, feature core.Feature) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.FinalizeCloudAccountDeletion")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountDeletionQuery, struct {
 		ID      uuid.UUID    `json:"cloudAccountId"`
@@ -300,7 +301,7 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 // returned by the GraphQL API call is converted into a Go error. At this time
 // only the regions can be updated.
 func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAction, id uuid.UUID, feature core.Feature, regions []Region) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.UpdateCloudAccount")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, updateAwsCloudAccountQuery, struct {
 		Action  core.CloudAccountAction `json:"action"`
@@ -351,7 +352,7 @@ type VPC struct {
 // AllVpcsByRegion returns all VPCs including their subnets for the specified
 // Polaris cloud account id.
 func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, regions Region) ([]VPC, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.AllVpcsByRegion")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, allVpcsByRegionFromAwsQuery, struct {
 		ID     uuid.UUID `json:"awsAccountRubrikId"`
@@ -379,7 +380,7 @@ func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, regions Region) 
 // template URL from Polaris which can be used to update the CloudFormation
 // stack.
 func (a API) PrepareFeatureUpdateForAwsCloudAccount(ctx context.Context, id uuid.UUID, features []core.Feature) (cfmURL string, tmplURL string, err error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.PrepareFeatureUpdateForAwsCloudAccount")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, prepareFeatureUpdateForAwsCloudAccountQuery, struct {
 		ID       uuid.UUID      `json:"cloudAccountId"`

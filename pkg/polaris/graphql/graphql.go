@@ -116,8 +116,6 @@ type Client struct {
 
 // NewClientFromLocalUser returns a new Client with the specified configuration.
 func NewClientFromLocalUser(ctx context.Context, app, apiURL, username, password string, logger log.Logger) *Client {
-	logger.Printf(log.Debug, "apiURL: %s", apiURL)
-
 	return &Client{
 		app:    app,
 		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
@@ -133,8 +131,6 @@ func NewClientFromLocalUser(ctx context.Context, app, apiURL, username, password
 
 // NewClientFromServiceAccount returns a new Client with the specified configuration.
 func NewClientFromServiceAccount(ctx context.Context, app, apiURL, accessTokenURI, clientID, clientSecret string, logger log.Logger) *Client {
-	logger.Printf(log.Debug, "apiURL: %s", apiURL)
-
 	return &Client{
 		app:    app,
 		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
@@ -169,7 +165,7 @@ func NewTestClient(username, password string, logger log.Logger) (*Client, *Test
 // Request posts the specified GraphQL query with the given variables to the
 // Polaris platform. Returns the response JSON text as is.
 func (c *Client) Request(ctx context.Context, query string, variables interface{}) ([]byte, error) {
-	c.log.Print(log.Trace, "polaris/graphql.Request")
+	c.log.Print(log.Trace)
 
 	// Extract operation name from query to pass in the body of the request for
 	// metrics.
