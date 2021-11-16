@@ -197,7 +197,7 @@ func (a API) AssignSlaForSnappableHierarchies(
 		Data struct {
 			AssignSlaForSnappableHierarchies []struct {
 				Success bool `json:"success"`
-			} `json:"assignSlaForSnappableHierarchiesQuery"`
+			} `json:"assignSlasForSnappableHierarchies"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
