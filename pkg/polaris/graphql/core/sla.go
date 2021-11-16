@@ -171,13 +171,13 @@ func (a API) AssignSlaForSnappableHierarchies(
 		ctx,
 		assignSlaForSnappableHierarchiesQuery,
 		struct {
-			GlobalSLAOptionalFid uuid.UUID
-			GlobalSLAAssignType SLAAssignType
-			ObjectIDs []uuid.UUID
-			ApplicableSnappableTypes []SnappableLevelHierarchyType
-			ShouldApplyToExistingSnapshots bool
-			ShouldApplyToNonPolicySnapshots bool
-			GlobalExistingSnapshotRetention GlobalExistingSnapshotRetention
+			GlobalSLAOptionalFid uuid.UUID `json:"globalSlaOptionalFid"`
+			GlobalSLAAssignType SLAAssignType `json:"globalSlaAssignType"`
+			ObjectIDs []uuid.UUID `json:"objectIds"`
+			ApplicableSnappableTypes []SnappableLevelHierarchyType `json:"applicableSnappableTypes"`
+			ShouldApplyToExistingSnapshots bool `json:"shouldApplyToExistingSnapshots"`
+			ShouldApplyToNonPolicySnapshots bool `json:"shouldApplyToNonPolicySnapshots"`
+			GlobalExistingSnapshotRetention GlobalExistingSnapshotRetention `json:"globalExistingSnapshotRetention"`
 		} {
 			GlobalSLAOptionalFid: globalSLAOptionalFid,
 			GlobalSLAAssignType: globalSLAAssignType,
@@ -232,15 +232,15 @@ func (a API) ListSLA(
 			ctx,
 			globalSlaConnectionQuery,
 			struct {
-				After string
-				SortBy SLAQuerySortByField
-				SortOrder SLAQuerySortByOrder
-				Filter []GlobalSLAFilterInput
-				ContextFilter ContextFilterType
-				ContextFilterInput []ContextFilterInputField
-				ShowSyncStatus bool
-				ShowProtectedObjectCount bool
-				ShowUpgradeInfo bool
+				After string `json:"after"`
+				SortBy SLAQuerySortByField `json:"sortBy"`
+				SortOrder SLAQuerySortByOrder `json:"sortOrder"`
+				Filter []GlobalSLAFilterInput `json:"filter"`
+				ContextFilter ContextFilterType `json:"contextFilter"`
+				ContextFilterInput []ContextFilterInputField `json:"contextFilterInput"`
+				ShowSyncStatus bool `json:"showSyncStatus"`
+				ShowProtectedObjectCount bool `json:"showProtectedObjectCount"`
+				ShowUpgradeInfo bool `json:"showUpgradeInfo"`
 			} {
 				After: cursor,
 				SortBy: sortBy,

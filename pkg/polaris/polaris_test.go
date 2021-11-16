@@ -757,7 +757,9 @@ func TestGcpPermissions(t *testing.T) {
 //   * TEST_INTEGRATION=1
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 func TestListSLA(t *testing.T) {
-	requireEnv(t, "TEST_INTEGRATION", testDelay)
+	if !boolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
 
 	ctx := context.Background()
 
