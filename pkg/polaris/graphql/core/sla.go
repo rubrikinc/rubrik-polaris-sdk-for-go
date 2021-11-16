@@ -232,7 +232,7 @@ func (a API) ListSLA(
 			ctx,
 			globalSlaConnectionQuery,
 			struct {
-				After string `json:"after"`
+				After string `json:"after,omitempty"`
 				SortBy SLAQuerySortByField `json:"sortBy"`
 				SortOrder SLAQuerySortByOrder `json:"sortOrder"`
 				Filter []GlobalSLAFilterInput `json:"filter"`
