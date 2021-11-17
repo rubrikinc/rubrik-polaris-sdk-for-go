@@ -23,6 +23,7 @@ package graphql
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -59,7 +60,7 @@ func (src *serviceAccountSource) token() (token, error) {
 		ClientSecret string `json:"client_secret"`
 	}{GrantType: "client_credentials", ClientID: src.clientID, ClientSecret: src.clientSecret})
 	if err != nil {
-		return token{}, err
+		return token{}, fmt.Errorf("failed to marshal token request body: %v", err)
 	}
 
 	var resp []byte
@@ -70,7 +71,7 @@ func (src *serviceAccountSource) token() (token, error) {
 			break
 		}
 		if !errors.Is(err, errTokenRequestTimeout) || attempt == tokenRequestAttempts {
-			return token{}, err
+			return token{}, fmt.Errorf("failed to acquire service account access token: %v", err)
 		}
 	}
 
@@ -81,13 +82,13 @@ func (src *serviceAccountSource) token() (token, error) {
 		AccessToken string `json:"access_token"`
 	}
 	if err := json.Unmarshal(resp, &payload); err != nil {
-		return token{}, err
+		return token{}, fmt.Errorf("failed to unmarshal token response body: %v", err)
 	}
 	if payload.ClientID != src.clientID {
-		return token{}, errors.New("polaris: invalid client id")
+		return token{}, errors.New("invalid client id")
 	}
 	if payload.AccessToken == "" {
-		return token{}, errors.New("polaris: invalid token")
+		return token{}, errors.New("invalid token")
 	}
 
 	return fromJWT(payload.AccessToken)

@@ -23,6 +23,7 @@ package azure
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
 
@@ -55,7 +56,7 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 			Filter string `json:"filter"`
 		}{After: cursor, Filter: filter})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to request NativeSubscriptions: %v", err)
 		}
 
 		a.GQL.Log().Printf(log.Debug, "azureNativeSubscriptions(%q): %s", filter, string(buf))
@@ -75,7 +76,7 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal NativeSubscriptions: %v", err)
 		}
 		for _, subscription := range payload.Data.Result.Edges {
 			subscriptions = append(subscriptions, subscription.Node)
@@ -103,7 +104,7 @@ func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id
 		Feature         ProtectionFeature `json:"azureNativeProtectionFeature"`
 	}{ID: id, DeleteSnapshots: deleteSnapshots, Feature: feature})
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to request StartDisableNativeSubscriptionProtectionJob: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "startDisableAzureNativeSubscriptionProtectionJob(%q, %q, %t): %s",
@@ -117,7 +118,7 @@ func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to unmarshal StartDisableNativeSubscriptionProtectionJob: %v", err)
 	}
 
 	return payload.Data.Result.JobID, nil

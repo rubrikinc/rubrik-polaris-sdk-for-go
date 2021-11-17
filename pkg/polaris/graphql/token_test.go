@@ -133,7 +133,7 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 	if err == nil {
 		t.Fatal("token request should fail")
 	}
-	if err.Error() != "polaris: code 401: UNAUTHENTICATED: wrong username or password" {
+	if !strings.HasSuffix(err.Error(), "UNAUTHENTICATED: wrong username or password (code 401)") {
 		t.Fatal(err)
 	}
 }
@@ -151,7 +151,7 @@ func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
 	if err == nil {
 		t.Fatal("token request should fail")
 	}
-	if !strings.HasPrefix(err.Error(), "polaris: 500 Internal Server Error") {
+	if !strings.HasSuffix(err.Error(), "token response has no body (status code 500)") {
 		t.Fatal(err)
 	}
 }
@@ -171,7 +171,8 @@ func TestTokenSourceWithInternalServerErrorTextBody(t *testing.T) {
 	if err == nil {
 		t.Fatal("token request should fail")
 	}
-	if !strings.HasPrefix(err.Error(), "polaris: 500 Internal Server Error") {
+	if !strings.HasSuffix(err.Error(),
+		"token response has Content-Type text/plain (status code 500): \"user database is corrupt\"") {
 		t.Fatal(err)
 	}
 }

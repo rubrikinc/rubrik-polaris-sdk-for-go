@@ -28,6 +28,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -49,13 +50,13 @@ const (
 type ProtectionFeature string
 
 const (
-	// Azure SQL Database.
+	// SQLDB Azure SQL Database.
 	SQLDB ProtectionFeature = "SQL_DB"
 
-	// Azure SQL Managed Instance.
+	// SQLMI Azure SQL Managed Instance.
 	SQLMI ProtectionFeature = "SQL_MI"
 
-	// Azure Virtual Machine.
+	// VM Azure Virtual Machine.
 	VM ProtectionFeature = "VM"
 )
 
@@ -192,7 +193,7 @@ func ParseRegion(region string) (Region, error) {
 		return r, nil
 	}
 
-	return RegionUnknown, errors.New("polaris: invalid azure region")
+	return RegionUnknown, errors.New("invalid azure region")
 }
 
 // ParseRegions returns the Regions matching the given regions. Accepts both
@@ -203,7 +204,7 @@ func ParseRegions(regions []string) ([]Region, error) {
 	for _, r := range regions {
 		region, err := ParseRegion(r)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse region: %v", err)
 		}
 
 		regs = append(regs, region)
@@ -238,7 +239,7 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 		TenantDomain string    `json:"tenantDomainName"`
 	}{Cloud: cloud, ID: appID, Name: appName, TenantID: appTenantID, TenantDomain: appTenantDomain, SecretKey: appSecretKey})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to request SetCloudAccountCustomerAppCredentials: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "setAzureCloudAccountCustomerAppCredentials(%q, %q, %q, \"<REDACTED>\", %q, %q): %s", cloud,
@@ -250,10 +251,10 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal SetCloudAccountCustomerAppCredentials: %v", err)
 	}
 	if !payload.Data.Result {
-		return errors.New("polaris: failed to set azure customer credentials")
+		return errors.New("set app credentials failed")
 	}
 
 	return nil

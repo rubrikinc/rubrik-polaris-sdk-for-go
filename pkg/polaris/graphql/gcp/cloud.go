@@ -43,7 +43,7 @@ type CloudAccount struct {
 	UsesGlobalConfig bool      `json:"usesGlobalConfig"`
 }
 
-// Feature represents a Polaris Cloud Account feature for GCP, e.g Cloud Native
+// Feature represents a Polaris Cloud Account feature for GCP, e.g. Cloud Native
 // Protection.
 type Feature struct {
 	Name   core.Feature `json:"feature"`
@@ -68,7 +68,7 @@ func (a API) CloudAccountListProjects(ctx context.Context, feature core.Feature,
 		Filter  string       `json:"projectSearchText"`
 	}{Feature: feature, Filter: filter})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to request CloudAccountListProjects: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "gcpCloudAccountListProjects(%q, %q): %s", feature, filter, string(buf))
@@ -79,7 +79,7 @@ func (a API) CloudAccountListProjects(ctx context.Context, feature core.Feature,
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal CloudAccountListProjects: %v", err)
 	}
 
 	return payload.Data.Accounts, nil
@@ -98,7 +98,7 @@ func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, pr
 		JwtConfig string       `json:"serviceAccountJwtConfigOptional,omitempty"`
 	}{Feature: feature, ID: projectID, Name: projectName, Number: projectNumber, OrgName: orgName, JwtConfig: jwtConfig})
 
-	return err
+	return fmt.Errorf("failed to request CloudAccountAddManualAuthProject: %v", err)
 }
 
 // CloudAccountDeleteProject delete cloud account for the given Polaris cloud
@@ -110,7 +110,7 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 		IDs []uuid.UUID `json:"nativeProtectionProjectUuids"`
 	}{IDs: []uuid.UUID{id}})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to request CloudAccountDeleteProject: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "gcpCloudAccountDeleteProjects(%q): %s", []uuid.UUID{id}, string(buf))
@@ -125,14 +125,14 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal CloudAccountDeleteProject: %v", err)
 	}
 	if len(payload.Data.Projects) != 1 {
-		return errors.New("polaris: failed to delete gcp project")
+		return errors.New("expected a single result")
 	}
 
-	if project := payload.Data.Projects[0]; !project.Success {
-		return fmt.Errorf("polaris: %s", project.Error)
+	if !payload.Data.Projects[0].Success {
+		return errors.New(payload.Data.Projects[0].Error)
 	}
 
 	return nil
@@ -147,7 +147,7 @@ func (a API) CloudAccountListPermissions(ctx context.Context, feature core.Featu
 		Feature core.Feature `json:"feature"`
 	}{Feature: feature})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to request CloudAccountListPermissions: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "gcpCloudAccountListPermissions(%q): %s", feature, string(buf))
@@ -160,7 +160,7 @@ func (a API) CloudAccountListPermissions(ctx context.Context, feature core.Featu
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal CloudAccountListPermissions: %v", err)
 	}
 
 	permissions = make([]string, 0, len(payload.Data.Permissions))
@@ -171,7 +171,7 @@ func (a API) CloudAccountListPermissions(ctx context.Context, feature core.Featu
 	return permissions, nil
 }
 
-// UpgradeCloudAccountPermissionsWithoutOauth notifies Polaris that the
+// UpgradeCloudAccountPermissionsWithoutOAuth notifies Polaris that the
 // permissions for the GCP service account has been updated for the
 // specified Polaris cloud account id and feature.
 func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
@@ -182,7 +182,7 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id 
 		Feature core.Feature `json:"feature"`
 	}{ID: id, Feature: feature})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to request UpgradeCloudAccountPermissionsWithoutOAuth: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "upgradeGcpCloudAccountPermissionsWithoutOauth(%q, %q): %s",
@@ -200,10 +200,10 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal UpgradeCloudAccountPermissionsWithoutOAuth: %v", err)
 	}
 	if !payload.Data.Result.Status.Success {
-		return fmt.Errorf("polaris: %v", payload.Data.Result.Status.Error)
+		return errors.New(payload.Data.Result.Status.Error)
 	}
 
 	return nil

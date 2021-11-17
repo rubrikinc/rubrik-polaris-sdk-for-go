@@ -96,17 +96,17 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 	a.gql.Log().Print(log.Trace)
 
 	if id == nil {
-		return uuid.Nil, errors.New("polaris: id is not allowed to be nil")
+		return uuid.Nil, errors.New("id is not allowed to be nil")
 	}
 	identity, err := id(ctx)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to lookup identity: %v", err)
 	}
 
 	if identity.internal {
 		id, err := uuid.Parse(identity.id)
 		if err != nil {
-			return uuid.Nil, err
+			return uuid.Nil, fmt.Errorf("failed to parse identity: %v", err)
 		}
 
 		return id, nil
@@ -114,13 +114,13 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 
 	accountsWithFeatures, err := aws.Wrap(a.gql).CloudAccountsWithFeatures(ctx, core.FeatureCloudNativeProtection, identity.id)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to get account: %v", err)
 	}
 	if len(accountsWithFeatures) < 1 {
-		return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotFound)
+		return uuid.Nil, fmt.Errorf("account %w", graphql.ErrNotFound)
 	}
 	if len(accountsWithFeatures) > 1 {
-		return uuid.Nil, fmt.Errorf("polaris: account %w", graphql.ErrNotUnique)
+		return uuid.Nil, fmt.Errorf("account %w", graphql.ErrNotUnique)
 	}
 
 	return accountsWithFeatures[0].Account.ID, nil
@@ -132,11 +132,11 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (string, error) {
 	a.gql.Log().Print(log.Trace)
 
 	if id == nil {
-		return "", errors.New("polaris: id is not allowed to be nil")
+		return "", errors.New("id is not allowed to be nil")
 	}
 	identity, err := id(ctx)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to lookup identity: %v", err)
 	}
 
 	if !identity.internal {
@@ -145,12 +145,12 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (string, error) {
 
 	uid, err := uuid.Parse(identity.id)
 	if err != nil {
-		return "", nil
+		return "", fmt.Errorf("failed to parse identity: %v", err)
 	}
 
 	accountWithFeatures, err := aws.Wrap(a.gql).CloudAccountWithFeatures(ctx, uid, core.FeatureCloudNativeProtection)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get account: %v", err)
 	}
 
 	return accountWithFeatures.Account.NativeID, nil
@@ -183,22 +183,22 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 	a.gql.Log().Print(log.Trace)
 
 	if id == nil {
-		return CloudAccount{}, errors.New("polaris: id is not allowed to be nil")
+		return CloudAccount{}, errors.New("id is not allowed to be nil")
 	}
 	identity, err := id(ctx)
 	if err != nil {
-		return CloudAccount{}, err
+		return CloudAccount{}, fmt.Errorf("failed to lookup identity: %v", err)
 	}
 
 	if identity.internal {
 		cloudAccountID, err := uuid.Parse(identity.id)
 		if err != nil {
-			return CloudAccount{}, err
+			return CloudAccount{}, fmt.Errorf("failed to parse identity: %v", err)
 		}
 
 		accountsWithFeatures, err := aws.Wrap(a.gql).CloudAccountsWithFeatures(ctx, feature, "")
 		if err != nil {
-			return CloudAccount{}, err
+			return CloudAccount{}, fmt.Errorf("failed to get account: %v", err)
 		}
 
 		for _, accountWithFeatures := range accountsWithFeatures {
@@ -209,17 +209,17 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 	} else {
 		accountsWithFeatures, err := aws.Wrap(a.gql).CloudAccountsWithFeatures(ctx, feature, identity.id)
 		if err != nil {
-			return CloudAccount{}, err
+			return CloudAccount{}, fmt.Errorf("failed to get account: %v", err)
 		}
 		if len(accountsWithFeatures) == 1 {
 			return toCloudAccount(accountsWithFeatures[0]), nil
 		}
 		if len(accountsWithFeatures) > 1 {
-			return CloudAccount{}, fmt.Errorf("polaris: account %w", graphql.ErrNotUnique)
+			return CloudAccount{}, fmt.Errorf("account %w", graphql.ErrNotUnique)
 		}
 	}
 
-	return CloudAccount{}, fmt.Errorf("polaris: account %w", graphql.ErrNotFound)
+	return CloudAccount{}, fmt.Errorf("account %w", graphql.ErrNotFound)
 }
 
 // Accounts return all accounts with the specified feature matching the filter.
@@ -229,7 +229,7 @@ func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) 
 
 	accountsWithFeatures, err := aws.Wrap(a.gql).CloudAccountsWithFeatures(ctx, feature, filter)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get account: %v", err)
 	}
 
 	accounts := make([]CloudAccount, 0, len(accountsWithFeatures))
@@ -248,17 +248,17 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 	a.gql.Log().Print(log.Trace)
 
 	if account == nil {
-		return uuid.Nil, errors.New("polaris: account is not allowed to be nil")
+		return uuid.Nil, errors.New("account is not allowed to be nil")
 	}
 	config, err := account(ctx)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to lookup account: %v", err)
 	}
 
 	var options options
 	for _, option := range opts {
 		if err := option(ctx, &options); err != nil {
-			return uuid.Nil, err
+			return uuid.Nil, fmt.Errorf("failed to lookup option: %v", err)
 		}
 	}
 	if options.name != "" {
@@ -273,22 +273,22 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 		config.name = akkount.Name
 	}
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to get account: %v", err)
 	}
 
 	accountInit, err := aws.Wrap(a.gql).ValidateAndCreateCloudAccount(ctx, config.id, config.name, feature)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to validate account: %v", err)
 	}
 
 	err = aws.Wrap(a.gql).FinalizeCloudAccountProtection(ctx, config.id, config.name, feature, options.regions, accountInit)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to add account: %v", err)
 	}
 
 	err = awsUpdateStack(ctx, a.gql.Log(), config.config, accountInit.StackName, accountInit.TemplateURL)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to update CloudFormation stack: %v", err)
 	}
 
 	// If the Polaris cloud account did not exist prior we retrieve the Polaris
@@ -296,7 +296,7 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 	if akkount.ID == uuid.Nil {
 		akkount, err = a.Account(ctx, AccountID(config.id), feature)
 		if err != nil {
-			return uuid.Nil, err
+			return uuid.Nil, fmt.Errorf("failed to get account: %v", err)
 		}
 	}
 
@@ -312,21 +312,21 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 	a.gql.Log().Print(log.Trace)
 
 	if account == nil {
-		return errors.New("polaris: account is not allowed to be nil")
+		return errors.New("account is not allowed to be nil")
 	}
 	config, err := account(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to lookup account: %v", err)
 	}
 
 	akkount, err := a.Account(ctx, AccountID(config.id), core.FeatureAll)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get account: %v", err)
 	}
 
 	rmFeature, ok := akkount.Feature(feature)
 	if !ok {
-		return fmt.Errorf("polaris: feature %s %w", rmFeature, graphql.ErrNotFound)
+		return fmt.Errorf("feature %v %w", rmFeature, graphql.ErrNotFound)
 	}
 
 	// Disable the native (inventory) account before removing the feature.
@@ -334,34 +334,34 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 	case rmFeature.Name == core.FeatureCloudNativeProtection && rmFeature.Status != core.StatusDisabled:
 		jobID, err := aws.Wrap(a.gql).StartNativeAccountDisableJob(ctx, akkount.ID, aws.EC2, deleteSnapshots)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to disable native account: %v", err)
 		}
 
 		state, err := core.Wrap(a.gql).WaitForTaskChain(ctx, jobID, 10*time.Second)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to wait for task chain: %v", err)
 		}
 		if state != core.TaskChainSucceeded {
-			return fmt.Errorf("polaris: taskchain failed: jobID=%v, state=%v", jobID, state)
+			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
 		}
 	case rmFeature.Name == core.FeatureExocompute && rmFeature.Status != core.StatusDisabled:
 		jobID, err := aws.Wrap(a.gql).StartExocomputeDisableJob(ctx, akkount.ID)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to disable native account: %v", err)
 		}
 
 		state, err := core.Wrap(a.gql).WaitForTaskChain(ctx, jobID, 10*time.Second)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to wait for taskchain: %v", err)
 		}
 		if state != core.TaskChainSucceeded {
-			return fmt.Errorf("polaris: taskchain failed: jobID=%v, state=%v", jobID, state)
+			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
 		}
 	}
 
 	cfmURL, err := aws.Wrap(a.gql).PrepareCloudAccountDeletion(ctx, akkount.ID, feature)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to prepare to delete account: %v", err)
 	}
 
 	// Determine the number of features remaining after removing one feature.
@@ -384,41 +384,41 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 	if features > 0 {
 		i := strings.LastIndex(cfmURL, "#/stack/update") + 1
 		if i == 0 {
-			return errors.New("polaris: CloudFormation url does not contain #/stack/update")
+			return errors.New("CloudFormation url does not contain #/stack/update")
 		}
 
 		u, err := url.Parse(cfmURL[i:])
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to parse CloudFormation url: %v", err)
 		}
 		stackID := u.Query().Get("stackId")
 		tmplURL := u.Query().Get("templateURL")
 
 		err = awsUpdateStack(ctx, a.gql.Log(), config.config, stackID, tmplURL)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to update CloudFormation stack: %v", err)
 		}
 	} else {
 		i := strings.LastIndex(cfmURL, "#/stack/detail") + 1
 		if i == 0 {
-			return errors.New("polaris: CloudFormation url does not contain #/stack/detail")
+			return errors.New("CloudFormation url does not contain #/stack/detail")
 		}
 
 		u, err := url.Parse(cfmURL[i:])
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to parse CloudFormation url: %v", err)
 		}
 		stackID := u.Query().Get("stackId")
 
 		err = awsDeleteStack(ctx, a.gql.Log(), config.config, stackID)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to delete CloudFormation stack: %v", err)
 		}
 	}
 
 	err = aws.Wrap(a.gql).FinalizeCloudAccountDeletion(ctx, akkount.ID, feature)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete account: %v", err)
 	}
 
 	return nil
@@ -432,21 +432,21 @@ func (a API) UpdateAccount(ctx context.Context, id IdentityFunc, feature core.Fe
 	var options options
 	for _, option := range opts {
 		if err := option(ctx, &options); err != nil {
-			return err
+			return fmt.Errorf("failed to lookup option: %v", err)
 		}
 	}
 	if len(options.regions) == 0 {
-		return errors.New("polaris: nothing to update")
+		return errors.New("nothing to update")
 	}
 
 	account, err := a.Account(ctx, id, feature)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get account: %v", err)
 	}
 
 	err = aws.Wrap(a.gql).UpdateCloudAccount(ctx, core.UpdateRegions, account.ID, feature, options.regions)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update account: %v", err)
 	}
 
 	return nil

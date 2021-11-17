@@ -22,6 +22,7 @@ package aws
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -44,7 +45,7 @@ func awsAccountID(ctx context.Context, config aws.Config) (string, error) {
 	stsClient := sts.NewFromConfig(config)
 	id, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get AWS identity from STS: %v", err)
 	}
 
 	return *id.Account, nil
@@ -55,14 +56,14 @@ func awsAccountID(ctx context.Context, config aws.Config) (string, error) {
 func awsAccount(ctx context.Context, config aws.Config) (string, string, error) {
 	id, err := awsAccountID(ctx, config)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to get AWS account id: %v", err)
 	}
 
 	// Organizations calls might fail due to missing permissions.
 	orgClient := organizations.NewFromConfig(config)
 	info, err := orgClient.DescribeAccount(ctx, &organizations.DescribeAccountInput{AccountId: &id})
 	if err != nil {
-		return id, "", nil
+		return id, "", fmt.Errorf("failed to get AWS account info from Organizations: %v", err)
 	}
 
 	return id, *info.Account.Name, nil
@@ -74,7 +75,7 @@ func Config(config aws.Config) AccountFunc {
 	return func(ctx context.Context) (account, error) {
 		id, name, err := awsAccount(ctx, config)
 		if err != nil {
-			return account{}, err
+			return account{}, fmt.Errorf("failed to get AWS account: %v", err)
 		}
 
 		if name == "" {
@@ -91,12 +92,12 @@ func Default() AccountFunc {
 	return func(ctx context.Context) (account, error) {
 		config, err := config.LoadDefaultConfig(ctx)
 		if err != nil {
-			return account{}, err
+			return account{}, fmt.Errorf("failed to read default AWS config: %v", err)
 		}
 
 		id, name, err := awsAccount(ctx, config)
 		if err != nil {
-			return account{}, err
+			return account{}, fmt.Errorf("failed to get AWS account: %v", err)
 		}
 
 		if name == "" {
@@ -113,19 +114,19 @@ func Profile(profile string) AccountFunc {
 	return ProfileAndRegion(profile, "")
 }
 
-// Profile returns an AccountFunc that initializes the account with values from
-// the specified profile, the given region and the cloud.
+// ProfileAndRegion returns an AccountFunc that initializes the account with
+// values from the specified profile, the given region and the cloud.
 func ProfileAndRegion(profile, region string) AccountFunc {
 	return func(ctx context.Context) (account, error) {
 		config, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profile),
 			config.WithRegion(region))
 		if err != nil {
-			return account{}, err
+			return account{}, fmt.Errorf("failed to read %q AWS config: %v", profile, err)
 		}
 
 		id, name, err := awsAccount(ctx, config)
 		if err != nil {
-			return account{}, err
+			return account{}, fmt.Errorf("failed to get AWS account: %v", err)
 		}
 
 		// Derive name from AWS id and profile.

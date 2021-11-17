@@ -22,6 +22,7 @@ package azure
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -49,7 +50,7 @@ func ID(subscription SubscriptionFunc) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
 		config, err := subscription(ctx)
 		if err != nil {
-			return identity{}, err
+			return identity{}, fmt.Errorf("failed to lookup subscription: %v", err)
 		}
 
 		return identity{id: config.id.String(), internal: false}, nil

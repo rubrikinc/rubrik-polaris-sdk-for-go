@@ -22,6 +22,7 @@ package azure
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 
@@ -50,7 +51,7 @@ func Managed(region, subnetID string) ExoConfigFunc {
 	return func(ctx context.Context) (azure.ExocomputeConfigCreate, error) {
 		r, err := azure.ParseRegion(region)
 		if err != nil {
-			return azure.ExocomputeConfigCreate{}, err
+			return azure.ExocomputeConfigCreate{},  fmt.Errorf("failed to parse region: %v", err)
 		}
 
 		return azure.ExocomputeConfigCreate{
@@ -67,7 +68,7 @@ func Unmanaged(region, subnetID string) ExoConfigFunc {
 	return func(ctx context.Context) (azure.ExocomputeConfigCreate, error) {
 		r, err := azure.ParseRegion(region)
 		if err != nil {
-			return azure.ExocomputeConfigCreate{}, err
+			return azure.ExocomputeConfigCreate{},  fmt.Errorf("failed to parse region: %v", err)
 		}
 
 		return azure.ExocomputeConfigCreate{
@@ -96,7 +97,7 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 
 	configsForAccounts, err := azure.Wrap(a.gql).ExocomputeConfigs(ctx, "")
 	if err != nil {
-		return ExocomputeConfig{}, err
+		return ExocomputeConfig{}, fmt.Errorf("failed to get exocompute configs: %v", err)
 	}
 
 	for _, configsForAccount := range configsForAccounts {
@@ -107,7 +108,7 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 		}
 	}
 
-	return ExocomputeConfig{}, graphql.ErrNotFound
+	return ExocomputeConfig{}, fmt.Errorf("exocompute config %w", graphql.ErrNotFound)
 }
 
 // ExocomputeConfigs returns all exocompute configs for the account with the
@@ -117,12 +118,12 @@ func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]Exocompu
 
 	nativeID, err := a.toNativeID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get native id: %v", err)
 	}
 
 	configsForAccounts, err := azure.Wrap(a.gql).ExocomputeConfigs(ctx, nativeID.String())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get exocompute configs: %v", err)
 	}
 
 	var exoConfigs []ExocomputeConfig
@@ -142,17 +143,17 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 
 	exoConfig, err := config(ctx)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to lookup exocompute config: %v", err)
 	}
 
 	accountID, err := a.toCloudAccountID(ctx, id)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to get cloud account id: %v", err)
 	}
 
 	exo, err := azure.Wrap(a.gql).AddCloudAccountExocomputeConfigurations(ctx, accountID, exoConfig)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to create exocompute config: %v", err)
 	}
 
 	return exo.ID, nil
@@ -165,7 +166,7 @@ func (a API) RemoveExocomputeConfig(ctx context.Context, id uuid.UUID) error {
 
 	err := azure.Wrap(a.gql).DeleteCloudAccountExocomputeConfigurations(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to remove exocompute config: %v", err)
 	}
 
 	return nil

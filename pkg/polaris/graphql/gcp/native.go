@@ -23,6 +23,7 @@ package gcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
 
@@ -52,7 +53,7 @@ func (a API) NativeProject(ctx context.Context, id uuid.UUID) (NativeProject, er
 		ID uuid.UUID `json:"fid"`
 	}{ID: id})
 	if err != nil {
-		return NativeProject{}, err
+		return NativeProject{}, fmt.Errorf("failed to request NativeProject: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "gcpNativeProject(%q): %s", id, string(buf))
@@ -63,7 +64,7 @@ func (a API) NativeProject(ctx context.Context, id uuid.UUID) (NativeProject, er
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return NativeProject{}, err
+		return NativeProject{}, fmt.Errorf("failed to unmarshal NativeProject: %v", err)
 	}
 
 	return payload.Data.Account, nil
@@ -82,7 +83,7 @@ func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject
 			Filter string `json:"filter"`
 		}{After: cursor, Filter: filter})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to request NativeProjects: %v", err)
 		}
 
 		a.GQL.Log().Printf(log.Debug, "gcpNativeProjectConnection(%q): %s", filter, string(buf))
@@ -102,7 +103,7 @@ func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal NativeProjects: %v", err)
 		}
 		for _, account := range payload.Data.Query.Edges {
 			accounts = append(accounts, account.Node)
@@ -128,7 +129,7 @@ func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnaps
 		DeleteSnapshots bool      `json:"shouldDeleteNativeSnapshots"`
 	}{ID: id, DeleteSnapshots: deleteSnapshots})
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to request NativeDisableProject: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "gcpNativeDisableProject(%q, %t): %s", id, deleteSnapshots, string(buf))
@@ -141,7 +142,7 @@ func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnaps
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to unmarshal NativeDisableProject: %v", err)
 	}
 
 	return payload.Data.Query.TaskChainID, nil

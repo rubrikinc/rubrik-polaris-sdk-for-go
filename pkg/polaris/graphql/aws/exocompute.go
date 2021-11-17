@@ -73,7 +73,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 		Filter string `json:"awsNativeAccountIdOrNamePrefix"`
 	}{Filter: filter})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to request ExocomputeConfigs: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "allAwsExocomputeConfigs(%q): %s", filter, string(buf))
@@ -84,7 +84,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal ExocomputeConfigs: %v", err)
 	}
 
 	return payload.Data.Result, nil
@@ -116,7 +116,7 @@ func (a API) CreateExocomputeConfig(ctx context.Context, id uuid.UUID, config Ex
 		Configs []ExocomputeConfigCreate `json:"configs"`
 	}{ID: id, Configs: []ExocomputeConfigCreate{config}})
 	if err != nil {
-		return ExocomputeConfig{}, err
+		return ExocomputeConfig{}, fmt.Errorf("failed to request CreateExocomputeConfig: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "createAwsExocomputeConfigs(%q, %v): %s", id, config, string(buf))
@@ -129,13 +129,13 @@ func (a API) CreateExocomputeConfig(ctx context.Context, id uuid.UUID, config Ex
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return ExocomputeConfig{}, err
+		return ExocomputeConfig{}, fmt.Errorf("failed to unmarshal CreateExocomputeConfig: %v", err)
 	}
 	if len(payload.Data.Query.Configs) != 1 {
-		return ExocomputeConfig{}, errors.New("polaris: createAwsExocomputeConfigs: no result")
+		return ExocomputeConfig{}, errors.New("expected a single result")
 	}
-	if msg := payload.Data.Query.Configs[0].Message; msg != "" {
-		return ExocomputeConfig{}, fmt.Errorf("polaris: failed to create config: %s", msg)
+	if payload.Data.Query.Configs[0].Message != "" {
+		return ExocomputeConfig{}, errors.New(payload.Data.Query.Configs[0].Message)
 	}
 
 	return payload.Data.Query.Configs[0], nil
@@ -150,7 +150,7 @@ func (a API) DeleteExocomputeConfig(ctx context.Context, id uuid.UUID) error {
 		IDs []uuid.UUID `json:"configIdsToBeDeleted"`
 	}{IDs: []uuid.UUID{id}})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to request DeleteExocomputeConfig: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "deleteAwsExocomputeConfigs(%q): %s", id, string(buf))
@@ -166,13 +166,13 @@ func (a API) DeleteExocomputeConfig(ctx context.Context, id uuid.UUID) error {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal DeleteExocomputeConfig: %v", err)
 	}
 	if len(payload.Data.Query.Status) != 1 {
-		return errors.New("polaris: deleteAwsExocomputeConfigs: no result")
+		return errors.New("expected a single result")
 	}
-	if status := payload.Data.Query.Status[0]; !status.Success {
-		return fmt.Errorf("polaris: deleteAwsExocomputeConfigs: failed to delete %s", status.ID)
+	if !payload.Data.Query.Status[0].Success {
+		return errors.New("delete exocompute config failed")
 	}
 
 	return nil
@@ -188,7 +188,7 @@ func (a API) StartExocomputeDisableJob(ctx context.Context, id uuid.UUID) (uuid.
 		ID uuid.UUID `json:"cloudAccountId"`
 	}{ID: id})
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to request StartExocomputeDisableJob: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "startAwsExocomputeDisableJob(%q): %s", id, string(buf))
@@ -202,10 +202,10 @@ func (a API) StartExocomputeDisableJob(ctx context.Context, id uuid.UUID) (uuid.
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to unmarshal StartExocomputeDisableJob: %v", err)
 	}
 	if payload.Data.Result.Error != "" {
-		return uuid.Nil, fmt.Errorf("polaris: %s", payload.Data.Result.Error)
+		return uuid.Nil, errors.New(payload.Data.Result.Error)
 	}
 
 	return payload.Data.Result.JobID, nil

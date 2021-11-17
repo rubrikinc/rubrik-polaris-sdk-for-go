@@ -76,7 +76,7 @@ func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature
 		Features []core.Feature `json:"features"`
 	}{ID: id, Features: []core.Feature{feature}})
 	if err != nil {
-		return CloudAccountWithFeatures{}, err
+		return CloudAccountWithFeatures{}, fmt.Errorf("failed to request CloudAccountWithFeatures: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "awsCloudAccountWithFeatures(%q, %q): %s", id, feature, string(buf))
@@ -87,7 +87,7 @@ func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return CloudAccountWithFeatures{}, err
+		return CloudAccountWithFeatures{}, fmt.Errorf("failed to unmarshal CloudAccountWithFeatures: %v", err)
 	}
 
 	return payload.Data.Result, nil
@@ -104,7 +104,7 @@ func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature
 		Filter  string       `json:"columnSearchFilter"`
 	}{Filter: filter, Feature: feature})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to request CloudAccountsWithFeatures: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "allAwsCloudAccountsWithFeatures(%q, %q): %s", filter, feature, string(buf))
@@ -115,7 +115,7 @@ func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal CloudAccountsWithFeatures: %v", err)
 	}
 
 	return payload.Data.Result, nil
@@ -145,7 +145,7 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 		Features []core.Feature `json:"features"`
 	}{ID: id, Name: name, Features: []core.Feature{feature}})
 	if err != nil {
-		return CloudAccountInitiate{}, err
+		return CloudAccountInitiate{}, fmt.Errorf("failed to request ValidateAndCreateCloudAccount: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "validateAndCreateAwsCloudAccount(%q, %q, %q): %s", id, name, feature, string(buf))
@@ -170,13 +170,13 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return CloudAccountInitiate{}, err
+		return CloudAccountInitiate{}, fmt.Errorf("failed to unmarshal ValidateAndCreateCloudAccount: %v", err)
 	}
 	if msg := payload.Data.Result.ValidateResponse.InvalidAwsAdminAccount.Message; msg != "" {
-		return CloudAccountInitiate{}, fmt.Errorf("polaris: invalid aws admin account: %s", msg)
+		return CloudAccountInitiate{}, fmt.Errorf("invalid admin account: %v", msg)
 	}
 	if accounts := payload.Data.Result.ValidateResponse.InvalidAwsAccounts; len(accounts) != 0 {
-		return CloudAccountInitiate{}, fmt.Errorf("polaris: invalid aws account: %s", accounts[0].Message)
+		return CloudAccountInitiate{}, fmt.Errorf("invalid account: %v", accounts[0].Message)
 	}
 
 	return payload.Data.Result.InitiateResponse, nil
@@ -199,7 +199,7 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string
 		StackName      string           `json:"stackName"`
 	}{ID: id, Name: name, Regions: regions, ExternalID: init.ExternalID, FeatureVersion: init.FeatureVersions, Feature: feature, StackName: init.StackName})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to request FinalizeCloudAccountProtection: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "finalizeAwsCloudAccountProtection(%q, %q, %q, %q, %v, %q, %q): %s", id, name, regions, init.ExternalID,
@@ -218,12 +218,12 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal FinalizeCloudAccountProtection: %v", err)
 	}
 
 	// On success the message starts with "successfully".
 	if !strings.HasPrefix(strings.ToLower(payload.Data.Query.Message), "successfully") {
-		return fmt.Errorf("polaris: %s", payload.Data.Query.Message)
+		return errors.New(payload.Data.Query.Message)
 	}
 
 	return nil
@@ -240,7 +240,7 @@ func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feat
 		Feature core.Feature `json:"feature"`
 	}{ID: id, Feature: feature})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to request PrepareCloudAccountDeletion: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "prepareAwsCloudAccountDeletion(%q, %q): %s", id, feature, string(buf))
@@ -253,10 +253,10 @@ func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feat
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to unmarshal PrepareCloudAccountDeletion: %v", err)
 	}
 	if payload.Data.Query.URL == "" {
-		return "", errors.New("polaris: invalid cloud formation url")
+		return "", errors.New("CloudFormation url is empty")
 	}
 
 	return payload.Data.Query.URL, nil
@@ -273,7 +273,7 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 		Feature core.Feature `json:"feature"`
 	}{ID: id, Feature: feature})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to request FinalizeCloudAccountDeletion: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "finalizeAwsCloudAccountDeletion(%q, %q): %s", id, feature, string(buf))
@@ -286,12 +286,12 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal FinalizeCloudAccountDeletion: %v", err)
 	}
 
 	// On success the message starts with "successfully".
 	if !strings.HasPrefix(strings.ToLower(payload.Data.Query.Message), "successfully") {
-		return fmt.Errorf("polaris: %s", payload.Data.Query.Message)
+		return errors.New(payload.Data.Query.Message)
 	}
 
 	return nil
@@ -310,7 +310,7 @@ func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAct
 		Feature core.Feature            `json:"feature"`
 	}{Action: action, ID: id, Regions: regions, Feature: feature})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to request UpdateCloudAccount: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "updateAwsCloudAccount(%q, %q, %q, %q): %s", action, id, regions, feature, string(buf))
@@ -323,12 +323,12 @@ func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAct
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal UpdateCloudAccount: %v", err)
 	}
 
 	// On success the message starts with "successfully".
 	if !strings.HasPrefix(strings.ToLower(payload.Data.Query.Message), "successfully") {
-		return fmt.Errorf("polaris: %s", payload.Data.Query.Message)
+		return errors.New(payload.Data.Query.Message)
 	}
 
 	return nil
@@ -359,7 +359,7 @@ func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, regions Region) 
 		Region Region    `json:"region"`
 	}{ID: id, Region: regions})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to request AllVpcsByRegion: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "allVpcsByRegionFromAws(%q, %q): %s", id, regions, string(buf))
@@ -370,7 +370,7 @@ func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, regions Region) 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal AllVpcsByRegion: %v", err)
 	}
 
 	return payload.Data.VPCs, nil
@@ -387,7 +387,7 @@ func (a API) PrepareFeatureUpdateForAwsCloudAccount(ctx context.Context, id uuid
 		Features []core.Feature `json:"features"`
 	}{ID: id, Features: features})
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to request PrepareFeatureUpdateForAwsCloudAccount: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "prepareFeatureUpdateForAwsCloudAccount(%q, %v): %s", id, features, string(buf))
@@ -401,7 +401,7 @@ func (a API) PrepareFeatureUpdateForAwsCloudAccount(ctx context.Context, id uuid
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to unmarshal PrepareFeatureUpdateForAwsCloudAccount: %v", err)
 	}
 
 	return payload.Data.Result.CloudFormationURL, payload.Data.Result.TemplateURL, nil

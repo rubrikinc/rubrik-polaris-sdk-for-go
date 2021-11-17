@@ -60,7 +60,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 		Filter string `json:"azureExocomputeSearchQuery"`
 	}{Filter: filter})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to request ExocomputeConfigs: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "allAzureExocomputeConfigsInAccount(%q): %s", filter, string(buf))
@@ -71,7 +71,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal ExocomputeConfigs: %v", err)
 	}
 
 	return payload.Data.Result, nil
@@ -98,7 +98,7 @@ func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uui
 		Configs []ExocomputeConfigCreate `json:"azureExocomputeRegionConfigs"`
 	}{ID: id, Configs: []ExocomputeConfigCreate{config}})
 	if err != nil {
-		return ExocomputeConfig{}, err
+		return ExocomputeConfig{}, fmt.Errorf("failed to request AddCloudAccountExocomputeConfigurations: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "addAzureCloudAccountExocomputeConfigurations(%q, %v): %s", id, config, string(buf))
@@ -111,10 +111,10 @@ func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uui
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return ExocomputeConfig{}, err
+		return ExocomputeConfig{}, fmt.Errorf("failed to unmarshal AddCloudAccountExocomputeConfigurations: %v", err)
 	}
 	if len(payload.Data.Result.Configs) != 1 {
-		return ExocomputeConfig{}, errors.New("polaris: createAwsExocomputeConfigs: no result")
+		return ExocomputeConfig{}, errors.New("expected a single result")
 	}
 
 	return payload.Data.Result.Configs[0], nil
@@ -129,7 +129,7 @@ func (a API) DeleteCloudAccountExocomputeConfigurations(ctx context.Context, id 
 		IDs []uuid.UUID `json:"cloudAccountIds"`
 	}{IDs: []uuid.UUID{id}})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to request DeleteCloudAccountExocomputeConfigurations: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "deleteAzureCloudAccountExocomputeConfigurations(%q): %s", id, string(buf))
@@ -143,11 +143,11 @@ func (a API) DeleteCloudAccountExocomputeConfigurations(ctx context.Context, id 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal DeleteCloudAccountExocomputeConfigurations: %v", err)
 	}
 	if ids := payload.Data.Result.SuccessIDs; len(ids) == 1 && ids[0] == id {
 		return nil
 	}
 
-	return fmt.Errorf("polaris: azureExocomputeConfigsDelete: failed to delete %s", id)
+	return errors.New("delete exocompute config failed")
 }

@@ -76,7 +76,7 @@ func ParseLogLevel(level string) (LogLevel, error) {
 	case "fatal":
 		return Fatal, nil
 	default:
-		return Trace, errors.New("polaris: invalid log level")
+		return Trace, errors.New("invalid log level")
 	}
 }
 
@@ -129,7 +129,7 @@ func (l StandardLogger) Print(level LogLevel, args ...interface{}) {
 	}
 
 	pkgFuncName := " "
-	if name := pkgFunc(2); name != "" {
+	if name := PkgFuncName(2); name != "" {
 		pkgFuncName = " " + name + " "
 	}
 
@@ -151,7 +151,7 @@ func (l StandardLogger) Printf(level LogLevel, format string, args ...interface{
 	}
 
 	pkgFuncName := " "
-	if name := pkgFunc(2); name != "" {
+	if name := PkgFuncName(2); name != "" {
 		pkgFuncName = " " + name + " "
 	}
 

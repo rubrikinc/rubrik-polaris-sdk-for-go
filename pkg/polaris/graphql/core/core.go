@@ -92,7 +92,7 @@ func ParseFeature(feature string) (Feature, error) {
 		return f, nil
 	}
 
-	return FeatureInvalid, fmt.Errorf("polaris: invalid feature: %s", feature)
+	return FeatureInvalid, fmt.Errorf("invalid feature: %s", feature)
 }
 
 // Status represents a Polaris cloud account status.
@@ -126,7 +126,7 @@ const (
 	TaskChainUndoing   TaskChainState = "UNDOING"
 )
 
-// SLAAssignment represents the type of a SLA assignment in Polaris.
+// SLAAssignment represents the type of SLA assignment in Polaris.
 type SLAAssignment string
 
 const (
@@ -171,7 +171,7 @@ func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, 
 		TaskChainID uuid.UUID `json:"taskchainId,omitempty"`
 	}{TaskChainID: id})
 	if err != nil {
-		return TaskChain{}, err
+		return TaskChain{}, fmt.Errorf("failed to request KorgTaskChainStatus: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "getKorgTaskchainStatus(%q): %s", id, string(buf))
@@ -184,7 +184,7 @@ func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return TaskChain{}, err
+		return TaskChain{}, fmt.Errorf("failed to unmarshal KorgTaskChainStatus: %v", err)
 	}
 
 	return payload.Data.Query.TaskChain, nil
@@ -223,7 +223,7 @@ func (a API) DeploymentVersion(ctx context.Context) (string, error) {
 
 	buf, err := a.GQL.Request(ctx, deploymentVersionQuery, struct{}{})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to request DeploymentVersion: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "deploymentVersion(): %s", string(buf))
@@ -234,7 +234,7 @@ func (a API) DeploymentVersion(ctx context.Context) (string, error) {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to unmarshal DeploymentVersion: %v", err)
 	}
 
 	return payload.Data.DeploymentVersion, nil

@@ -23,6 +23,7 @@ package gcp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -51,7 +52,7 @@ func ID(project ProjectFunc) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
 		config, err := project(ctx)
 		if err != nil {
-			return identity{}, err
+			return identity{}, fmt.Errorf("failed to lookup project: %v", err)
 		}
 
 		return identity{id: config.id, internal: false}, nil
@@ -63,7 +64,7 @@ func ID(project ProjectFunc) IdentityFunc {
 func ProjectID(id string) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
 		if len(id) < 6 || len(id) > 30 {
-			return identity{}, errors.New("polaris: invalid gcp project id")
+			return identity{}, errors.New("invalid GCP project id")
 		}
 
 		return identity{id: id, internal: false}, nil

@@ -50,7 +50,7 @@ func (l *TestListener) Accept() (net.Conn, error) {
 	for {
 		select {
 		case <-l.abort:
-			return nil, errors.New("polaris: closing test listener")
+			return nil, errors.New("closing test listener")
 		case conn, ok := <-l.accept:
 			if ok {
 				return conn, nil
