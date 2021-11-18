@@ -63,7 +63,7 @@ func awsAccount(ctx context.Context, config aws.Config) (string, string, error) 
 	orgClient := organizations.NewFromConfig(config)
 	info, err := orgClient.DescribeAccount(ctx, &organizations.DescribeAccountInput{AccountId: &id})
 	if err != nil {
-		return id, "", fmt.Errorf("failed to get AWS account info from Organizations: %v", err)
+		return id, "", nil
 	}
 
 	return id, *info.Account.Name, nil
