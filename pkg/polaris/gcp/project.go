@@ -84,7 +84,7 @@ func gcpProject(ctx context.Context, creds *google.Credentials, id string) (proj
 	// Lookup project.
 	proj, err := client.Projects.Get(id).Do()
 	if err != nil {
-		return project{}, fmt.Errorf("failed to get GCP project: %d", err)
+		return project{}, fmt.Errorf("failed to get GCP project: %v", err)
 	}
 
 	// Lookup parent organization.
