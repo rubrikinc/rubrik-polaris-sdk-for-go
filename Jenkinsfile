@@ -72,8 +72,7 @@ pipeline {
                 GOPATH = "/tmp/go"
             }
             steps {
-                sh 'go get github.com/t-yuki/gocover-cobertura'
-                sh '${GOPATH}/bin/gocover-cobertura < coverage.txt > coverage.xml'
+                sh 'go run github.com/t-yuki/gocover-cobertura@latest < coverage.txt > coverage.xml'
                 cobertura coberturaReportFile: 'coverage.xml'
             }
         }
