@@ -142,3 +142,9 @@ func TestStandardLogger(t *testing.T) {
 		t.Fatalf("%q", line)
 	}
 }
+
+func TestPkgFuncName(t *testing.T) {
+	if pfn := PkgFuncName(1); pfn != "polaris/log.TestPkgFuncName" {
+		t.Fatalf("invalid PkgFuncName: %v", pfn)
+	}
+}

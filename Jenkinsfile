@@ -23,7 +23,7 @@
 pipeline {
     agent any
     tools {
-        go 'go-1.16.2'
+        go 'go-1.17.3'
     }
     triggers {
         cron(env.BRANCH_NAME == 'main' ? '@midnight' : '')
@@ -32,6 +32,8 @@ pipeline {
         stage('Lint') {
             steps {
                 sh 'go vet ./...'
+                sh 'go run honnef.co/go/tools/cmd/staticcheck@latest ./...'
+                sh 'bash -c "diff -u <(echo -n) <(gofmt -d .)"'
             }
         }
         stage('Build') {
@@ -70,8 +72,7 @@ pipeline {
                 GOPATH = "/tmp/go"
             }
             steps {
-                sh 'go get github.com/t-yuki/gocover-cobertura'
-                sh '${GOPATH}/bin/gocover-cobertura < coverage.txt > coverage.xml'
+                sh 'go run github.com/t-yuki/gocover-cobertura@latest < coverage.txt > coverage.xml'
                 cobertura coberturaReportFile: 'coverage.xml'
             }
         }

@@ -257,7 +257,7 @@ func serviceAccountFromFile(file string) (ServiceAccount, error) {
 
 	var account ServiceAccount
 	if err := json.Unmarshal(buf, &account); err != nil {
-		return ServiceAccount{},  fmt.Errorf("failed to unmarshal service account file: %v", err)
+		return ServiceAccount{}, fmt.Errorf("failed to unmarshal service account file: %v", err)
 	}
 
 	return account, nil

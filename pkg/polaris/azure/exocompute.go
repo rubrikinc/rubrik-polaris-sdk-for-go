@@ -51,7 +51,7 @@ func Managed(region, subnetID string) ExoConfigFunc {
 	return func(ctx context.Context) (azure.ExocomputeConfigCreate, error) {
 		r, err := azure.ParseRegion(region)
 		if err != nil {
-			return azure.ExocomputeConfigCreate{},  fmt.Errorf("failed to parse region: %v", err)
+			return azure.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
 		}
 
 		return azure.ExocomputeConfigCreate{
@@ -68,7 +68,7 @@ func Unmanaged(region, subnetID string) ExoConfigFunc {
 	return func(ctx context.Context) (azure.ExocomputeConfigCreate, error) {
 		r, err := azure.ParseRegion(region)
 		if err != nil {
-			return azure.ExocomputeConfigCreate{},  fmt.Errorf("failed to parse region: %v", err)
+			return azure.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
 		}
 
 		return azure.ExocomputeConfigCreate{

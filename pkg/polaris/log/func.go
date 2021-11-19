@@ -14,11 +14,7 @@ func PkgFuncName(skip int) string {
 	var name string
 	if pc, _, _, ok := runtime.Caller(skip); ok {
 		frame, _ := runtime.CallersFrames([]uintptr{pc}).Next()
-		name = frame.Function
-
-		if strings.HasPrefix(name, basePath) {
-			name = name[len(basePath):]
-		}
+		name = strings.TrimPrefix(frame.Function, basePath)
 	}
 
 	return name
