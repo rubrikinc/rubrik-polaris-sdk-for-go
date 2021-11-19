@@ -22,7 +22,6 @@ package polaris
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -31,8 +30,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
-
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
@@ -78,41 +76,6 @@ func boolEnvSet(env string) bool {
 	return err == nil && b
 }
 
-// testAwsAccount hold AWS account information used in the integration tests.
-// Normally used to assert that the information read from Polaris is correct.
-type testAwsAccount struct {
-	AccountID   string `json:"accountId"`
-	AccountName string `json:"accountName"`
-
-	Exocompute struct {
-		VPCID   string `json:"vpcId"`
-		Subnets []struct {
-			ID               string `json:"id"`
-			AvailabilityZone string `json:"availabilityZone"`
-		} `json:"subnets"`
-	} `json:"exocompute"`
-}
-
-// Load test account information from the file pointed to by the
-// TEST_AWSACCOUNT_FILE environment variable.
-func loadTestAwsAccount() (testAwsAccount, error) {
-	buf, err := os.ReadFile(os.Getenv("TEST_AWSACCOUNT_FILE"))
-	if err != nil {
-		return testAwsAccount{}, fmt.Errorf("failed to read file pointed to by TEST_AWSACCOUNT_FILE: %v", err)
-	}
-
-	testAccount := testAwsAccount{}
-	if err := json.Unmarshal(buf, &testAccount); err != nil {
-		return testAwsAccount{}, err
-	}
-
-	if n := len(testAccount.Exocompute.Subnets); n != 2 {
-		return testAwsAccount{}, fmt.Errorf("file contains the wrong number of subnets: %d", n)
-	}
-
-	return testAccount, nil
-}
-
 // TestAwsAccountAddAndRemove verifies that the SDK can perform the basic AWS
 // account operations on a real Polaris instance.
 //
@@ -137,7 +100,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 
 	ctx := context.Background()
 
-	testAccount, err := loadTestAwsAccount()
+	testAccount, err := testsetup.AWSAccount()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +194,7 @@ func TestAwsExocompute(t *testing.T) {
 
 	ctx := context.Background()
 
-	testAccount, err := loadTestAwsAccount()
+	testAccount, err := testsetup.AWSAccount()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -353,35 +316,6 @@ func TestAwsExocompute(t *testing.T) {
 	}
 }
 
-// testAzureSubscription hold Azure subscription information used in the
-// integration tests. Normally used to assert that the information read from
-// Polaris is correct.
-type testAzureSubscription struct {
-	SubscriptionID   uuid.UUID `json:"subscriptionId"`
-	SubscriptionName string    `json:"subscriptionName"`
-	TenantDomain     string    `json:"tenantDomain"`
-
-	Exocompute struct {
-		SubnetID string `json:"subnetId"`
-	} `json:"exocompute"`
-}
-
-// Load test project information from the file pointed to by the
-// TEST_AZURESUBSCRIPTION_FILE environment variable.
-func loadTestAzureSubscription() (testAzureSubscription, error) {
-	buf, err := os.ReadFile(os.Getenv("TEST_AZURESUBSCRIPTION_FILE"))
-	if err != nil {
-		return testAzureSubscription{}, fmt.Errorf("failed to read file pointed to by TEST_AZURESUBSCRIPTION_FILE: %v", err)
-	}
-
-	testSubscription := testAzureSubscription{}
-	if err := json.Unmarshal(buf, &testSubscription); err != nil {
-		return testAzureSubscription{}, err
-	}
-
-	return testSubscription, nil
-}
-
 // TestAzureSubscriptionAddAndRemove verifies that the SDK can perform the
 // basic AWS account operations on a real Polaris instance.
 //
@@ -404,7 +338,7 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 
 	ctx := context.Background()
 
-	testSubscription, err := loadTestAzureSubscription()
+	testSubscription, err := testsetup.AzureSubscription()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -505,7 +439,7 @@ func TestAzureExocompute(t *testing.T) {
 
 	ctx := context.Background()
 
-	testSubscription, err := loadTestAzureSubscription()
+	testSubscription, err := testsetup.AzureSubscription()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -653,15 +587,6 @@ func TestAzurePermissions(t *testing.T) {
 	}
 }
 
-// testGcpProject hold GCP project information used in the integration tests.
-// Normally used to assert that the information read from Polaris is correct.
-type testGcpProject struct {
-	ProjectName      string `json:"projectName"`
-	ProjectID        string `json:"projectId"`
-	ProjectNumber    int64  `json:"projectNumber"`
-	OrganizationName string `json:"organizationName"`
-}
-
 // TestGcpProjectAddAndRemove verifies that the SDK can perform the basic GCP
 // project operations on a real Polaris instance.
 //
@@ -684,14 +609,8 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Load test project information from the file pointed to by the
-	// TEST_GCPPROJECT_FILE environment variable.
-	buf, err := os.ReadFile(os.Getenv("TEST_GCPPROJECT_FILE"))
+	testProject, err := testsetup.GCPProject()
 	if err != nil {
-		t.Fatalf("failed to read file pointed to by TEST_GCPPROJECT_FILE: %v", err)
-	}
-	testProject := testGcpProject{}
-	if err := json.Unmarshal(buf, &testProject); err != nil {
 		t.Fatal(err)
 	}
 
@@ -765,15 +684,8 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Load test project information from the file pointed to by the
-	// SDK_GCPPROJECT_FILE environment variable.
-	buf, err := os.ReadFile(os.Getenv("TEST_GCPPROJECT_FILE"))
+	testProject, err := testsetup.GCPProject()
 	if err != nil {
-		t.Fatalf("failed to read file pointed to by TEST_GCPPROJECT_FILE: %v", err)
-	}
-
-	testProject := testGcpProject{}
-	if err := json.Unmarshal(buf, &testProject); err != nil {
 		t.Fatal(err)
 	}
 

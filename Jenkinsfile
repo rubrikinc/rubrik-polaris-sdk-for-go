@@ -28,6 +28,27 @@ pipeline {
     triggers {
         cron(env.BRANCH_NAME == 'main' ? '@midnight' : '')
     }
+    environment {
+        // Polaris credentials.
+        RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
+
+        // AWS credentials.
+        TEST_AWSACCOUNT_FILE  = credentials('tf-sdk-test-aws-account')
+        AWS_ACCESS_KEY_ID     = credentials('tf-sdk-test-access-key')
+        AWS_SECRET_ACCESS_KEY = credentials('tf-sdk-test-secret-key')
+        AWS_DEFAULT_REGION    = 'us-east-2'
+
+        // Azure credentials.
+        TEST_AZURESUBSCRIPTION_FILE     = credentials('tf-sdk-test-azure-subscription')
+        AZURE_SERVICEPRINCIPAL_LOCATION = credentials('tf-sdk-test-azure-service-principal')
+
+        // GCP credentials.
+        TEST_GCPPROJECT_FILE           = credentials('tf-sdk-test-gcp-project')
+        GOOGLE_APPLICATION_CREDENTIALS = credentials('tf-sdk-test-gcp-service-account')
+
+        // Run integration tests with the nightly build.
+        TEST_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
+    }
     stages {
         stage('Lint') {
             steps {
@@ -41,28 +62,13 @@ pipeline {
                 sh 'CGO_ENABLED=0 go build ./...'
             }
         }
-        stage('Test') {
-            environment {
-                // Polaris credentials.
-                RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
-
-                // AWS credentials.
-                TEST_AWSACCOUNT_FILE  = credentials('tf-sdk-test-aws-account')
-                AWS_ACCESS_KEY_ID     = credentials('tf-sdk-test-access-key')
-                AWS_SECRET_ACCESS_KEY = credentials('tf-sdk-test-secret-key')
-                AWS_DEFAULT_REGION    = 'us-east-2'
-
-                // Azure credentials.
-                TEST_AZURESUBSCRIPTION_FILE     = credentials('tf-sdk-test-azure-subscription')
-                AZURE_SERVICEPRINCIPAL_LOCATION = credentials('tf-sdk-test-azure-service-principal')
-
-                // GCP credentials.
-                TEST_GCPPROJECT_FILE           = credentials('tf-sdk-test-gcp-project')
-                GOOGLE_APPLICATION_CREDENTIALS = credentials('tf-sdk-test-gcp-service-account')
-
-                // Run integration tests with the nightly build.
-                TEST_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
+        stage('Pre-test') {
+            when { not { environment name: 'TEST_INTEGRATION', value: '0' } }
+            steps {
+                sh 'go run ./internal/cmd/testenv -precheck'
             }
+        }
+        stage('Test') {
             steps {
                 sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -timeout=120m -v ./...'
             }
@@ -78,6 +84,13 @@ pipeline {
         }
     }
     post {
+        always {
+            script {
+                if (currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0) {
+                    sh 'go run ./internal/cmd/testenv -cleanup'
+                }
+            }
+        }
         success {
             script {
                 if (currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0) {
