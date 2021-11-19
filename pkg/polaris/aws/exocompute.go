@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -76,7 +77,7 @@ func findVPC(vpcs []aws.VPC, vpcID string) (aws.VPC, error) {
 		}
 	}
 
-	return aws.VPC{}, fmt.Errorf("polaris: invalid vpc id: %s", vpcID)
+	return aws.VPC{}, fmt.Errorf("invalid vpc id: %v", vpcID)
 }
 
 // findSubnet returns the subnet with the specified subnet id.
@@ -90,7 +91,7 @@ func findSubnet(vpc aws.VPC, subnetID string) (aws.Subnet, error) {
 		}
 	}
 
-	return aws.Subnet{}, fmt.Errorf("polaris: invalid subnet id: %s", subnetID)
+	return aws.Subnet{}, fmt.Errorf("invalid subnet id: %v", subnetID)
 }
 
 // Managed returns an ExoConfigFunc that initializes an exocompute config with
@@ -99,30 +100,30 @@ func Managed(region, vpcID string, subnetIDs []string) ExoConfigFunc {
 	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
 		reg, err := aws.ParseRegion(region)
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, err
+			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
 		}
 
 		// Validate VPC.
 		vpcs, err := aws.Wrap(gql).AllVpcsByRegion(ctx, id, reg)
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, err
+			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to get vpcs: %v", err)
 		}
 		vpc, err := findVPC(vpcs, vpcID)
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, err
+			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to find vpc: %v", err)
 		}
 
 		// Validate subnets.
 		if len(subnetIDs) != 2 {
-			return aws.ExocomputeConfigCreate{}, errors.New("polaris: there should be exactly 2 subnet ids")
+			return aws.ExocomputeConfigCreate{}, errors.New("there should be exactly 2 subnet ids")
 		}
 		subnet1, err := findSubnet(vpc, subnetIDs[0])
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, err
+			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to find subnet: %v", err)
 		}
 		subnet2, err := findSubnet(vpc, subnetIDs[1])
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, err
+			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to find subnet: %v", err)
 		}
 
 		return aws.ExocomputeConfigCreate{
@@ -140,40 +141,40 @@ func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID,
 	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
 		reg, err := aws.ParseRegion(region)
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, err
+			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
 		}
 
 		// Validate VPC.
 		vpcs, err := aws.Wrap(gql).AllVpcsByRegion(ctx, id, reg)
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, err
+			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to get vpcs: %v", err)
 		}
 		vpc, err := findVPC(vpcs, vpcID)
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, err
+			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to find vpc: %v", err)
 		}
 
 		// Validate subnets.
 		if len(subnetIDs) != 2 {
-			return aws.ExocomputeConfigCreate{}, errors.New("polaris: there should be exactly 2 subnet ids")
+			return aws.ExocomputeConfigCreate{}, errors.New("there should be exactly 2 subnet ids")
 		}
 		subnet1, err := findSubnet(vpc, subnetIDs[0])
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, err
+			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to find subnet: %v", err)
 		}
 		subnet2, err := findSubnet(vpc, subnetIDs[1])
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, err
+			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to find subnet: %v", err)
 		}
 
 		// Validate security groups.
 		if hasSecurityGroup(vpc, clusterSecurityGroupID) {
 			return aws.ExocomputeConfigCreate{},
-				fmt.Errorf("polaris: invalid cluster security group id: %s", clusterSecurityGroupID)
+				fmt.Errorf("invalid cluster security group id: %v", clusterSecurityGroupID)
 		}
 		if hasSecurityGroup(vpc, nodeSecurityGroupID) {
 			return aws.ExocomputeConfigCreate{},
-				fmt.Errorf("polaris: invalid cluster security group id: %s", clusterSecurityGroupID)
+				fmt.Errorf("invalid node security group id: %v", nodeSecurityGroupID)
 		}
 
 		return aws.ExocomputeConfigCreate{
@@ -207,11 +208,11 @@ func toExocomputeConfig(config aws.ExocomputeConfig) ExocomputeConfig {
 // ExocomputeConfig returns the exocompute config with the specified exocompute
 // config id.
 func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConfig, error) {
-	a.gql.Log().Print(log.Trace, "polaris/aws.ExocomputeConfig")
+	a.gql.Log().Print(log.Trace)
 
 	configsForAccounts, err := aws.Wrap(a.gql).ExocomputeConfigs(ctx, "")
 	if err != nil {
-		return ExocomputeConfig{}, err
+		return ExocomputeConfig{}, fmt.Errorf("failed to get exocompute configs: %v", err)
 	}
 
 	for _, configsForAccount := range configsForAccounts {
@@ -222,22 +223,22 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 		}
 	}
 
-	return ExocomputeConfig{}, graphql.ErrNotFound
+	return ExocomputeConfig{}, fmt.Errorf("exocompute config %w", graphql.ErrNotFound)
 }
 
 // ExocomputeConfigs returns all exocompute configs for the account with the
 // specified id.
 func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]ExocomputeConfig, error) {
-	a.gql.Log().Print(log.Trace, "polaris/aws.ExocomputeConfigs")
+	a.gql.Log().Print(log.Trace)
 
 	nativeID, err := a.toNativeID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get native id: %v", err)
 	}
 
 	configsForAccounts, err := aws.Wrap(a.gql).ExocomputeConfigs(ctx, nativeID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get exocompute configs: %v", err)
 	}
 
 	var exoConfigs []ExocomputeConfig
@@ -253,21 +254,21 @@ func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]Exocompu
 // AddExocomputeConfig adds the exocompute config to the account with the
 // specified id. Returns the id of the added exocompute config.
 func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config ExoConfigFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace, "polaris/aws.AddExocomputeConfig")
+	a.gql.Log().Print(log.Trace)
 
 	accountID, err := a.toCloudAccountID(ctx, id)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to get cloud account id: %v", err)
 	}
 
 	exoConfig, err := config(ctx, a.gql, accountID)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to lookup exocompute config: %v", err)
 	}
 
 	exo, err := aws.Wrap(a.gql).CreateExocomputeConfig(ctx, accountID, exoConfig)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to create exocompute config: %v", err)
 	}
 
 	return exo.ID, nil
@@ -276,11 +277,11 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 // RemoveExocomputeConfig removes the exocompute config with the specified
 // exocompute config id.
 func (a API) RemoveExocomputeConfig(ctx context.Context, id uuid.UUID) error {
-	a.gql.Log().Print(log.Trace, "polaris/aws.RemoveExocomputeConfig")
+	a.gql.Log().Print(log.Trace)
 
 	err := aws.Wrap(a.gql).DeleteExocomputeConfig(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to remove exocompute config: %v", err)
 	}
 
 	return nil

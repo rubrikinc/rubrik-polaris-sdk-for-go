@@ -85,7 +85,7 @@ func NewClient(ctx context.Context, account Account, logger log.Logger) (*Client
 		return newClientFromUserAccount(ctx, userAccount, logger)
 	}
 
-	return nil, errors.New("polaris: invalid account type")
+	return nil, errors.New("invalid account type")
 }
 
 // newClientFromUserAccount returns a new Client from the specified
@@ -98,13 +98,13 @@ func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger 
 	}
 
 	if _, err := url.ParseRequestURI(apiURL); err != nil {
-		return nil, fmt.Errorf("polaris: invalid url: %w", err)
+		return nil, fmt.Errorf("invalid url: %v", err)
 	}
 	if account.Username == "" {
-		return nil, errors.New("polaris: invalid username")
+		return nil, errors.New("invalid username")
 	}
 	if account.Password == "" {
-		return nil, errors.New("polaris: invalid password")
+		return nil, errors.New("invalid password")
 	}
 
 	logLevel := "warn"
@@ -114,21 +114,25 @@ func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger 
 	if strings.ToLower(logLevel) != "off" {
 		level, err := log.ParseLogLevel(logLevel)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse log level: %v", err)
 		}
 		logger.SetLogLevel(level)
 	} else {
 		logger = &log.DiscardLogger{}
 	}
 
+	logger.Printf(log.Info, "Polaris API URL: %s", apiURL)
+
 	// The gql client is initialized without a version. Query cluster to find
 	// out the current version.
 	gqlClient := graphql.NewClientFromLocalUser(ctx, "custom", apiURL, account.Username, account.Password, logger)
 	version, err := core.Wrap(gqlClient).DeploymentVersion(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get deployment version: %v", err)
 	}
 	gqlClient.Version = version
+
+	logger.Printf(log.Info, "Polaris version: %s", version)
 
 	client := &Client{
 		gql: gqlClient,
@@ -143,16 +147,16 @@ func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger 
 // using the environment variable RUBRIK_POLARIS_LOGLEVEL.
 func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, logger log.Logger) (*Client, error) {
 	if account.Name == "" {
-		return nil, errors.New("polaris: invalid name")
+		return nil, errors.New("invalid name")
 	}
 	if account.ClientID == "" {
-		return nil, errors.New("polaris: invalid client id")
+		return nil, errors.New("invalid client id")
 	}
 	if account.ClientSecret == "" {
-		return nil, errors.New("polaris: invalid client secret")
+		return nil, errors.New("invalid client secret")
 	}
 	if _, err := url.ParseRequestURI(account.AccessTokenURI); err != nil {
-		return nil, fmt.Errorf("polaris: invalid access token uri: %w", err)
+		return nil, fmt.Errorf("invalid access token uri: %v", err)
 	}
 
 	logLevel := "warn"
@@ -162,7 +166,7 @@ func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, l
 	if strings.ToLower(logLevel) != "off" {
 		level, err := log.ParseLogLevel(logLevel)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse log level: %v", err)
 		}
 		logger.SetLogLevel(level)
 	} else {
@@ -172,9 +176,11 @@ func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, l
 	// Extract the API URL from the token access URI.
 	i := strings.LastIndex(account.AccessTokenURI, "/")
 	if i < 0 {
-		return nil, errors.New("polaris: invalid access token uri")
+		return nil, errors.New("invalid access token uri")
 	}
 	apiURL := account.AccessTokenURI[:i]
+
+	logger.Printf(log.Info, "Polaris API URL: %s", apiURL)
 
 	// The gql client is initialized without a version. Query cluster to find
 	// out the current version.
@@ -182,9 +188,11 @@ func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, l
 		account.ClientSecret, logger)
 	version, err := core.Wrap(gqlClient).DeploymentVersion(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get deployment version: %v", err)
 	}
 	gqlClient.Version = version
+
+	logger.Printf(log.Info, "Polaris version: %s", version)
 
 	client := &Client{
 		gql: gqlClient,

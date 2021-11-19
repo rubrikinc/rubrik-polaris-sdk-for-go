@@ -22,13 +22,14 @@ package azure
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Azure permissions.
+// Permissions for Azure.
 type Permissions struct {
 	Actions        []string
 	DataActions    []string
@@ -59,13 +60,13 @@ func stringsDiff(lhs, rhs []string) []string {
 // Permissions returns all Azure permissions required to use the specified
 // Polaris features.
 func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissions, error) {
-	a.gql.Log().Print(log.Trace, "polaris/azure.Permissions")
+	a.gql.Log().Print(log.Trace)
 
 	perms := Permissions{}
 	for _, feature := range features {
 		permConfig, err := azure.Wrap(a.gql).CloudAccountPermissionConfig(ctx, feature)
 		if err != nil {
-			return Permissions{}, nil
+			return Permissions{}, fmt.Errorf("failed to get permissions: %v", err)
 		}
 
 		for _, perm := range permConfig.RolePermissions {
@@ -87,7 +88,7 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 // nil all features are updated. Note that Polaris is only notified about
 // features with status StatusMissingPermissions.
 func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace, "polaris/azure.PermissionsUpdated")
+	a.gql.Log().Print(log.Trace)
 
 	featureSet := make(map[core.Feature]struct{})
 	for _, feature := range features {
@@ -96,7 +97,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 
 	account, err := a.Subscription(ctx, id, core.FeatureAll)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get subscription: %v", err)
 	}
 
 	for _, feature := range account.Features {
@@ -112,7 +113,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 
 		err := azure.Wrap(a.gql).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to update permissions: %v", err)
 		}
 	}
 
@@ -127,7 +128,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 // features are updated. Note that Polaris is only notified about features
 // with status StatusMissingPermissions.
 func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain string, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace, "polaris/azure.PermissionsUpdatedForTenantDomain")
+	a.gql.Log().Print(log.Trace)
 
 	featureSet := make(map[core.Feature]struct{})
 	for _, feature := range features {
@@ -136,7 +137,7 @@ func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain
 
 	accounts, err := a.Subscriptions(ctx, core.FeatureAll, "")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get subscriptions: %v", err)
 	}
 
 	for _, account := range accounts {
@@ -157,7 +158,7 @@ func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain
 
 			err := azure.Wrap(a.gql).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to update permissions: %v", err)
 			}
 		}
 	}

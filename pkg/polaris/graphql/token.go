@@ -36,10 +36,10 @@ import (
 )
 
 const (
-	// per request timeout
+	// Per request timeout
 	tokenRequestTimeout = 15 * time.Second
 
-	// number of attempts before failing timed-out token requests
+	// Number of attempts before failing timed-out token requests
 	tokenRequestAttempts = 3
 )
 
@@ -79,7 +79,7 @@ func fromJWT(text string) (token, error) {
 	p := jwt.Parser{}
 	jwtToken, _, err := p.ParseUnverified(text, jwt.MapClaims{})
 	if err != nil {
-		return token{}, err
+		return token{}, fmt.Errorf("failed to parse JWT token: %v", err)
 	}
 
 	return token{jwtToken: jwtToken}, nil
@@ -129,7 +129,7 @@ func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		t.token, err = t.src.token()
 		if err != nil {
 			t.mutex.Unlock()
-			return nil, err
+			return nil, fmt.Errorf("failed to refresh access token: %v", err)
 		}
 	}
 	t.token.setAsAuthHeader(authReq)
@@ -150,7 +150,7 @@ func requestToken(client *http.Client, tokenURL string, requestBody []byte) ([]b
 	// Request an access token from the remote token endpoint.
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, bytes.NewReader(requestBody))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create token request: %v", err)
 	}
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("Accept", "application/json")
@@ -159,16 +159,13 @@ func requestToken(client *http.Client, tokenURL string, requestBody []byte) ([]b
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, errTokenRequestTimeout
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to request token: %v", err)
 	}
 	defer res.Body.Close()
 	// Remote responded without a body. For status code 200 this means we are
 	// missing the token. For an error we have no additional details.
 	if res.ContentLength == 0 {
-		if res.StatusCode == 200 {
-			return nil, errors.New("polaris: no body")
-		}
-		return nil, fmt.Errorf("polaris: %s", res.Status)
+		return nil, fmt.Errorf("token response has no body (status code %d)", res.StatusCode)
 	}
 
 	respBody, err := io.ReadAll(res.Body)
@@ -176,7 +173,7 @@ func requestToken(client *http.Client, tokenURL string, requestBody []byte) ([]b
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, errTokenRequestTimeout
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to read token response body (status code %d): %v", res.StatusCode, err)
 	}
 
 	// Verify that the content type of the body is JSON. For status code 200
@@ -184,23 +181,26 @@ func requestToken(client *http.Client, tokenURL string, requestBody []byte) ([]b
 	// additional JSON details.
 	contentType := res.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
-		if res.StatusCode == 200 {
-			return nil, fmt.Errorf("polaris: wrong content-type: %s", contentType)
+		snippet := string(respBody)
+		if len(snippet) > 512 {
+			snippet = snippet[:512]
 		}
-		return nil, fmt.Errorf("polaris: %s - %s", res.Status, respBody)
+		return nil, fmt.Errorf("token response has Content-Type %s (status code %d): %q",
+			contentType, res.StatusCode, snippet)
 	}
 
 	// Remote responded with a JSON document. Try to parse it as an error
 	// message.
 	var jsonErr jsonError
 	if err := json.Unmarshal(respBody, &jsonErr); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal token response body as an error (status code %d): %v",
+			res.StatusCode, err)
 	}
 	if jsonErr.isError() {
-		return nil, jsonErr
+		return nil, fmt.Errorf("token response body is an error (status code %d): %v", res.StatusCode, jsonErr)
 	}
 	if res.StatusCode != 200 {
-		return nil, fmt.Errorf("polaris: %s", res.Status)
+		return nil, fmt.Errorf("token response has status code: %s", res.Status)
 	}
 
 	return respBody, nil

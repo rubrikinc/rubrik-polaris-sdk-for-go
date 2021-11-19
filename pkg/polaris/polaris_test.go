@@ -32,6 +32,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
@@ -53,7 +54,12 @@ func TestMain(m *testing.M) {
 			fmt.Printf("failed to get default service account: %v\n", err)
 			os.Exit(1)
 		}
-		client, err = NewClient(context.Background(), polAccount, &polaris_log.DiscardLogger{})
+
+		// The integration tests defaults the log level to INFO. Note that
+		// RUBRIK_POLARIS_LOGLEVEL can be used to override this.
+		logger := &polaris_log.StandardLogger{}
+		logger.SetLogLevel(polaris_log.Info)
+		client, err = NewClient(context.Background(), polAccount, logger)
 		if err != nil {
 			fmt.Printf("failed to create polaris client: %v\n", err)
 			os.Exit(1)

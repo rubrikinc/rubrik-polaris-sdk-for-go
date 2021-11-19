@@ -25,15 +25,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/gcp"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/option"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/gcp"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// GCP permissions.
+// Permissions for GCP.
 type Permissions []string
 
 // stringsDiff returns the difference between lhs and rhs, i.e. rhs subtracted
@@ -59,41 +60,41 @@ func stringsDiff(lhs, rhs []string) []string {
 // checkPermissions checks that the specified credentials have the correct GCP
 // permissions to use the project with the given Polaris features
 func (a API) gcpCheckPermissions(ctx context.Context, creds *google.Credentials, projectID string, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.gcpCheckPermissions")
+	a.gql.Log().Print(log.Trace)
 
 	perms, err := a.Permissions(ctx, features)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get permissions: %v", err)
 	}
 
 	client, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(creds))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create GCP Cloud Resource Manager client: %v", err)
 	}
 
 	res, err := client.Projects.TestIamPermissions(projectID,
 		&cloudresourcemanager.TestIamPermissionsRequest{Permissions: perms}).Do()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to test GCP IAM permissions: %v", err)
 	}
 
 	if missing := stringsDiff(perms, res.Permissions); len(missing) > 0 {
-		return fmt.Errorf("polaris: missing permissions: %v", strings.Join(missing, ","))
+		return fmt.Errorf("missing permissions: %v", strings.Join(missing, ","))
 	}
 
 	return nil
 }
 
-// Permissions returns all GCP permissions requried to use the specified
+// Permissions returns all GCP permissions required to use the specified
 // Polaris features.
 func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissions, error) {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.Permissions")
+	a.gql.Log().Print(log.Trace)
 
 	permSet := make(map[string]struct{})
 	for _, feature := range features {
 		perms, err := gcp.Wrap(a.gql).CloudAccountListPermissions(ctx, feature)
 		if err != nil {
-			return Permissions{}, err
+			return Permissions{}, fmt.Errorf("failed to get permissions: %v", err)
 		}
 
 		for _, perm := range perms {
@@ -117,7 +118,7 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 // nil all features are updated. Note that Polaris is only notified about
 // features with status StatusMissingPermissions.
 func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.PermissionsUpdated")
+	a.gql.Log().Print(log.Trace)
 
 	featureSet := make(map[core.Feature]struct{})
 	for _, feature := range features {
@@ -126,7 +127,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 
 	account, err := a.Project(ctx, id, core.FeatureAll)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get project: %v", err)
 	}
 
 	for _, feature := range account.Features {
@@ -142,7 +143,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 
 		err := gcp.Wrap(a.gql).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to update permissions: %v", err)
 		}
 	}
 
@@ -156,7 +157,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 // be nil. When features is nil all features are updated. Note that Polaris is
 // only notified about features with status StatusMissingPermissions.
 func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace, "polaris/gcp.PermissionsUpdatedForDefault")
+	a.gql.Log().Print(log.Trace)
 
 	featureSet := make(map[core.Feature]struct{})
 	for _, feature := range features {
@@ -165,7 +166,7 @@ func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.F
 
 	accounts, err := a.Projects(ctx, core.FeatureAll, "")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get project: %v", err)
 	}
 
 	for _, account := range accounts {
@@ -186,7 +187,7 @@ func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.F
 
 			err := gcp.Wrap(a.gql).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to update permissions: %v", err)
 			}
 		}
 	}

@@ -28,9 +28,9 @@
 //
 // - Names are turned into CamelCase.
 //
-// - CSP ackronyms (e.g. aws) that are part of names are removed.
+// - CSP acronyms (e.g. aws) that are part of names are removed.
 //
-// - Query parameters with values in a well defined range are turned into
+// - Query parameters with values in a well-defined range are turned into
 // types.
 package graphql
 
@@ -38,25 +38,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
-)
-
-var (
-	// ErrAlreadyEnabled signals that the specified feature has  already been
-	// enabled.
-	ErrAlreadyEnabled = errors.New("already enabled")
-
-	// ErrNotFound signals that the specified entity could not be found.
-	ErrNotFound = errors.New("not found")
-
-	// ErrNotUnique signals that a request did not result in a unique entity.
-	ErrNotUnique = errors.New("not unique")
 )
 
 // jsonError is returned by Polaris in the body of a response as a JSON
@@ -74,7 +61,7 @@ func (e jsonError) isError() bool {
 }
 
 func (e jsonError) Error() string {
-	return fmt.Sprintf("polaris: code %d: %s", e.Code, e.Message)
+	return fmt.Sprintf("%s (code %d)", e.Message, e.Code)
 }
 
 type gqlLocation struct {
@@ -102,7 +89,7 @@ func (e gqlError) isError() bool {
 }
 
 func (e gqlError) Error() string {
-	return fmt.Sprintf("polaris: %s", e.Errors[0].Message)
+	return e.Errors[0].Message
 }
 
 // Client is used to make GraphQL calls to the Polaris platform.
@@ -116,8 +103,6 @@ type Client struct {
 
 // NewClientFromLocalUser returns a new Client with the specified configuration.
 func NewClientFromLocalUser(ctx context.Context, app, apiURL, username, password string, logger log.Logger) *Client {
-	logger.Printf(log.Debug, "apiURL: %s", apiURL)
-
 	return &Client{
 		app:    app,
 		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
@@ -133,8 +118,6 @@ func NewClientFromLocalUser(ctx context.Context, app, apiURL, username, password
 
 // NewClientFromServiceAccount returns a new Client with the specified configuration.
 func NewClientFromServiceAccount(ctx context.Context, app, apiURL, accessTokenURI, clientID, clientSecret string, logger log.Logger) *Client {
-	logger.Printf(log.Debug, "apiURL: %s", apiURL)
-
 	return &Client{
 		app:    app,
 		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
@@ -169,7 +152,7 @@ func NewTestClient(username, password string, logger log.Logger) (*Client, *Test
 // Request posts the specified GraphQL query with the given variables to the
 // Polaris platform. Returns the response JSON text as is.
 func (c *Client) Request(ctx context.Context, query string, variables interface{}) ([]byte, error) {
-	c.log.Print(log.Trace, "polaris/graphql.Request")
+	c.log.Print(log.Trace)
 
 	// Extract operation name from query to pass in the body of the request for
 	// metrics.
@@ -187,34 +170,31 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 		Operation string      `json:"operationName,omitempty"`
 	}{Query: query, Variables: variables, Operation: operation})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal graphql request body: %v", err)
 	}
 
 	// Send the query to the remote API endpoint.
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.gqlURL, bytes.NewReader(buf))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create graphql request: %v", err)
 	}
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("Accept", "application/json")
 	res, err := c.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed request graphql field: %v", err)
 	}
 	defer res.Body.Close()
 
 	// Remote responded without a body. For status code 200 this means we are
 	// missing the GraphQL response. For an error we have no additional details.
 	if res.ContentLength == 0 {
-		if res.StatusCode == 200 {
-			return nil, errors.New("polaris: no body")
-		}
-		return nil, fmt.Errorf("polaris: %s", res.Status)
+		return nil, fmt.Errorf("graphql response has no body (status code %d)", res.StatusCode)
 	}
 
 	buf, err = io.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read graphql response body (status code %d): %v", res.StatusCode, err)
 	}
 
 	// Verify that the content type of the body is JSON. For status code 200
@@ -222,32 +202,36 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 	// error we have no additional JSON details.
 	contentType := res.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
-		if res.StatusCode == 200 {
-			return nil, fmt.Errorf("polaris: wrong content-type: %s", contentType)
+		snippet := string(buf)
+		if len(snippet) > 512 {
+			snippet = snippet[:512]
 		}
-		return nil, fmt.Errorf("polaris: %s - %s", res.Status, string(buf))
+		return nil, fmt.Errorf("graphql response has Content-Type %s (status code %d): %q",
+			contentType, res.StatusCode, snippet)
 	}
 
 	// Remote responded with a JSON document. Try to parse it as both known
 	// error message formats.
 	var jsonErr jsonError
 	if err := json.Unmarshal(buf, &jsonErr); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
+			res.StatusCode, err)
 	}
 	if jsonErr.isError() {
-		return nil, jsonErr
+		return nil, fmt.Errorf("graphql response body is an error (status code %d): %v", res.StatusCode, jsonErr)
 	}
 
 	var gqlErr gqlError
 	if err := json.Unmarshal(buf, &gqlErr); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
+			res.StatusCode, err)
 	}
 	if gqlErr.isError() {
-		return nil, gqlErr
+		return nil, fmt.Errorf("graphql response body is an error (status code %d): %v", res.StatusCode, gqlErr)
 	}
 
 	if res.StatusCode != 200 {
-		return nil, fmt.Errorf("polaris: %s", res.Status)
+		return nil, fmt.Errorf("graphql response has status code: %s", res.Status)
 	}
 
 	return buf, nil

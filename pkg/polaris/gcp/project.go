@@ -23,6 +23,7 @@ package gcp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,7 +50,7 @@ func readCredentials(ctx context.Context, keyFile string) (*google.Credentials, 
 	if strings.HasPrefix(keyFile, "~/") {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get home dir: %v", err)
 		}
 
 		keyFile = filepath.Join(home, strings.TrimPrefix(keyFile, "~/"))
@@ -57,12 +58,12 @@ func readCredentials(ctx context.Context, keyFile string) (*google.Credentials, 
 
 	buf, err := os.ReadFile(keyFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read key file: %v", err)
 	}
 
 	creds, err := google.CredentialsFromJSON(ctx, buf, "https://www.googleapis.com/auth/cloud-platform")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to obtain GCP credentials from key file: %v", err)
 	}
 
 	return creds, nil
@@ -72,18 +73,18 @@ func readCredentials(ctx context.Context, keyFile string) (*google.Credentials, 
 // cloud.
 func gcpProject(ctx context.Context, creds *google.Credentials, id string) (project, error) {
 	if id == "" {
-		return project{}, errors.New("polaris: project id cannot be empty")
+		return project{}, errors.New("project id cannot be empty")
 	}
 
 	client, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(creds))
 	if err != nil {
-		return project{}, err
+		return project{}, fmt.Errorf("failed to create GCP Cloud Resource Manager client: %v", err)
 	}
 
 	// Lookup project.
 	proj, err := client.Projects.Get(id).Do()
 	if err != nil {
-		return project{}, err
+		return project{}, fmt.Errorf("failed to get GCP project: %v", err)
 	}
 
 	// Lookup parent organization.
@@ -91,7 +92,7 @@ func gcpProject(ctx context.Context, creds *google.Credentials, id string) (proj
 	if proj.Parent.Type == "organization" {
 		org, err := client.Organizations.Get("organizations/" + proj.Parent.Id).Do()
 		if err != nil {
-			return project{}, err
+			return project{}, fmt.Errorf("failed to get GCP project organization: %v", err)
 		}
 
 		if org.DisplayName != "" {
@@ -126,7 +127,7 @@ func Default() ProjectFunc {
 	return func(ctx context.Context) (project, error) {
 		creds, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/cloud-platform")
 		if err != nil {
-			return project{}, err
+			return project{}, fmt.Errorf("failed to find the default GCP credentials: %v", err)
 		}
 
 		return gcpProject(ctx, creds, creds.ProjectID)
@@ -139,7 +140,7 @@ func KeyFile(keyFile string) ProjectFunc {
 	return func(ctx context.Context) (project, error) {
 		creds, err := readCredentials(ctx, keyFile)
 		if err != nil {
-			return project{}, err
+			return project{}, fmt.Errorf("failed to read credentials: %v", err)
 		}
 
 		return gcpProject(ctx, creds, creds.ProjectID)
@@ -152,7 +153,7 @@ func KeyFileAndProject(keyFile, projectID string) ProjectFunc {
 	return func(ctx context.Context) (project, error) {
 		creds, err := readCredentials(ctx, keyFile)
 		if err != nil {
-			return project{}, err
+			return project{}, fmt.Errorf("failed to read credentials: %v", err)
 		}
 
 		return gcpProject(ctx, creds, projectID)

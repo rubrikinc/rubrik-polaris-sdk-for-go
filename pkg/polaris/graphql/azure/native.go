@@ -23,8 +23,10 @@ package azure
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -44,7 +46,7 @@ type NativeSubscription struct {
 // filter. The filter can be used to search for a substring in the subscription
 // name.
 func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSubscription, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.NativeSubscriptions")
+	a.GQL.Log().Print(log.Trace)
 
 	var subscriptions []NativeSubscription
 	var cursor string
@@ -54,7 +56,7 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 			Filter string `json:"filter"`
 		}{After: cursor, Filter: filter})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to request NativeSubscriptions: %v", err)
 		}
 
 		a.GQL.Log().Printf(log.Debug, "azureNativeSubscriptions(%q): %s", filter, string(buf))
@@ -74,7 +76,7 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal NativeSubscriptions: %v", err)
 		}
 		for _, subscription := range payload.Data.Result.Edges {
 			subscriptions = append(subscriptions, subscription.Node)
@@ -94,7 +96,7 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 // subscription id. If deleteSnapshots is true the snapshots are deleted.
 // Returns the Polaris task chain id.
 func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id uuid.UUID, feature ProtectionFeature, deleteSnapshots bool) (uuid.UUID, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.StartDisableNativeSubscriptionProtectionJob")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, startDisableAzureNativeSubscriptionProtectionJobQuery, struct {
 		ID              uuid.UUID         `json:"azureSubscriptionRubrikId"`
@@ -102,7 +104,7 @@ func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id
 		Feature         ProtectionFeature `json:"azureNativeProtectionFeature"`
 	}{ID: id, DeleteSnapshots: deleteSnapshots, Feature: feature})
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to request StartDisableNativeSubscriptionProtectionJob: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "startDisableAzureNativeSubscriptionProtectionJob(%q, %q, %t): %s",
@@ -116,7 +118,7 @@ func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to unmarshal StartDisableNativeSubscriptionProtectionJob: %v", err)
 	}
 
 	return payload.Data.Result.JobID, nil

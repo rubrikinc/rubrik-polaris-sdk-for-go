@@ -73,7 +73,7 @@ func TestValidateAndCreateAWSCloudAccountWithDuplicate(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected ValidateAndCreateCloudAccount to fail")
 	}
-	if msg := err.Error(); strings.HasPrefix(msg, "invalid aws account: You do not need to add 123456789012") {
+	if msg := err.Error(); !strings.HasPrefix(msg, "invalid account: You do not need to add 123456789012") {
 		t.Errorf("invalid error: %v", err)
 	}
 }
