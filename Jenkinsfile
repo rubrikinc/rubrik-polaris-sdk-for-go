@@ -32,6 +32,8 @@ pipeline {
         stage('Lint') {
             steps {
                 sh 'go vet ./...'
+                sh 'go run honnef.co/go/tools/cmd/staticcheck@latest ./...'
+                sh 'diff -u <(echo -n) <(gofmt -d .)'
             }
         }
         stage('Build') {
