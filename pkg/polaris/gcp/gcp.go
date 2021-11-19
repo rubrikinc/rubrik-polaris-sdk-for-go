@@ -78,42 +78,6 @@ type Feature struct {
 	Status core.Status
 }
 
-// toNativeID returns the GCP project id for the specified identity. If the
-// identity is a GCP project id no remote endpoint is called.
-func (a API) toNativeID(ctx context.Context, id IdentityFunc) (string, error) {
-	a.gql.Log().Print(log.Trace)
-
-	if id == nil {
-		return "", errors.New("id is not allowed to be nil")
-	}
-	identity, err := id(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to lookup identity: %v", err)
-	}
-
-	if !identity.internal {
-		return identity.id, nil
-	}
-
-	uid, err := uuid.Parse(identity.id)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse identity: %v", err)
-	}
-
-	selectors, err := gcp.Wrap(a.gql).CloudAccountListProjects(ctx, core.FeatureCloudNativeProtection, "")
-	if err != nil {
-		return "", fmt.Errorf("failed to get projects: %v", err)
-	}
-
-	for _, selector := range selectors {
-		if selector.Account.ID == uid {
-			return selector.Account.ProjectID, nil
-		}
-	}
-
-	return "", fmt.Errorf("project %w", graphql.ErrNotFound)
-}
-
 // Polaris does not support the AllFeatures for GCP cloud accounts. We work
 // around this by translating FeatureAll to the following list of features.
 var allFeatures = []core.Feature{
