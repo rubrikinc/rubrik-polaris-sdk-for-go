@@ -36,7 +36,7 @@ type NativeAccount struct {
 	ID      uuid.UUID `json:"id"`
 	Name    string    `json:"name"`
 	Regions []struct {
-		Region        Region `json:"region""`
+		Region        Region `json:"region"`
 		HasExocompute bool   `json:"isExocomputeConfigured"`
 	} `json:"regionSpecs"`
 	Status     string             `json:"status"`
