@@ -33,7 +33,7 @@ pipeline {
             steps {
                 sh 'go vet ./...'
                 sh 'go run honnef.co/go/tools/cmd/staticcheck@latest ./...'
-                sh 'bash -c diff -u <(echo -n) <(gofmt -d .)'
+                sh 'bash -c "diff -u <(echo -n) <(gofmt -d .)"'
             }
         }
         stage('Build') {
