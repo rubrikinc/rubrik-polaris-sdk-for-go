@@ -97,8 +97,10 @@ func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, pr
 		OrgName   string       `json:"organizationName,omitempty"`
 		JwtConfig string       `json:"serviceAccountJwtConfigOptional,omitempty"`
 	}{Feature: feature, ID: projectID, Name: projectName, Number: projectNumber, OrgName: orgName, JwtConfig: jwtConfig})
-
-	return fmt.Errorf("failed to request CloudAccountAddManualAuthProject: %v", err)
+	if err != nil {
+		return fmt.Errorf("failed to request CloudAccountAddManualAuthProject: %v", err)
+	}
+	return nil
 }
 
 // CloudAccountDeleteProject delete cloud account for the given Polaris cloud
