@@ -85,18 +85,18 @@ func (src *localUserSource) token() (token, error) {
 		Password string `json:"password"`
 	}{Username: src.username, Password: src.password})
 	if err != nil {
-		return token{}, err
+		return token{}, fmt.Errorf("failed to marshal token request body: %v", err)
 	}
 
 	var resp []byte
 	for attempt := 1; ; attempt++ {
-		src.logger.Printf(log.Debug, "acquire access token (attempt: %d)", attempt)
+		src.logger.Printf(log.Debug, "Acquire access token (attempt: %d)", attempt)
 		resp, err = requestToken(src.client, src.tokenURL, body)
 		if err == nil {
 			break
 		}
 		if !errors.Is(err, errTokenRequestTimeout) || attempt == tokenRequestAttempts {
-			return token{}, err
+			return token{}, fmt.Errorf("failed to acquire local user access token: %v", err)
 		}
 	}
 
@@ -105,10 +105,10 @@ func (src *localUserSource) token() (token, error) {
 		AccessToken string `json:"access_token"`
 	}
 	if err := json.Unmarshal(resp, &payload); err != nil {
-		return token{}, err
+		return token{}, fmt.Errorf("failed to unmarshal token response body: %v", err)
 	}
 	if payload.AccessToken == "" {
-		return token{}, errors.New("polaris: invalid token")
+		return token{}, errors.New("invalid token")
 	}
 
 	return fromJWT(payload.AccessToken)

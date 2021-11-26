@@ -28,6 +28,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -47,11 +48,11 @@ func Wrap(gql *graphql.Client) API {
 // DefaultCredentialsServiceAccount gets the default GCP service account name.
 // If no default GCP service account has been set an empty string is returned.
 func (a API) DefaultCredentialsServiceAccount(ctx context.Context) (name string, err error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.DefaultCredentialsServiceAccount")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, gcpGetDefaultCredentialsServiceAccountQuery, nil)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to request DefaultCredentialsServiceAccount: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "gcpGetDefaultCredentialsServiceAccount(): %s", string(buf))
@@ -62,7 +63,7 @@ func (a API) DefaultCredentialsServiceAccount(ctx context.Context) (name string,
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to unmarshal DefaultCredentialsServiceAccount: %v", err)
 	}
 
 	return payload.Data.Name, nil
@@ -72,14 +73,14 @@ func (a API) DefaultCredentialsServiceAccount(ctx context.Context) (name string,
 // service account will be used for GCP projects added without a service
 // account key file.
 func (a API) SetDefaultServiceAccount(ctx context.Context, name, jwtConfig string) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/gcp.SetDefaultServiceAccount")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, gcpSetDefaultServiceAccountJwtConfigQuery, struct {
 		Name      string `json:"serviceAccountName"`
 		JwtConfig string `json:"serviceAccountJWTConfig"`
 	}{Name: name, JwtConfig: jwtConfig})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to request SetDefaultServiceAccount: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "gcpSetDefaultServiceAccount(%q, %q): %s", name, jwtConfig, string(buf))
@@ -90,10 +91,10 @@ func (a API) SetDefaultServiceAccount(ctx context.Context, name, jwtConfig strin
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal SetDefaultServiceAccount: %v", err)
 	}
 	if !payload.Data.Success {
-		return errors.New("polaris: failed to set default gcp service account")
+		return errors.New("set gcp service account failed")
 	}
 
 	return nil

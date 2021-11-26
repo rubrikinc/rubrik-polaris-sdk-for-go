@@ -27,6 +27,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -53,13 +54,13 @@ type ExocomputeConfigsForAccount struct {
 // ExocomputeConfigs returns all exocompute configs matching the specified
 // filter. The filter can be used to search for account name or account id.
 func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigsForAccount, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.ExocomputeConfigs")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, allAzureExocomputeConfigsInAccountQuery, struct {
 		Filter string `json:"azureExocomputeSearchQuery"`
 	}{Filter: filter})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to request ExocomputeConfigs: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "allAzureExocomputeConfigsInAccount(%q): %s", filter, string(buf))
@@ -70,7 +71,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal ExocomputeConfigs: %v", err)
 	}
 
 	return payload.Data.Result, nil
@@ -90,14 +91,14 @@ type ExocomputeConfigCreate struct {
 // the account with the specified Polaris cloud account id. Returns the created
 // exocompute config
 func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.AddCloudAccountExocomputeConfigurations")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, addAzureCloudAccountExocomputeConfigurationsQuery, struct {
 		ID      uuid.UUID                `json:"cloudAccountId"`
 		Configs []ExocomputeConfigCreate `json:"azureExocomputeRegionConfigs"`
 	}{ID: id, Configs: []ExocomputeConfigCreate{config}})
 	if err != nil {
-		return ExocomputeConfig{}, err
+		return ExocomputeConfig{}, fmt.Errorf("failed to request AddCloudAccountExocomputeConfigurations: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "addAzureCloudAccountExocomputeConfigurations(%q, %v): %s", id, config, string(buf))
@@ -110,10 +111,10 @@ func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uui
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return ExocomputeConfig{}, err
+		return ExocomputeConfig{}, fmt.Errorf("failed to unmarshal AddCloudAccountExocomputeConfigurations: %v", err)
 	}
 	if len(payload.Data.Result.Configs) != 1 {
-		return ExocomputeConfig{}, errors.New("polaris: createAwsExocomputeConfigs: no result")
+		return ExocomputeConfig{}, errors.New("expected a single result")
 	}
 
 	return payload.Data.Result.Configs[0], nil
@@ -122,13 +123,13 @@ func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uui
 // DeleteCloudAccountExocomputeConfigurations deletes the exocompute config
 // with the specified Polaris exocompute config id.
 func (a API) DeleteCloudAccountExocomputeConfigurations(ctx context.Context, id uuid.UUID) error {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/azure.DeleteCloudAccountExocomputeConfigurations")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, deleteAzureCloudAccountExocomputeConfigurationsQuery, struct {
 		IDs []uuid.UUID `json:"cloudAccountIds"`
 	}{IDs: []uuid.UUID{id}})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to request DeleteCloudAccountExocomputeConfigurations: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "deleteAzureCloudAccountExocomputeConfigurations(%q): %s", id, string(buf))
@@ -142,11 +143,11 @@ func (a API) DeleteCloudAccountExocomputeConfigurations(ctx context.Context, id 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal DeleteCloudAccountExocomputeConfigurations: %v", err)
 	}
 	if ids := payload.Data.Result.SuccessIDs; len(ids) == 1 && ids[0] == id {
 		return nil
 	}
 
-	return fmt.Errorf("polaris: azureExocomputeConfigsDelete: failed to delete %s", id)
+	return errors.New("delete exocompute config failed")
 }

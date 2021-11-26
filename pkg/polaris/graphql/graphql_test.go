@@ -69,7 +69,7 @@ func TestJsonError(t *testing.T) {
 	if !jsonErr1.isError() {
 		t.Error("jsonErr should represent an error")
 	}
-	expected := "polaris: code 16: JWT validation failed: Missing or invalid credentials"
+	expected := "JWT validation failed: Missing or invalid credentials (code 16)"
 	if msg := jsonErr1.Error(); msg != expected {
 		t.Errorf("invalid error message: %v", msg)
 	}
@@ -86,7 +86,7 @@ func TestJsonError(t *testing.T) {
 	if !jsonErr2.isError() {
 		t.Error("jsonErr should represent an error")
 	}
-	expected = "polaris: code 401: UNAUTHENTICATED: wrong username or password"
+	expected = "UNAUTHENTICATED: wrong username or password (code 401)"
 	if msg := jsonErr2.Error(); msg != expected {
 		t.Errorf("invalid error message: %v", msg)
 	}
@@ -105,7 +105,7 @@ func TestGqlError(t *testing.T) {
 	if !gqlErr.isError() {
 		t.Error("gqlErr should represent an error")
 	}
-	expected := "polaris: INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING"
+	expected := "INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING"
 	if msg := gqlErr.Error(); msg != expected {
 		t.Fatalf("invalid error message: %v", msg)
 	}
@@ -132,7 +132,7 @@ func TestRequestUnauthenticated(t *testing.T) {
 	if err == nil {
 		t.Fatal("graphql request should fail")
 	}
-	if !strings.HasPrefix(err.Error(), "polaris: code 16: JWT validation failed") {
+	if !strings.HasSuffix(err.Error(), "JWT validation failed: Missing or invalid credentials (code 16)") {
 		t.Fatal(err)
 	}
 }
@@ -158,7 +158,8 @@ func TestRequestWithInternalServerErrorJSONBody(t *testing.T) {
 	if err == nil {
 		t.Fatal("graphql request should fail")
 	}
-	if !strings.HasPrefix(err.Error(), "polaris: INTERNAL: invalid status transition") {
+	if !strings.HasSuffix(err.Error(),
+		"INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING") {
 		t.Fatal(err)
 	}
 }
@@ -176,7 +177,7 @@ func TestRequestWithInternalServerErrorNoBody(t *testing.T) {
 	if err == nil {
 		t.Fatal("graphql request should fail")
 	}
-	if !strings.HasPrefix(err.Error(), "polaris: 500 Internal Server Error") {
+	if !strings.HasSuffix(err.Error(), "graphql response has no body (status code 500)") {
 		t.Fatal(err)
 	}
 }
@@ -196,7 +197,8 @@ func TestRequestWithInternalServerErrorTextBody(t *testing.T) {
 	if err == nil {
 		t.Fatal("graphql request should fail")
 	}
-	if !strings.HasPrefix(err.Error(), "polaris: 500 Internal Server Error") {
+	if !strings.HasSuffix(err.Error(),
+		"graphql response has Content-Type text/plain (status code 500): \"database is corrupt\"") {
 		t.Fatal(err)
 	}
 }

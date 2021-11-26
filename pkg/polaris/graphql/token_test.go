@@ -37,7 +37,8 @@ func TestTokenExpired(t *testing.T) {
 		t.Fatal("empty token should be expired")
 	}
 
-	tok, err := fromJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MjI0OTExNTR9.y3TkH5_8Pv7Vde1I-ll2BJ29dX4tYKGIhrAA314VGa0")
+	tok, err := fromJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiw" +
+		"iaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MjI0OTExNTR9.y3TkH5_8Pv7Vde1I-ll2BJ29dX4tYKGIhrAA314VGa0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +46,8 @@ func TestTokenExpired(t *testing.T) {
 		t.Error("token should be expired")
 	}
 
-	tok, err = fromJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0")
+	tok, err = fromJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwi" +
+		"aWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +57,8 @@ func TestTokenExpired(t *testing.T) {
 }
 
 func TestTokenSetAsHeader(t *testing.T) {
-	tok, err := fromJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MjI0OTExNTR9.y3TkH5_8Pv7Vde1I-ll2BJ29dX4tYKGIhrAA314VGa0")
+	tok, err := fromJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiw" +
+		"iaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MjI0OTExNTR9.y3TkH5_8Pv7Vde1I-ll2BJ29dX4tYKGIhrAA314VGa0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,13 +68,15 @@ func TestTokenSetAsHeader(t *testing.T) {
 	}
 	tok.setAsAuthHeader(req)
 
-	if auth := req.Header.Get("Authorization"); auth != "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MjI0OTExNTR9.y3TkH5_8Pv7Vde1I-ll2BJ29dX4tYKGIhrAA314VGa0" {
+	if auth := req.Header.Get("Authorization"); auth != "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIx"+
+		"MjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MjI0OTExNTR9.y3TkH5_8Pv7Vde1I-ll2BJ29"+
+		"dX4tYKGIhrAA314VGa0" {
 		t.Errorf("invalid Authorization header: %s", auth)
 	}
 }
 
 func TestTokenSource(t *testing.T) {
-	src, lis := newLocalUserTestSource("john", "doe", &log.StandardLogger{})
+	src, lis := newLocalUserTestSource("john", "doe", &log.DiscardLogger{})
 
 	// Respond with 200 and a valid token as long as the correct username and
 	// password are received.
@@ -92,7 +97,8 @@ func TestTokenSource(t *testing.T) {
 
 		json.NewEncoder(w).Encode(struct {
 			AccessToken string `json:"access_token"`
-		}{AccessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0"})
+		}{AccessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0I" +
+			"joxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0"})
 	})
 	defer srv.Shutdown(context.Background())
 
@@ -112,7 +118,7 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	src, lis := newLocalUserTestSource("john", "doe", &log.StandardLogger{})
+	src, lis := newLocalUserTestSource("john", "doe", &log.DiscardLogger{})
 
 	// Respond with status code 401 and additional details in the body.
 	srv := TestServeJSON(lis, func(w http.ResponseWriter, req *http.Request) {
@@ -127,13 +133,13 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 	if err == nil {
 		t.Fatal("token request should fail")
 	}
-	if err.Error() != "polaris: code 401: UNAUTHENTICATED: wrong username or password" {
+	if !strings.HasSuffix(err.Error(), "UNAUTHENTICATED: wrong username or password (code 401)") {
 		t.Fatal(err)
 	}
 }
 
 func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
-	src, lis := newLocalUserTestSource("john", "doe", &log.StandardLogger{})
+	src, lis := newLocalUserTestSource("john", "doe", &log.DiscardLogger{})
 
 	// Respond with status code 500 and no additional details.
 	srv := TestServe(lis, func(w http.ResponseWriter, req *http.Request) {
@@ -145,13 +151,13 @@ func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
 	if err == nil {
 		t.Fatal("token request should fail")
 	}
-	if !strings.HasPrefix(err.Error(), "polaris: 500 Internal Server Error") {
+	if !strings.HasSuffix(err.Error(), "token response has no body (status code 500)") {
 		t.Fatal(err)
 	}
 }
 
 func TestTokenSourceWithInternalServerErrorTextBody(t *testing.T) {
-	src, lis := newLocalUserTestSource("john", "doe", &log.StandardLogger{})
+	src, lis := newLocalUserTestSource("john", "doe", &log.DiscardLogger{})
 
 	// Respond with status code 500 and no additional details.
 	srv := TestServe(lis, func(w http.ResponseWriter, req *http.Request) {
@@ -165,7 +171,8 @@ func TestTokenSourceWithInternalServerErrorTextBody(t *testing.T) {
 	if err == nil {
 		t.Fatal("token request should fail")
 	}
-	if !strings.HasPrefix(err.Error(), "polaris: 500 Internal Server Error") {
+	if !strings.HasSuffix(err.Error(),
+		"token response has Content-Type text/plain (status code 500): \"user database is corrupt\"") {
 		t.Fatal(err)
 	}
 }

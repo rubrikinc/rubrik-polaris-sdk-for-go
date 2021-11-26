@@ -63,22 +63,22 @@ func azureGraph(ctx context.Context, authorizer autorest.Authorizer, principal *
 	filter := fmt.Sprintf("servicePrincipalNames/any(c:c eq '%s')", principal.appID)
 	result, err := client.ListComplete(ctx, filter)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get Azure service principal names using Graph: %v", err)
 	}
 
 	if !result.NotDone() {
-		return errors.New("polaris: failed to find service principal using ad graph")
+		return errors.New("failed to find Azure service principal using Graph")
 	}
 	if result.Value().AppDisplayName == nil {
-		return errors.New("polaris: failed to lookup the AppDisplayName using ad graph")
+		return errors.New("failed to lookup Azure service principal app display name using Graph")
 	}
 	if result.Value().ObjectID == nil {
-		return errors.New("polaris: failed to lookup the ObjectID using ad graph")
+		return errors.New("failed to lookup Azure service principal object id using Graph")
 	}
 
 	objID, err := uuid.Parse(*result.Value().ObjectID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse Azure service principal object id: %v", err)
 	}
 
 	principal.appName = *result.Value().AppDisplayName
@@ -92,27 +92,28 @@ func azureGraph(ctx context.Context, authorizer autorest.Authorizer, principal *
 func azurePrincipalFromAzEnv(ctx context.Context, tenantDomain string) (servicePrincipal, error) {
 	graphAuthorizer, err := auth.NewAuthorizerFromEnvironmentWithResource(azure.PublicCloud.GraphEndpoint)
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to create Azure Graph authorizer from env: %v", err)
 	}
 
 	rmAuthorizer, err := auth.NewAuthorizerFromEnvironmentWithResource(azure.PublicCloud.ResourceManagerEndpoint)
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{},
+			fmt.Errorf("failed to create Azure Resource Manager authorizer from env: %v", err)
 	}
 
 	settings, err := auth.GetSettingsFromEnvironment()
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to get Azure auth settings from env: %v", err)
 	}
 
 	appID, err := uuid.Parse(settings.Values[auth.ClientID])
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to parse Azure client id: %v", err)
 	}
 
 	tenantID, err := uuid.Parse(settings.Values[auth.TenantID])
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to parse Azure tenant id: %v", err)
 	}
 
 	principal := servicePrincipal{
@@ -124,7 +125,8 @@ func azurePrincipalFromAzEnv(ctx context.Context, tenantDomain string) (serviceP
 	}
 
 	if err := azureGraph(ctx, graphAuthorizer, &principal); err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{},
+			fmt.Errorf("failed to lookup app display name and object id for service principal: %v", err)
 	}
 
 	return principal, nil
@@ -135,27 +137,28 @@ func azurePrincipalFromAzEnv(ctx context.Context, tenantDomain string) (serviceP
 func azurePrincipalFromAzFile(ctx context.Context, tenantDomain string) (servicePrincipal, error) {
 	graphAuthorizer, err := auth.NewAuthorizerFromFile(azure.PublicCloud.GraphEndpoint)
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to create Azure Graph authorizer from file: %v", err)
 	}
 
 	rmAuthorizer, err := auth.NewAuthorizerFromFile(azure.PublicCloud.ResourceManagerEndpoint)
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{},
+			fmt.Errorf("failed to create Azure Resource Manager authorizer from file: %v", err)
 	}
 
 	settings, err := auth.GetSettingsFromFile()
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to get Azure auth settings from file: %v", err)
 	}
 
 	appID, err := uuid.Parse(settings.Values[auth.ClientID])
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to parse Azure client id: %v", err)
 	}
 
 	tenantID, err := uuid.Parse(settings.Values[auth.TenantID])
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to parse Azure tenant id: %v", err)
 	}
 
 	principal := servicePrincipal{
@@ -167,7 +170,8 @@ func azurePrincipalFromAzFile(ctx context.Context, tenantDomain string) (service
 	}
 
 	if err := azureGraph(ctx, graphAuthorizer, &principal); err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{},
+			fmt.Errorf("failed to lookup app display name and object id for service principal: %v", err)
 	}
 
 	return principal, nil
@@ -190,15 +194,15 @@ func decodePrincipalV0(ctx context.Context, data, tenantDomain string) (serviceP
 
 	var v0 principalV0
 	if err := decoder.Decode(&v0); err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to unmarshal v0 service principal: %v", err)
 	}
 	appID, err := uuid.Parse(v0.AppID)
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to parse service principal app id: %v", err)
 	}
 	tenantID, err := uuid.Parse(v0.TenantID)
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to parse service principal tenant id: %v", err)
 	}
 	if tenantDomain != v0.TenantDomain {
 		return servicePrincipal{}, fmt.Errorf("tenant domain mismatch: %s != %s", tenantDomain, v0.TenantDomain)
@@ -207,7 +211,7 @@ func decodePrincipalV0(ctx context.Context, data, tenantDomain string) (serviceP
 	rmConfig := auth.NewClientCredentialsConfig(v0.AppID, v0.AppSecret, tenantDomain)
 	rmAuthorizer, err := rmConfig.Authorizer()
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to get Azure Resource Manager authorizer: %v", err)
 	}
 
 	principal := servicePrincipal{
@@ -228,11 +232,12 @@ func decodePrincipalV0(ctx context.Context, data, tenantDomain string) (serviceP
 	}
 	graphAuthorizer, err := graphConfig.Authorizer()
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to get Azure Graph authorizer: %v", err)
 	}
 
 	if err := azureGraph(ctx, graphAuthorizer, &principal); err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{},
+			fmt.Errorf("failed to lookup app display name and object id for service principal: %v", err)
 	}
 
 	if v0.AppName != "" {
@@ -259,15 +264,15 @@ func decodePrincipalV1(ctx context.Context, data, tenantDomain string) (serviceP
 
 	var v1 principalV1
 	if err := decoder.Decode(&v1); err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to unmarshal v1 service principal: %v", err)
 	}
 	appID, err := uuid.Parse(v1.AppID)
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to parse service principal app id: %v", err)
 	}
 	tenantID, err := uuid.Parse(v1.TenantID)
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to parse service principal tenant id: %v", err)
 	}
 	if tenantDomain != v1.TenantDomain {
 		return servicePrincipal{}, fmt.Errorf("tenant domain mismatch: %s != %s", tenantDomain, v1.TenantDomain)
@@ -276,7 +281,7 @@ func decodePrincipalV1(ctx context.Context, data, tenantDomain string) (serviceP
 	rmConfig := auth.NewClientCredentialsConfig(v1.AppID, v1.AppSecret, tenantDomain)
 	rmAuthorizer, err := rmConfig.Authorizer()
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to get Azure Resource Manager authorizer: %v", err)
 	}
 
 	principal := servicePrincipal{
@@ -297,11 +302,12 @@ func decodePrincipalV1(ctx context.Context, data, tenantDomain string) (serviceP
 	}
 	graphAuthorizer, err := graphConfig.Authorizer()
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to get Azure Graph authorizer: %v", err)
 	}
 
 	if err := azureGraph(ctx, graphAuthorizer, &principal); err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{},
+			fmt.Errorf("failed to lookup app display name and object id for service principal: %v", err)
 	}
 
 	if v1.AppName != "" {
@@ -327,21 +333,21 @@ func decodePrincipalV2(ctx context.Context, data, tenantDomain string) (serviceP
 
 	var v2 principalV2
 	if err := decoder.Decode(&v2); err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to unmarshal v2 service principal: %v", err)
 	}
 	appID, err := uuid.Parse(v2.AppID)
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to parse service principal app id: %v", err)
 	}
 	tenantID, err := uuid.Parse(v2.TenantID)
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to parse service principal tenant id: %v", err)
 	}
 
 	rmConfig := auth.NewClientCredentialsConfig(v2.AppID, v2.AppSecret, tenantDomain)
 	rmAuthorizer, err := rmConfig.Authorizer()
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to get Azure Resource Manager authorizer: %v", err)
 	}
 
 	principal := servicePrincipal{
@@ -362,11 +368,12 @@ func decodePrincipalV2(ctx context.Context, data, tenantDomain string) (serviceP
 	}
 	graphAuthorizer, err := graphConfig.Authorizer()
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to get Azure Graph authorizer: %v", err)
 	}
 
 	if err := azureGraph(ctx, graphAuthorizer, &principal); err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{},
+			fmt.Errorf("failed to lookup app display name and object id for service principal: %v", err)
 	}
 
 	if v2.AppName != "" {
@@ -382,7 +389,7 @@ func azurePrincipalFromKeyFile(ctx context.Context, keyFile, tenantDomain string
 	if strings.HasPrefix(keyFile, "~/") {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return servicePrincipal{}, err
+			return servicePrincipal{}, fmt.Errorf("failed to get home dir: %v", err)
 		}
 
 		keyFile = filepath.Join(home, strings.TrimPrefix(keyFile, "~/"))
@@ -390,7 +397,7 @@ func azurePrincipalFromKeyFile(ctx context.Context, keyFile, tenantDomain string
 
 	buf, err := os.ReadFile(keyFile)
 	if err != nil {
-		return servicePrincipal{}, err
+		return servicePrincipal{}, fmt.Errorf("failed to read key file: %v", err)
 	}
 
 	if principal, err := decodePrincipalV2(ctx, string(buf), tenantDomain); err == nil {
@@ -403,7 +410,7 @@ func azurePrincipalFromKeyFile(ctx context.Context, keyFile, tenantDomain string
 		return principal, nil
 	}
 
-	return servicePrincipal{}, fmt.Errorf("polaris: unrecognized file format: %s", keyFile)
+	return servicePrincipal{}, fmt.Errorf("unrecognized file format: %v", keyFile)
 }
 
 // The Azure SDK requires all parameters be given as environment variables.
@@ -424,18 +431,18 @@ func Default(tenantDomain string) ServicePrincipalFunc {
 		case os.Getenv("AZURE_AUTH_LOCATION") != "":
 			principal, err = azurePrincipalFromAzFile(ctx, tenantDomain)
 			if err != nil {
-				return servicePrincipal{}, err
+				return servicePrincipal{}, fmt.Errorf("failed to read service principal from file: %v", err)
 			}
 		case os.Getenv("AZURE_SERVICEPRINCIPAL_LOCATION") != "":
 			keyfile := os.Getenv("AZURE_SERVICEPRINCIPAL_LOCATION")
 			principal, err = azurePrincipalFromKeyFile(ctx, keyfile, tenantDomain)
 			if err != nil {
-				return servicePrincipal{}, err
+				return servicePrincipal{}, fmt.Errorf("failed to read service principal from file: %v", err)
 			}
 		default:
 			principal, err = azurePrincipalFromAzEnv(ctx, tenantDomain)
 			if err != nil {
-				return servicePrincipal{}, err
+				return servicePrincipal{}, fmt.Errorf("failed to read service principal from env: %v", err)
 			}
 		}
 
@@ -458,7 +465,7 @@ func SDKAuthFile(authFile, tenantDomain string) ServicePrincipalFunc {
 		if strings.HasPrefix(authFile, "~/") {
 			home, err := os.UserHomeDir()
 			if err != nil {
-				return servicePrincipal{}, err
+				return servicePrincipal{}, fmt.Errorf("failed to get home dir: %v", err)
 			}
 
 			authFile = filepath.Join(home, strings.TrimPrefix(authFile, "~/"))
@@ -471,12 +478,12 @@ func SDKAuthFile(authFile, tenantDomain string) ServicePrincipalFunc {
 		defer os.Setenv("AZURE_AUTH_LOCATION", authLocation)
 
 		if err := os.Setenv("AZURE_AUTH_LOCATION", authFile); err != nil {
-			return servicePrincipal{}, err
+			return servicePrincipal{}, fmt.Errorf("failed to set env AZURE_AUTH_LOCATION: %v", err)
 		}
 
 		principal, err := azurePrincipalFromAzFile(ctx, tenantDomain)
 		if err != nil {
-			return servicePrincipal{}, err
+			return servicePrincipal{}, fmt.Errorf("failed to read service principal from file: %v", err)
 		}
 
 		return principal, nil
@@ -490,7 +497,7 @@ func ServicePrincipal(appID uuid.UUID, appSecret string, tenantID uuid.UUID, ten
 		rmConfig := auth.NewClientCredentialsConfig(appID.String(), appSecret, tenantID.String())
 		rmAuthorizer, err := rmConfig.Authorizer()
 		if err != nil {
-			return servicePrincipal{}, err
+			return servicePrincipal{}, fmt.Errorf("failed to get Azure Resource Manager authorizer: %v", err)
 		}
 
 		principal := servicePrincipal{
@@ -510,11 +517,12 @@ func ServicePrincipal(appID uuid.UUID, appSecret string, tenantID uuid.UUID, ten
 		}
 		graphAuthorizer, err := graphConfig.Authorizer()
 		if err != nil {
-			return servicePrincipal{}, err
+			return servicePrincipal{}, fmt.Errorf("failed to get Azure Graph authorizer: %v", err)
 		}
 
 		if err := azureGraph(ctx, graphAuthorizer, &principal); err != nil {
-			return servicePrincipal{}, err
+			return servicePrincipal{},
+				fmt.Errorf("failed to lookup app display name and object id for service principal: %v", err)
 		}
 
 		return principal, nil

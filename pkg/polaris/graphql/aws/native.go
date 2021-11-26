@@ -23,6 +23,7 @@ package aws
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -48,14 +49,14 @@ type NativeAccount struct {
 // NativeAccount returns the native account with the specified Polaris native
 // account id.
 func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature ProtectionFeature) (NativeAccount, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.NativeAccount")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, awsNativeAccountQuery, struct {
 		ID      uuid.UUID         `json:"awsNativeAccountRubrikId"`
 		Feature ProtectionFeature `json:"awsNativeProtectionFeature"`
 	}{ID: id, Feature: feature})
 	if err != nil {
-		return NativeAccount{}, err
+		return NativeAccount{}, fmt.Errorf("failed to request NativeAccount: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "awsNativeAccount(%q, %q): %s", id, feature, string(buf))
@@ -66,7 +67,7 @@ func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature Protection
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return NativeAccount{}, err
+		return NativeAccount{}, fmt.Errorf("failed to unmarshal NativeAccount: %v", err)
 	}
 
 	return payload.Data.Account, nil
@@ -75,7 +76,7 @@ func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature Protection
 // NativeAccounts returns the native accounts matching the specified filter.
 // The filter can be used to search for a substring in account name.
 func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filter string) ([]NativeAccount, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.NativeAccounts")
+	a.GQL.Log().Print(log.Trace)
 
 	// nameSubstringFilter: NameSubstringFilter
 	var accounts []NativeAccount
@@ -87,7 +88,7 @@ func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filt
 			Filter  string            `json:"filter"`
 		}{After: cursor, Feature: feature, Filter: filter})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to request NativeAccounts: %v", err)
 		}
 
 		a.GQL.Log().Printf(log.Debug, "awsNativeAccounts(%q, %q, %q): %s", cursor, feature, filter, string(buf))
@@ -107,7 +108,7 @@ func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filt
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal NativeAccounts: %v", err)
 		}
 		for _, account := range payload.Data.Query.Edges {
 			accounts = append(accounts, account.Node)
@@ -126,7 +127,7 @@ func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filt
 // account with the specified Polaris native account id. Returns the Polaris
 // task chain id.
 func (a API) StartNativeAccountDisableJob(ctx context.Context, id uuid.UUID, feature ProtectionFeature, deleteSnapshots bool) (uuid.UUID, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/aws.StartNativeAccountDisableJob")
+	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, startAwsNativeAccountDisableJobQuery, struct {
 		ID              uuid.UUID         `json:"awsAccountRubrikId"`
@@ -134,7 +135,7 @@ func (a API) StartNativeAccountDisableJob(ctx context.Context, id uuid.UUID, fea
 		DeleteSnapshots bool              `json:"shouldDeleteNativeSnapshots"`
 	}{ID: id, Feature: feature, DeleteSnapshots: deleteSnapshots})
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to request StartNativeAccountDisableJob: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "startAwsNativeAccountDisableJob(%q, %q, %t): %s", id, feature, deleteSnapshots, string(buf))
@@ -148,10 +149,10 @@ func (a API) StartNativeAccountDisableJob(ctx context.Context, id uuid.UUID, fea
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to unmarshal StartNativeAccountDisableJob: %v", err)
 	}
 	if payload.Data.Query.Error != "" {
-		return uuid.Nil, fmt.Errorf("polaris: %s", payload.Data.Query.Error)
+		return uuid.Nil, errors.New(payload.Data.Query.Error)
 	}
 
 	return payload.Data.Query.JobID, nil

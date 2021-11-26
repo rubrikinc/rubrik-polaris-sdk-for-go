@@ -115,7 +115,7 @@ func TestStandardLogger(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if line != "[INFO] Print" {
+	if line != "[INFO] polaris/log.TestStandardLogger Print" {
 		t.Fatalf("%q", line)
 	}
 
@@ -123,7 +123,7 @@ func TestStandardLogger(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if line != "[WARN] Print" {
+	if line != "[WARN] polaris/log.TestStandardLogger Print" {
 		t.Fatalf("%q", line)
 	}
 
@@ -138,7 +138,13 @@ func TestStandardLogger(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if line != "[WARN] Printf \"warn\"" {
+	if line != "[WARN] polaris/log.TestStandardLogger Printf \"warn\"" {
 		t.Fatalf("%q", line)
+	}
+}
+
+func TestPkgFuncName(t *testing.T) {
+	if pfn := PkgFuncName(1); pfn != "polaris/log.TestPkgFuncName" {
+		t.Fatalf("invalid PkgFuncName: %v", pfn)
 	}
 }

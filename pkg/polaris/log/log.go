@@ -76,7 +76,7 @@ func ParseLogLevel(level string) (LogLevel, error) {
 	case "fatal":
 		return Fatal, nil
 	default:
-		return Trace, errors.New("polaris: invalid log level")
+		return Trace, errors.New("invalid log level")
 	}
 }
 
@@ -128,35 +128,39 @@ func (l StandardLogger) Print(level LogLevel, args ...interface{}) {
 		return
 	}
 
-	args = append([]interface{}{formatLogLevel(level), " "}, args...)
+	pkgFuncName := " "
+	if name := PkgFuncName(2); name != "" {
+		pkgFuncName = " " + name + " "
+	}
+
+	args = append([]interface{}{formatLogLevel(level), pkgFuncName}, args...)
 	switch level {
 	case Fatal:
 		log.Fatal(args...)
-
-	case Error:
-		log.Panic(args...)
 
 	default:
 		log.Print(args...)
 	}
 }
 
-// Print writes to the standard logger. Arguments are handled in the manner of
+// Printf writes to the standard logger. Arguments are handled in the manner of
 // fmt.Print.
 func (l StandardLogger) Printf(level LogLevel, format string, args ...interface{}) {
 	if level < l.level {
 		return
 	}
 
-	args = append([]interface{}{formatLogLevel(level)}, args...)
+	pkgFuncName := " "
+	if name := PkgFuncName(2); name != "" {
+		pkgFuncName = " " + name + " "
+	}
+
+	args = append([]interface{}{formatLogLevel(level), pkgFuncName}, args...)
 	switch level {
 	case Fatal:
-		log.Fatalf("%s "+format, args...)
-
-	case Error:
-		log.Panicf("%s "+format, args...)
+		log.Fatalf("%s%s"+format, args...)
 
 	default:
-		log.Printf("%s "+format, args...)
+		log.Printf("%s%s"+format, args...)
 	}
 }

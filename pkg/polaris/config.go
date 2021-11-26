@@ -27,6 +27,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
 // UserAccount holds a Polaris local user account configuration.
@@ -66,13 +68,13 @@ func UserAccountFromEnv() (*UserAccount, error) {
 
 	// Validate.
 	if account.Name == "" {
-		return nil, errors.New("polaris: environment variable RUBRIK_POLARIS_ACCOUNT_NAME has an invalid value")
+		return nil, errors.New("environment variable RUBRIK_POLARIS_ACCOUNT_NAME has an invalid value")
 	}
 	if account.Username == "" {
-		return nil, errors.New("polaris: environment variable RUBRIK_POLARIS_ACCOUNT_USERNAME has an invalid value")
+		return nil, errors.New("environment variable RUBRIK_POLARIS_ACCOUNT_USERNAME has an invalid value")
 	}
 	if account.Password == "" {
-		return nil, errors.New("polaris: environment variable RUBRIK_POLARIS_ACCOUNT_PASSWORD has an invalid value")
+		return nil, errors.New("environment variable RUBRIK_POLARIS_ACCOUNT_PASSWORD has an invalid value")
 	}
 
 	return &account, nil
@@ -84,24 +86,24 @@ func userAccountFromFile(file, name string) (UserAccount, error) {
 	if strings.HasPrefix(file, "~/") {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return UserAccount{}, err
+			return UserAccount{}, fmt.Errorf("failed to get home dir: %v", err)
 		}
 		file = filepath.Join(home, strings.TrimPrefix(file, "~/"))
 	}
 
 	buf, err := os.ReadFile(file)
 	if err != nil {
-		return UserAccount{}, err
+		return UserAccount{}, fmt.Errorf("failed to read user account file: %v", err)
 	}
 
 	var accounts map[string]UserAccount
 	if err := json.Unmarshal(buf, &accounts); err != nil {
-		return UserAccount{}, err
+		return UserAccount{}, fmt.Errorf("failed to unmarshal user account file: %v", err)
 	}
 
 	account, ok := accounts[name]
 	if !ok {
-		return UserAccount{}, fmt.Errorf("polaris: local user account %q not found in %q", name, file)
+		return UserAccount{}, fmt.Errorf("local user account %q %w", name, graphql.ErrNotFound)
 	}
 	account.Name = name
 
@@ -165,21 +167,21 @@ func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount
 	// Validate, note that URL is optional.
 	if strings.TrimSpace(account.Name) == "" {
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read user account file: %v", err)
 		}
-		return nil, errors.New("polaris: local user account has an invalid value for field Name")
+		return nil, errors.New("local user account has an invalid value for field Name")
 	}
 	if strings.TrimSpace(account.Username) == "" {
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read user account file: %v", err)
 		}
-		return nil, errors.New("polaris: local user account has an invalid value for field Username")
+		return nil, errors.New("local user account has an invalid value for field Username")
 	}
 	if strings.TrimSpace(account.Password) == "" {
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read user account file: %v", err)
 		}
-		return nil, errors.New("polaris: local user account has an invalid value for field Password")
+		return nil, errors.New("local user account has an invalid value for field Password")
 	}
 
 	return &account, nil
@@ -223,16 +225,16 @@ func ServiceAccountFromEnv() (*ServiceAccount, error) {
 
 	// Validate.
 	if account.Name == "" {
-		return nil, errors.New("polaris: environment variable RUBRIK_POLARIS_SERVICEACCOUNT_NAME has an invalid value")
+		return nil, errors.New("environment variable RUBRIK_POLARIS_SERVICEACCOUNT_NAME has an invalid value")
 	}
 	if account.ClientID == "" {
-		return nil, errors.New("polaris: environment variable RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID has an invalid value")
+		return nil, errors.New("environment variable RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID has an invalid value")
 	}
 	if account.ClientSecret == "" {
-		return nil, errors.New("polaris: environment variable RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET has an invalid value")
+		return nil, errors.New("environment variable RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET has an invalid value")
 	}
 	if account.AccessTokenURI == "" {
-		return nil, errors.New("polaris: environment variable RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI has an invalid value")
+		return nil, errors.New("environment variable RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI has an invalid value")
 	}
 
 	return &account, nil
@@ -243,19 +245,19 @@ func serviceAccountFromFile(file string) (ServiceAccount, error) {
 	if strings.HasPrefix(file, "~/") {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return ServiceAccount{}, err
+			return ServiceAccount{}, fmt.Errorf("failed to get home dir: %v", err)
 		}
 		file = filepath.Join(home, strings.TrimPrefix(file, "~/"))
 	}
 
 	buf, err := os.ReadFile(file)
 	if err != nil {
-		return ServiceAccount{}, err
+		return ServiceAccount{}, fmt.Errorf("failed to read service account file: %v", err)
 	}
 
 	var account ServiceAccount
 	if err := json.Unmarshal(buf, &account); err != nil {
-		return ServiceAccount{}, err
+		return ServiceAccount{}, fmt.Errorf("failed to unmarshal service account file: %v", err)
 	}
 
 	return account, nil
@@ -301,27 +303,27 @@ func ServiceAccountFromFile(file string, allowEnvOverride bool) (*ServiceAccount
 	// Validate.
 	if strings.TrimSpace(account.Name) == "" {
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read service account file: %v", err)
 		}
-		return nil, errors.New("polaris: service account has an invalid value for field Name")
+		return nil, errors.New("service account has an invalid value for field Name")
 	}
 	if strings.TrimSpace(account.ClientID) == "" {
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read service account file: %v", err)
 		}
-		return nil, errors.New("polaris: service account has an invalid value for field ClientID")
+		return nil, errors.New("service account has an invalid value for field ClientID")
 	}
 	if strings.TrimSpace(account.ClientSecret) == "" {
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read service account file: %v", err)
 		}
-		return nil, errors.New("polaris: service account has an invalid value for field ClientSecret")
+		return nil, errors.New("service account has an invalid value for field ClientSecret")
 	}
 	if strings.TrimSpace(account.AccessTokenURI) == "" {
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read service account file: %v", err)
 		}
-		return nil, errors.New("polaris: service account has an invalid value for field AccessTokenURI")
+		return nil, errors.New("service account has an invalid value for field AccessTokenURI")
 	}
 
 	return &account, nil

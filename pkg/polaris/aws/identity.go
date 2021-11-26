@@ -23,6 +23,7 @@ package aws
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -42,7 +43,7 @@ type IdentityFunc func(ctx context.Context) (identity, error)
 func AccountID(id string) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
 		if _, err := strconv.ParseInt(id, 10, 64); len(id) != 12 || err != nil {
-			return identity{}, errors.New("polaris: invalid aws id")
+			return identity{}, errors.New("invalid aws id")
 		}
 
 		return identity{id: id, internal: false}, nil
@@ -63,7 +64,7 @@ func ID(account AccountFunc) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
 		config, err := account(ctx)
 		if err != nil {
-			return identity{}, err
+			return identity{}, fmt.Errorf("failed to lookup account: %v", err)
 		}
 
 		return identity{id: config.id, internal: false}, nil

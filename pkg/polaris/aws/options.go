@@ -22,6 +22,7 @@ package aws
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 )
@@ -50,7 +51,7 @@ func Region(region string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
 		r, err := aws.ParseRegion(region)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to parse region: %v", err)
 		}
 
 		opts.regions = append(opts.regions, r)
@@ -70,7 +71,7 @@ func Regions(regions ...string) OptionFunc {
 		for _, r := range regions {
 			region, err := aws.ParseRegion(r)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to parse region: %v", err)
 			}
 
 			if _, ok := set[region]; !ok {

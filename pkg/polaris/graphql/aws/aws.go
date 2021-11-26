@@ -134,7 +134,7 @@ func ParseRegion(region string) (Region, error) {
 		return r, nil
 	}
 
-	return RegionUnknown, errors.New("polaris: invalid aws region")
+	return RegionUnknown, errors.New("invalid aws region")
 }
 
 // ParseRegions returns the Regions matching the given regions. Accepts both
