@@ -1,7 +1,10 @@
-query RubrikPolarisSDKRequest($fid: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!) {
-	awsNativeAccount(awsNativeProtectionFeature: $awsNativeProtectionFeature, fid: $fid) {
+query RubrikPolarisSDKRequest($awsNativeAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!) {
+	awsNativeAccount(awsNativeAccountRubrikId: $awsNativeAccountRubrikId, awsNativeProtectionFeature: $awsNativeProtectionFeature) {
 		id
-		regions
+		regionSpecs {
+			region
+			isExocomputeConfigured
+		}
 		status
 		name
     	slaAssignment

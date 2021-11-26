@@ -34,9 +34,12 @@ import (
 
 // NativeAccount represents a Polaris native account.
 type NativeAccount struct {
-	ID         uuid.UUID          `json:"id"`
-	Name       string             `json:"name"`
-	Regions    []string           `json:"regions"`
+	ID      uuid.UUID `json:"id"`
+	Name    string    `json:"name"`
+	Regions []struct {
+		Region        Region `json:"region"`
+		HasExocompute bool   `json:"isExocomputeConfigured"`
+	} `json:"regionSpecs"`
 	Status     string             `json:"status"`
 	Assignment core.SLAAssignment `json:"slaAssignment"`
 	Configured core.SLADomain     `json:"configuredSlaDomain"`
@@ -49,7 +52,7 @@ func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature Protection
 	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, awsNativeAccountQuery, struct {
-		ID      uuid.UUID         `json:"fid"`
+		ID      uuid.UUID         `json:"awsNativeAccountRubrikId"`
 		Feature ProtectionFeature `json:"awsNativeProtectionFeature"`
 	}{ID: id, Feature: feature})
 	if err != nil {
@@ -75,13 +78,14 @@ func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature Protection
 func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filter string) ([]NativeAccount, error) {
 	a.GQL.Log().Print(log.Trace)
 
+	// nameSubstringFilter: NameSubstringFilter
 	var accounts []NativeAccount
 	var cursor string
 	for {
 		buf, err := a.GQL.Request(ctx, awsNativeAccountsQuery, struct {
 			After   string            `json:"after,omitempty"`
 			Feature ProtectionFeature `json:"awsNativeProtectionFeature"`
-			Filter  string            `json:"filter,omitempty"`
+			Filter  string            `json:"filter"`
 		}{After: cursor, Feature: feature, Filter: filter})
 		if err != nil {
 			return nil, fmt.Errorf("failed to request NativeAccounts: %v", err)

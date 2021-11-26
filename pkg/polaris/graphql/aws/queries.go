@@ -120,10 +120,13 @@ var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatur
 }`
 
 // awsNativeAccount GraphQL query
-var awsNativeAccountQuery = `query SdkGolangAwsNativeAccount($fid: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!) {
-	awsNativeAccount(awsNativeProtectionFeature: $awsNativeProtectionFeature, fid: $fid) {
+var awsNativeAccountQuery = `query SdkGolangAwsNativeAccount($awsNativeAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!) {
+	awsNativeAccount(awsNativeAccountRubrikId: $awsNativeAccountRubrikId, awsNativeProtectionFeature: $awsNativeProtectionFeature) {
 		id
-		regions
+		regionSpecs {
+			region
+			isExocomputeConfigured
+		}
 		status
 		name
     	slaAssignment
@@ -139,13 +142,16 @@ var awsNativeAccountQuery = `query SdkGolangAwsNativeAccount($fid: UUID!, $awsNa
 }`
 
 // awsNativeAccounts GraphQL query
-var awsNativeAccountsQuery = `query SdkGolangAwsNativeAccounts($after: String, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!, $filter: String) {
+var awsNativeAccountsQuery = `query SdkGolangAwsNativeAccounts($after: String, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!, $filter: String!) {
 	awsNativeAccounts(after: $after, awsNativeProtectionFeature: $awsNativeProtectionFeature, accountFilters: {nameSubstringFilter: {nameSubstring: $filter}}) {
 		count
 		edges {
 			node {
 				id
-				regions
+				regionSpecs {
+					region
+					isExocomputeConfigured
+				}
 				status
 				name
 				slaAssignment
