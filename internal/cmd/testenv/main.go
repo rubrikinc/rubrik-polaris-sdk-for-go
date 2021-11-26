@@ -36,7 +36,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClient(ctx, polAccount, &polaris_log.StandardLogger{})
+	logger := polaris_log.NewStandardLogger()
+	logger.SetLogLevel(polaris_log.Info)
+	client, err := polaris.NewClient(ctx, polAccount, logger)
 	if err != nil {
 		log.Fatal(err)
 	}
