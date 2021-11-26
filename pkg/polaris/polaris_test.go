@@ -55,7 +55,7 @@ func TestMain(m *testing.M) {
 
 		// The integration tests defaults the log level to INFO. Note that
 		// RUBRIK_POLARIS_LOGLEVEL can be used to override this.
-		logger := &polaris_log.StandardLogger{}
+		logger := polaris_log.NewStandardLogger()
 		logger.SetLogLevel(polaris_log.Info)
 		client, err = NewClient(context.Background(), polAccount, logger)
 		if err != nil {

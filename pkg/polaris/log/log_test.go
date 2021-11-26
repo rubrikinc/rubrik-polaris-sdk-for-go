@@ -102,16 +102,27 @@ func TestStandardLogger(t *testing.T) {
 	buf := &bytes.Buffer{}
 	log.SetOutput(buf)
 
-	logger := StandardLogger{}
+	// Test that the default level is set to Warn
+	logger := NewStandardLogger()
+	logger.Print(Info, "Print")
+	logger.Print(Warn, "Print")
+	line, err := nextLine(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if line != "[WARN] polaris/log.TestStandardLogger Print" {
+		t.Fatalf("%q", line)
+	}
 
-	// Error and Fatal cannot be tested due to them aborting execution.
+	// Fatal cannot be tested due to them aborting execution.
 	logger.SetLogLevel(Info)
 	logger.Print(Trace, "Print")
 	logger.Print(Debug, "Print")
 	logger.Print(Info, "Print")
 	logger.Print(Warn, "Print")
+	logger.Print(Error, "Print")
 
-	line, err := nextLine(buf)
+	line, err = nextLine(buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,18 +138,34 @@ func TestStandardLogger(t *testing.T) {
 		t.Fatalf("%q", line)
 	}
 
-	// Error and Fatal cannot be tested due to them aborting execution.
+	line, err = nextLine(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if line != "[ERROR] polaris/log.TestStandardLogger Print" {
+		t.Fatalf("%q", line)
+	}
+
+	// Fatal cannot be tested due to them aborting execution.
 	logger.SetLogLevel(Warn)
 	logger.Printf(Trace, "Printf %q", "trace")
 	logger.Printf(Debug, "Printf %q", "debug")
 	logger.Printf(Info, "Printf %q", "info")
 	logger.Printf(Warn, "Printf %q", "warn")
+	logger.Printf(Error, "Printf %q", "error")
 
 	line, err = nextLine(buf)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if line != "[WARN] polaris/log.TestStandardLogger Printf \"warn\"" {
+		t.Fatalf("%q", line)
+	}
+	line, err = nextLine(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if line != "[ERROR] polaris/log.TestStandardLogger Printf \"error\"" {
 		t.Fatalf("%q", line)
 	}
 }
