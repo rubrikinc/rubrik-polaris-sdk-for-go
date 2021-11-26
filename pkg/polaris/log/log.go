@@ -116,6 +116,11 @@ type StandardLogger struct {
 	level LogLevel
 }
 
+// NewStandardLogger returns a standard logger with level set to Warn.
+func NewStandardLogger() *StandardLogger {
+	return &StandardLogger{level: Warn}
+}
+
 // SetLogLevel sets the log level to the specified level.
 func (l *StandardLogger) SetLogLevel(level LogLevel) {
 	l.level = level

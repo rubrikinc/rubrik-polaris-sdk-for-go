@@ -107,18 +107,16 @@ func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger 
 		return nil, errors.New("invalid password")
 	}
 
-	logLevel := "warn"
 	if level := os.Getenv("RUBRIK_POLARIS_LOGLEVEL"); level != "" {
-		logLevel = level
-	}
-	if strings.ToLower(logLevel) != "off" {
-		level, err := log.ParseLogLevel(logLevel)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse log level: %v", err)
+		if strings.ToLower(level) != "off" {
+			l, err := log.ParseLogLevel(level)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse log level: %v", err)
+			}
+			logger.SetLogLevel(l)
+		} else {
+			logger = &log.DiscardLogger{}
 		}
-		logger.SetLogLevel(level)
-	} else {
-		logger = &log.DiscardLogger{}
 	}
 
 	logger.Printf(log.Info, "Polaris API URL: %s", apiURL)
@@ -159,18 +157,16 @@ func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, l
 		return nil, fmt.Errorf("invalid access token uri: %v", err)
 	}
 
-	logLevel := "warn"
 	if level := os.Getenv("RUBRIK_POLARIS_LOGLEVEL"); level != "" {
-		logLevel = level
-	}
-	if strings.ToLower(logLevel) != "off" {
-		level, err := log.ParseLogLevel(logLevel)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse log level: %v", err)
+		if strings.ToLower(level) != "off" {
+			l, err := log.ParseLogLevel(level)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse log level: %v", err)
+			}
+			logger.SetLogLevel(l)
+		} else {
+			logger = &log.DiscardLogger{}
 		}
-		logger.SetLogLevel(level)
-	} else {
-		logger = &log.DiscardLogger{}
 	}
 
 	// Extract the API URL from the token access URI.
