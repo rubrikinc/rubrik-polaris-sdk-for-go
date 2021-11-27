@@ -45,13 +45,13 @@ const (
 
 var errTokenRequestTimeout = errors.New("token request timeout")
 
-type token struct {
+type Token struct {
 	jwtToken *jwt.Token
 }
 
 // expired returns true if the token has expired or if the token has no
 // expiration time associated with it.
-func (t token) expired() bool {
+func (t Token) expired() bool {
 	if t.jwtToken == nil {
 		return true
 	}
@@ -69,25 +69,34 @@ func (t token) expired() bool {
 
 // setAsAuthHeader adds an Authorization header with a bearer token to the
 // specified request.
-func (t token) setAsAuthHeader(req *http.Request) {
+func (t Token) setAsAuthHeader(req *http.Request) {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", t.jwtToken.Raw))
+}
+
+// Returns the Raw JWT token.
+func (t Token) RawToken() string {
+	if (t.jwtToken == nil) {
+		return ""
+	}
+
+	return t.jwtToken.Raw
 }
 
 // fromJWT returns a new token from the JWT token text. Note that the token
 // signature is not verified.
-func fromJWT(text string) (token, error) {
+func fromJWT(text string) (Token, error) {
 	p := jwt.Parser{}
 	jwtToken, _, err := p.ParseUnverified(text, jwt.MapClaims{})
 	if err != nil {
-		return token{}, fmt.Errorf("failed to parse JWT token: %v", err)
+		return Token{}, fmt.Errorf("failed to parse JWT token: %v", err)
 	}
 
-	return token{jwtToken: jwtToken}, nil
+	return Token{jwtToken: jwtToken}, nil
 }
 
 // tokenSource is used to obtain access tokens from a remote source.
 type tokenSource interface {
-	token() (token, error)
+	token() (Token, error)
 }
 
 // cloneRequest does a shallow copy of the request and a deep copy of the
@@ -106,7 +115,7 @@ type tokenTransport struct {
 	mutex sync.Mutex
 	next  http.RoundTripper
 	src   tokenSource
-	token token
+	token Token
 }
 
 // RoundTrip handles a single HTTP request. Note that a RoundTripper must be

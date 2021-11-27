@@ -78,14 +78,14 @@ func newLocalUserTestSource(username, password string, logger log.Logger) (*loca
 }
 
 // token returns a new token from the local user token source.
-func (src *localUserSource) token() (token, error) {
+func (src *localUserSource) token() (Token, error) {
 	// Prepare the token request body.
 	body, err := json.Marshal(struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
 	}{Username: src.username, Password: src.password})
 	if err != nil {
-		return token{}, fmt.Errorf("failed to marshal token request body: %v", err)
+		return Token{}, fmt.Errorf("failed to marshal token request body: %v", err)
 	}
 
 	var resp []byte
@@ -96,7 +96,7 @@ func (src *localUserSource) token() (token, error) {
 			break
 		}
 		if !errors.Is(err, errTokenRequestTimeout) || attempt == tokenRequestAttempts {
-			return token{}, fmt.Errorf("failed to acquire local user access token: %v", err)
+			return Token{}, fmt.Errorf("failed to acquire local user access token: %v", err)
 		}
 	}
 
@@ -105,10 +105,10 @@ func (src *localUserSource) token() (token, error) {
 		AccessToken string `json:"access_token"`
 	}
 	if err := json.Unmarshal(resp, &payload); err != nil {
-		return token{}, fmt.Errorf("failed to unmarshal token response body: %v", err)
+		return Token{}, fmt.Errorf("failed to unmarshal token response body: %v", err)
 	}
 	if payload.AccessToken == "" {
-		return token{}, errors.New("invalid token")
+		return Token{}, errors.New("invalid token")
 	}
 
 	return fromJWT(payload.AccessToken)

@@ -32,7 +32,7 @@ import (
 )
 
 func TestTokenExpired(t *testing.T) {
-	tok := token{}
+	tok := Token{}
 	if !tok.expired() {
 		t.Fatal("empty token should be expired")
 	}

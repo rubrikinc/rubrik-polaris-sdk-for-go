@@ -131,6 +131,19 @@ func NewClientFromServiceAccount(ctx context.Context, app, apiURL, accessTokenUR
 	}
 }
 
+func ApplianceTokenFromServiceAccount(
+	ctx context.Context,
+	accessTokenURI, applianceUuid, clientID, clientSecret string,
+	logger log.Logger,
+) (Token, error) {
+	return newServiceAccountSource(
+		accessTokenURI,
+		clientID,
+		clientSecret,
+		logger,
+	).applianceToken(applianceUuid)
+}
+
 // NewTestClient - Intended to be used by unit tests.
 func NewTestClient(username, password string, logger log.Logger) (*Client, *TestListener) {
 	src, lis := newLocalUserTestSource(username, password, logger)

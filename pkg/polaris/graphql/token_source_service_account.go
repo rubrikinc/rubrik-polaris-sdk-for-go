@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -52,7 +53,7 @@ func newServiceAccountSource(accessTokenURL, clientID, clientSecret string, logg
 }
 
 // token returns a new token from the service account token source.
-func (src *serviceAccountSource) token() (token, error) {
+func (src *serviceAccountSource) token() (Token, error) {
 	// Prepare the token request body.
 	body, err := json.Marshal(struct {
 		GrantType    string `json:"grant_type"`
@@ -60,19 +61,12 @@ func (src *serviceAccountSource) token() (token, error) {
 		ClientSecret string `json:"client_secret"`
 	}{GrantType: "client_credentials", ClientID: src.clientID, ClientSecret: src.clientSecret})
 	if err != nil {
-		return token{}, fmt.Errorf("failed to marshal token request body: %v", err)
+		return Token{}, fmt.Errorf("failed to marshal token request body: %v", err)
 	}
 
-	var resp []byte
-	for attempt := 1; ; attempt++ {
-		src.logger.Printf(log.Debug, "Acquire access token (attempt: %d)", attempt)
-		resp, err = requestToken(src.client, src.tokenURL, body)
-		if err == nil {
-			break
-		}
-		if !errors.Is(err, errTokenRequestTimeout) || attempt == tokenRequestAttempts {
-			return token{}, fmt.Errorf("failed to acquire service account access token: %v", err)
-		}
+	resp, err := fetchTokenWithRetries(src.client, src.tokenURL, body, src.logger)
+	if err != nil {
+		return Token{}, err
 	}
 
 	// Try to parse the JSON document as an access token. Verify that the
@@ -82,14 +76,71 @@ func (src *serviceAccountSource) token() (token, error) {
 		AccessToken string `json:"access_token"`
 	}
 	if err := json.Unmarshal(resp, &payload); err != nil {
-		return token{}, fmt.Errorf("failed to unmarshal token response body: %v", err)
+		return Token{}, fmt.Errorf("failed to unmarshal token response body: %v", err)
 	}
 	if payload.ClientID != src.clientID {
-		return token{}, errors.New("invalid client id")
+		return Token{}, errors.New("invalid client id")
 	}
 	if payload.AccessToken == "" {
-		return token{}, errors.New("invalid token")
+		return Token{}, errors.New("invalid token")
 	}
 
 	return fromJWT(payload.AccessToken)
+}
+
+func (src *serviceAccountSource) applianceToken(applianceUuid string) (Token, error) {
+	body, err := json.Marshal(struct {
+		ClientID		string `json:"client_id"`
+		ClientSecret	string `json:"client_secret"`
+		ClusterUuid		string `json:"cluster_uuid"`
+	}{ClientID: src.clientID, ClientSecret: src.clientSecret, ClusterUuid: applianceUuid})
+	if err != nil {
+		return Token{}, fmt.Errorf("failed to marshal token request body: %v", err)
+	}
+
+	// Extract the API URL from the token access URI.
+	i := strings.LastIndex(src.tokenURL, "/")
+	if i < 0 {
+		return Token{}, errors.New("invalid access token uri")
+	}
+	baseApiURL := src.tokenURL[:i]
+
+	applianceTokenURL := baseApiURL + "/cdm_client_token"
+	resp, err := fetchTokenWithRetries(src.client, applianceTokenURL, body, src.logger)
+	if err != nil {
+		return Token{}, err
+	}
+
+	var payload struct {
+		Session struct {
+			AccessToken string `json:"token"`
+		}  `json:"session"`
+	}
+	if err := json.Unmarshal(resp, &payload); err != nil {
+		return Token{}, fmt.Errorf("failed to unmarshal token response body: %v", err)
+	}
+
+	if payload.Session.AccessToken == "" {
+		return Token{}, errors.New("invalid token")
+	}
+
+	return fromJWT(payload.Session.AccessToken)
+}
+
+func fetchTokenWithRetries(
+	client *http.Client,
+	tokenUrl string,
+	body []byte,
+	logger log.Logger,
+) ([]byte, error) {
+	for attempt := 1; ; attempt++ {
+		logger.Printf(log.Debug, "Acquire access token (attempt: %d)", attempt)
+		resp, err := requestToken(client, tokenUrl, body)
+		if err == nil {
+			return resp, nil
+		}
+		if !errors.Is(err, errTokenRequestTimeout) || attempt == tokenRequestAttempts {
+			return []byte{}, fmt.Errorf("failed to acquire service account access token: %v", err)
+		}
+	}
 }

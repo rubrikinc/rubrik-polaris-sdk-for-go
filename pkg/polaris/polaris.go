@@ -88,6 +88,26 @@ func NewClient(ctx context.Context, account Account, logger log.Logger) (*Client
 	return nil, errors.New("invalid account type")
 }
 
+func ApplianceTokenFromServiceAccount(ctx context.Context, account Account, applianceUuid string, logger log.Logger) (graphql.Token, error) {
+	serviceAccount, ok := account.(*ServiceAccount)
+	if ok {
+		err := validateServiceAccountCredentials(serviceAccount)
+		if err != nil {
+			return graphql.Token{}, err
+		}
+
+		return graphql.ApplianceTokenFromServiceAccount(
+			ctx,
+			serviceAccount.AccessTokenURI,
+			applianceUuid,
+			serviceAccount.ClientID,
+			serviceAccount.ClientSecret,
+			logger,
+		)
+	}
+	return graphql.Token{}, errors.New("invalid service account type.")
+}
+
 // newClientFromUserAccount returns a new Client from the specified
 // UserAccount. The log level of the given logger can be changed at runtime
 // using the environment variable RUBRIK_POLARIS_LOGLEVEL.
@@ -144,17 +164,9 @@ func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger 
 // ServiceAccount. The log level of the given logger can be changed at runtime
 // using the environment variable RUBRIK_POLARIS_LOGLEVEL.
 func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, logger log.Logger) (*Client, error) {
-	if account.Name == "" {
-		return nil, errors.New("invalid name")
-	}
-	if account.ClientID == "" {
-		return nil, errors.New("invalid client id")
-	}
-	if account.ClientSecret == "" {
-		return nil, errors.New("invalid client secret")
-	}
-	if _, err := url.ParseRequestURI(account.AccessTokenURI); err != nil {
-		return nil, fmt.Errorf("invalid access token uri: %v", err)
+	err := validateServiceAccountCredentials(account)
+	if err != nil {
+		return nil, err
 	}
 
 	if level := os.Getenv("RUBRIK_POLARIS_LOGLEVEL"); level != "" {
@@ -202,4 +214,21 @@ func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, l
 // level and raw GraphQL queries against the Polaris platform.
 func (c *Client) GQLClient() *graphql.Client {
 	return c.gql
+}
+
+func validateServiceAccountCredentials(account *ServiceAccount) error {
+	if account.Name == "" {
+		return errors.New("invalid name")
+	}
+	if account.ClientID == "" {
+		return errors.New("invalid client id")
+	}
+	if account.ClientSecret == "" {
+		return errors.New("invalid client secret")
+	}
+	if _, err := url.ParseRequestURI(account.AccessTokenURI); err != nil {
+		return fmt.Errorf("invalid access token uri: %v", err)
+	}
+
+	return nil
 }
