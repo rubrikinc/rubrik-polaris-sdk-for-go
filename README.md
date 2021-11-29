@@ -78,7 +78,9 @@ if err != nil  {
 }
 ```
 Two additional functions exist to use a local user account with Polaris: `polaris.UserAccountFromFile` and 
-`polaris.UserAccountFromEnv`. Please see the SDK documentation for details on how to use them.
+`polaris.UserAccountFromEnv`. Please see the
+[SDK documentation](https://pkg.go.dev/github.com/rubrikinc/rubrik-polaris-sdk-for-go@main/pkg/polaris#UserAccount) for
+details on how to use them.
 
 #### Local User Account Environment Variables
 When using a local user account the following environmental variables can be used to override the default local user
@@ -90,7 +92,7 @@ account behaviour:
 * RUBRIK_POLARIS_ACCOUNT_URL — Overrides the Polaris API URL.
 
 Note that it's possible to prevent the above environment variable from overriding the default behavior by setting
-`allowEnvOverride` to `false`. Please see the SDK documentation for more information.
+`allowEnvOverride` to `false`.
 
 #### Service Account
 To use a service account with the SDK first create a directory called `.rubrik` in your home directory. Next, download
@@ -109,7 +111,9 @@ if err != nil  {
 }
 ```
 Two additional functions exist to use a service account with Polaris: `polaris.ServiceAccountFromFile` and
-`polaris.ServiceAccountFromEnv`. Please see the SDK documentation for details on how to use them.
+`polaris.ServiceAccountFromEnv`. Please see the
+[SDK documentation](https://pkg.go.dev/github.com/rubrikinc/rubrik-polaris-sdk-for-go@main/pkg/polaris#ServiceAccount)
+for details on how to use them.
 
 #### Service Account Environment Variables
 When using a service account the following environmental variables can be used to override the default service account
@@ -122,13 +126,14 @@ behavior:
 account the Polaris API URL is derived from this URI.
 
 Note that it's possible to prevent the above environment variable from overriding the default behavior by setting
-`allowEnvOverride` to `false`. Please see the SDK documentation for more information.
+`allowEnvOverride` to `false`.
 
 ### AWS Credentials
 To perform AWS operations with the SDK an AWS profile and default region is required. The SDK will look for those in the
 default `~/.aws/credentials` and `~/.aws/config` files. Which profile and region that is used by the SDK depends on the
-account function used: `aws.Default`, `aws.Profile` or  `aws.ProfileAndRegion`. Please see the SDK documentation for
-more information.
+account function used: `aws.Default`, `aws.Profile` or  `aws.ProfileAndRegion`. Please see the
+[SDK documentation](https://pkg.go.dev/github.com/rubrikinc/rubrik-polaris-sdk-for-go@main/pkg/polaris/aws#AccountFunc)
+for more information.
 
 ### Azure Credentials
 To perform Azure operations with the SDK an Azure service principal is required. Service principals are referred to as
@@ -153,14 +158,17 @@ registration information can be copied from the portal to a JSON file having the
     "tenantId": "<tenant-id>"
 }
 ```
-The SDK can be pointed to this file by using the `KeyFile` service principal function. Please see the SDK documentation
+The SDK can be pointed to this file by using the `KeyFile` service principal function. Please see the
+[SDK documentation](https://pkg.go.dev/github.com/rubrikinc/rubrik-polaris-sdk-for-go@main/pkg/polaris/azure#ServicePrincipalFunc)
 for more information.
 
 ### GCP Credentials
 To perform GCP operations with the SDK a GCP service account is required. The SDK will look for the service account in
-the file pointed to by the `GOOGLE_APPLICATION_CREDENTIALS` environment variable if the service account function
-`gcp.Default` is used. The file can also be pointed out directly using the service account functions `gcp.KeyFile` and
-`gcp.KeyFileAndProject`.
+the file pointed to by the `GOOGLE_APPLICATION_CREDENTIALS` environment variable if the project function `gcp.Default`
+is used. The file can also be pointed out directly using the project functions `gcp.KeyFile` and
+`gcp.KeyFileAndProject`. Please see the
+[SDK documentation](https://pkg.go.dev/github.com/rubrikinc/rubrik-polaris-sdk-for-go@main/pkg/polaris/gcp#ProjectFunc)
+for more information.
 
 ## Run the SDK Test Suite
 
