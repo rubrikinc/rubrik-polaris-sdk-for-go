@@ -5,7 +5,7 @@
 </p>
 
 # Rubrik Polaris SDK for Go
-Documentation for the SDK can be found [here](https://pkg.go.dev/github.com/rubrikinc/rubrik-polaris-sdk-for-go@v0.3.0).
+Documentation for the SDK can be found [here](https://pkg.go.dev/github.com/rubrikinc/rubrik-polaris-sdk-for-go@main).
 Please note that the repository has been repurposed so there exist older cached versions with a higher version number.
 
 ## Build the SDK
