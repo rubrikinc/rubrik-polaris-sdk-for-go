@@ -90,9 +90,6 @@ func boolEnvSet(env string) bool {
 // environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 // AWS_DEFAULT_REGION can be used. The file referred to by TEST_AWSACCOUNT_FILE
 // should contain a single testAwsAccount JSON object.
-//
-// Note that between the project has been added and it has been removed we
-// never fail fatally to allow the project to be removed in case of an error.
 func TestAwsAccountAddAndRemove(t *testing.T) {
 	if !boolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
@@ -176,7 +173,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
 //   * TEST_INTEGRATION=1
-//   * SDK_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
+//   * TEST_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //
 // In addition to the above environment variables a default AWS profile must be
@@ -184,9 +181,6 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 // environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 // AWS_DEFAULT_REGION can be used. The file referred to by TEST_AWSACCOUNT_FILE
 // should contain a single testAwsAccount JSON object.
-//
-// Note that between the project has been added and it has been removed we
-// never fail fatally to allow the project to be removed in case of an error.
 func TestAwsExocompute(t *testing.T) {
 	if !boolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
@@ -317,20 +311,17 @@ func TestAwsExocompute(t *testing.T) {
 }
 
 // TestAzureSubscriptionAddAndRemove verifies that the SDK can perform the
-// basic AWS account operations on a real Polaris instance.
+// basic Azure subscription operations on a real Polaris instance.
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
 //   * TEST_INTEGRATION=1
-//   * TEST_AZUREACCOUNT_FILE=<path-to-test-azure-subscription-file>
+//   * TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
 //
-// The file referred to by TEST_AWSACCOUNT_FILE should contain a single
-// testAwsAccount JSON object.
-//
-// Between the account has been added and it has been removed we never fail
-// fatally to allow the account to be removed in case of an error.
+// The file referred to by TEST_AZURESUBSCRIPTION_FILE should contain a single
+// testAzureSubscription JSON object.
 func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	if !boolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
@@ -423,15 +414,12 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
 //   * TEST_INTEGRATION=1
-//   * SDK_AZUREACCOUNT_FILE=<path-to-test-azure-subscription-file>
+//   * TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
 //
-// The file referred to by SDK_AZUREACCOUNT_FILE should contain a single
+// The file referred to by TEST_AZURESUBSCRIPTION_FILE should contain a single
 // testAzureSubscription JSON object.
-//
-// Between the account has been added and it has been removed we never fail
-// fatally to allow the account to be removed in case of an error.
 func TestAzureExocompute(t *testing.T) {
 	if !boolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
@@ -599,9 +587,6 @@ func TestAzurePermissions(t *testing.T) {
 //
 // The file referred to by TEST_GCPPROJECT_FILE should contain a single
 // testGcpProject JSON object.
-//
-// Note that between the project has been added and it has been removed we
-// never fail fatally to allow the project to be removed in case of an error.
 func TestGcpProjectAddAndRemove(t *testing.T) {
 	if !boolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
@@ -674,9 +659,6 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 //
 // The file referred to by TEST_GCPPROJECT_FILE should contain a single
 // testGcpProject JSON object.
-//
-// Note that between the project has been added and it has been removed we
-// never fail fatally to allow the project to be removed in case of an error.
 func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 	if !boolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
