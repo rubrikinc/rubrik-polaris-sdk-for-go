@@ -40,7 +40,7 @@ the SDK.
 To use a local user account with the SDK first create a directory called `.rubrik` in your home directory. In that
 directory create a file called `polaris-accounts.json`. This JSON file can hold one or more local user accounts as per
 this pattern:
-```json
+```
 {
     "<my-account>": {
         "username": "<my-username>",
@@ -56,7 +56,7 @@ accessing the Polaris UI but with `/api` added to the end.
 
 As an example, assume our Polaris domain is `my-polaris-domain` and that the username and password of our local user
 account is `john.doe@example.org` and `password123` the content of the `polaris-accounts.json` file then should be:
-```json
+```
 {
     "johndoe": {
         "username": "john.doe@example.org",
@@ -66,7 +66,7 @@ account is `john.doe@example.org` and `password123` the content of the `polaris-
 }
 ```
 Where `johndoe` will be used to refer to this account when initializing the SDK:
-```go
+```
 account, err := polaris.DefaultUserAccount("johndoe", true)
 if err != nil  {
     log.Fatal(err)
@@ -99,7 +99,7 @@ To use a service account with the SDK first create a directory called `.rubrik` 
 the service account credentials from the Polaris user management page to a file in that directory named 
 `polaris-service-account.json`. The `polaris-service-account.json` file contains everything needed to connect to
 Polaris from the SDK:
-```go
+```
 account, err := polaris.DefaultServiceAccount(true)
 if err != nil  {
     log.Fatal(err)
@@ -150,7 +150,7 @@ using the `azure.ServicePrincipal` function.
 
 If the service principal is created using the Azure portal there will be no JSON snippet, instead the detailed app
 registration information can be copied from the portal to a JSON file having the following structure:
-```json
+```
 {
     "appId": "<app-id>",
     "appName": "<app-name>",
@@ -191,7 +191,7 @@ $ TEST_INTEGRATION=1 go test -timeout=60m ./...
 Requires a default AWS profile along with a default region for the profile. It also requires that the environment
 variable `TEST_AWSACCOUNT_FILE` points to a JSON file containing information used to assert that the account was added
 correctly to Polaris:
-```json
+```
 {
     "profile": "<aws-profile-name>",
     "accountId": "<aws-account-id>",
@@ -214,7 +214,7 @@ Note that the exocompute part is only needed when running the AWS Exocompute int
 To run the Azure integration tests an Azure service principal is required. It also requires that the environment
 variable `TEST_AZURESUBSCRIPTION_FILE` points to a JSON file containing information used to assert that the account was
 added correctly to Polaris:
-```json
+```
 {
     "subscriptionId": "<azure-subscription-id>",
     "subscriptionName": "<azure-subscription-name>",
@@ -234,7 +234,7 @@ Note that the exocompute part is only needed when running the Azure Exocompute i
 To run the GCP integration tests a GCP service account is required. It also requires that the environment
 variable `TEST_GCPPROJECT_FILE` points to a JSON file containing information used to assert that the account was added
 correctly to Polaris:
-```json
+```
 {
     "projectId": "<gcp-project-id>",
     "projectName": "<gcp-project-name>",
