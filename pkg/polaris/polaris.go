@@ -88,6 +88,9 @@ func NewClient(ctx context.Context, account Account, logger log.Logger) (*Client
 	return nil, errors.New("invalid account type")
 }
 
+// ApplianceTokenFromServiceAccount returns a token to access appliance
+// APIs. This token is issued on behalf of the given service account. This
+// service account must have appropriate role to access the appliance APIs.
 func ApplianceTokenFromServiceAccount(ctx context.Context, account Account, applianceUuid string, logger log.Logger) (graphql.Token, error) {
 	serviceAccount, ok := account.(*ServiceAccount)
 	if ok {

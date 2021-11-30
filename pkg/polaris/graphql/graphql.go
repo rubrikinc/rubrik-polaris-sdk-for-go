@@ -131,6 +131,8 @@ func NewClientFromServiceAccount(ctx context.Context, app, apiURL, accessTokenUR
 	}
 }
 
+// ApplianceTokenFromServiceAccount returns a new appliance Token on behalf of the
+// service account.
 func ApplianceTokenFromServiceAccount(
 	ctx context.Context,
 	accessTokenURI, applianceUuid, clientID, clientSecret string,

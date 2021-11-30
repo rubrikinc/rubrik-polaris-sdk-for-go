@@ -88,6 +88,8 @@ func (src *serviceAccountSource) token() (Token, error) {
 	return fromJWT(payload.AccessToken)
 }
 
+// applianceToken returns a new token to access appliance APIs
+// from the service account source.
 func (src *serviceAccountSource) applianceToken(applianceUuid string) (Token, error) {
 	body, err := json.Marshal(struct {
 		ClientID		string `json:"client_id"`
