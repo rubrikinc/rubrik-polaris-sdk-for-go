@@ -1,0 +1,47 @@
+query RubrikPolarisSDKRequest(
+    $after: String,
+    $filter: [GlobalSlaFilterInput!]) {
+    globalSlaConnection(
+        after: $after,
+        filter: $filter,
+    ) {
+        edges {
+            node {
+                id,
+                name,
+                ... on GlobalSla {
+                    baseFrequency {
+                        duration,
+                        unit,
+                    },
+                    objectTypeList,
+                    firstFullBackupWindows {
+                        durationInHours,
+                        startTimeAttributes {
+                            dayOfWeek{
+                                day,
+                            },
+                            hour,
+                            minute,
+                        }
+                    },
+                    backupWindows{
+                        durationInHours,
+                        startTimeAttributes {
+                            dayOfWeek{
+                                day,
+                            },
+                            hour,
+                            minute,
+                        }
+                    },
+                }
+            }
+        }
+        pageInfo {
+            endCursor,
+            hasNextPage,
+        },
+        count,
+    }
+}
