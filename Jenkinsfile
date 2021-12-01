@@ -26,7 +26,7 @@ pipeline {
         go 'go-1.17.3'
     }
     triggers {
-        cron(env.BRANCH_NAME == 'main' ? '@midnight' : '')
+        cron(env.BRANCH_NAME == 'main' ? 'H 20 * * *' : '')
     }
     environment {
         // Polaris credentials.
