@@ -143,15 +143,44 @@ const (
 )
 
 type SLADuration struct {
-	Duration int
-	Unit RetentionUnit
+	Duration int           `json:"duration"`
+	Unit     RetentionUnit `json:"unit"`
 }
 
 type GlobalSLA struct {
 	SLADomain
-	ObjectTypeList []SLAObjectType
-	BaseFrequency SLADuration
+	ObjectTypeList         []SLAObjectType `json:"objectTypeList"`
+	BaseFrequency          SLADuration     `json:"baseFrequency"`
+	FirstFullBackupWindows []BackupWindow  `json:"firstFullBackupWindows"`
+	BackupWindows          []BackupWindow  `json:"backupWindows"`
 }
+
+type BackupWindow struct {
+	DurationInHours     int                 `json:"durationInHours"`
+	StartTimeAttributes StartTimeAttributes `json:"startTimeAttributes"`
+}
+
+type StartTimeAttributes struct {
+	DayOfWeek DayOfWeekOpt `json:"dayOfWeek"`
+	Hour      int          `json:"hour"`
+	Minute    int          `json:"minute"`
+}
+
+type DayOfWeekOpt struct {
+	Day DayOfWeek `json:"day"`
+}
+
+type DayOfWeek string
+
+const (
+	Monday    DayOfWeek = "MONDAY"
+	Tuesday             = "TUESDAY"
+	Wednesday           = "WEDNESDAY"
+	Thursday            = "THURSDAY"
+	Friday              = "FRIDAY"
+	Saturday            = "SATURDAY"
+	Sunday              = "SUNDAY"
+)
 
 // AssignSlaForSnappableHierarchies assigns SLA defined by globalSLAOptionalFid
 // to ObjectsIDs.

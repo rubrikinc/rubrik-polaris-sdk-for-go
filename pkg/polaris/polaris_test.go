@@ -30,6 +30,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
@@ -782,7 +783,7 @@ func TestListSLA(t *testing.T) {
 		[]core.GlobalSLAFilterInput{
 			{
 				Field: core.ObjectType,
-				Text: "",
+				Text:  "",
 				ObjectTypeList: []core.SLAObjectType{
 					core.KuprObjectType,
 				},
@@ -800,11 +801,100 @@ func TestListSLA(t *testing.T) {
 
 	basicCheck := make(map[string]bool)
 	for _, slaDomain := range slaDomains {
-		if slaDomain.Name == "Gold" || slaDomain.Name == "Silver" || slaDomain.Name =="Bronze" {
+		if slaDomain.Name == "Gold" || slaDomain.Name == "Silver" || slaDomain.Name == "Bronze" {
 			basicCheck[slaDomain.Name] = true
 		}
 	}
 	if !basicCheck["Gold"] || !basicCheck["Silver"] || !basicCheck["Bronze"] {
 		t.Errorf("failed to list default SLAs: %v", basicCheck)
 	}
+}
+
+// TestListSLA verifies that the SDK can list the default SLAs - Gold, Silver
+// and Bronze.
+//
+// To run this test against a Polaris instance the following environment
+// variables needs to be set:
+//   * TEST_INTEGRATION=1
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+func TestK8sListSLA(t *testing.T) {
+	//if !boolEnvSet("TEST_INTEGRATION") {
+	//	t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	//}
+
+	ctx := context.Background()
+	testServiceAccount := ServiceAccount{
+		ClientID:       "client|eL0QtgQN1zn3PS5CeafkSUtDB0K5lx9v",
+		ClientSecret:   "ucP5vQvFU80F26tdW7emfUNdBb_ZDlpea2j5e1OvwjNxUz4B0kk7j06u-_jb2S75",
+		Name:           "kupr-test",
+		AccessTokenURI: "https://demo.dev-017.my.rubrik-lab.com/api/client_token",
+	}
+	// Load configuration and create client. Usually resolved using the
+	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+	//polAccount, err := DefaultServiceAccount(true)
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+
+	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	slaDomains, err := client.K8s().ListSLA(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	basicCheck := make(map[string]bool)
+	for _, slaDomain := range slaDomains {
+		if slaDomain.Name == "Gold" || slaDomain.Name == "Silver" || slaDomain.Name == "Bronze" {
+			basicCheck[slaDomain.Name] = true
+		}
+	}
+	if !basicCheck["Gold"] || !basicCheck["Silver"] || !basicCheck["Bronze"] {
+		t.Errorf("failed to list default SLAs: %v", basicCheck)
+	}
+}
+
+// TestListSLA verifies that the SDK can list the default SLAs - Gold, Silver
+// and Bronze.
+//
+// To run this test against a Polaris instance the following environment
+// variables needs to be set:
+//   * TEST_INTEGRATION=1
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+func TestListK8sNamespace(t *testing.T) {
+	//if !boolEnvSet("TEST_INTEGRATION") {
+	//	t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	//}
+
+	testClusterID := uuid.MustParse("a840e205-ac36-408d-9a12-7690769aaa88")
+	ctx := context.Background()
+	testServiceAccount := ServiceAccount{
+		ClientID:       "client|eL0QtgQN1zn3PS5CeafkSUtDB0K5lx9v",
+		ClientSecret:   "ZLfPyiFwXi-EBHkYq3WDE8IJd0Cb8WZaTUDwzQIsgIDRUBbBbjepeqxTV7jiyHCu",
+		Name:           "kupr-test",
+		AccessTokenURI: "https://demo.dev-017.my.rubrik-lab.com/api/client_token",
+	}
+	// Load configuration and create client. Usually resolved using the
+	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+	//polAccount, err := DefaultServiceAccount(true)
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+
+	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	nss, err := client.K8s().ListK8sNamespace(ctx, testClusterID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ns := range nss {
+		fmt.Printf("%v\n", ns)
+	}
+
 }

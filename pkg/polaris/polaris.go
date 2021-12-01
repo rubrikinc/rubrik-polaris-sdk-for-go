@@ -35,6 +35,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/k8s"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -69,6 +70,10 @@ func (c *Client) GCP() gcp.API {
 
 func (c *Client) Core() core.API {
 	return core.NewAPI(c.gql)
+}
+
+func (c *Client) K8s() k8s.API {
+	return k8s.NewAPI(c.gql)
 }
 
 // Account represents a Polaris account. Implemented by UserAccount and
