@@ -18,7 +18,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package graphql
+package token
 
 import (
 	"bytes"
@@ -29,122 +29,26 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
+	internal_errors "github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/errors"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 const (
 	// Per request timeout
-	tokenRequestTimeout = 15 * time.Second
+	requestTimeout = 15 * time.Second
 
 	// Number of attempts before failing timed-out token requests
-	tokenRequestAttempts = 3
+	requestAttempts = 3
 )
 
-var errTokenRequestTimeout = errors.New("token request timeout")
-
-type token struct {
-	jwtToken *jwt.Token
-}
-
-// expired returns true if the token has expired or if the token has no
-// expiration time associated with it.
-func (t token) expired() bool {
-	if t.jwtToken == nil {
-		return true
-	}
-
-	claims, ok := t.jwtToken.Claims.(jwt.MapClaims)
-	if ok {
-		// Compare the expiry to 1 minute into the future to avoid the token
-		// expiring in transit or because clocks being skewed.
-		now := time.Now().Add(1 * time.Minute)
-		return !claims.VerifyExpiresAt(now.Unix(), true)
-	}
-
-	return true
-}
-
-// setAsAuthHeader adds an Authorization header with a bearer token to the
-// specified request.
-func (t token) setAsAuthHeader(req *http.Request) {
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", t.jwtToken.Raw))
-}
-
-// fromJWT returns a new token from the JWT token text. Note that the token
-// signature is not verified.
-func fromJWT(text string) (token, error) {
-	p := jwt.Parser{}
-	jwtToken, _, err := p.ParseUnverified(text, jwt.MapClaims{})
-	if err != nil {
-		return token{}, fmt.Errorf("failed to parse JWT token: %v", err)
-	}
-
-	return token{jwtToken: jwtToken}, nil
-}
-
-// tokenSource is used to obtain access tokens from a remote source.
-type tokenSource interface {
-	token() (token, error)
-}
-
-// cloneRequest does a shallow copy of the request and a deep copy of the
-// request's headers.
-func cloneRequest(req *http.Request) *http.Request {
-	clone := &http.Request{}
-	*clone = *req
-	clone.Header = req.Header.Clone()
-	return clone
-}
-
-// tokenTransport decorates an existing transport and injects an Authorization
-// header with a valid access token. The token is automatically refreshed when
-// it expires.
-type tokenTransport struct {
-	mutex sync.Mutex
-	next  http.RoundTripper
-	src   tokenSource
-	token token
-}
-
-// RoundTrip handles a single HTTP request. Note that a RoundTripper must be
-// safe for concurrent use by multiple goroutines.
-func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	closeBody := true
-	if req.Body != nil {
-		defer func() {
-			if closeBody {
-				req.Body.Close()
-			}
-		}()
-	}
-
-	// Clone request and add the authorization token.
-	authReq := cloneRequest(req)
-	t.mutex.Lock()
-	if t.token.expired() {
-		var err error
-		t.token, err = t.src.token()
-		if err != nil {
-			t.mutex.Unlock()
-			return nil, fmt.Errorf("failed to refresh access token: %v", err)
-		}
-	}
-	t.token.setAsAuthHeader(authReq)
-	t.mutex.Unlock()
-
-	// At this point the next RoundTripper is responsible for closing the
-	// request body.
-	closeBody = false
-	return t.next.RoundTrip(authReq)
-}
+var errRequestTimeout = fmt.Errorf("token request timeout after %v", requestTimeout)
 
 // requestToken tries to acquire a token using provided parameters. It returns
 // errTokenRequestTimeout if the request exceeds tokenRequestTimeout.
 func requestToken(client *http.Client, tokenURL string, requestBody []byte) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), tokenRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 
 	// Request an access token from the remote token endpoint.
@@ -157,7 +61,7 @@ func requestToken(client *http.Client, tokenURL string, requestBody []byte) ([]b
 	res, err := client.Do(req)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return nil, errTokenRequestTimeout
+			return nil, errRequestTimeout
 		}
 		return nil, fmt.Errorf("failed to request token: %v", err)
 	}
@@ -171,7 +75,7 @@ func requestToken(client *http.Client, tokenURL string, requestBody []byte) ([]b
 	respBody, err := io.ReadAll(res.Body)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return nil, errTokenRequestTimeout
+			return nil, errRequestTimeout
 		}
 		return nil, fmt.Errorf("failed to read token response body (status code %d): %v", res.StatusCode, err)
 	}
@@ -191,12 +95,12 @@ func requestToken(client *http.Client, tokenURL string, requestBody []byte) ([]b
 
 	// Remote responded with a JSON document. Try to parse it as an error
 	// message.
-	var jsonErr jsonError
+	var jsonErr internal_errors.JSONError
 	if err := json.Unmarshal(respBody, &jsonErr); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal token response body as an error (status code %d): %v",
 			res.StatusCode, err)
 	}
-	if jsonErr.isError() {
+	if jsonErr.IsError() {
 		return nil, fmt.Errorf("token response body is an error (status code %d): %v", res.StatusCode, jsonErr)
 	}
 	if res.StatusCode != 200 {
@@ -204,4 +108,23 @@ func requestToken(client *http.Client, tokenURL string, requestBody []byte) ([]b
 	}
 
 	return respBody, nil
+}
+
+// Request tries to acquire a token using the provided parameters.
+func Request(client *http.Client, tokenURL string, requestBody []byte, logger log.Logger) ([]byte, error) {
+	var err error
+	for attempt := 0; attempt < requestAttempts; attempt++ {
+		logger.Printf(log.Debug, "Acquire access token (attempt: %d)", attempt+1)
+
+		var resp []byte
+		resp, err = requestToken(client, tokenURL, requestBody)
+		if err == nil {
+			return resp, nil
+		}
+		if !errors.Is(err, errRequestTimeout) {
+			return nil, fmt.Errorf("failed to acquire access token: %v", err)
+		}
+	}
+
+	return nil, fmt.Errorf("failed to acquire access token after %d attempts", requestAttempts)
 }

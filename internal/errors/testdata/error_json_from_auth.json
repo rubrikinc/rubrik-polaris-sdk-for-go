@@ -1,0 +1,11 @@
+{
+    "code": 16,
+    "message": "JWT validation failed: Missing or invalid credentials",
+    "details": [
+        {
+            "@type": "type.googleapis.com/google.rpc.DebugInfo",
+            "stackEntries": [],
+            "detail": "auth"
+        }
+    ]
+}

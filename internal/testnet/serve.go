@@ -18,75 +18,12 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package graphql
+package testnet
 
 import (
-	"context"
-	"errors"
 	"net"
 	"net/http"
 )
-
-type testDialFunc func(context.Context, string, string) (net.Conn, error)
-
-// pipeNetAddr dummy network address for a pipe network.
-type pipeNetAddr struct{}
-
-func (pipeNetAddr) Network() string {
-	return "pipenet"
-}
-
-func (pipeNetAddr) String() string {
-	return "pipenet"
-}
-
-// TestListener listens for incoming connection from the paired test dialer.
-type TestListener struct {
-	abort  chan struct{}
-	accept chan net.Conn
-}
-
-func (l *TestListener) Accept() (net.Conn, error) {
-	for {
-		select {
-		case <-l.abort:
-			return nil, errors.New("closing test listener")
-		case conn, ok := <-l.accept:
-			if ok {
-				return conn, nil
-			}
-		}
-	}
-}
-
-func (l *TestListener) Close() error {
-	close(l.abort)
-	return nil
-}
-
-func (l *TestListener) Addr() net.Addr {
-	return pipeNetAddr{}
-}
-
-// newPipeNet returns a test dial/listener pair. The dial function returns
-// a connection to the test listener which is backed by an in-memory pipe.
-func newPipeNet() (testDialFunc, *TestListener) {
-	accept := make(chan net.Conn)
-
-	dialer := func(ctx context.Context, network, addr string) (net.Conn, error) {
-		client, server := net.Pipe()
-		go func() {
-			select {
-			case accept <- server:
-			case <-ctx.Done():
-			}
-		}()
-
-		return client, nil
-	}
-
-	return dialer, &TestListener{abort: make(chan struct{}), accept: accept}
-}
 
 // TestServe serves the handler function over HTTP by accepting incoming
 // connections on the specified listener. Intended to be used with a pipenet in
@@ -95,6 +32,16 @@ func TestServe(lis net.Listener, handler http.HandlerFunc) *http.Server {
 	server := &http.Server{Handler: handler}
 	go server.Serve(lis)
 	return server
+}
+
+// TestServeJSON serves the handler function using HTTP by accepting incoming
+// connections on the specified listener. The response content-type is set to
+// application/json. Intended to be used with a pipenet in unit tests.
+func TestServeJSON(lis net.Listener, handler http.HandlerFunc) *http.Server {
+	return TestServe(lis, func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		handler(w, req)
+	})
 }
 
 // TestServeWithToken serves the handler function and tokens using HTTP by
@@ -115,16 +62,6 @@ func TestServeWithToken(lis net.Listener, handler http.HandlerFunc) *http.Server
 	server := &http.Server{Handler: mux}
 	go server.Serve(lis)
 	return server
-}
-
-// TestServeJSON serves the handler function using HTTP by accepting incoming
-// connections on the specified listener. The response content-type is set to
-// application/json. Intended to be used with a pipenet in unit tests.
-func TestServeJSON(lis net.Listener, handler http.HandlerFunc) *http.Server {
-	return TestServe(lis, func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		handler(w, req)
-	})
 }
 
 // TestServeJSONWithToken serves the handler function and tokens using HTTP by

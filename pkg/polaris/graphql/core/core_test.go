@@ -30,6 +30,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testnet"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -78,7 +80,7 @@ func TestKorgTaskChainStatus(t *testing.T) {
 	coreAPI := Wrap(client)
 
 	// Respond with status code 200 and a valid body.
-	srv := graphql.TestServeJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.TestServeJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		buf, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -133,7 +135,7 @@ func TestWaitForTaskChain(t *testing.T) {
 	// Respond with status code 200 and a valid body. First 2 reponses have
 	// state RUNNING. Third response is SUCCEEDED.
 	reqCount := 3
-	srv := graphql.TestServeJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.TestServeJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		buf, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
