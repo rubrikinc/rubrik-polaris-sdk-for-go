@@ -25,29 +25,28 @@ import (
 	"net/http"
 )
 
-// TestServe serves the handler function over HTTP by accepting incoming
-// connections on the specified listener. Intended to be used with a pipenet in
-// unit tests.
-func TestServe(lis net.Listener, handler http.HandlerFunc) *http.Server {
+// Serve serves the handler function over HTTP by accepting incoming connections
+// on the specified listener. Intended to be used with a pipenet in unit tests.
+func Serve(lis net.Listener, handler http.HandlerFunc) *http.Server {
 	server := &http.Server{Handler: handler}
 	go server.Serve(lis)
 	return server
 }
 
-// TestServeJSON serves the handler function using HTTP by accepting incoming
+// ServeJSON serves the handler function using HTTP by accepting incoming
 // connections on the specified listener. The response content-type is set to
 // application/json. Intended to be used with a pipenet in unit tests.
-func TestServeJSON(lis net.Listener, handler http.HandlerFunc) *http.Server {
-	return TestServe(lis, func(w http.ResponseWriter, req *http.Request) {
+func ServeJSON(lis net.Listener, handler http.HandlerFunc) *http.Server {
+	return Serve(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		handler(w, req)
 	})
 }
 
-// TestServeWithToken serves the handler function and tokens using HTTP by
+// ServeWithStaticToken serves the handler function and tokens using HTTP by
 // accepting incoming connections on specified listener. Intended to be used
 // with a pipenet in unit tests.
-func TestServeWithToken(lis net.Listener, handler http.HandlerFunc) *http.Server {
+func ServeWithStaticToken(lis net.Listener, handler http.HandlerFunc) *http.Server {
 	mux := &http.ServeMux{}
 	mux.HandleFunc("/api/session", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -64,12 +63,12 @@ func TestServeWithToken(lis net.Listener, handler http.HandlerFunc) *http.Server
 	return server
 }
 
-// TestServeJSONWithToken serves the handler function and tokens using HTTP by
+// ServeJSONWithStaticToken serves the handler function and tokens using HTTP by
 // accepting incoming connections on specified listener. The response
 // content-type is set to application/json. Intended to be used with a pipenet
 // in unit tests.
-func TestServeJSONWithToken(lis net.Listener, handler http.HandlerFunc) *http.Server {
-	return TestServeWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+func ServeJSONWithStaticToken(lis net.Listener, handler http.HandlerFunc) *http.Server {
+	return ServeWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		handler(w, req)
 	})

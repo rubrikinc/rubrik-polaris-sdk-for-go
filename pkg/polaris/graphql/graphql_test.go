@@ -77,7 +77,7 @@ func TestRequestUnauthenticated(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 401 and additional details in the body.
-	srv := testnet.TestServeJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(401)
 		if err := tmpl.Execute(w, nil); err != nil {
 			panic(err)
@@ -103,7 +103,7 @@ func TestRequestWithInternalServerErrorJSONBody(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 500 and additional details in the JSON body.
-	srv := testnet.TestServeJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
 		if err := tmpl.Execute(w, nil); err != nil {
 			panic(err)
@@ -125,7 +125,7 @@ func TestRequestWithInternalServerErrorNoBody(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 500 and no additional details.
-	srv := testnet.TestServeWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.ServeWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
 	})
 	defer srv.Shutdown(context.Background())
@@ -143,7 +143,7 @@ func TestRequestWithInternalServerErrorTextBody(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 500 and additional details in the text body.
-	srv := testnet.TestServeWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.ServeWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(500)
 		w.Write([]byte("database is corrupt"))
