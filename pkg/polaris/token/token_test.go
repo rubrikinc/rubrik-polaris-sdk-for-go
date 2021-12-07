@@ -18,7 +18,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package graphql
+package token
 
 import (
 	"context"
@@ -28,6 +28,7 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testnet"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -76,11 +77,12 @@ func TestTokenSetAsHeader(t *testing.T) {
 }
 
 func TestTokenSource(t *testing.T) {
-	src, lis := newLocalUserTestSource("john", "doe", &log.DiscardLogger{})
+	client, lis := testnet.NewPipeNet()
+	src := NewLocalUserSource(client, "http://test/api", "john", "doe", &log.DiscardLogger{})
 
 	// Respond with 200 and a valid token as long as the correct username and
 	// password are received.
-	srv := TestServeJSON(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.ServeJSON(lis, func(w http.ResponseWriter, req *http.Request) {
 		var payload struct {
 			Username string
 			Password string
@@ -118,10 +120,11 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	src, lis := newLocalUserTestSource("john", "doe", &log.DiscardLogger{})
+	client, lis := testnet.NewPipeNet()
+	src := NewLocalUserSource(client, "http://test/api", "john", "doe", &log.DiscardLogger{})
 
 	// Respond with status code 401 and additional details in the body.
-	srv := TestServeJSON(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.ServeJSON(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(401)
 		if err := tmpl.Execute(w, nil); err != nil {
 			panic(err)
@@ -139,10 +142,11 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 }
 
 func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
-	src, lis := newLocalUserTestSource("john", "doe", &log.DiscardLogger{})
+	client, lis := testnet.NewPipeNet()
+	src := NewLocalUserSource(client, "http://test/api", "john", "doe", &log.DiscardLogger{})
 
 	// Respond with status code 500 and no additional details.
-	srv := TestServe(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.Serve(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
 	})
 	defer srv.Shutdown(context.Background())
@@ -157,10 +161,11 @@ func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
 }
 
 func TestTokenSourceWithInternalServerErrorTextBody(t *testing.T) {
-	src, lis := newLocalUserTestSource("john", "doe", &log.DiscardLogger{})
+	client, lis := testnet.NewPipeNet()
+	src := NewLocalUserSource(client, "http://test/api", "john", "doe", &log.DiscardLogger{})
 
 	// Respond with status code 500 and no additional details.
-	srv := TestServe(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.Serve(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Add("Content-Type", "text/plain")
 		w.WriteHeader(500)
 		w.Write([]byte("user database is corrupt"))

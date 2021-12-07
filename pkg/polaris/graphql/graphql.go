@@ -43,26 +43,11 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/errors"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testnet"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/token"
 )
-
-// jsonError is returned by Polaris in the body of a response as a JSON
-// document when certain types of errors occur.
-type jsonError struct {
-	Code    int    `json:"code"`
-	URI     string `json:"uri"`
-	Message string `json:"message"`
-}
-
-// isError determines if the jsonError unmarshallad from a JSON document
-// represents an error or not.
-func (e jsonError) isError() bool {
-	return e.Code != 0 || e.Message != ""
-}
-
-func (e jsonError) Error() string {
-	return fmt.Sprintf("%s (code %d)", e.Message, e.Code)
-}
 
 type gqlLocation struct {
 	Line   int `json:"line"`
@@ -82,7 +67,7 @@ type gqlError struct {
 	Errors []gqlDetails `json:"errors"`
 }
 
-// isError determines if the gqlError unmarshallad from a JSON document
+// isError determines if the gqlError unmarshalled from a JSON document
 // represents an error or not.
 func (e gqlError) isError() bool {
 	return len(e.Errors) > 0
@@ -102,51 +87,48 @@ type Client struct {
 }
 
 // NewClientFromLocalUser returns a new Client with the specified configuration.
-func NewClientFromLocalUser(ctx context.Context, app, apiURL, username, password string, logger log.Logger) *Client {
+func NewClientFromLocalUser(app, apiURL, username, password string, logger log.Logger) *Client {
+	tokenSource := token.NewLocalUserSource(http.DefaultClient, apiURL, username, password, logger)
+
 	return &Client{
 		app:    app,
 		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
 		client: &http.Client{
-			Transport: &tokenTransport{
-				next: http.DefaultTransport,
-				src:  newLocalUserSource(apiURL, username, password, logger),
-			},
+			Transport: token.NewRoundTripper(http.DefaultTransport, tokenSource),
 		},
 		log: logger,
 	}
 }
 
-// NewClientFromServiceAccount returns a new Client with the specified configuration.
-func NewClientFromServiceAccount(ctx context.Context, app, apiURL, accessTokenURI, clientID, clientSecret string, logger log.Logger) *Client {
+// NewClientFromServiceAccount returns a new Client with the specified
+// configuration.
+func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSecret string, logger log.Logger) *Client {
+	tokenSource := token.NewServiceAccountSource(http.DefaultClient, accessTokenURI, clientID, clientSecret, logger)
+
 	return &Client{
 		app:    app,
 		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
 		client: &http.Client{
-			Transport: &tokenTransport{
-				next: http.DefaultTransport,
-				src:  newServiceAccountSource(accessTokenURI, clientID, clientSecret, logger),
-			},
+			Transport: token.NewRoundTripper(http.DefaultTransport, tokenSource),
 		},
 		log: logger,
 	}
 }
 
-// NewTestClient - Intended to be used by unit tests.
-func NewTestClient(username, password string, logger log.Logger) (*Client, *TestListener) {
-	src, lis := newLocalUserTestSource(username, password, logger)
+// NewTestClient returns a new Client intended to be used by unit tests.
+func NewTestClient(username, password string, logger log.Logger) (*Client, *testnet.TestListener) {
+	testClient, listener := testnet.NewPipeNet()
+	tokenSource := token.NewLocalUserSource(testClient, "http://test/api", username, password, logger)
 
 	client := &Client{
 		gqlURL: "http://test/api/graphql",
 		client: &http.Client{
-			Transport: &tokenTransport{
-				next: src.client.Transport,
-				src:  src,
-			},
+			Transport: token.NewRoundTripper(testClient.Transport, tokenSource),
 		},
 		log: logger,
 	}
 
-	return client, lis
+	return client, listener
 }
 
 // Request posts the specified GraphQL query with the given variables to the
@@ -182,7 +164,7 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 	req.Header.Add("Accept", "application/json")
 	res, err := c.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed request graphql field: %v", err)
+		return nil, fmt.Errorf("failed to request graphql field: %v", err)
 	}
 	defer res.Body.Close()
 
@@ -212,12 +194,12 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 
 	// Remote responded with a JSON document. Try to parse it as both known
 	// error message formats.
-	var jsonErr jsonError
+	var jsonErr errors.JSONError
 	if err := json.Unmarshal(buf, &jsonErr); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
 			res.StatusCode, err)
 	}
-	if jsonErr.isError() {
+	if jsonErr.IsError() {
 		return nil, fmt.Errorf("graphql response body is an error (status code %d): %v", res.StatusCode, jsonErr)
 	}
 

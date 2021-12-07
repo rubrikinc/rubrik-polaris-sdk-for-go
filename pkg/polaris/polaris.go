@@ -123,7 +123,7 @@ func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger 
 
 	// The gql client is initialized without a version. Query cluster to find
 	// out the current version.
-	gqlClient := graphql.NewClientFromLocalUser(ctx, "custom", apiURL, account.Username, account.Password, logger)
+	gqlClient := graphql.NewClientFromLocalUser("custom", apiURL, account.Username, account.Password, logger)
 	version, err := core.Wrap(gqlClient).DeploymentVersion(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get deployment version: %v", err)
@@ -180,7 +180,7 @@ func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, l
 
 	// The gql client is initialized without a version. Query cluster to find
 	// out the current version.
-	gqlClient := graphql.NewClientFromServiceAccount(ctx, "custom", apiURL, account.AccessTokenURI, account.ClientID,
+	gqlClient := graphql.NewClientFromServiceAccount("custom", apiURL, account.AccessTokenURI, account.ClientID,
 		account.ClientSecret, logger)
 	version, err := core.Wrap(gqlClient).DeploymentVersion(ctx)
 	if err != nil {

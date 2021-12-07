@@ -29,6 +29,7 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testnet"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -39,56 +40,12 @@ func TestErrorsWithNoError(t *testing.T) {
         }
 	}`)
 
-	var jsonErr jsonError
-	if err := json.Unmarshal(buf, &jsonErr); err != nil {
-		t.Fatal(err)
-	}
-	if jsonErr.isError() {
-		t.Error("jsonErr should not represent an error")
-	}
-
 	var gqlErr gqlError
 	if err := json.Unmarshal(buf, &gqlErr); err != nil {
 		t.Fatal(err)
 	}
 	if gqlErr.isError() {
 		t.Error("gqlErr should not represent an error")
-	}
-}
-
-func TestJsonError(t *testing.T) {
-	buf, err := os.ReadFile("testdata/error_json_from_auth.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var jsonErr1 jsonError
-	if err := json.Unmarshal(buf, &jsonErr1); err != nil {
-		t.Fatal(err)
-	}
-	if !jsonErr1.isError() {
-		t.Error("jsonErr should represent an error")
-	}
-	expected := "JWT validation failed: Missing or invalid credentials (code 16)"
-	if msg := jsonErr1.Error(); msg != expected {
-		t.Errorf("invalid error message: %v", msg)
-	}
-
-	buf, err = os.ReadFile("testdata/error_json_from_polaris.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var jsonErr2 jsonError
-	if err := json.Unmarshal(buf, &jsonErr2); err != nil {
-		t.Fatal(err)
-	}
-	if !jsonErr2.isError() {
-		t.Error("jsonErr should represent an error")
-	}
-	expected = "UNAUTHENTICATED: wrong username or password (code 401)"
-	if msg := jsonErr2.Error(); msg != expected {
-		t.Errorf("invalid error message: %v", msg)
 	}
 }
 
@@ -120,7 +77,7 @@ func TestRequestUnauthenticated(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 401 and additional details in the body.
-	srv := TestServeJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(401)
 		if err := tmpl.Execute(w, nil); err != nil {
 			panic(err)
@@ -146,7 +103,7 @@ func TestRequestWithInternalServerErrorJSONBody(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 500 and additional details in the JSON body.
-	srv := TestServeJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
 		if err := tmpl.Execute(w, nil); err != nil {
 			panic(err)
@@ -168,7 +125,7 @@ func TestRequestWithInternalServerErrorNoBody(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 500 and no additional details.
-	srv := TestServeWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.ServeWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
 	})
 	defer srv.Shutdown(context.Background())
@@ -186,7 +143,7 @@ func TestRequestWithInternalServerErrorTextBody(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 500 and additional details in the text body.
-	srv := TestServeWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.ServeWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(500)
 		w.Write([]byte("database is corrupt"))

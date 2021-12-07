@@ -29,6 +29,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testnet"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -38,8 +39,8 @@ func TestValidateAndCreateAWSCloudAccountWithDuplicate(t *testing.T) {
 	client, lis := graphql.NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with an error indicating that the account has already been added.
-	srv := graphql.TestServeJSONWithToken(lis, func(w http.ResponseWriter, req *http.Request) {
-		tmpl := template.Must(template.ParseFiles("testdata/validateandcreateawscloudaccount.json"))
+	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
+		tmpl := template.Must(template.ParseFiles("testdata/validate_and_create_aws_cloud_account.json"))
 
 		buf, err := io.ReadAll(req.Body)
 		if err != nil {
