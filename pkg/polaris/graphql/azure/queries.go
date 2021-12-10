@@ -40,12 +40,41 @@ var addAzureCloudAccountExocomputeConfigurationsQuery = `mutation SdkGolangAddAz
 }`
 
 // addAzureCloudAccountWithoutOauth GraphQL query
-var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAccountWithoutOauth($tenantDomainName: String!, $azureCloudType: AzureCloudTypeEnum!, $regions: [AzureCloudAccountRegionEnum!]!, $features: [CloudAccountFeatureEnum!]!, $subscriptions: [AzureSubscriptionInput!]!, $policyVersion: Int!) {
+var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAccountWithoutOauth($tenantDomainName: String!, $azureCloudType: AzureCloudTypeEnum!, $regions: [AzureCloudAccountRegionEnum!]!, $feature: CloudAccountFeatureEnum!, $subscriptionName: String!, $subscriptionId: String!, $policyVersion: Int!) {
     result: addAzureCloudAccountWithoutOAuth(input: {
         tenantDomainName: $tenantDomainName,
         azureCloudType:   $azureCloudType,
-        features:         $features,
-        subscriptions:    $subscriptions,
+        subscriptions: {
+            subscription: {
+                name:     $subscriptionName,
+                nativeId: $subscriptionId
+            }
+            features: [{
+                featureType: $feature,
+            }]
+        },
+        regions:          $regions,
+        policyVersion:    $policyVersion
+    }) {
+        tenantId
+        status {
+            azureSubscriptionRubrikId
+            azureSubscriptionNativeId
+            error
+        }
+    }
+}`
+
+// addAzureCloudAccountWithoutOauthV0 GraphQL query
+var addAzureCloudAccountWithoutOauthV0Query = `mutation SdkGolangAddAzureCloudAccountWithoutOauthV0($tenantDomainName: String!, $azureCloudType: AzureCloudTypeEnum!, $regions: [AzureCloudAccountRegionEnum!]!, $feature: CloudAccountFeatureEnum!, $subscriptionName: String!, $subscriptionId: String!, $policyVersion: Int!) {
+    result: addAzureCloudAccountWithoutOAuth(input: {
+        tenantDomainName: $tenantDomainName,
+        azureCloudType:   $azureCloudType,
+        features:         [$feature],
+        subscriptions: {
+            name:     $subscriptionName,
+            nativeId: $subscriptionId
+        },
         regions:          $regions,
         policyVersion:    $policyVersion
     }) {

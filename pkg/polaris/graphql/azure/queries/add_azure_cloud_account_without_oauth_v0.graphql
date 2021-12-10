@@ -2,14 +2,10 @@ mutation RubrikPolarisSDKRequest($tenantDomainName: String!, $azureCloudType: Az
     result: addAzureCloudAccountWithoutOAuth(input: {
         tenantDomainName: $tenantDomainName,
         azureCloudType:   $azureCloudType,
+        features:         [$feature],
         subscriptions: {
-            subscription: {
-                name:     $subscriptionName,
-                nativeId: $subscriptionId
-            }
-            features: [{
-                featureType: $feature,
-            }]
+            name:     $subscriptionName,
+            nativeId: $subscriptionId
         },
         regions:          $regions,
         policyVersion:    $policyVersion
