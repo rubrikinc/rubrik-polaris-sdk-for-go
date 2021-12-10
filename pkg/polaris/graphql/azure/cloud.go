@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -115,11 +116,6 @@ func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, incl
 	return payload.Data.Result, nil
 }
 
-type addSubscription struct {
-	ID   uuid.UUID `json:"nativeId"`
-	Name string    `json:"name"`
-}
-
 // AddCloudAccountWithoutOAuth adds the Azure Subscription cloud account
 // for given feature without OAuth.
 func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uuid.UUID, feature core.Feature,
@@ -127,20 +123,25 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, addAzureCloudAccountWithoutOauthQuery, struct {
-		Cloud         Cloud             `json:"azureCloudType"`
-		Features      []core.Feature    `json:"features"`
-		Subscriptions []addSubscription `json:"subscriptions"`
-		TenantDomain  string            `json:"tenantDomainName"`
-		Regions       []Region          `json:"regions"`
-		PolicyVersion int               `json:"policyVersion"`
-	}{Cloud: cloud, Features: []core.Feature{feature}, Subscriptions: []addSubscription{{id, name}}, TenantDomain: tenantDomain, Regions: regions, PolicyVersion: policyVersion})
+	query := addAzureCloudAccountWithoutOauthQuery
+	if graphql.VersionOlderThan(a.Version, "master-43871", "v20211214") {
+		query = addAzureCloudAccountWithoutOauthV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
+		Cloud            Cloud        `json:"azureCloudType"`
+		Feature          core.Feature `json:"feature"`
+		SubscriptionName string       `json:"subscriptionName"`
+		SubscriptionID   uuid.UUID    `json:"subscriptionId"`
+		TenantDomain     string       `json:"tenantDomainName"`
+		Regions          []Region     `json:"regions"`
+		PolicyVersion    int          `json:"policyVersion"`
+	}{Cloud: cloud, Feature: feature, SubscriptionName: name, SubscriptionID: id, TenantDomain: tenantDomain, Regions: regions, PolicyVersion: policyVersion})
 	if err != nil {
 		return "", fmt.Errorf("failed to request AddCloudAccountWithoutOAuth: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "addAzureCloudAccountWithoutOauth(%q, %q, %q, %q, %q, %q, %d): %s", cloud, id, feature, name,
-		tenantDomain, regions, policyVersion, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q, %q, %q, %q, %q, %d): %s", graphql.QueryName(query), cloud, id,
+		feature, name, tenantDomain, regions, policyVersion, string(buf))
 
 	var payload struct {
 		Data struct {
