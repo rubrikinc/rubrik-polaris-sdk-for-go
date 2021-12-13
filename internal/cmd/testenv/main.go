@@ -9,6 +9,8 @@ import (
 	"os"
 
 	"github.com/kr/pretty"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
@@ -17,7 +19,6 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
-	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -58,7 +59,11 @@ func check(ctx context.Context, client *polaris.Client) error {
 
 	// AWS
 	g.Go(func() error {
-		awsAccount, err := client.AWS().Account(ctx, aws.ID(aws.Default()), core.FeatureAll)
+		testAcc, err := testsetup.AWSAccount()
+		if err != nil {
+			return err
+		}
+		awsAccount, err := client.AWS().Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
 		switch {
 		case err == nil:
 			return fmt.Errorf("found pre-existing AWS account: %v", pretty.Sprint(awsAccount))
@@ -108,17 +113,16 @@ func clean(ctx context.Context, client *polaris.Client) error {
 
 	// AWS
 	g.Go(func() error {
-		awsAccount, err := client.AWS().Account(ctx, aws.ID(aws.Default()), core.FeatureAll)
-
+		testAcc, err := testsetup.AWSAccount()
+		if err != nil {
+			return err
+		}
+		awsAccount, err := client.AWS().Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
 		switch {
 		case errors.Is(err, graphql.ErrNotFound):
 			return nil
 		case err != nil:
 			return fmt.Errorf("failed to check AWS account: %v", err)
-		}
-		testAcc, err := testsetup.AWSAccount()
-		if err != nil {
-			return err
 		}
 		if awsAccount.NativeID != testAcc.AccountID {
 			return fmt.Errorf("existing AWS account %q isn't expected test account %q, won't remove",
@@ -126,7 +130,7 @@ func clean(ctx context.Context, client *polaris.Client) error {
 		}
 		// TODO: we might need to iterate over awsAccount.Features to remove
 		// all of them in the future
-		return client.AWS().RemoveAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, false)
+		return client.AWS().RemoveAccount(ctx, aws.Profile(testAcc.Profile), core.FeatureCloudNativeProtection, false)
 	})
 
 	// Azure

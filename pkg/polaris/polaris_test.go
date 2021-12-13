@@ -105,7 +105,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	// Add the default AWS account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	id, err := client.AWS().AddAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection,
+	id, err := client.AWS().AddAccount(ctx, aws.Profile(testAccount.Profile), core.FeatureCloudNativeProtection,
 		aws.Name(testAccount.AccountName), aws.Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
@@ -137,12 +137,12 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	}
 
 	// Update and verify regions for AWS account.
-	err = client.AWS().UpdateAccount(ctx, aws.ID(aws.Default()), core.FeatureCloudNativeProtection,
+	err = client.AWS().UpdateAccount(ctx, aws.AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection,
 		aws.Regions("us-west-2"))
 	if err != nil {
 		t.Error(err)
 	}
-	account, err = client.AWS().Account(ctx, aws.ID(aws.Default()), core.FeatureCloudNativeProtection)
+	account, err = client.AWS().Account(ctx, aws.AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection)
 	if err != nil {
 		t.Error(err)
 	}
@@ -155,13 +155,13 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	}
 
 	// Remove AWS account from Polaris.
-	err = client.AWS().RemoveAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, false)
+	err = client.AWS().RemoveAccount(ctx, aws.Profile(testAccount.Profile), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	account, err = client.AWS().Account(ctx, aws.ID(aws.Default()), core.FeatureCloudNativeProtection)
+	account, err = client.AWS().Account(ctx, aws.AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
@@ -196,14 +196,15 @@ func TestAwsExocompute(t *testing.T) {
 	// Add the default AWS account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	accountID, err := client.AWS().AddAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection,
+	accountID, err := client.AWS().AddAccount(ctx, aws.Profile(testAccount.Profile), core.FeatureCloudNativeProtection,
 		aws.Name(testAccount.AccountName), aws.Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Enable the exocompute feature for the account.
-	exoAccountID, err := client.AWS().AddAccount(ctx, aws.Default(), core.FeatureExocompute, aws.Regions("us-east-2"))
+	exoAccountID, err := client.AWS().AddAccount(ctx, aws.Profile(testAccount.Profile), core.FeatureExocompute,
+		aws.Regions("us-east-2"))
 	if err != nil {
 		t.Error(err)
 	}
@@ -236,7 +237,7 @@ func TestAwsExocompute(t *testing.T) {
 		t.Errorf("invalid number of features: %v", n)
 	}
 
-	exoID, err := client.AWS().AddExocomputeConfig(ctx, aws.ID(aws.Default()),
+	exoID, err := client.AWS().AddExocomputeConfig(ctx, aws.AccountID(testAccount.AccountID),
 		aws.Managed("us-east-2", testAccount.Exocompute.VPCID,
 			[]string{testAccount.Exocompute.Subnets[0].ID, testAccount.Exocompute.Subnets[1].ID}))
 	if err != nil {
@@ -286,25 +287,25 @@ func TestAwsExocompute(t *testing.T) {
 	}
 
 	// Disable the exocompute feature for the account.
-	err = client.AWS().RemoveAccount(ctx, aws.Default(), core.FeatureExocompute, false)
+	err = client.AWS().RemoveAccount(ctx, aws.Profile(testAccount.Profile), core.FeatureExocompute, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the exocompute feature was successfully disabled.
-	account, err = client.AWS().Account(ctx, aws.ID(aws.Default()), core.FeatureExocompute)
+	account, err = client.AWS().Account(ctx, aws.AccountID(testAccount.AccountID), core.FeatureExocompute)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
 
 	// Remove the AWS account from Polaris.
-	err = client.AWS().RemoveAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, false)
+	err = client.AWS().RemoveAccount(ctx, aws.Profile(testAccount.Profile), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	account, err = client.AWS().Account(ctx, aws.ID(aws.Default()), core.FeatureCloudNativeProtection)
+	account, err = client.AWS().Account(ctx, aws.AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}

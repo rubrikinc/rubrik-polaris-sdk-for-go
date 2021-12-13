@@ -33,10 +33,9 @@ pipeline {
         RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
 
         // AWS credentials.
-        TEST_AWSACCOUNT_FILE  = credentials('tf-sdk-test-aws-account')
-        AWS_ACCESS_KEY_ID     = credentials('tf-sdk-test-access-key')
-        AWS_SECRET_ACCESS_KEY = credentials('tf-sdk-test-secret-key')
-        AWS_DEFAULT_REGION    = 'us-east-2'
+        TEST_AWSACCOUNT_FILE        = credentials('tf-sdk-test-aws-account')
+        AWS_SHARED_CREDENTIALS_FILE = credentials('tf-sdk-test-aws-credentials')
+        AWS_CONFIG_FILE             = credentials('tf-sdk-test-aws-config')
 
         // Azure credentials.
         TEST_AZURESUBSCRIPTION_FILE     = credentials('tf-sdk-test-azure-subscription')
