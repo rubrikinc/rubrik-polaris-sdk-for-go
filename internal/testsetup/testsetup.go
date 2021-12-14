@@ -13,6 +13,7 @@ import (
 type testAwsAccount struct {
 	AccountID   string `json:"accountId"`
 	AccountName string `json:"accountName"`
+	Profile     string `json:"profile"`
 
 	Exocompute struct {
 		VPCID   string `json:"vpcId"`
