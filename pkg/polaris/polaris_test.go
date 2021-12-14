@@ -39,8 +39,9 @@ import (
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// client is the common Polaris client used for tests. By reusing the same client we
-// reduce the risk of hitting rate limits when access tokens are creted.
+// client is the common Polaris client used for tests. By reusing the same
+// client we reduce the risk of hitting rate limits when access tokens are
+// created.
 var client *Client
 
 func TestMain(m *testing.M) {
@@ -81,15 +82,14 @@ func boolEnvSet(env string) bool {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * TEST_INTEGRATION=1
 //   * TEST_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   * AWS_SHARED_CREDENTIALS_FILE=<path-to-aws-credentials-file>
+//   * AWS_CONFIG_FILE=<path-to-aws-config-file>
 //
-// In addition to the above environment variables a default AWS profile must be
-// defined. As an alternative to the credentials and config files the
-// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
-// AWS_DEFAULT_REGION can be used. The file referred to by TEST_AWSACCOUNT_FILE
-// should contain a single testAwsAccount JSON object.
+// The file referred to by TEST_AWSACCOUNT_FILE should contain a single
+// testAwsAccount JSON object.
 func TestAwsAccountAddAndRemove(t *testing.T) {
 	if !boolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
@@ -102,9 +102,8 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Add the default AWS account to Polaris. Usually resolved using the
-	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
-	// AWS_DEFAULT_REGION.
+	// Adds the AWS account identified by the specified profile to Polaris. Note
+	// that the profile needs to have a default region.
 	id, err := client.AWS().AddAccount(ctx, aws.Profile(testAccount.Profile), core.FeatureCloudNativeProtection,
 		aws.Name(testAccount.AccountName), aws.Regions("us-east-2"))
 	if err != nil {
@@ -172,15 +171,14 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * TEST_INTEGRATION=1
 //   * TEST_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   * AWS_SHARED_CREDENTIALS_FILE=<path-to-aws-credentials-file>
+//   * AWS_CONFIG_FILE=<path-to-aws-config-file>
 //
-// In addition to the above environment variables a default AWS profile must be
-// defined. As an alternative to the credentials and config files the
-// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
-// AWS_DEFAULT_REGION can be used. The file referred to by TEST_AWSACCOUNT_FILE
-// should contain a single testAwsAccount JSON object.
+// The file referred to by TEST_AWSACCOUNT_FILE should contain a single
+// testAwsAccount JSON object.
 func TestAwsExocompute(t *testing.T) {
 	if !boolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
@@ -193,9 +191,8 @@ func TestAwsExocompute(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Add the default AWS account to Polaris. Usually resolved using the
-	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
-	// AWS_DEFAULT_REGION.
+	// Adds the AWS account identified by the specified profile to Polaris. Note
+	// that the profile needs to have a default region.
 	accountID, err := client.AWS().AddAccount(ctx, aws.Profile(testAccount.Profile), core.FeatureCloudNativeProtection,
 		aws.Name(testAccount.AccountName), aws.Regions("us-east-2"))
 	if err != nil {
@@ -316,9 +313,9 @@ func TestAwsExocompute(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * TEST_INTEGRATION=1
 //   * TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
 //
 // The file referred to by TEST_AZURESUBSCRIPTION_FILE should contain a single
@@ -336,7 +333,7 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Add default Azure service principal to Polaris. Usually resolved using
-	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
+	// the environment variable AZURE_AUTH_LOCATION.
 	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default(testSubscription.TenantDomain))
 	if err != nil {
 		t.Fatal(err)
@@ -414,9 +411,9 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * TEST_INTEGRATION=1
 //   * TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
 //
 // The file referred to by TEST_AZURESUBSCRIPTION_FILE should contain a single
@@ -551,8 +548,8 @@ func TestAzureExocompute(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * TEST_INTEGRATION=1
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   * TEST_INTEGRATION=1
 func TestAzurePermissions(t *testing.T) {
 	if !boolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
@@ -581,9 +578,9 @@ func TestAzurePermissions(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * TEST_INTEGRATION=1
 //   * TEST_GCPPROJECT_FILE=<path-to-test-gcp-project-file>
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * GOOGLE_APPLICATION_CREDENTIALS=<path-to-gcp-service-account-key-file>
 //
 // The file referred to by TEST_GCPPROJECT_FILE should contain a single
@@ -653,9 +650,9 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * TEST_INTEGRATION=1
 //   * TEST_GCPPROJECT_FILE=<path-to-test-gcp-project-file>
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * GOOGLE_APPLICATION_CREDENTIALS=<path-to-gcp-service-account-key-file>
 //
 // The file referred to by TEST_GCPPROJECT_FILE should contain a single
@@ -729,8 +726,8 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * TEST_INTEGRATION=1
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   * TEST_INTEGRATION=1
 func TestGcpPermissions(t *testing.T) {
 	if !boolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
