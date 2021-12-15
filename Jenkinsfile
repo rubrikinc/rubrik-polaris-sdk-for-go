@@ -48,6 +48,9 @@ pipeline {
 
         // Run integration tests with the nightly build.
         TEST_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
+
+        // Appliance credentials
+        APPLIANCE_UUID = credentials('tf-appliance-uuid')
     }
     stages {
         stage('Lint') {

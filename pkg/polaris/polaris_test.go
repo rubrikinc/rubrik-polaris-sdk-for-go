@@ -29,8 +29,10 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"github.com/google/uuid"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/appliance"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
@@ -40,8 +42,9 @@ import (
 )
 
 // client is the common Polaris client used for tests. By reusing the same client we
-// reduce the risk of hitting rate limits when access tokens are creted.
+// reduce the risk of hitting rate limits when access tokens are created.
 var client *Client
+var logger polaris_log.Logger
 
 func TestMain(m *testing.M) {
 	if boolEnvSet("TEST_INTEGRATION") {
@@ -55,7 +58,7 @@ func TestMain(m *testing.M) {
 
 		// The integration tests defaults the log level to INFO. Note that
 		// RUBRIK_POLARIS_LOGLEVEL can be used to override this.
-		logger := polaris_log.NewStandardLogger()
+		logger = polaris_log.NewStandardLogger()
 		logger.SetLogLevel(polaris_log.Info)
 		client, err = NewClient(context.Background(), polAccount, logger)
 		if err != nil {
@@ -74,6 +77,49 @@ func boolEnvSet(env string) bool {
 
 	b, err := strconv.ParseBool(val)
 	return err == nil && b
+}
+
+// TestApplianceTokenFromServiceAccount verifies that the SDK can retrieve
+// the API token for the appliance on behalf of the service account.
+//
+// To run this test against a Polaris instance the following enviornment
+// variable needs to be set:
+// 	* TEST_INTEGRATION=1
+//  * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//  * CLUSTER_UUID=<cluster_uuid>
+// 
+// In addition to the above environment variables, an appliance must be
+// added to the Polaris instance.
+func TestApplianceTokenFromServiceAccount(t *testing.T) {
+	if !boolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	// Load service account credentials. Usually resolved using the
+	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+	polAccount, err := DefaultServiceAccount(true)
+	if err != nil {
+		t.Errorf("failed to get default service account: %v\n", err)
+	}
+	applianceUuid, err := uuid.Parse(os.Getenv("APPLIANCE_UUID"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	token, err := appliance.TokenFromServiceAccount(
+		polAccount.ClientID,
+		polAccount.ClientSecret,
+		polAccount.AccessTokenURI,
+		applianceUuid,
+		logger,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if token == "" {
+		t.Errorf("Retrieved empty token for Appliance API.")
+	}
 }
 
 // TestAwsAccountAddAndRemove verifies that the SDK can perform the basic AWS

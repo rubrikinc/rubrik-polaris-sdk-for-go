@@ -18,12 +18,13 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package appliance enapsulates methods to help interact with Rubrik Appliance.
+// Package appliance encapsulates methods to help interact with Rubrik Appliance.
 package appliance
 
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -31,25 +32,23 @@ import (
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/token"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 )
 
-// ApplianceTokenFromServiceAccount returns a token to access appliance
+// TokenFromServiceAccount returns a token to access appliance
 // REST APIs. It is issued on behalf of the given service account.
-func ApplianceTokenFromServiceAccount(account *polaris.ServiceAccount, clusterID uuid.UUID, logger log.Logger) (string, error) {
-	if !strings.HasSuffix(account.AccessTokenURI, "/client_token") {
+func TokenFromServiceAccount(clientID, clientSecret, accessTokenURI string, clusterID uuid.UUID, logger log.Logger) (string, error) {
+	if !strings.HasSuffix(accessTokenURI, "/client_token") {
 		return "", errors.New("invalid access token uri")
 	}
-	tokenURL := strings.TrimSuffix(account.AccessTokenURI, "/client_token") + "/cdm_client_token"
+	tokenURL := strings.TrimSuffix(accessTokenURI, "/client_token") + "/cdm_client_token"
 
 	body, err := json.Marshal(struct {
 		ClientID		string `json:"client_id"`
 		ClientSecret	string `json:"client_secret"`
 		ClusterUuid		uuid.UUID `json:"cluster_uuid"`
-	}{ClientID: account.ClientID, ClientSecret: account.ClientSecret, ClusterUuid: clusterID})
+	}{ClientID: clientID, ClientSecret: clientSecret, ClusterUuid: clusterID})
 	if err != nil {
-		logger.Printf(log.Error, "failed to marshat token request body %v", err)	
-		return "", errors.New("internal: failed to marshal token request body")
+		return "", fmt.Errorf("internal: failed to marshal token request body: %v", err)
 	}
 
 	resp, err := token.Request(http.DefaultClient, tokenURL, body, logger)
@@ -63,12 +62,10 @@ func ApplianceTokenFromServiceAccount(account *polaris.ServiceAccount, clusterID
 		}  `json:"session"`
 	}
 	if err := json.Unmarshal(resp, &payload); err != nil {
-		logger.Printf(log.Error, "failed to unmarshal cluster token response body %v", err)
-		return "", errors.New("failed to unmarshal token response body")
+		return "", fmt.Errorf("failed to unmarshal token response body: %v", err)
 	}
 
 	if payload.Session.AccessToken == "" {
-
 		return "", errors.New("invalid token")
 	}
 

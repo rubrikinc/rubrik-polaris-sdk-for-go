@@ -244,3 +244,7 @@ correctly to Polaris:
 ```
 
 ![48332236-55506f00-e610-11e8-9a60-594de963a1ee](https://user-images.githubusercontent.com/2046831/119498600-1580ab80-bd66-11eb-87ca-c08df4eae15a.png)
+
+#### Appliance
+To run the appliance token exchange integration test, an appliance/cluster must already be registered to the Polaris instance and
+the environment variable `APPLIANCE_UUID` must be set to the UUID of the registered cluster.
