@@ -179,13 +179,18 @@ $ go test ./...
 ```
 
 ### Integration Tests
-Note that the integration tests requires a polaris instance and, depending on which tests are run, an AWS account, an
-Azure subscription and a GCP project. See below for additional requirements for each cloud service provider. 
+Note that the integration tests requires a polaris instance and, depending on which tests are run, an appliance
+connected to the Polaris instance, an AWS account, an Azure subscription and a GCP project. See below for additional
+requirements for each cloud service provider.
 
 To execute the integration test suite run:
 ```
 $ TEST_INTEGRATION=1 go test -timeout=60m ./...
 ```
+
+#### Appliance
+To run the appliance token exchange integration test, an appliance/cluster must already be registered to the Polaris
+instance and the environment variable `TEST_APPLIANCE_ID` must be set to the id (UUID) of the registered cluster.
 
 #### AWS
 Requires a default AWS profile along with a default region for the profile. It also requires that the environment
@@ -240,6 +245,49 @@ correctly to Polaris:
     "projectName": "<gcp-project-name>",
     "projectNumber": <gcp-project-number>,
     "organizationName": "<gcp-organization-name>"
+}
+```
+
+## Request Appliance Token for Rubrik SDK for Go
+To access Appliance REST APIs using Polaris service accounts, following are the prerequisites:
+- Appliance/Cluster must be registered with the Polaris Instance.
+- Appliance ID. Can be found under *Polaris Instance* -> *Clusters* > *\[Select a Cluster\]* -> *Cluster details* ->
+*Id*.
+- Appliance fully qualified domain name.
+
+The SDK can be used to retrieve a token in exchange for the Polaris service account credentials and can be used
+to access the appliance/cluster REST APIs. This token is only valid for a day. It is recommended to create a helper
+method that auto refreshes token every 24 hours for long-running applications.
+```
+func ApplianceTokenExample(serviceAccountPath string, applianceID uuid.UUID, logger log.Logger) (string, error) {
+    serviceAccount, err := polaris.ServiceAccountFromFile(serviceAccountPath, true)
+    if err != nil {
+        return "", err
+    }
+    
+    token, err := appliance.TokenFromServiceAccount(serviceAccount, applianceID, logger)
+    if err != nil {
+        return "", err
+    }
+
+    return token, nil
+}
+```
+
+The retrieved token can be used with the [rubrik-sdk-for-go](https://github.com/rubrikinc/rubrik-sdk-for-go) to set up a
+CDM client and call CDM APIs.
+```
+func CallApplianceAPIExample(applianceFQDN, applianceToken string) {
+    rubrik, err := rubrikcdm.ConnectAPIToken(applianceFQDN, applianceToken)
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    // GET the Rubrik cluster Version
+    clusterSummary, err := rubrik.Get("v1", "/cluster/me")
+    if err != nil {
+        log.Fatal(err)
+    }
 }
 ```
 

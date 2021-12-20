@@ -32,6 +32,9 @@ pipeline {
         // Polaris credentials.
         RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
 
+        // Appliance credentials.
+        TEST_APPLIANCE_ID = credentials('tf-sdk-appliance-id')
+
         // AWS credentials.
         TEST_AWSACCOUNT_FILE        = credentials('tf-sdk-test-aws-account')
         AWS_SHARED_CREDENTIALS_FILE = credentials('tf-sdk-test-aws-credentials')
