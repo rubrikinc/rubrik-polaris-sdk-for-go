@@ -898,3 +898,40 @@ func TestListK8sNamespace(t *testing.T) {
 	}
 
 }
+
+func TestUnassignSLA(t *testing.T) {
+	//if !boolEnvSet("TEST_INTEGRATION") {
+	//	t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	//}
+
+	testNSID := uuid.MustParse("3b3d22b7-385c-5865-bd8f-0ff7534db42b")
+	ctx := context.Background()
+	testServiceAccount := ServiceAccount{
+		ClientID:       "client|YVaYtseZQXRSiwEHV8HaRKfiRfsU0BhX",
+		ClientSecret:   "BS0-2olXRhY51R1AW0qj9gdgYBOs6x4uJbUg-7DXIxQImigEiavo819R0ZTPwq8a",
+		Name:           "np-test",
+		AccessTokenURI: "https://demo.dev-017.my.rubrik-lab.com/api/client_token",
+	}
+	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	oks, err := client.Core().AssignSlaForSnappableHierarchies(
+		ctx,
+		uuid.Nil,
+		core.NoAssignment,
+		[]uuid.UUID{testNSID},
+		[]core.SnappableLevelHierarchyType{},
+		true,  // shouldApplyToExistingSnapshots
+		false, // shouldApplyToNonPolicySnapshots
+		core.RetainSnapshots,
+	)
+	// Load configuration and create client. Usually resolved using the
+	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+	//polAccount, err := DefaultServiceAccount(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%v\n", oks)
+
+}
