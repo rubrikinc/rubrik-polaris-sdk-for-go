@@ -196,23 +196,29 @@ func (a API) AssignSlaForSnappableHierarchies(
 ) ([]bool, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/core.AssignSlaForSnappableHierarchies")
 
+	var slaID *uuid.UUID
+	if globalSLAOptionalFid == uuid.Nil {
+		slaID = nil
+	} else {
+		slaID = &globalSLAOptionalFid
+	}
 	buf, err := a.GQL.Request(
 		ctx,
 		assignSlaForSnappableHierarchiesQuery,
 		struct {
-			GlobalSLAOptionalFid uuid.UUID `json:"globalSlaOptionalFid"`
-			GlobalSLAAssignType SLAAssignType `json:"globalSlaAssignType"`
-			ObjectIDs []uuid.UUID `json:"objectIds"`
-			ApplicableSnappableTypes []SnappableLevelHierarchyType `json:"applicableSnappableTypes"`
-			ShouldApplyToExistingSnapshots bool `json:"shouldApplyToExistingSnapshots"`
-			ShouldApplyToNonPolicySnapshots bool `json:"shouldApplyToNonPolicySnapshots"`
+			GlobalSLAOptionalFid            *uuid.UUID                      `json:"globalSlaOptionalFid"`
+			GlobalSLAAssignType             SLAAssignType                   `json:"globalSlaAssignType"`
+			ObjectIDs                       []uuid.UUID                     `json:"objectIds"`
+			ApplicableSnappableTypes        []SnappableLevelHierarchyType   `json:"applicableSnappableTypes"`
+			ShouldApplyToExistingSnapshots  bool                            `json:"shouldApplyToExistingSnapshots"`
+			ShouldApplyToNonPolicySnapshots bool                            `json:"shouldApplyToNonPolicySnapshots"`
 			GlobalExistingSnapshotRetention GlobalExistingSnapshotRetention `json:"globalExistingSnapshotRetention"`
-		} {
-			GlobalSLAOptionalFid: globalSLAOptionalFid,
-			GlobalSLAAssignType: globalSLAAssignType,
-			ObjectIDs: ObjectIDs,
-			ApplicableSnappableTypes: applicableSnappableTypes,
-			ShouldApplyToExistingSnapshots: shouldApplyToExistingSnapshots,
+		}{
+			GlobalSLAOptionalFid:            slaID,
+			GlobalSLAAssignType:             globalSLAAssignType,
+			ObjectIDs:                       ObjectIDs,
+			ApplicableSnappableTypes:        applicableSnappableTypes,
+			ShouldApplyToExistingSnapshots:  shouldApplyToExistingSnapshots,
 			ShouldApplyToNonPolicySnapshots: shouldApplyToNonPolicySnapshots,
 			GlobalExistingSnapshotRetention: globalExistingSnapshotRetention,
 		})
@@ -261,27 +267,27 @@ func (a API) ListSLA(
 			ctx,
 			globalSlaConnectionQuery,
 			struct {
-				After string `json:"after,omitempty"`
-				SortBy SLAQuerySortByField `json:"sortBy"`
-				SortOrder SLAQuerySortByOrder `json:"sortOrder"`
-				Filter []GlobalSLAFilterInput `json:"filter"`
-				ContextFilter ContextFilterType `json:"contextFilter"`
-				ContextFilterInput []ContextFilterInputField `json:"contextFilterInput"`
-				ShowSyncStatus bool `json:"showSyncStatus"`
-				ShowProtectedObjectCount bool `json:"showProtectedObjectCount"`
-				ShowUpgradeInfo bool `json:"showUpgradeInfo"`
-			} {
-				After: cursor,
-				SortBy: sortBy,
-				SortOrder: sortOrder,
-				Filter: filter,
-				ContextFilter: contextFilter,
-				ContextFilterInput: contextFilterInput,
-				ShowSyncStatus: showSyncStatus,
+				After                    string                    `json:"after,omitempty"`
+				SortBy                   SLAQuerySortByField       `json:"sortBy"`
+				SortOrder                SLAQuerySortByOrder       `json:"sortOrder"`
+				Filter                   []GlobalSLAFilterInput    `json:"filter"`
+				ContextFilter            ContextFilterType         `json:"contextFilter"`
+				ContextFilterInput       []ContextFilterInputField `json:"contextFilterInput"`
+				ShowSyncStatus           bool                      `json:"showSyncStatus"`
+				ShowProtectedObjectCount bool                      `json:"showProtectedObjectCount"`
+				ShowUpgradeInfo          bool                      `json:"showUpgradeInfo"`
+			}{
+				After:                    cursor,
+				SortBy:                   sortBy,
+				SortOrder:                sortOrder,
+				Filter:                   filter,
+				ContextFilter:            contextFilter,
+				ContextFilterInput:       contextFilterInput,
+				ShowSyncStatus:           showSyncStatus,
 				ShowProtectedObjectCount: showProtectedObjectCount,
-				ShowUpgradeInfo: showUpgradeInfo,
+				ShowUpgradeInfo:          showUpgradeInfo,
 			},
-        )
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -299,7 +305,7 @@ func (a API) ListSLA(
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`
 					} `json:"pageInfo"`
-				}`json:"globalSlaConnection"`
+				} `json:"globalSlaConnection"`
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
@@ -316,4 +322,3 @@ func (a API) ListSLA(
 	}
 	return slaDomains, nil
 }
-
