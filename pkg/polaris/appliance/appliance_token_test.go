@@ -47,13 +47,18 @@ func TestApplianceTokenFromServiceAccount(t *testing.T) {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
+	testApplianceID := os.Getenv("TEST_APPLIANCE_ID")
+	if testApplianceID == "" {
+		t.Skipf("skipping due to env TEST_APPLIANCE_ID not set")
+	}
+
 	// Load service account credentials. Usually resolved using the
 	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
 	polAccount, err := polaris.DefaultServiceAccount(true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	applianceID, err := uuid.Parse(os.Getenv("TEST_APPLIANCE_ID"))
+	applianceID, err := uuid.Parse(testApplianceID)
 	if err != nil {
 		t.Fatal(err)
 	}
