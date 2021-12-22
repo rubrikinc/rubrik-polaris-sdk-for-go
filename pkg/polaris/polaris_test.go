@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -45,7 +44,7 @@ import (
 var client *Client
 
 func TestMain(m *testing.M) {
-	if boolEnvSet("TEST_INTEGRATION") {
+	if testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		// Load configuration and create client. Usually resolved using the
 		// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
 		polAccount, err := DefaultServiceAccount(true)
@@ -68,15 +67,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// boolEnvSet returns true if the provided argument is defined and true
-// according to the definition given by strconv.ParseBool.
-func boolEnvSet(env string) bool {
-	val := os.Getenv(env)
-
-	b, err := strconv.ParseBool(val)
-	return err == nil && b
-}
-
 // TestAwsAccountAddAndRemove verifies that the SDK can perform the basic AWS
 // account operations on a real Polaris instance.
 //
@@ -91,7 +81,7 @@ func boolEnvSet(env string) bool {
 // The file referred to by TEST_AWSACCOUNT_FILE should contain a single
 // testAwsAccount JSON object.
 func TestAwsAccountAddAndRemove(t *testing.T) {
-	if !boolEnvSet("TEST_INTEGRATION") {
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
@@ -180,7 +170,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 // The file referred to by TEST_AWSACCOUNT_FILE should contain a single
 // testAwsAccount JSON object.
 func TestAwsExocompute(t *testing.T) {
-	if !boolEnvSet("TEST_INTEGRATION") {
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
@@ -321,7 +311,7 @@ func TestAwsExocompute(t *testing.T) {
 // The file referred to by TEST_AZURESUBSCRIPTION_FILE should contain a single
 // testAzureSubscription JSON object.
 func TestAzureSubscriptionAddAndRemove(t *testing.T) {
-	if !boolEnvSet("TEST_INTEGRATION") {
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
@@ -419,7 +409,7 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 // The file referred to by TEST_AZURESUBSCRIPTION_FILE should contain a single
 // testAzureSubscription JSON object.
 func TestAzureExocompute(t *testing.T) {
-	if !boolEnvSet("TEST_INTEGRATION") {
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
@@ -551,7 +541,7 @@ func TestAzureExocompute(t *testing.T) {
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * TEST_INTEGRATION=1
 func TestAzurePermissions(t *testing.T) {
-	if !boolEnvSet("TEST_INTEGRATION") {
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
@@ -586,7 +576,7 @@ func TestAzurePermissions(t *testing.T) {
 // The file referred to by TEST_GCPPROJECT_FILE should contain a single
 // testGcpProject JSON object.
 func TestGcpProjectAddAndRemove(t *testing.T) {
-	if !boolEnvSet("TEST_INTEGRATION") {
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
@@ -658,7 +648,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 // The file referred to by TEST_GCPPROJECT_FILE should contain a single
 // testGcpProject JSON object.
 func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
-	if !boolEnvSet("TEST_INTEGRATION") {
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
@@ -729,7 +719,7 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   * TEST_INTEGRATION=1
 func TestGcpPermissions(t *testing.T) {
-	if !boolEnvSet("TEST_INTEGRATION") {
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
