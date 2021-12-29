@@ -193,16 +193,17 @@ func TestAwsExocompute(t *testing.T) {
 	exoAccountID, err := client.AWS().AddAccount(ctx, aws.Profile(testAccount.Profile), core.FeatureExocompute,
 		aws.Regions("us-east-2"))
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if accountID != exoAccountID {
-		t.Error("cloud native protection and exocompute added to different cloud accounts")
+		t.Fatalf("cloud native protection and exocompute added to different cloud accounts: %q vs %q",
+			accountID, exoAccountID)
 	}
 
 	// Verify that the account was successfully added.
 	account, err := client.AWS().Account(ctx, aws.CloudAccountID(accountID), core.FeatureExocompute)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if account.Name != testAccount.AccountName {
 		t.Errorf("invalid name: %v", account.Name)
@@ -234,7 +235,7 @@ func TestAwsExocompute(t *testing.T) {
 	// Retrieve the exocompute config added.
 	exoConfig, err := client.AWS().ExocomputeConfig(ctx, exoID)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if exoConfig.ID != exoID {
 		t.Errorf("invalid id: %v", exoConfig.ID)
@@ -264,13 +265,13 @@ func TestAwsExocompute(t *testing.T) {
 	// Remove the exocompute config.
 	err = client.AWS().RemoveExocomputeConfig(ctx, exoID)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// Verify that the exocompute config was successfully removed.
 	exoConfig, err = client.AWS().ExocomputeConfig(ctx, exoID)
 	if !errors.Is(err, graphql.ErrNotFound) {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// Disable the exocompute feature for the account.
