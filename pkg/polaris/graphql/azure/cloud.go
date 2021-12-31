@@ -59,6 +59,50 @@ type CloudAccountTenant struct {
 	Accounts   []CloudAccount `json:"subscriptions"`
 }
 
+// Tag represents tags to be applied to Azure resource.
+type Tag struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+// TagList represents a list of Tags.
+type TagList struct {
+	Tags []Tag `json:"tagList"`
+}
+
+// ResourceGroup contains the information of resource group
+// created for a particular feature.
+type ResourceGroup struct {
+	Name    string   `json:"name"`
+	TagList *TagList `json:"tags"`
+	Region  `json:"region"`
+}
+
+// FeatureSpecificInfo represents feature specific information.
+// Supports:
+// 1. Managed Identity for Archival Encryption feature.
+type FeatureSpecificInfo struct {
+	UserAssignedManagedIdentity *UserAssignedManagedIdentity `json:"userAssignedManagedIdentityInput"`
+}
+
+// UserAssignedManagedIdentity represents the managed identity
+// information for archival.
+type UserAssignedManagedIdentity struct {
+	Name              string `json:"name"`
+	ResourceGroupName string `json:"resourceGroupName"`
+	PrincipalID       string `json:"principalId"`
+	Region            `json:"region"`
+}
+
+// CloudAccountFeature represents feature information for
+// specific cloud native azure features.
+type CloudAccountFeature struct {
+	PolicyVersion       int                  `json:"policyVersion"`
+	ResourceGroup       *ResourceGroup       `json:"resourceGroup"`
+	FeatureType         core.Feature         `json:"featureType"`
+	FeatureSpecificInfo *FeatureSpecificInfo `json:"specificFeatureInput"`
+}
+
 // CloudAccountTenant returns the tenant and cloud accounts for the specified
 // feature and Polaris tenant id. The filter can be used to search for
 // subscription name and subscription id.
@@ -118,8 +162,8 @@ func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, incl
 
 // AddCloudAccountWithoutOAuth adds the Azure Subscription cloud account
 // for given feature without OAuth.
-func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uuid.UUID, feature core.Feature,
-	name, tenantDomain string, regions []Region, policyVersion int) (string, error) {
+func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uuid.UUID, feature CloudAccountFeature,
+	name, tenantDomain string, regions []Region) (string, error) {
 
 	a.GQL.Log().Print(log.Trace)
 
@@ -130,20 +174,19 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 		query = addAzureCloudAccountWithoutOauthV1Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Cloud            Cloud        `json:"azureCloudType"`
-		Feature          core.Feature `json:"feature"`
-		SubscriptionName string       `json:"subscriptionName"`
-		SubscriptionID   uuid.UUID    `json:"subscriptionId"`
-		TenantDomain     string       `json:"tenantDomainName"`
-		Regions          []Region     `json:"regions"`
-		PolicyVersion    int          `json:"policyVersion"`
-	}{Cloud: cloud, Feature: feature, SubscriptionName: name, SubscriptionID: id, TenantDomain: tenantDomain, Regions: regions, PolicyVersion: policyVersion})
+		Cloud            Cloud               `json:"azureCloudType"`
+		Feature          CloudAccountFeature `json:"feature"`
+		SubscriptionName string              `json:"subscriptionName"`
+		SubscriptionID   uuid.UUID           `json:"subscriptionId"`
+		TenantDomain     string              `json:"tenantDomainName"`
+		Regions          []Region            `json:"regions"`
+	}{Cloud: cloud, Feature: feature, SubscriptionName: name, SubscriptionID: id, TenantDomain: tenantDomain, Regions: regions})
 	if err != nil {
 		return "", fmt.Errorf("failed to request AddCloudAccountWithoutOAuth: %v", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "%s(%q, %q, %q, %q, %q, %q, %d): %s", graphql.QueryName(query), cloud, id,
-		feature, name, tenantDomain, regions, policyVersion, string(buf))
+		feature, name, tenantDomain, regions, feature.PolicyVersion, string(buf))
 
 	var payload struct {
 		Data struct {

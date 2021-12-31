@@ -397,6 +397,252 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	}
 }
 
+// TestAzureArchivalSubscriptionAddAndRemove verifies that the SDK can perform the
+// adding and removal of Azure subscription for archival feature
+// on a real Polaris instance.
+//
+// To run this test against a Polaris instance the following environment
+// variables needs to be set:
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   * TEST_INTEGRATION=1
+//   * TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
+//   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
+//
+// The file referred to by TEST_AZURESUBSCRIPTION_FILE should contain a single
+// testAzureSubscription JSON object.
+func TestAzureArchivalSubscriptionAddAndRemove(t *testing.T) {
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	ctx := context.Background()
+
+	testSubscription, err := testsetup.AzureSubscription()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add default Azure service principal to Polaris. Usually resolved using
+	// the environment variable AZURE_AUTH_LOCATION.
+	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default(testSubscription.TenantDomain))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add default Azure subscription to Polaris.
+	subscription := azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
+	id, err := client.Azure().AddSubscription(
+		ctx,
+		subscription,
+		core.FeatureCloudNativeArchival,
+		azure.Regions("eastus2"),
+		azure.Name(testSubscription.SubscriptionName),
+		azure.ResourceGroup(testSubscription.Archival.ResourceGroupName, "eastus2", make(map[string]string)),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the subscription was successfully added.
+	account, err := client.Azure().Subscription(
+		ctx,
+		azure.CloudAccountID(id),
+		core.FeatureCloudNativeArchival,
+	)
+	if err != nil {
+		t.Error(err)
+	}
+	if account.Name != testSubscription.SubscriptionName {
+		t.Errorf("invalid name: %v", account.Name)
+	}
+	if account.NativeID != testSubscription.SubscriptionID {
+		t.Errorf("invalid native id: %v", account.NativeID)
+	}
+	if account.TenantDomain != testSubscription.TenantDomain {
+		t.Errorf("invalid tenant domain: %v", account.TenantDomain)
+	}
+	if n := len(account.Features); n == 1 {
+		if name := account.Features[0].Name; name != "CLOUD_NATIVE_ARCHIVAL" {
+			t.Errorf("invalid feature name: %v", name)
+		}
+		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"eastus2"}) {
+			t.Errorf("invalid feature regions: %v", regions)
+		}
+		if account.Features[0].Status != "CONNECTED" {
+			t.Errorf("invalid feature status: %v", account.Features[0].Status)
+		}
+	} else {
+		t.Errorf("invalid number of features: %v", n)
+	}
+
+	// Update and verify regions for Azure account.
+	err = client.Azure().UpdateSubscription(ctx, azure.ID(subscription), core.FeatureCloudNativeArchival,
+		azure.Regions("westus2"))
+	if err != nil {
+		t.Error(err)
+	}
+	account, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.FeatureCloudNativeArchival)
+	if err != nil {
+		t.Error(err)
+	}
+	if n := len(account.Features); n == 1 {
+		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"westus2"}) {
+			t.Errorf("invalid feature regions: %v", regions)
+		}
+	} else {
+		t.Errorf("invalid number of features: %v", n)
+	}
+
+	// Remove the Azure subscription from Polaris keeping the snapshots.
+	err = client.Azure().RemoveSubscription(ctx, azure.ID(subscription), core.FeatureCloudNativeArchival, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the account was successfully removed.
+	_, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.FeatureCloudNativeArchival)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal(err)
+	}
+}
+
+// TestAzureArchivalEncryptionSubscriptionAddAndRemove verifies that the
+// SDK can perform the adding and removal of Azure subscription
+// for archival encryption feature on a real Polaris instance.
+//
+// To run this test against a Polaris instance the following environment
+// variables needs to be set:
+//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   * TEST_INTEGRATION=1
+//   * TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
+//   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
+//
+// The file referred to by TEST_AZURESUBSCRIPTION_FILE should contain a single
+// testAzureSubscription JSON object.
+func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	ctx := context.Background()
+
+	testSubscription, err := testsetup.AzureSubscription()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add default Azure service principal to Polaris. Usually resolved using
+	// the environment variable AZURE_AUTH_LOCATION.
+	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default(testSubscription.TenantDomain))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add subscription with archival feature
+	// as archival encryption is a child feature and cannot be
+	// added without that.
+	subscription := azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
+	id, err := client.Azure().AddSubscription(
+		ctx,
+		subscription,
+		core.FeatureCloudNativeArchival,
+		azure.Regions("eastus2"),
+		azure.Name(testSubscription.SubscriptionName),
+		azure.ResourceGroup(testSubscription.Archival.ResourceGroupName, "eastus2", make(map[string]string)),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add archival encryption feature.
+	subscription = azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
+	id, err = client.Azure().AddSubscription(
+		ctx,
+		subscription,
+		core.FeatureCloudNativeArchivalEncryption,
+		azure.Regions("eastus2"),
+		azure.Name(testSubscription.SubscriptionName),
+		azure.ManagedIdentity(
+			testSubscription.Archival.ManagedIdentityName,
+			testSubscription.Archival.ResourceGroupName,
+			testSubscription.Archival.PrincipalID,
+			"eastus2",
+		),
+		azure.ResourceGroup(
+			testSubscription.Archival.ResourceGroupName,
+			"eastus2",
+			make(map[string]string),
+		),
+	)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the subscription was successfully added.
+	account, err := client.Azure().Subscription(
+		ctx,
+		azure.CloudAccountID(id),
+		core.FeatureCloudNativeArchivalEncryption,
+	)
+	if err != nil {
+		t.Error(err)
+	}
+	if account.Name != testSubscription.SubscriptionName {
+		t.Errorf("invalid name: %v", account.Name)
+	}
+	if account.NativeID != testSubscription.SubscriptionID {
+		t.Errorf("invalid native id: %v", account.NativeID)
+	}
+	if account.TenantDomain != testSubscription.TenantDomain {
+		t.Errorf("invalid tenant domain: %v", account.TenantDomain)
+	}
+	if n := len(account.Features); n == 1 {
+		if name := account.Features[0].Name; name != "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION" {
+			t.Errorf("invalid feature name: %v", name)
+		}
+		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"eastus2"}) {
+			t.Errorf("invalid feature regions: %v", regions)
+		}
+		if account.Features[0].Status != "CONNECTED" {
+			t.Errorf("invalid feature status: %v", account.Features[0].Status)
+		}
+	} else {
+		t.Errorf("invalid number of features: %v", n)
+	}
+
+	// Update and verify regions for Azure account.
+	err = client.Azure().UpdateSubscription(ctx, azure.ID(subscription), core.FeatureCloudNativeArchivalEncryption,
+		azure.Regions("westus2"))
+	if err != nil {
+		t.Error(err)
+	}
+	account, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.FeatureCloudNativeArchivalEncryption)
+	if err != nil {
+		t.Error(err)
+	}
+	if n := len(account.Features); n == 1 {
+		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"westus2"}) {
+			t.Errorf("invalid feature regions: %v", regions)
+		}
+	} else {
+		t.Errorf("invalid number of features: %v", n)
+	}
+
+	// Remove the Azure subscription from Polaris keeping the snapshots.
+	// Removing archival feature as encryption is a child feature of it.
+	err = client.Azure().RemoveSubscription(ctx, azure.ID(subscription), core.FeatureCloudNativeArchival, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the account was successfully removed.
+	_, err = client.Azure().Subscription(ctx, azure.ID(subscription), core.FeatureCloudNativeArchivalEncryption)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal(err)
+	}
+}
+
 // TestAzureExocompute verifies that the SDK can perform basic Exocompute
 // operations on a real Polaris instance.
 //

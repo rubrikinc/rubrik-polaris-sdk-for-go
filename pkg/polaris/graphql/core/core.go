@@ -52,16 +52,17 @@ const (
 type Feature string
 
 const (
-	FeatureInvalid               Feature = ""
-	FeatureAll                   Feature = "ALL"
-	FeatureAppFlows              Feature = "APP_FLOWS"
-	FeatureArchival              Feature = "ARCHIVAL"
-	FeatureCloudAccounts         Feature = "CLOUDACCOUNTS"
-	FeatureCloudNativeArchival   Feature = "CLOUD_NATIVE_ARCHIVAL"
-	FeatureCloudNativeProtection Feature = "CLOUD_NATIVE_PROTECTION"
-	FeatureExocompute            Feature = "EXOCOMPUTE"
-	FeatureGCPSharedVPCHost      Feature = "GCP_SHARED_VPC_HOST"
-	FeatureRDSProtection         Feature = "RDS_PROTECTION"
+	FeatureInvalid                       Feature = ""
+	FeatureAll                           Feature = "ALL"
+	FeatureAppFlows                      Feature = "APP_FLOWS"
+	FeatureArchival                      Feature = "ARCHIVAL"
+	FeatureCloudAccounts                 Feature = "CLOUDACCOUNTS"
+	FeatureCloudNativeArchival           Feature = "CLOUD_NATIVE_ARCHIVAL"
+	FeatureCloudNativeArchivalEncryption Feature = "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"
+	FeatureCloudNativeProtection         Feature = "CLOUD_NATIVE_PROTECTION"
+	FeatureExocompute                    Feature = "EXOCOMPUTE"
+	FeatureGCPSharedVPCHost              Feature = "GCP_SHARED_VPC_HOST"
+	FeatureRDSProtection                 Feature = "RDS_PROTECTION"
 )
 
 var validFeatures = map[Feature]struct{}{

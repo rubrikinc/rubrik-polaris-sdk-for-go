@@ -55,6 +55,15 @@ type testAzureSubscription struct {
 	Exocompute struct {
 		SubnetID string `json:"subnetId"`
 	} `json:"exocompute"`
+
+	// should be in EastUS2 region
+	// for integration test
+	// as region is hardcoded there.
+	Archival struct {
+		ManagedIdentityName string `json:"managedIdentityName"`
+		PrincipalID         string `json:"managedIdentityPrincipalId"`
+		ResourceGroupName   string `json:"resourceGroupName"`
+	} `json:"archival"`
 }
 
 // Load test project information from the file pointed to by the

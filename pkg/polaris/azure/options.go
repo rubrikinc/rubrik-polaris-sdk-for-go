@@ -25,11 +25,14 @@ import (
 	"fmt"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 type options struct {
-	name    string
-	regions []azure.Region
+	name                string
+	regions             []azure.Region
+	resourceGroup       *azure.ResourceGroup
+	featureSpecificInfo *azure.FeatureSpecificInfo
 }
 
 // OptionFunc gives the value passed to the function creating the OptionFunc
@@ -82,4 +85,82 @@ func Regions(regions ...string) OptionFunc {
 
 		return nil
 	}
+}
+
+// ResourceGroup returns an OptionFunc that gives the specified resource group
+// to the options instance. This is currently only needed for archival feature.
+// Support will be added for other features soon.
+func ResourceGroup(name, region string, tags map[string]string) OptionFunc {
+	return func(ctx context.Context, opts *options) error {
+		if name == "" {
+			return fmt.Errorf("invalid name for resource group")
+		}
+		r, err := azure.ParseRegion(region)
+		if err != nil {
+			return fmt.Errorf("failed to parse region: %v", err)
+		}
+
+		tagList := make([]azure.Tag, 0, len(tags))
+		for key, value := range tags {
+			tagList = append(tagList, azure.Tag{Key: key, Value: value})
+		}
+
+		opts.resourceGroup = &azure.ResourceGroup{
+			Name:    name,
+			TagList: &azure.TagList{Tags: tagList},
+			Region:  r,
+		}
+		return nil
+	}
+}
+
+// ManagedIdentity returns an OptionFunc that gives the specified managed
+// identity to the options instance. This is currently only needed for archival
+// encryption feature.
+func ManagedIdentity(name, resourceGroup, principalID, region string) OptionFunc {
+	return func(ctx context.Context, opts *options) error {
+		if name == "" {
+			return fmt.Errorf("invalid name for managed identity")
+		}
+		if resourceGroup == "" {
+			return fmt.Errorf("invalid resource group for managed identity")
+		}
+		if principalID == "" {
+			return fmt.Errorf("invalid principal ID for managed identity")
+		}
+
+		r, err := azure.ParseRegion(region)
+		if err != nil {
+			return fmt.Errorf("failed to parse region: %v", err)
+		}
+
+		if opts.featureSpecificInfo == nil {
+			opts.featureSpecificInfo = &azure.FeatureSpecificInfo{}
+		}
+		opts.featureSpecificInfo.UserAssignedManagedIdentity = &azure.UserAssignedManagedIdentity{
+			Name:              name,
+			ResourceGroupName: resourceGroup,
+			PrincipalID:       principalID,
+			Region:            r,
+		}
+		return nil
+	}
+}
+
+func verifyOptionsForFeature(opts options, feature core.Feature) error {
+	switch feature {
+	case core.FeatureCloudNativeArchivalEncryption:
+		if opts.featureSpecificInfo == nil ||
+			opts.featureSpecificInfo.UserAssignedManagedIdentity == nil {
+			return fmt.Errorf("managed identity should be added for archival encryption")
+		}
+		if opts.resourceGroup == nil {
+			return fmt.Errorf("resource group should be added for archival encryption")
+		}
+	case core.FeatureCloudNativeArchival:
+		if opts.resourceGroup == nil {
+			return fmt.Errorf("resource group should be added for archival")
+		}
+	}
+	return nil
 }
