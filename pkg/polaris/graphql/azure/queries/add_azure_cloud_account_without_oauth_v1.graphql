@@ -8,11 +8,11 @@ mutation RubrikPolarisSDKRequest($tenantDomainName: String!, $azureCloudType: Az
                 nativeId: $subscriptionId
             }
             features: [{
-                featureType:   $feature,
-                policyVersion: $policyVersion,
+                featureType: $feature,
             }]
         },
         regions:          $regions,
+        policyVersion:    $policyVersion
     }) {
         tenantId
         status {

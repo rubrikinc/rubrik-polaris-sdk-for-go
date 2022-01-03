@@ -50,11 +50,11 @@ var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAcco
                 nativeId: $subscriptionId
             }
             features: [{
-                featureType: $feature,
+                featureType:   $feature,
+                policyVersion: $policyVersion,
             }]
         },
         regions:          $regions,
-        policyVersion:    $policyVersion
     }) {
         tenantId
         status {
@@ -74,6 +74,32 @@ var addAzureCloudAccountWithoutOauthV0Query = `mutation SdkGolangAddAzureCloudAc
         subscriptions: {
             name:     $subscriptionName,
             nativeId: $subscriptionId
+        },
+        regions:          $regions,
+        policyVersion:    $policyVersion
+    }) {
+        tenantId
+        status {
+            azureSubscriptionRubrikId
+            azureSubscriptionNativeId
+            error
+        }
+    }
+}`
+
+// addAzureCloudAccountWithoutOauthV1 GraphQL query
+var addAzureCloudAccountWithoutOauthV1Query = `mutation SdkGolangAddAzureCloudAccountWithoutOauthV1($tenantDomainName: String!, $azureCloudType: AzureCloudTypeEnum!, $regions: [AzureCloudAccountRegionEnum!]!, $feature: CloudAccountFeatureEnum!, $subscriptionName: String!, $subscriptionId: String!, $policyVersion: Int!) {
+    result: addAzureCloudAccountWithoutOAuth(input: {
+        tenantDomainName: $tenantDomainName,
+        azureCloudType:   $azureCloudType,
+        subscriptions: {
+            subscription: {
+                name:     $subscriptionName,
+                nativeId: $subscriptionId
+            }
+            features: [{
+                featureType: $feature,
+            }]
         },
         regions:          $regions,
         policyVersion:    $policyVersion
