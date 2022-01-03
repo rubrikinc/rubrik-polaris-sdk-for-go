@@ -126,6 +126,8 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 	query := addAzureCloudAccountWithoutOauthQuery
 	if graphql.VersionOlderThan(a.Version, "master-43871", "v20211214") {
 		query = addAzureCloudAccountWithoutOauthV0Query
+	} else if graphql.VersionOlderThan(a.Version, "master-44361", "v20220104") {
+		query = addAzureCloudAccountWithoutOauthV1Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Cloud            Cloud        `json:"azureCloudType"`
