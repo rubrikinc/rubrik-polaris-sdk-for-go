@@ -918,7 +918,7 @@ func TestUnassignSLA(t *testing.T) {
 	}
 	oks, err := client.Core().AssignSlaForSnappableHierarchies(
 		ctx,
-		uuid.Nil,
+		nil,
 		core.NoAssignment,
 		[]uuid.UUID{testNSID},
 		[]core.SnappableLevelHierarchyType{},

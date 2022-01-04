@@ -186,7 +186,7 @@ const (
 // to ObjectsIDs.
 func (a API) AssignSlaForSnappableHierarchies(
 	ctx context.Context,
-	globalSLAOptionalFid uuid.UUID,
+	globalSLAOptionalFid *uuid.UUID,
 	globalSLAAssignType SLAAssignType,
 	ObjectIDs []uuid.UUID,
 	applicableSnappableTypes []SnappableLevelHierarchyType,
@@ -196,12 +196,6 @@ func (a API) AssignSlaForSnappableHierarchies(
 ) ([]bool, error) {
 	a.GQL.Log().Print(log.Trace, "polaris/graphql/core.AssignSlaForSnappableHierarchies")
 
-	var slaID *uuid.UUID
-	if globalSLAOptionalFid == uuid.Nil {
-		slaID = nil
-	} else {
-		slaID = &globalSLAOptionalFid
-	}
 	buf, err := a.GQL.Request(
 		ctx,
 		assignSlaForSnappableHierarchiesQuery,
@@ -214,7 +208,7 @@ func (a API) AssignSlaForSnappableHierarchies(
 			ShouldApplyToNonPolicySnapshots bool                            `json:"shouldApplyToNonPolicySnapshots"`
 			GlobalExistingSnapshotRetention GlobalExistingSnapshotRetention `json:"globalExistingSnapshotRetention"`
 		}{
-			GlobalSLAOptionalFid:            slaID,
+			GlobalSLAOptionalFid:            globalSLAOptionalFid,
 			GlobalSLAAssignType:             globalSLAAssignType,
 			ObjectIDs:                       ObjectIDs,
 			ApplicableSnappableTypes:        applicableSnappableTypes,
