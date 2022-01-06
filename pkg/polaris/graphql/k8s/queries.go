@@ -24,6 +24,59 @@
 
 package k8s
 
+// getActivitySeries GraphQL query
+var getActivitySeriesQuery = `query SdkGolangGetActivitySeries(
+    $activitySeriesId: UUID!,
+    $clusterUuid: UUID,
+) {
+    activitySeries(activitySeriesId: $activitySeriesId, clusterUuid: $clusterUuid) {
+        activityConnection {
+            nodes {
+                activityInfo
+                message
+                status
+                time
+                severity
+            }
+        }
+    }
+}`
+
+// getActivitySeriesConnection GraphQL query
+var getActivitySeriesConnectionQuery = `query SdkGolangGetActivitySeriesConnection(
+    $after: String,
+    $filters: ActivitySeriesFilterInput,
+) {
+    activitySeriesConnection(
+        after: $after,
+        filters: $filters,
+    ) {
+        edges {
+            node {
+                id
+                lastActivityType
+                lastActivityStatus
+                severity
+                objectId
+                objectName
+                objectType
+                activitySeriesId
+                progress
+                activityConnection {
+                    nodes {
+                        message
+                    }
+                }
+            }
+        }
+        pageInfo {
+            endCursor,
+            hasNextPage,
+        },
+        count,
+    }
+}`
+
 // getNamespaces GraphQL query
 var getNamespacesQuery = `query SdkGolangGetNamespaces(
     $after: String,
@@ -58,6 +111,27 @@ var getNamespacesQuery = `query SdkGolangGetNamespaces(
             hasNextPage,
         },
         count
+    }
+}`
+
+// getTaskchainInfo GraphQL query
+var getTaskchainInfoQuery = `query SdkGolangGetTaskchainInfo(
+    $taskchainId: String!,
+    $jobType: String!,
+) {
+    getTaskchainInfo(
+        taskchainId: $taskchainId,
+        jobType: $jobType,
+    ) {
+        taskchainId,
+        state,
+        startTime,
+        endTime,
+        progress,
+        jobId,
+        jobType,
+        error,
+        account,
     }
 }`
 
@@ -107,5 +181,21 @@ var listSlaQuery = `query SdkGolangListSla(
             hasNextPage,
         },
         count,
+    }
+}`
+
+// restoreK8sNamespace GraphQL query
+var restoreK8sNamespaceQuery = `mutation SdkGolangRestoreK8sNamespace($k8sNamespaceRestoreRequest: K8sNamespaceRestore!) {
+    restoreK8sNamespace(k8sNamespaceRestoreRequest: $k8sNamespaceRestoreRequest) {
+        taskchainId
+        jobId
+    }
+}`
+
+// snapshotK8sNamespace GraphQL query
+var snapshotK8sNamespaceQuery = `mutation SdkGolangSnapshotK8sNamespace($input: CreateK8sNamespaceSnapshotsInput!) {
+    createK8sNamespaceSnapshots(input: $input) {
+        taskchainId
+        jobId
     }
 }`
