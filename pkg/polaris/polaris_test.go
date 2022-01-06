@@ -28,8 +28,10 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
@@ -1059,9 +1061,9 @@ func TestK8sListSLA(t *testing.T) {
 
 	ctx := context.Background()
 	testServiceAccount := ServiceAccount{
-		ClientID:       "client|eL0QtgQN1zn3PS5CeafkSUtDB0K5lx9v",
-		ClientSecret:   "ucP5vQvFU80F26tdW7emfUNdBb_ZDlpea2j5e1OvwjNxUz4B0kk7j06u-_jb2S75",
-		Name:           "kupr-test",
+		ClientID:       "client|2YDsG5FIYWQ7OW8AiRqA2tPwQEwhHpfU",
+		ClientSecret:   "ZLeoEHA6dvDGciAO1bFIIWJmdjlLLawFa6WC8IdpBfgphecsUQYB4pAOKovQbt4e",
+		Name:           "kupatest",
 		AccessTokenURI: "https://demo.dev-017.my.rubrik-lab.com/api/client_token",
 	}
 	// Load configuration and create client. Usually resolved using the
@@ -1107,10 +1109,10 @@ func TestListK8sNamespace(t *testing.T) {
 	testClusterID := uuid.MustParse("a840e205-ac36-408d-9a12-7690769aaa88")
 	ctx := context.Background()
 	testServiceAccount := ServiceAccount{
-		ClientID:       "client|eL0QtgQN1zn3PS5CeafkSUtDB0K5lx9v",
-		ClientSecret:   "ZLfPyiFwXi-EBHkYq3WDE8IJd0Cb8WZaTUDwzQIsgIDRUBbBbjepeqxTV7jiyHCu",
-		Name:           "kupr-test",
-		AccessTokenURI: "https://demo.dev-017.my.rubrik-lab.com/api/client_token",
+		ClientID:       "client|sIIw3uAxHqFsn3kUR78AUf1zMewyLB7p",
+		ClientSecret:   "WnmUX2luK5X_TcrMMzZUrFh-mU7gWWti0VS90onJ_uwygXsYajUwVOlWE1MArIs_",
+		Name:           "test",
+		AccessTokenURI: "https://manifest.dev-045.my.rubrik-lab.com/api/client_token",
 	}
 	// Load configuration and create client. Usually resolved using the
 	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
@@ -1123,7 +1125,6 @@ func TestListK8sNamespace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	nss, err := client.K8s().ListK8sNamespace(ctx, testClusterID)
 	if err != nil {
 		t.Fatal(err)
@@ -1169,4 +1170,188 @@ func TestUnassignSLA(t *testing.T) {
 	}
 	t.Logf("%v\n", oks)
 
+}
+
+// TestTakeK8NamespaceSnapshot verifies that the SDK can take a
+// namespace snapshot
+func TestTakeK8NamespaceSnapshot(t *testing.T) {
+	testClusterID := uuid.MustParse("a840e205-ac36-408d-9a12-7690769aaa88")
+	ctx := context.Background()
+	testServiceAccount := ServiceAccount{
+		ClientID:       "client|2YDsG5FIYWQ7OW8AiRqA2tPwQEwhHpfU",
+		ClientSecret:   "ZLeoEHA6dvDGciAO1bFIIWJmdjlLLawFa6WC8IdpBfgphecsUQYB4pAOKovQbt4e",
+		Name:           "kupatest",
+		AccessTokenURI: "https://demo.dev-017.my.rubrik-lab.com/api/client_token",
+	}
+
+	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	nss, err := client.K8s().ListK8sNamespace(ctx, testClusterID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(nss) == 0 {
+		t.Fatal("No namespace found")
+	}
+
+	ns := nss[0] // get first namespace
+	info, err := client.K8s().TakeK8NamespaceSnapshot(ctx, ns.ID, "00000000-0000-0000-0000-000000000000")
+	if err!= nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("%v\n", info)
+}
+
+// TestGetTaskchainInfo verifies that the SDK can fetch taskchain states
+func TestGetTaskchainInfo(t *testing.T) {
+	testClusterID := uuid.MustParse("a840e205-ac36-408d-9a12-7690769aaa88")
+	ctx := context.Background()
+	testServiceAccount := ServiceAccount{
+		ClientID:       "client|2YDsG5FIYWQ7OW8AiRqA2tPwQEwhHpfU",
+		ClientSecret:   "ZLeoEHA6dvDGciAO1bFIIWJmdjlLLawFa6WC8IdpBfgphecsUQYB4pAOKovQbt4e",
+		Name:           "kupatest",
+		AccessTokenURI: "https://demo.dev-017.my.rubrik-lab.com/api/client_token",
+	}
+
+	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	nss, err := client.K8s().ListK8sNamespace(ctx, testClusterID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(nss) == 0 {
+		t.Fatal("No namespace found")
+	}
+
+	ns := nss[1] // get first namespace
+	info, err := client.K8s().TakeK8NamespaceSnapshot(ctx, ns.ID, "00000000-0000-0000-0000-000000000000")
+	if err!= nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 6; i++ {
+		tk, err := client.K8s().GetTaskchainInfo(ctx, info.TaskchainId, "snapshot-namespace")
+		if err == nil {
+			fmt.Printf("%v\n", tk)
+			return
+		}
+		if !strings.Contains(err.Error(), "Taskchain does not exist") ||
+			!strings.Contains(err.Error(), "State key not found in response") ||
+			!strings.Contains(err.Error(), "Taskchain still in wait state") {
+			fmt.Printf("%v : %v\n", info, err)
+			time.Sleep(15 * time.Second)
+		} else {
+			t.Fatal(err.Error())
+		}
+	}
+
+	t.Fatal("Task chain does not start")
+}
+
+// TestGetActivitySeriesConnection verifies that the SDK can fetch events
+func TestGetActivitySeriesConnection(t *testing.T) {
+	ctx := context.Background()
+	testServiceAccount := ServiceAccount{
+		ClientID:       "client|gYtGLLyhcp3rI02kkbIdZt7CMFzIhg54",
+		ClientSecret:   "JQfCRwuiiwzB_7Ibt1UIOcAT0wQTYnRNF2ikPD8aTaTOqbiYhfm8v7Lb6pY6NBis",
+		Name:           "manifest-unit-test",
+		AccessTokenURI: "https://manifest.dev-045.my.rubrik-lab.com/api/client_token",
+	}
+
+	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := time.Now().Add(time.Duration(-2) * time.Hour).UTC()
+	as, err := client.K8s().GetActivitySeriesConnection(ctx, []string{"KuprNamespace"}, ts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("%v\n", len(as))
+	fmt.Printf("%v\n", as)
+}
+
+// TestRestoreK8NamespaceSnapshot verifies that the SDK can restore a
+// namespace snapshot
+func TestRestoreK8NamespaceSnapshot(t *testing.T) {
+	testClusterID := uuid.MustParse("a840e205-ac36-408d-9a12-7690769aaa88")
+	ctx := context.Background()
+	testServiceAccount := ServiceAccount{
+		ClientID:       "client|2YDsG5FIYWQ7OW8AiRqA2tPwQEwhHpfU",
+		ClientSecret:   "ZLeoEHA6dvDGciAO1bFIIWJmdjlLLawFa6WC8IdpBfgphecsUQYB4pAOKovQbt4e",
+		Name:           "kupatest",
+		AccessTokenURI: "https://demo.dev-017.my.rubrik-lab.com/api/client_token",
+	}
+
+	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	nss, err := client.K8s().ListK8sNamespace(ctx, testClusterID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(nss) == 0 {
+		t.Fatal("No namespace found")
+	}
+
+	ns := nss[13] // get first namespace
+	info, err := client.K8s().TakeK8NamespaceSnapshot(ctx, ns.ID, "00000000-0000-0000-0000-000000000000")
+	if err!= nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 50; i++ {
+		tk, err := client.K8s().GetTaskchainInfo(ctx, info.TaskchainId, "snapshot-namespace")
+		if err == nil {
+			fmt.Printf("%v\n", tk)
+			return
+		}
+		time.Sleep(30 * time.Second)
+	}
+
+	t.Fatal("Task chain does not start")
+}
+
+// TestGetActivitySeries verifies that the SDK can fetch events
+func TestGetActivitySeries(t *testing.T) {
+	ctx := context.Background()
+	testServiceAccount := ServiceAccount{
+		ClientID:       "client|sIIw3uAxHqFsn3kUR78AUf1zMewyLB7p",
+		ClientSecret:   "WnmUX2luK5X_TcrMMzZUrFh-mU7gWWti0VS90onJ_uwygXsYajUwVOlWE1MArIs_",
+		Name:           "test",
+		AccessTokenURI: "https://manifest.dev-045.my.rubrik-lab.com/api/client_token",
+	}
+
+	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	asid, err := uuid.Parse("f43ab616-bf3d-4ed3-9a87-adcf329aace8")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cid, err := uuid.Parse("00000000-0000-0000-0000-000000000000")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	as, err := client.K8s().GetActivitySeries(ctx, asid, cid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("%v\n", len(as))
+	fmt.Printf("%v\n", as)
 }

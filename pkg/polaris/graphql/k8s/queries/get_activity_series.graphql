@@ -1,0 +1,16 @@
+query RubrikPolarisSDKRequest(
+    $activitySeriesId: UUID!,
+    $clusterUuid: UUID,
+) {
+    activitySeries(activitySeriesId: $activitySeriesId, clusterUuid: $clusterUuid) {
+        activityConnection {
+            nodes {
+                activityInfo
+                message
+                status
+                time
+                severity
+            }
+        }
+    }
+}
