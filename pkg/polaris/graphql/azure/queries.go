@@ -40,7 +40,7 @@ var addAzureCloudAccountExocomputeConfigurationsQuery = `mutation SdkGolangAddAz
 }`
 
 // addAzureCloudAccountWithoutOauth GraphQL query
-var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAccountWithoutOauth($tenantDomainName: String!, $azureCloudType: AzureCloudTypeEnum!, $regions: [AzureCloudAccountRegionEnum!]!, $feature: CloudAccountFeatureEnum!, $subscriptionName: String!, $subscriptionId: String!, $policyVersion: Int!) {
+var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAccountWithoutOauth($tenantDomainName: String!, $azureCloudType: AzureCloudTypeEnum!, $regions: [AzureCloudAccountRegionEnum!]!, $feature: AddAzureCloudAccountFeatureInputWithoutOauth!, $subscriptionName: String!, $subscriptionId: String!) {
     result: addAzureCloudAccountWithoutOAuth(input: {
         tenantDomainName: $tenantDomainName,
         azureCloudType:   $azureCloudType,
@@ -49,10 +49,7 @@ var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAcco
                 name:     $subscriptionName,
                 nativeId: $subscriptionId
             }
-            features: [{
-                featureType:   $feature,
-                policyVersion: $policyVersion,
-            }]
+            features: [$feature]
         },
         regions:          $regions,
     }) {

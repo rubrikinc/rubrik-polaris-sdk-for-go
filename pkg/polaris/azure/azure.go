@@ -178,6 +178,7 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error)
 // around this by translating FeatureAll to the following list of features.
 var allFeatures = []core.Feature{
 	core.FeatureCloudNativeArchival,
+	core.FeatureCloudNativeArchivalEncryption,
 	core.FeatureCloudNativeProtection,
 	core.FeatureExocompute,
 }
@@ -330,6 +331,10 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 			return uuid.Nil, fmt.Errorf("failed to lookup option: %v", err)
 		}
 	}
+	err = verifyOptionsForFeature(options, feature)
+	if err != nil {
+		return uuid.Nil, err
+	}
 	if options.name != "" {
 		config.name = options.name
 	}
@@ -349,8 +354,15 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		return uuid.Nil, fmt.Errorf("failed to get permissions: %v", err)
 	}
 
-	_, err = azure.Wrap(a.gql).AddCloudAccountWithoutOAuth(ctx, azure.PublicCloud, config.id, feature,
-		config.name, config.tenantDomain, options.regions, perms.PermissionVersion)
+	cloudAccountFeature := azure.CloudAccountFeature{
+		PolicyVersion:       perms.PermissionVersion,
+		FeatureType:         feature,
+		ResourceGroup:       options.resourceGroup,
+		FeatureSpecificInfo: options.featureSpecificInfo,
+	}
+
+	_, err = azure.Wrap(a.gql).AddCloudAccountWithoutOAuth(ctx, azure.PublicCloud, config.id, cloudAccountFeature,
+		config.name, config.tenantDomain, options.regions)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to add subscription: %v", err)
 	}
