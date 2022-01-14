@@ -1279,6 +1279,36 @@ func TestGetActivitySeriesConnection(t *testing.T) {
 	fmt.Printf("%v\n", as)
 }
 
+// TestListNamespace verifies that the SDK can fetch snapshots
+func TestListNamespace(t *testing.T) {
+	ctx := context.Background()
+	testServiceAccount := ServiceAccount{
+		ClientID:       "client|sIIw3uAxHqFsn3kUR78AUf1zMewyLB7p",
+		ClientSecret:   "WnmUX2luK5X_TcrMMzZUrFh-mU7gWWti0VS90onJ_uwygXsYajUwVOlWE1MArIs_",
+		Name:           "test",
+		AccessTokenURI: "https://manifest.dev-045.my.rubrik-lab.com/api/client_token",
+	}
+
+	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	st := time.Now().Add(time.Duration(-2) * time.Hour).UTC()
+	et := time.Now().UTC()
+
+	sId, err := uuid.Parse("922a32e7-674a-56b7-9750-97ae683cd76f")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := client.K8s().GetK8sNamespace(ctx, sId, st, et)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("%v\n", len(s))
+	fmt.Printf("%v\n", s)
+}
 // TestRestoreK8NamespaceSnapshot verifies that the SDK can restore a
 // namespace snapshot
 func TestRestoreK8NamespaceSnapshot(t *testing.T) {

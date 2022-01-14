@@ -64,6 +64,17 @@ type ActivitySeriesConnectionFilter struct {
 	LastUpdatedGt time.Time   `json:"lastUpdated_gt,omitempty"`
 }
 
+type TimeRangeInput struct {
+	Start time.Time   `json:"start,omitempty"`
+	End time.Time   `json:"end,omitempty"`
+}
+
+type PolarisSnapshotFilterInput struct {
+	SnappableId string   `json:"snappableId,omitempty"`
+	IsOnDemandSnapshot bool   `json:"lastUpdated_gt,omitempty"`
+	TimeRange TimeRangeInput   `json:"timeRange,omitempty"`
+}
+
 type K8sNamespace struct {
 	ID                  uuid.UUID      `json:"id"`
 	K8sClusterID        uuid.UUID      `json:"k8sClusterID"`
@@ -140,6 +151,12 @@ type ActivitySeries struct {
 	Severity string `json:"severity"`
 }
 
+type Snapshot struct {
+	Id	uuid.UUID `json:"id"`
+	Date	time.Time `json:"date"`
+	IsOnDemandSnapshot bool `json:"isOnDemandSnapshot"`
+}
+
 type TaskchainInfo struct {
 	TaskchainId	string `json:"taskchainId"`
 	State string `json:"state"`
@@ -173,7 +190,7 @@ type NamespaceSnaphotInfo struct {
 }
 
 func (a API) ListSLA(ctx context.Context) ([]core.GlobalSLA, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/k8s.ListSLA")
+	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.ListSLA")
 
 	slaDomains := make([]core.GlobalSLA, 0, 10)
 	cursor := ""
@@ -233,7 +250,7 @@ func (a API) ListSLA(ctx context.Context) ([]core.GlobalSLA, error) {
 }
 
 func (a API) ListK8sNamespace(ctx context.Context, clusterID uuid.UUID) ([]K8sNamespace, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/k8s.GetKuprNamespaces")
+	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.GetKuprNamespaces")
 
 	namespaces := make([]K8sNamespace, 0, 10)
 	cursor := ""
@@ -291,7 +308,7 @@ func (a API) GetTaskchainInfo(
 	taskchainId string,
 	jobType string,
 	) (TaskchainInfo, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/k8s.getTaskchainInfo")
+	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.getTaskchainInfo")
 
 	buf, err := a.GQL.Request(ctx, getTaskchainInfoQuery, struct {
 		TaskchainId     string    `json:"taskchainId"`
@@ -327,7 +344,7 @@ func (a API) TakeK8NamespaceSnapshot(
 	namespaceId uuid.UUID,
 	onDemandSnapshotSlaId string,
 	) (NamespaceSnaphotInfo, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/k8s.takeK8NamespaceSnapshot")
+	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.takeK8NamespaceSnapshot")
 
 	namespaceSnapshot := NamespaceSnapshot{
 		NamespaceId: namespaceId,
@@ -368,7 +385,7 @@ func (a API) GetActivitySeriesConnection(
 	objectType []string,
 	lastUpdatedGtInUTC time.Time,
 	) ([]ActivitySeriesConnection, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/k8s.getActivitySeriesConnection")
+	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.getActivitySeriesConnection")
 	activities := make([]ActivitySeriesConnection, 0, 10)
 	cursor := ""
 	for {
@@ -424,7 +441,7 @@ func (a API) RestoreK8NamespaceSnapshot(
 	targetClusterUUID uuid.UUID,
 	targetNamespaceName string,
 ) (NamespaceSnaphotInfo, error) {
-	a.GQL.Log().Print(log.Trace, "polaris/graphql/k8s.RestoreK8NamespaceSnapshot")
+	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.RestoreK8NamespaceSnapshot")
 
 	buf, err := a.GQL.Request(ctx, restoreK8sNamespaceQuery, struct {
 		K8sNamespaceRestoreRequest NamespaceRestoreRequest    `json:"k8sNamespaceRestoreRequest"`
@@ -496,4 +513,62 @@ func (a API) GetActivitySeries(
 
 
 	return payload.Data.ActivitySeriesData.ActivityConnection.Nodes, nil
+}
+
+func (a API) GetK8sNamespace(
+	ctx context.Context,
+	snappableId uuid.UUID,
+	startTime time.Time,
+	endTime time.Time,
+) ([]Snapshot, error) {
+	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.k8sNamespace")
+	snapshots := make([]Snapshot, 0, 10)
+	cursor := ""
+	for {
+		buf, err := a.GQL.Request(
+			ctx,
+			k8sNamespaceQuery,
+			struct {
+				After     string    `json:"after,omitempty"`
+				Filters    PolarisSnapshotFilterInput  `json:"filters,omitempty"`
+				Fid    uuid.UUID  `json:"fid,omitempty"`
+			}{
+				After:     cursor,
+				Filters:    PolarisSnapshotFilterInput{
+					TimeRange: TimeRangeInput{Start:startTime, End:endTime},
+				},
+				Fid: snappableId,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		var payload struct {
+			Data struct {
+				K8sNamespace struct {
+					SnapshotConnection struct {
+						PageInfo struct {
+							EndCursor   string `json:"endCursor"`
+							HasNextPage bool   `json:"hasNextPage"`
+						} `json:"pageInfo"`
+						Nodes []Snapshot `json:"nodes"`
+					} `json:"snapshotConnection"`
+				} `json:"k8sNamespace"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(buf, &payload); err != nil {
+			return nil, err
+		}
+
+		for _, s := range payload.Data.K8sNamespace.SnapshotConnection.Nodes {
+			snapshots = append(snapshots, s)
+		}
+
+		if !payload.Data.K8sNamespace.SnapshotConnection.PageInfo.HasNextPage {
+			break
+		}
+		cursor = payload.Data.K8sNamespace.SnapshotConnection.PageInfo.EndCursor
+	}
+	return snapshots, nil
 }

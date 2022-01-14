@@ -135,6 +135,27 @@ var getTaskchainInfoQuery = `query SdkGolangGetTaskchainInfo(
     }
 }`
 
+// k8sNamespace GraphQL query
+var k8sNamespaceQuery = `query SdkGolangK8sNamespace(
+    $after: String
+    $filter: PolarisSnapshotFilterInput,
+    $fid: UUID!,
+) {
+    k8sNamespace(fid: $fid) {
+        snapshotConnection(after: $after, filter: $filter) {
+            pageInfo {
+                endCursor
+                hasNextPage
+            }
+            nodes {
+                id
+                date
+                isOnDemandSnapshot
+            }
+        }
+    }
+}`
+
 // listSla GraphQL query
 var listSlaQuery = `query SdkGolangListSla(
     $after: String,
