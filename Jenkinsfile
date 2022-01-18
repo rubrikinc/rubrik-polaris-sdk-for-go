@@ -28,6 +28,9 @@ pipeline {
     triggers {
         cron(env.BRANCH_NAME == 'main' ? 'H 20 * * *' : '')
     }
+    parameters {
+        booleanParam(name: 'TEST_INTEGRATION', defaultValue: currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0)
+    }
     environment {
         // Polaris credentials.
         RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
@@ -49,7 +52,7 @@ pipeline {
         GOOGLE_APPLICATION_CREDENTIALS = credentials('tf-sdk-test-gcp-service-account')
 
         // Run integration tests with the nightly build.
-        TEST_INTEGRATION = currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size()
+        TEST_INTEGRATION = "${params.TEST_INTEGRATION}"
     }
     stages {
         stage('Lint') {
@@ -65,7 +68,7 @@ pipeline {
             }
         }
         stage('Pre-test') {
-            when { not { environment name: 'TEST_INTEGRATION', value: '0' } }
+            when { expression { params.TEST_INTEGRATION == true } }
             steps {
                 sh 'go run ./internal/cmd/testenv -precheck'
             }
@@ -88,7 +91,7 @@ pipeline {
     post {
         always {
             script {
-                if (currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0) {
+                if (params.TEST_INTEGRATION) {
                     sh 'go run ./internal/cmd/testenv -cleanup'
                 }
             }
