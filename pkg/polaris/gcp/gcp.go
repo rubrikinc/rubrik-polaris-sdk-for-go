@@ -126,7 +126,11 @@ func (a API) projectsAllFeatures(ctx context.Context, filter string) ([]CloudAcc
 			return nil, fmt.Errorf("failed to get projects: %v", err)
 		}
 
-		for _, account := range accounts {
+		for i := range accounts {
+			// We need to create a copy of the account here since we use it as a
+			// pointer further down.
+			account := accounts[i]
+
 			if mapped, ok := accountMap[account.ID]; ok {
 				mapped.Features = append(mapped.Features, account.Features...)
 			} else {
