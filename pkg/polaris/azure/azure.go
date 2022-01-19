@@ -230,7 +230,11 @@ func (a API) subscriptionsAllFeatures(ctx context.Context, filter string) ([]Clo
 			return nil, fmt.Errorf("failed to get subscriptions: %v", err)
 		}
 
-		for _, account := range accounts {
+		for i := range accounts {
+			// We need to create a copy of account here since use it as a
+			// pointer further down.
+			account := accounts[i]
+
 			if mapped, ok := accountMap[account.ID]; ok {
 				mapped.Features = append(mapped.Features, account.Features...)
 			} else {
