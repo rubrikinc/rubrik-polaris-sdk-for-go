@@ -231,7 +231,7 @@ func (a API) subscriptionsAllFeatures(ctx context.Context, filter string) ([]Clo
 		}
 
 		for i := range accounts {
-			// We need to create a copy of account here since use it as a
+			// We need to create a copy of the account here since we use it as a
 			// pointer further down.
 			account := accounts[i]
 
