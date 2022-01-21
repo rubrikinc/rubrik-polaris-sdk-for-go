@@ -1302,7 +1302,44 @@ func TestListNamespace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s, err := client.K8s().GetK8sNamespace(ctx, sId, st, et)
+	cursor := ""
+	for {
+		s, cur, err := client.K8s().GetK8sNamespace(ctx, sId, st, et, cursor)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Printf("%v\n", len(s))
+		fmt.Printf("%v\n", s)
+		if cur == "" {
+			fmt.Println("Completed")
+			return
+		}
+		cursor = cur
+	}
+}
+
+// TestGetAllSnapshotPvcs verifies that the SDK can fetch all PVC's for a
+// snapshot
+func TestGetAllSnapshotPvcs(t *testing.T) {
+	ctx := context.Background()
+	testServiceAccount := ServiceAccount{
+		ClientID:       "client|sIIw3uAxHqFsn3kUR78AUf1zMewyLB7p",
+		ClientSecret:   "WnmUX2luK5X_TcrMMzZUrFh-mU7gWWti0VS90onJ_uwygXsYajUwVOlWE1MArIs_",
+		Name:           "test",
+		AccessTokenURI: "https://manifest.dev-045.my.rubrik-lab.com/api/client_token",
+	}
+
+	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	snappableId, err := uuid.Parse("0a9758bf-2dca-5b93-9482-6f9a2940012e")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := client.K8s().GetAllSnapshotPVCS(ctx, snappableId, "550a8411-0f2d-4d71-acbc-1560970ab001")
 	if err != nil {
 		t.Fatal(err)
 	}

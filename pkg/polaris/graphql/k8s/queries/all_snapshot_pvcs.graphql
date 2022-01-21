@@ -1,0 +1,15 @@
+query RubrikPolarisSDKRequest(
+    $snapshotId: String!,
+    $snappableId: UUID!,
+) {
+    allSnapshotPvcs(snapshotId: $snapshotId, snappableId: $snappableId) {
+        id
+        name
+        capacity
+        accessMode
+        storageClass
+        volume
+        labels
+        phase
+    }
+}

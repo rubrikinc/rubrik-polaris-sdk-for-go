@@ -24,6 +24,23 @@
 
 package k8s
 
+// allSnapshotPvcs GraphQL query
+var allSnapshotPvcsQuery = `query SdkGolangAllSnapshotPvcs(
+    $snapshotId: String!,
+    $snappableId: UUID!,
+) {
+    allSnapshotPvcs(snapshotId: $snapshotId, snappableId: $snappableId) {
+        id
+        name
+        capacity
+        accessMode
+        storageClass
+        volume
+        labels
+        phase
+    }
+}`
+
 // getActivitySeries GraphQL query
 var getActivitySeriesQuery = `query SdkGolangGetActivitySeries(
     $activitySeriesId: UUID!,

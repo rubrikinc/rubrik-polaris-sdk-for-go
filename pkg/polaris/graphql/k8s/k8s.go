@@ -84,6 +84,17 @@ type K8sNamespace struct {
 	EffectiveSLADomain  core.SLADomain `json:"effectiveSlaDomain"`
 }
 
+type PvcInformation struct {
+	ID	string	`json:"id"`
+	Name	string	`json:"name"`
+	Capacity	string	`json:"capacity"`
+	AccessMode	string	`json:"accessMode"`
+	StorageClass	string	`json:"storageClass"`
+	Volume	string	`json:"volume"`
+	Labels	string	`json:"labels"`
+	Phase	string	`json:"phase"`
+}
+
 type ActivityConnection struct {
 	Message string   `json:"message,omitempty"`
 }
@@ -520,55 +531,87 @@ func (a API) GetK8sNamespace(
 	snappableId uuid.UUID,
 	startTime time.Time,
 	endTime time.Time,
-) ([]Snapshot, error) {
+	cursor string,
+) ([]Snapshot, string, error) {
 	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.k8sNamespace")
 	snapshots := make([]Snapshot, 0, 10)
-	cursor := ""
-	for {
-		buf, err := a.GQL.Request(
-			ctx,
-			k8sNamespaceQuery,
-			struct {
-				After     string    `json:"after,omitempty"`
-				Filters    PolarisSnapshotFilterInput  `json:"filters,omitempty"`
-				Fid    uuid.UUID  `json:"fid,omitempty"`
-			}{
-				After:     cursor,
-				Filters:    PolarisSnapshotFilterInput{
-					TimeRange: TimeRangeInput{Start:startTime, End:endTime},
-				},
-				Fid: snappableId,
+	buf, err := a.GQL.Request(
+		ctx,
+		k8sNamespaceQuery,
+		struct {
+			After     string    `json:"after,omitempty"`
+			Filters    PolarisSnapshotFilterInput  `json:"filters,omitempty"`
+			Fid    uuid.UUID  `json:"fid,omitempty"`
+		}{
+			After:     cursor,
+			Filters:    PolarisSnapshotFilterInput{
+				TimeRange: TimeRangeInput{Start:startTime, End:endTime},
 			},
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		var payload struct {
-			Data struct {
-				K8sNamespace struct {
-					SnapshotConnection struct {
-						PageInfo struct {
-							EndCursor   string `json:"endCursor"`
-							HasNextPage bool   `json:"hasNextPage"`
-						} `json:"pageInfo"`
-						Nodes []Snapshot `json:"nodes"`
-					} `json:"snapshotConnection"`
-				} `json:"k8sNamespace"`
-			} `json:"data"`
-		}
-		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, err
-		}
-
-		for _, s := range payload.Data.K8sNamespace.SnapshotConnection.Nodes {
-			snapshots = append(snapshots, s)
-		}
-
-		if !payload.Data.K8sNamespace.SnapshotConnection.PageInfo.HasNextPage {
-			break
-		}
-		cursor = payload.Data.K8sNamespace.SnapshotConnection.PageInfo.EndCursor
+			Fid: snappableId,
+		},
+	)
+	if err != nil {
+		return nil, "", err
 	}
-	return snapshots, nil
+
+	var payload struct {
+		Data struct {
+			K8sNamespace struct {
+				SnapshotConnection struct {
+					PageInfo struct {
+						EndCursor   string `json:"endCursor"`
+						HasNextPage bool   `json:"hasNextPage"`
+					} `json:"pageInfo"`
+					Nodes []Snapshot `json:"nodes"`
+				} `json:"snapshotConnection"`
+			} `json:"k8sNamespace"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, "", err
+	}
+
+	for _, s := range payload.Data.K8sNamespace.SnapshotConnection.Nodes {
+		snapshots = append(snapshots, s)
+	}
+
+	if !payload.Data.K8sNamespace.SnapshotConnection.PageInfo.HasNextPage {
+		return snapshots, "", nil
+	}
+	cursor = payload.Data.K8sNamespace.SnapshotConnection.PageInfo.EndCursor
+	return snapshots, cursor, nil
+}
+
+func (a API) GetAllSnapshotPVCS(
+	ctx context.Context,
+	snappableId uuid.UUID,
+	snapshotId string,
+) ([]PvcInformation, error) {
+	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.allSnapshotPvcs")
+	buf, err := a.GQL.Request(
+		ctx,
+		allSnapshotPvcsQuery,
+		struct {
+			SnapshotId     string    `json:"snapshotId"`
+			SnappableId    uuid.UUID  `json:"snappableId"`
+		}{
+			SnapshotId:     snapshotId,
+			SnappableId:    snappableId,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var payload struct {
+		Data struct {
+			PvcInfo[] PvcInformation `json:"allSnapshotPvcs"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, err
+	}
+
+	return payload.Data.PvcInfo, nil
 }
