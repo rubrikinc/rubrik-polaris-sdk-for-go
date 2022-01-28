@@ -1275,6 +1275,7 @@ func TestGetActivitySeriesConnection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	fmt.Printf("%v\n", as[2].ActivityInfo)
 	fmt.Printf("%v\n", len(as))
 	fmt.Printf("%v\n", as)
 }

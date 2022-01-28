@@ -166,6 +166,13 @@ type Snapshot struct {
 	Id	uuid.UUID `json:"id"`
 	Date	time.Time `json:"date"`
 	IsOnDemandSnapshot bool `json:"isOnDemandSnapshot"`
+	ExpirationDate time.Time `json:"expirationDate"`
+	IsCorrupted bool `json:"isCorrupted"`
+	IsDeletedFromSource bool `json:"isDeletedFromSource"`
+	IsReplicated bool `json:"isReplicated"`
+	IsArchived bool `json:"isArchived"`
+	IsReplica bool `json:"isReplica"`
+	IsExpired bool `json:"isExpired"`
 }
 
 type TaskchainInfo struct {
