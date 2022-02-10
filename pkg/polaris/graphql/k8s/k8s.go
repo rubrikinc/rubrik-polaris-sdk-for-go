@@ -500,7 +500,8 @@ func (a API) GetActivitySeries(
 	ctx context.Context,
 	activitySeriesId uuid.UUID,
 	clusterUuid uuid.UUID,
-) ([]ActivitySeries, error) {
+	cursor string,
+) ([]ActivitySeries, string, error) {
 	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.getActivitySeries")
 	buf, err := a.GQL.Request(
 		ctx,
@@ -508,29 +509,39 @@ func (a API) GetActivitySeries(
 		struct {
 			ActivitySeriesId     uuid.UUID    `json:"activitySeriesId"`
 			ClusterUuid    uuid.UUID  `json:"clusterUuid"`
+			After     string    `json:"after,omitempty"`
 		}{
 			ActivitySeriesId:     activitySeriesId,
 			ClusterUuid:    clusterUuid,
+			After:     cursor,
 		},
 	)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	var payload struct {
 		Data struct {
 			ActivitySeriesData struct {
 				ActivityConnection struct {
 					Nodes []ActivitySeries `json:"nodes"`
+					PageInfo struct {
+						EndCursor   string `json:"endCursor"`
+						HasNextPage bool   `json:"hasNextPage"`
+					} `json:"pageInfo"`
+					Count int `json:"count"`
 				} `json:"activityConnection"`
 			} `json:"activitySeries"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-
-	return payload.Data.ActivitySeriesData.ActivityConnection.Nodes, nil
+	if !payload.Data.ActivitySeriesData.ActivityConnection.PageInfo.HasNextPage {
+		return payload.Data.ActivitySeriesData.ActivityConnection.Nodes, "", nil
+	}
+	cursor = payload.Data.ActivitySeriesData.ActivityConnection.PageInfo.EndCursor
+	return payload.Data.ActivitySeriesData.ActivityConnection.Nodes, cursor, nil
 }
 
 func (a API) GetK8sNamespace(

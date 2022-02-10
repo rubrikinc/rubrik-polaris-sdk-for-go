@@ -995,9 +995,9 @@ func TestGcpPermissions(t *testing.T) {
 //   * TEST_INTEGRATION=1
 //   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 func TestListSLA(t *testing.T) {
-	if !boolEnvSet("TEST_INTEGRATION") {
-		t.Skipf("skipping due to env TEST_INTEGRATION not set")
-	}
+	//if !boolEnvSet("TEST_INTEGRATION") {
+	//	t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	//}
 
 	ctx := context.Background()
 
@@ -1275,7 +1275,6 @@ func TestGetActivitySeriesConnection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Printf("%v\n", as[2].ActivityInfo)
 	fmt.Printf("%v\n", len(as))
 	fmt.Printf("%v\n", as)
 }
@@ -1406,7 +1405,7 @@ func TestGetActivitySeries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	asid, err := uuid.Parse("f43ab616-bf3d-4ed3-9a87-adcf329aace8")
+	asid, err := uuid.Parse("82337567-3b65-4114-8b7b-f2df470a9fee")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1416,7 +1415,7 @@ func TestGetActivitySeries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	as, err := client.K8s().GetActivitySeries(ctx, asid, cid)
+	as, _, err := client.K8s().GetActivitySeries(ctx, asid, cid, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,9 +1,10 @@
 query RubrikPolarisSDKRequest(
     $activitySeriesId: UUID!,
     $clusterUuid: UUID,
+    $after: String,
 ) {
     activitySeries(activitySeriesId: $activitySeriesId, clusterUuid: $clusterUuid) {
-        activityConnection {
+        activityConnection(after: $after) {
             nodes {
                 activityInfo
                 message
@@ -11,6 +12,11 @@ query RubrikPolarisSDKRequest(
                 time
                 severity
             }
+            pageInfo {
+                endCursor
+                hasNextPage
+            }
+            count
         }
     }
 }

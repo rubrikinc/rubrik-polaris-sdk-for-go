@@ -45,9 +45,10 @@ var allSnapshotPvcsQuery = `query SdkGolangAllSnapshotPvcs(
 var getActivitySeriesQuery = `query SdkGolangGetActivitySeries(
     $activitySeriesId: UUID!,
     $clusterUuid: UUID,
+    $after: String,
 ) {
     activitySeries(activitySeriesId: $activitySeriesId, clusterUuid: $clusterUuid) {
-        activityConnection {
+        activityConnection(after: $after) {
             nodes {
                 activityInfo
                 message
@@ -55,6 +56,11 @@ var getActivitySeriesQuery = `query SdkGolangGetActivitySeries(
                 time
                 severity
             }
+            pageInfo {
+                endCursor
+                hasNextPage
+            }
+            count
         }
     }
 }`
@@ -168,6 +174,13 @@ var k8sNamespaceQuery = `query SdkGolangK8sNamespace(
                 id
                 date
                 isOnDemandSnapshot
+                expirationDate
+                isCorrupted
+                isDeletedFromSource
+                isReplicated
+                isArchived
+                isReplica
+                isExpired
             }
         }
     }
