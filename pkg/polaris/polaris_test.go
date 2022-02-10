@@ -1415,10 +1415,11 @@ func TestGetActivitySeries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	as, _, err := client.K8s().GetActivitySeries(ctx, asid, cid, "")
+	as, cursor, err := client.K8s().GetActivitySeries(ctx, asid, cid, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	fmt.Printf("%v\n", len(as))
 	fmt.Printf("%v\n", as)
+	fmt.Printf("%v\n", cursor)
 }
