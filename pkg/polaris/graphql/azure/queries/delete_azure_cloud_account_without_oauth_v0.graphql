@@ -1,5 +1,5 @@
 mutation RubrikPolarisSDKRequest($subscriptionIds: [UUID!]!, $features: [CloudAccountFeatureEnum!]!) {
-    result: deleteAzureCloudAccountWithoutOauth(input: {
+    result: deleteAzureCloudAccountWithoutOAuth(input: {
         azureSubscriptionRubrikIds: $subscriptionIds
         features:                   $features,
     }) {
