@@ -1,5 +1,5 @@
 mutation RubrikPolarisSDKRequest($tenantDomainName: String!, $azureCloudType: AzureCloudTypeEnum!, $regions: [AzureCloudAccountRegionEnum!]!, $feature: AddAzureCloudAccountFeatureInputWithoutOauth!, $subscriptionName: String!, $subscriptionId: String!) {
-    result: addAzureCloudAccountWithoutOauth(input: {
+    result: addAzureCloudAccountWithoutOAuth(input: {
         tenantDomainName: $tenantDomainName,
         azureCloudType:   $azureCloudType,
         subscriptions: {

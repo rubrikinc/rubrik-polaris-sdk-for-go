@@ -172,6 +172,8 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 		query = addAzureCloudAccountWithoutOauthV0Query
 	} else if graphql.VersionOlderThan(a.Version, "master-44361", "v20220104") {
 		query = addAzureCloudAccountWithoutOauthV1Query
+	} else if graphql.VersionOlderThan(a.Version, "master-45622", "v20220222") {
+		query = addAzureCloudAccountWithoutOauthV2Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Cloud            Cloud               `json:"azureCloudType"`
@@ -218,7 +220,12 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 func (a API) DeleteCloudAccountWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, deleteAzureCloudAccountWithoutOauthQuery, struct {
+	query := deleteAzureCloudAccountWithoutOauthQuery
+	if graphql.VersionOlderThan(a.Version, "master-45622", "v20220222") {
+		query = deleteAzureCloudAccountWithoutOauthV0Query
+	}
+
+	buf, err := a.GQL.Request(ctx, query, struct {
 		IDs      []uuid.UUID    `json:"subscriptionIds"`
 		Features []core.Feature `json:"features"`
 	}{IDs: []uuid.UUID{id}, Features: []core.Feature{feature}})
@@ -226,7 +233,7 @@ func (a API) DeleteCloudAccountWithoutOAuth(ctx context.Context, id uuid.UUID, f
 		return fmt.Errorf("failed to request DeleteCloudAccountWithoutOAuth: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "deleteAzureCloudAccountWithoutOauth(%v, %q): %s", id, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%v, %q): %s", graphql.QueryName(query), id, feature, string(buf))
 
 	var payload struct {
 		Data struct {
