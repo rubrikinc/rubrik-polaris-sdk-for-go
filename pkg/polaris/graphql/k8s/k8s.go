@@ -495,7 +495,7 @@ func (a API) RestoreK8NamespaceSnapshot(
 	)
 	var payload struct {
 		Data struct {
-			Info NamespaceSnaphotInfo
+			Info NamespaceSnaphotInfo `json:"restoreK8sNamespace"`
 		} `json:"data"`
 	}
 
