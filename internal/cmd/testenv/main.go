@@ -139,6 +139,7 @@ func clean(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
+
 		azureAcc, err := client.Azure().Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
 		switch {
 		case errors.Is(err, graphql.ErrNotFound):
@@ -150,9 +151,10 @@ func clean(ctx context.Context, client *polaris.Client) error {
 			return fmt.Errorf("existing Azure subscription %q isn't the expected test subscription %q, won't remove",
 				azureAcc.NativeID, testSub.SubscriptionID)
 		}
-		// Azure doesn't automatically remove exocompute configs when removing
-		// the subscription so we need to do it manually here
-		exoCfgs, err := client.Azure().ExocomputeConfigs(ctx, azure.SubscriptionID(testSub.SubscriptionID))
+
+		// Polaris doesn't automatically remove exocompute configs when removing
+		// the subscription, so we need to do it manually here.
+		exoCfgs, err := client.Azure().ExocomputeConfigs(ctx, azure.CloudAccountID(azureAcc.ID))
 		if err != nil {
 			return err
 		}
@@ -162,10 +164,14 @@ func clean(ctx context.Context, client *polaris.Client) error {
 			}
 		}
 
-		sub := azure.Subscription(testSub.SubscriptionID, testSub.TenantDomain)
-		// TODO: we might need to iterate over azureAcc.Features to remove
-		// all of them in the future
-		return client.Azure().RemoveSubscription(ctx, azure.ID(sub), core.FeatureCloudNativeProtection, false)
+		// Remove all features for the subscription.
+		for _, feature := range azureAcc.Features {
+			if err := client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(azureAcc.ID), feature.Name, false); err != nil {
+				return fmt.Errorf("failed to remove Azure cloud account fetaure: %v", pretty.Sprint(feature))
+			}
+		}
+
+		return nil
 	})
 
 	// GCP
