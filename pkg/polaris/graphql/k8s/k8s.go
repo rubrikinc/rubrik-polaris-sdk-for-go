@@ -196,10 +196,21 @@ type CreateK8sNamespaceSnapshots struct {
 	SnapshotInput	[]NamespaceSnapshot `json:"snapshotInput"`
 }
 
+type LabelSelectorRequirement struct {
+	Key string `json:"key"`
+	Operator string `json:"operator"`
+	Values[] string `json:"values"`
+}
+
+type LabelSelector struct {
+	MatchExpressions[] LabelSelectorRequirement `json:"matchExpressions"`
+}
+
 type NamespaceRestoreRequest struct {
 	SnapshotUUID uuid.UUID `json:"snapshotUUID"`
 	TargetClusterUUID uuid.UUID `json:"targetClusterUUID"`
 	TargetNamespaceName string `json:"targetNamespaceName"`
+	LabelSelector LabelSelector `json:"labelSelector"`
 }
 
 type NamespaceSnaphotInfo struct {
@@ -458,6 +469,7 @@ func (a API) RestoreK8NamespaceSnapshot(
 	snapshotUUID uuid.UUID,
 	targetClusterUUID uuid.UUID,
 	targetNamespaceName string,
+	labelSelector LabelSelector,
 ) (NamespaceSnaphotInfo, error) {
 	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.RestoreK8NamespaceSnapshot")
 
@@ -468,6 +480,7 @@ func (a API) RestoreK8NamespaceSnapshot(
 			SnapshotUUID: snapshotUUID,
 			TargetClusterUUID: targetClusterUUID,
 			TargetNamespaceName: targetNamespaceName,
+			LabelSelector: labelSelector,
 		},
 	})
 	if err != nil {

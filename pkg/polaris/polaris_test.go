@@ -38,6 +38,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/k8s"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -1349,13 +1350,12 @@ func TestGetAllSnapshotPvcs(t *testing.T) {
 // TestRestoreK8NamespaceSnapshot verifies that the SDK can restore a
 // namespace snapshot
 func TestRestoreK8NamespaceSnapshot(t *testing.T) {
-	testClusterID := uuid.MustParse("a840e205-ac36-408d-9a12-7690769aaa88")
 	ctx := context.Background()
 	testServiceAccount := ServiceAccount{
-		ClientID:       "client|2YDsG5FIYWQ7OW8AiRqA2tPwQEwhHpfU",
-		ClientSecret:   "ZLeoEHA6dvDGciAO1bFIIWJmdjlLLawFa6WC8IdpBfgphecsUQYB4pAOKovQbt4e",
-		Name:           "kupatest",
-		AccessTokenURI: "https://demo.dev-017.my.rubrik-lab.com/api/client_token",
+		ClientID:       "client|sIIw3uAxHqFsn3kUR78AUf1zMewyLB7p",
+		ClientSecret:   "WnmUX2luK5X_TcrMMzZUrFh-mU7gWWti0VS90onJ_uwygXsYajUwVOlWE1MArIs_",
+		Name:           "test",
+		AccessTokenURI: "https://manifest.dev-045.my.rubrik-lab.com/api/client_token",
 	}
 
 	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
@@ -1363,23 +1363,34 @@ func TestRestoreK8NamespaceSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nss, err := client.K8s().ListK8sNamespace(ctx, testClusterID)
+	// Restore
+	snapshotUUID, _ := uuid.Parse("34684208-dbc0-5345-b9b8-10a4a17f34ae")
+	targetClusterUUID, _ := uuid.Parse("c0b5d189-78d9-4191-8f9a-b15f6dc30790")
+	targetNamespaceName := "testgaurav2"
+	pvcIds := []string{"a9b72331-f1b2-482e-8848-67f2036b4696"}
+
+	matchExpression := k8s.LabelSelectorRequirement{
+		Key: "rubrik.com/k8s-pvc-label",
+		Operator: "In",
+		Values: pvcIds,
+	}
+	labelSelector := k8s.LabelSelector{
+		MatchExpressions: []k8s.LabelSelectorRequirement{matchExpression},
+	}
+
+	info, err := client.K8s().RestoreK8NamespaceSnapshot(
+		ctx,
+		snapshotUUID,
+		targetClusterUUID,
+		targetNamespaceName,
+		labelSelector,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(nss) == 0 {
-		t.Fatal("No namespace found")
-	}
-
-	ns := nss[13] // get first namespace
-	info, err := client.K8s().TakeK8NamespaceSnapshot(ctx, ns.ID, "00000000-0000-0000-0000-000000000000")
-	if err!= nil {
-		t.Fatal(err)
-	}
-
 	for i := 0; i < 50; i++ {
-		tk, err := client.K8s().GetTaskchainInfo(ctx, info.TaskchainId, "snapshot-namespace")
+		tk, err := client.K8s().GetTaskchainInfo(ctx, info.TaskchainId, "restore-namespace")
 		if err == nil {
 			fmt.Printf("%v\n", tk)
 			return
