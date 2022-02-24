@@ -550,6 +550,10 @@ func (a API) GetActivitySeries(
 		return nil, "", err
 	}
 
+	if !payload.Data.ActivitySeriesData.ActivityConnection.PageInfo.HasNextPage {
+		return payload.Data.ActivitySeriesData.ActivityConnection.Nodes, "", nil
+	}
+
 	cursor = payload.Data.ActivitySeriesData.ActivityConnection.PageInfo.EndCursor
 	return payload.Data.ActivitySeriesData.ActivityConnection.Nodes, cursor, nil
 }
