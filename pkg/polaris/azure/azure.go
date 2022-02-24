@@ -86,6 +86,15 @@ func (f Feature) HasRegion(region string) bool {
 	return false
 }
 
+// Polaris does not support the AllFeatures for Azure cloud accounts. We work
+// around this by translating FeatureAll to the following list of features.
+var allFeatures = []core.Feature{
+	core.FeatureCloudNativeArchival,
+	core.FeatureCloudNativeArchivalEncryption,
+	core.FeatureCloudNativeProtection,
+	core.FeatureExocompute,
+}
+
 // toCloudAccountID returns the Polaris cloud account id for the specified
 // identity. If the identity is a Polaris cloud account id no remote endpoint
 // is called.
@@ -109,24 +118,33 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 		return id, nil
 	}
 
-	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, core.FeatureCloudNativeProtection, false)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get tenants: %v", err)
+	// Note that the same tenant can show up for multiple features.
+	tenantIDs := make(map[uuid.UUID]struct{})
+	for _, feature := range allFeatures {
+		tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, feature, false)
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("failed to get tenants: %v", err)
+		}
+		for _, tenant := range tenants {
+			tenantIDs[tenant.ID] = struct{}{}
+		}
 	}
 
-	for _, tenant := range tenants {
-		tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.FeatureCloudNativeProtection, identity.id)
-		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to get tenant: %v", err)
-		}
-		if len(tenantWithAccounts.Accounts) == 0 {
-			continue
-		}
-		if len(tenantWithAccounts.Accounts) > 1 {
-			return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotUnique)
-		}
+	for tenantID := range tenantIDs {
+		for _, feature := range allFeatures {
+			tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenantID, feature, identity.id)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("failed to get tenant: %v", err)
+			}
+			if len(tenantWithAccounts.Accounts) == 0 {
+				continue
+			}
+			if len(tenantWithAccounts.Accounts) > 1 {
+				return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotUnique)
+			}
 
-		return tenantWithAccounts.Accounts[0].ID, nil
+			return tenantWithAccounts.Accounts[0].ID, nil
+		}
 	}
 
 	return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotFound)
@@ -154,33 +172,33 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error)
 		return uid, nil
 	}
 
-	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, core.FeatureCloudNativeProtection, false)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get tenants: %v", err)
+	// Note that the same tenant can show up for multiple features.
+	tenantIDs := make(map[uuid.UUID]struct{})
+	for _, feature := range allFeatures {
+		tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, feature, false)
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("failed to get tenants: %v", err)
+		}
+		for _, tenant := range tenants {
+			tenantIDs[tenant.ID] = struct{}{}
+		}
 	}
 
-	for _, tenant := range tenants {
-		tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.FeatureCloudNativeProtection, "")
-		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to get tenant: %v", err)
-		}
-		for _, account := range tenantWithAccounts.Accounts {
-			if account.ID == uid {
-				return account.ID, nil
+	for tenantID := range tenantIDs {
+		for _, feature := range allFeatures {
+			tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenantID, feature, "")
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("failed to get tenant: %v", err)
+			}
+			for _, account := range tenantWithAccounts.Accounts {
+				if account.ID == uid {
+					return account.ID, nil
+				}
 			}
 		}
 	}
 
 	return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotFound)
-}
-
-// Polaris does not support the AllFeatures for Azure cloud accounts. We work
-// around this by translating FeatureAll to the following list of features.
-var allFeatures = []core.Feature{
-	core.FeatureCloudNativeArchival,
-	core.FeatureCloudNativeArchivalEncryption,
-	core.FeatureCloudNativeProtection,
-	core.FeatureExocompute,
 }
 
 // subscriptions return all subscriptions for the given feature and filter.
