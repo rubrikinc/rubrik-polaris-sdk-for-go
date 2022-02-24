@@ -512,7 +512,6 @@ func (a API) RestoreK8NamespaceSnapshot(
 func (a API) GetActivitySeries(
 	ctx context.Context,
 	activitySeriesId uuid.UUID,
-	clusterUuid uuid.UUID,
 	cursor string,
 ) ([]ActivitySeries, string, error) {
 	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.getActivitySeries")
@@ -521,11 +520,9 @@ func (a API) GetActivitySeries(
 		getActivitySeriesQuery,
 		struct {
 			ActivitySeriesId     uuid.UUID    `json:"activitySeriesId"`
-			ClusterUuid    uuid.UUID  `json:"clusterUuid"`
 			After     string    `json:"after,omitempty"`
 		}{
 			ActivitySeriesId:     activitySeriesId,
-			ClusterUuid:    clusterUuid,
 			After:     cursor,
 		},
 	)

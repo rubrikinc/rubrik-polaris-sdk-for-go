@@ -1421,12 +1421,7 @@ func TestGetActivitySeries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cid, err := uuid.Parse("00000000-0000-0000-0000-000000000000")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	as, cursor, err := client.K8s().GetActivitySeries(ctx, asid, cid, "")
+	as, cursor, err := client.K8s().GetActivitySeries(ctx, asid, "")
 	if err != nil {
 		t.Fatal(err)
 	}
