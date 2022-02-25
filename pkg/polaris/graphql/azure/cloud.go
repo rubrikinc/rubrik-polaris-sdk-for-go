@@ -174,6 +174,8 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 		query = addAzureCloudAccountWithoutOauthV1Query
 	} else if graphql.VersionOlderThan(a.Version, "master-45622", "v20220222") {
 		query = addAzureCloudAccountWithoutOauthV2Query
+	} else if graphql.VersionOlderThan(a.Version, "master-45693", "v20220301") {
+		query = addAzureCloudAccountWithoutOauthV3Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Cloud            Cloud               `json:"azureCloudType"`
@@ -269,7 +271,11 @@ type updateSubscription struct {
 func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.Feature, name string, toAdd, toRemove []Region) error {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, updateAzureCloudAccountQuery, struct {
+	query := updateAzureCloudAccountQuery
+	if graphql.VersionOlderThan(a.Version, "master-45693", "v20220301") {
+		query = updateAzureCloudAccountV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Features      []core.Feature       `json:"features"`
 		ToAdd         []Region             `json:"regionsToAdd,omitempty"`
 		ToRemove      []Region             `json:"regionsToRemove,omitempty"`
@@ -279,7 +285,8 @@ func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.
 		return fmt.Errorf("failed to request UpdateCloudAccount: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "updateAzureCloudAccount(%q, %v, %v %v, %v): %s", id, feature, name, toAdd, toRemove, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %v, %v %v, %v): %s", graphql.QueryName(query), id, feature, name,
+		toAdd, toRemove, string(buf))
 
 	var payload struct {
 		Data struct {

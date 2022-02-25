@@ -32,6 +32,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -128,7 +129,6 @@ func FormatRegions(regions []Region) []string {
 	return regs
 }
 
-// AzureRegions -
 var validRegions = map[Region]struct{}{
 	RegionAustraliaCentral:   {},
 	RegionAustraliaCentral2:  {},
@@ -186,7 +186,7 @@ func ParseRegion(region string) (Region, error) {
 		return r, nil
 	}
 
-	// AWS region name.
+	// Azure region name.
 	r = Region(strings.ToUpper(region))
 	if _, ok := validRegions[r]; ok {
 		return r, nil
@@ -229,7 +229,11 @@ func Wrap(gql *graphql.Client) API {
 func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cloud, appID, appTenantID uuid.UUID, appName, appTenantDomain, appSecretKey string) error {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, setAzureCloudAccountCustomerAppCredentialsQuery, struct {
+	query := setAzureCloudAccountCustomerAppCredentialsQuery
+	if graphql.VersionOlderThan(a.Version, "master-45693", "v20220301") {
+		query = setAzureCloudAccountCustomerAppCredentialsV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Cloud        Cloud     `json:"azureCloudType"`
 		ID           uuid.UUID `json:"appId"`
 		Name         string    `json:"appName"`
@@ -241,7 +245,7 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 		return fmt.Errorf("failed to request SetCloudAccountCustomerAppCredentials: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "setAzureCloudAccountCustomerAppCredentials(%q, %q, %q, \"<REDACTED>\", %q, %q): %s", cloud,
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q, %q, \"<REDACTED>\", %q, %q): %s", graphql.QueryName(query), cloud,
 		appID, appName, appTenantID, appTenantDomain, string(buf))
 
 	var payload struct {
