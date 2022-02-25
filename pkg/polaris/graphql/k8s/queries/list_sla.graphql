@@ -14,7 +14,7 @@ query RubrikPolarisSDKRequest(
                         duration,
                         unit,
                     },
-                    objectTypeList,
+                    objectTypes,
                     firstFullBackupWindows {
                         durationInHours,
                         startTimeAttributes {

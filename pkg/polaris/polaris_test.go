@@ -1062,10 +1062,10 @@ func TestK8sListSLA(t *testing.T) {
 
 	ctx := context.Background()
 	testServiceAccount := ServiceAccount{
-		ClientID:       "client|2YDsG5FIYWQ7OW8AiRqA2tPwQEwhHpfU",
-		ClientSecret:   "ZLeoEHA6dvDGciAO1bFIIWJmdjlLLawFa6WC8IdpBfgphecsUQYB4pAOKovQbt4e",
-		Name:           "kupatest",
-		AccessTokenURI: "https://demo.dev-017.my.rubrik-lab.com/api/client_token",
+		ClientID:       "client|sIIw3uAxHqFsn3kUR78AUf1zMewyLB7p",
+		ClientSecret:   "WnmUX2luK5X_TcrMMzZUrFh-mU7gWWti0VS90onJ_uwygXsYajUwVOlWE1MArIs_",
+		Name:           "test",
+		AccessTokenURI: "https://manifest.dev-045.my.rubrik-lab.com/api/client_token",
 	}
 	// Load configuration and create client. Usually resolved using the
 	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.

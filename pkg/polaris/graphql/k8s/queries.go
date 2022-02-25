@@ -203,7 +203,7 @@ var listSlaQuery = `query SdkGolangListSla(
                         duration,
                         unit,
                     },
-                    objectTypeList,
+                    objectTypes,
                     firstFullBackupWindows {
                         durationInHours,
                         startTimeAttributes {
