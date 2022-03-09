@@ -29,6 +29,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -71,7 +72,11 @@ type CloudAccountWithFeatures struct {
 func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature core.Feature) (CloudAccountWithFeatures, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, awsCloudAccountWithFeaturesQuery, struct {
+	query := awsCloudAccountWithFeaturesQuery
+	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+		query = awsCloudAccountWithFeaturesV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID       uuid.UUID      `json:"cloudAccountId"`
 		Features []core.Feature `json:"features"`
 	}{ID: id, Features: []core.Feature{feature}})
@@ -79,7 +84,7 @@ func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature
 		return CloudAccountWithFeatures{}, fmt.Errorf("failed to request CloudAccountWithFeatures: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "awsCloudAccountWithFeatures(%q, %q): %s", id, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), id, feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -99,7 +104,11 @@ func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature
 func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountWithFeatures, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, allAwsCloudAccountsWithFeaturesQuery, struct {
+	query := allAwsCloudAccountsWithFeaturesQuery
+	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+		query = allAwsCloudAccountsWithFeaturesV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Feature core.Feature `json:"feature"`
 		Filter  string       `json:"columnSearchFilter"`
 	}{Filter: filter, Feature: feature})
@@ -107,7 +116,7 @@ func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature
 		return nil, fmt.Errorf("failed to request CloudAccountsWithFeatures: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "allAwsCloudAccountsWithFeatures(%q, %q): %s", filter, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), filter, feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -139,7 +148,11 @@ type CloudAccountInitiate struct {
 func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string, feature core.Feature) (CloudAccountInitiate, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, validateAndCreateAwsCloudAccountQuery, struct {
+	query := validateAndCreateAwsCloudAccountQuery
+	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+		query = validateAndCreateAwsCloudAccountV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID       string         `json:"nativeId"`
 		Name     string         `json:"accountName"`
 		Features []core.Feature `json:"features"`
@@ -148,7 +161,7 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 		return CloudAccountInitiate{}, fmt.Errorf("failed to request ValidateAndCreateCloudAccount: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "validateAndCreateAwsCloudAccount(%q, %q, %q): %s", id, name, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q, %q): %s", graphql.QueryName(query), id, name, feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -189,7 +202,11 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string, feature core.Feature, regions []Region, init CloudAccountInitiate) error {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountProtectionQuery, struct {
+	query := finalizeAwsCloudAccountProtectionQuery
+	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+		query = finalizeAwsCloudAccountProtectionV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID             string           `json:"nativeId"`
 		Name           string           `json:"accountName"`
 		Regions        []Region         `json:"awsRegions,omitempty"`
@@ -202,7 +219,7 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string
 		return fmt.Errorf("failed to request FinalizeCloudAccountProtection: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "finalizeAwsCloudAccountProtection(%q, %q, %q, %q, %v, %q, %q): %s", id, name, regions, init.ExternalID,
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q, %q, %q, %v, %q, %q): %s", graphql.QueryName(query), id, name, regions, init.ExternalID,
 		init.FeatureVersions, feature, init.StackName, string(buf))
 
 	var payload struct {
@@ -235,7 +252,11 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string
 func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feature core.Feature) (cloudFormationURL string, err error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, prepareAwsCloudAccountDeletionQuery, struct {
+	query := prepareAwsCloudAccountDeletionQuery
+	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+		query = prepareAwsCloudAccountDeletionV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID    `json:"cloudAccountId"`
 		Feature core.Feature `json:"feature"`
 	}{ID: id, Feature: feature})
@@ -243,7 +264,7 @@ func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feat
 		return "", fmt.Errorf("failed to request PrepareCloudAccountDeletion: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "prepareAwsCloudAccountDeletion(%q, %q): %s", id, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), id, feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -268,7 +289,11 @@ func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feat
 func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, feature core.Feature) error {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountDeletionQuery, struct {
+	query := finalizeAwsCloudAccountDeletionQuery
+	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+		query = finalizeAwsCloudAccountDeletionV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID    `json:"cloudAccountId"`
 		Feature core.Feature `json:"feature"`
 	}{ID: id, Feature: feature})
@@ -276,7 +301,7 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 		return fmt.Errorf("failed to request FinalizeCloudAccountDeletion: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "finalizeAwsCloudAccountDeletion(%q, %q): %s", id, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), id, feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -303,7 +328,11 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAction, id uuid.UUID, feature core.Feature, regions []Region) error {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, updateAwsCloudAccountQuery, struct {
+	query := updateAwsCloudAccountQuery
+	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+		query = updateAwsCloudAccountV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Action  core.CloudAccountAction `json:"action"`
 		ID      uuid.UUID               `json:"cloudAccountId"`
 		Regions []Region                `json:"awsRegions"`
@@ -313,7 +342,7 @@ func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAct
 		return fmt.Errorf("failed to request UpdateCloudAccount: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "updateAwsCloudAccount(%q, %q, %q, %q): %s", action, id, regions, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q, %q, %q): %s", graphql.QueryName(query), action, id, regions, feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -382,7 +411,11 @@ func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, regions Region) 
 func (a API) PrepareFeatureUpdateForAwsCloudAccount(ctx context.Context, id uuid.UUID, features []core.Feature) (cfmURL string, tmplURL string, err error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, prepareFeatureUpdateForAwsCloudAccountQuery, struct {
+	query := prepareFeatureUpdateForAwsCloudAccountQuery
+	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+		query = prepareFeatureUpdateForAwsCloudAccountV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID       uuid.UUID      `json:"cloudAccountId"`
 		Features []core.Feature `json:"features"`
 	}{ID: id, Features: features})
@@ -390,7 +423,7 @@ func (a API) PrepareFeatureUpdateForAwsCloudAccount(ctx context.Context, id uuid
 		return "", "", fmt.Errorf("failed to request PrepareFeatureUpdateForAwsCloudAccount: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "prepareFeatureUpdateForAwsCloudAccount(%q, %v): %s", id, features, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %v): %s", graphql.QueryName(query), id, features, string(buf))
 
 	var payload struct {
 		Data struct {
