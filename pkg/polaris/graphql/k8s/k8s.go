@@ -207,10 +207,10 @@ type LabelSelector struct {
 }
 
 type NamespaceRestoreRequest struct {
-	SnapshotUUID uuid.UUID `json:"snapshotUUID"`
-	TargetClusterUUID uuid.UUID `json:"targetClusterUUID"`
-	TargetNamespaceName string `json:"targetNamespaceName"`
-	LabelSelector LabelSelector `json:"labelSelector"`
+	SnapshotUUID        uuid.UUID      `json:"snapshotUUID"`
+	TargetClusterUUID   uuid.UUID      `json:"targetClusterUUID"`
+	TargetNamespaceName string         `json:"targetNamespaceName"`
+	LabelSelector       *LabelSelector `json:"labelSelector,omitempty"`
 }
 
 type NamespaceSnaphotInfo struct {
@@ -336,13 +336,13 @@ func (a API) GetTaskchainInfo(
 	ctx context.Context,
 	taskchainId string,
 	jobType string,
-	) (TaskchainInfo, error) {
+) (TaskchainInfo, error) {
 	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.getTaskchainInfo")
 
 	buf, err := a.GQL.Request(ctx, getTaskchainInfoQuery, struct {
-		TaskchainId     string    `json:"taskchainId"`
-		JobType    string  `json:"jobType"`
-	}{TaskchainId:	taskchainId, JobType:	jobType})
+		TaskchainId string `json:"taskchainId"`
+		JobType     string `json:"jobType"`
+	}{TaskchainId: taskchainId, JobType: jobType})
 	if err != nil {
 		return TaskchainInfo{}, err
 	}
@@ -351,7 +351,7 @@ func (a API) GetTaskchainInfo(
 		log.Debug,
 		"GetTaskchainInfo for jobType %s and taskchainId %s is %s",
 		jobType, taskchainId, string(buf),
-		)
+	)
 	var payload struct {
 		Data struct {
 			Info TaskchainInfo `json:"getTaskchainInfo"`
@@ -362,7 +362,7 @@ func (a API) GetTaskchainInfo(
 		return TaskchainInfo{}, fmt.Errorf(
 			"failed to unmarshal GetTaskchainInfo: %v",
 			err,
-			)
+		)
 	}
 
 	return payload.Data.Info, nil
@@ -372,17 +372,17 @@ func (a API) TakeK8NamespaceSnapshot(
 	ctx context.Context,
 	namespaceId uuid.UUID,
 	onDemandSnapshotSlaId string,
-	) (NamespaceSnaphotInfo, error) {
+) (NamespaceSnaphotInfo, error) {
 	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.takeK8NamespaceSnapshot")
 
 	namespaceSnapshot := NamespaceSnapshot{
-		NamespaceId: namespaceId,
+		NamespaceId:           namespaceId,
 		OnDemandSnapshotSlaId: onDemandSnapshotSlaId,
 	}
 
 	input := CreateK8sNamespaceSnapshots{SnapshotInput: []NamespaceSnapshot{namespaceSnapshot}}
 	buf, err := a.GQL.Request(ctx, snapshotK8sNamespaceQuery, struct {
-		Input CreateK8sNamespaceSnapshots    `json:"input"`
+		Input CreateK8sNamespaceSnapshots `json:"input"`
 	}{Input:	input})
 	if err != nil {
 		return NamespaceSnaphotInfo{}, err
@@ -413,7 +413,7 @@ func (a API) GetActivitySeriesConnection(
 	ctx context.Context,
 	objectType []string,
 	lastUpdatedGtInUTC time.Time,
-	) ([]ActivitySeriesConnection, error) {
+) ([]ActivitySeriesConnection, error) {
 	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.getActivitySeriesConnection")
 	activities := make([]ActivitySeriesConnection, 0, 10)
 	cursor := ""
@@ -422,8 +422,8 @@ func (a API) GetActivitySeriesConnection(
 			ctx,
 			getActivitySeriesConnectionQuery,
 			struct {
-				After     string    `json:"after,omitempty"`
-				Filters    ActivitySeriesConnectionFilter  `json:"filters,omitempty"`
+				After   string                         `json:"after,omitempty"`
+				Filters ActivitySeriesConnectionFilter `json:"filters,omitempty"`
 			}{
 				After:     cursor,
 				Filters:    ActivitySeriesConnectionFilter{
@@ -469,7 +469,7 @@ func (a API) RestoreK8NamespaceSnapshot(
 	snapshotUUID uuid.UUID,
 	targetClusterUUID uuid.UUID,
 	targetNamespaceName string,
-	labelSelector LabelSelector,
+	labelSelector *LabelSelector,
 ) (NamespaceSnaphotInfo, error) {
 	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.RestoreK8NamespaceSnapshot")
 
