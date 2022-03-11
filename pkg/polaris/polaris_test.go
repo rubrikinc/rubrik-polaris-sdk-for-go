@@ -1383,7 +1383,7 @@ func TestRestoreK8NamespaceSnapshot(t *testing.T) {
 		snapshotUUID,
 		targetClusterUUID,
 		targetNamespaceName,
-		labelSelector,
+		&labelSelector,
 	)
 	if err != nil {
 		t.Fatal(err)
