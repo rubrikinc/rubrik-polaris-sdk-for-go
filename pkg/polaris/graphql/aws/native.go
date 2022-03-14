@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -51,7 +52,11 @@ type NativeAccount struct {
 func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature ProtectionFeature) (NativeAccount, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, awsNativeAccountQuery, struct {
+	query := awsNativeAccountQuery
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
+		query = awsNativeAccountV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID         `json:"awsNativeAccountRubrikId"`
 		Feature ProtectionFeature `json:"awsNativeProtectionFeature"`
 	}{ID: id, Feature: feature})
@@ -59,7 +64,7 @@ func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature Protection
 		return NativeAccount{}, fmt.Errorf("failed to request NativeAccount: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "awsNativeAccount(%q, %q): %s", id, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), id, feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -78,11 +83,14 @@ func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature Protection
 func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filter string) ([]NativeAccount, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	// nameSubstringFilter: NameSubstringFilter
+	query := awsNativeAccountsQuery
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
+		query = awsNativeAccountsV0Query
+	}
 	var accounts []NativeAccount
 	var cursor string
 	for {
-		buf, err := a.GQL.Request(ctx, awsNativeAccountsQuery, struct {
+		buf, err := a.GQL.Request(ctx, query, struct {
 			After   string            `json:"after,omitempty"`
 			Feature ProtectionFeature `json:"awsNativeProtectionFeature"`
 			Filter  string            `json:"filter"`
@@ -91,7 +99,8 @@ func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filt
 			return nil, fmt.Errorf("failed to request NativeAccounts: %v", err)
 		}
 
-		a.GQL.Log().Printf(log.Debug, "awsNativeAccounts(%q, %q, %q): %s", cursor, feature, filter, string(buf))
+		a.GQL.Log().Printf(log.Debug, "%s(%q, %q, %q): %s", graphql.QueryName(query), cursor, feature,
+			filter, string(buf))
 
 		var payload struct {
 			Data struct {
@@ -129,7 +138,11 @@ func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filt
 func (a API) StartNativeAccountDisableJob(ctx context.Context, id uuid.UUID, feature ProtectionFeature, deleteSnapshots bool) (uuid.UUID, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, startAwsNativeAccountDisableJobQuery, struct {
+	query := startAwsNativeAccountDisableJobQuery
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
+		query = startAwsNativeAccountDisableJobV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID              uuid.UUID         `json:"awsAccountRubrikId"`
 		Feature         ProtectionFeature `json:"awsNativeProtectionFeature"`
 		DeleteSnapshots bool              `json:"shouldDeleteNativeSnapshots"`
@@ -138,7 +151,8 @@ func (a API) StartNativeAccountDisableJob(ctx context.Context, id uuid.UUID, fea
 		return uuid.Nil, fmt.Errorf("failed to request StartNativeAccountDisableJob: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "startAwsNativeAccountDisableJob(%q, %q, %t): %s", id, feature, deleteSnapshots, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q, %t): %s", graphql.QueryName(query), id, feature,
+		deleteSnapshots, string(buf))
 
 	var payload struct {
 		Data struct {

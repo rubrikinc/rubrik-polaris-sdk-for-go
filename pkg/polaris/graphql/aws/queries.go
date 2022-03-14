@@ -120,7 +120,7 @@ var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatur
 }`
 
 // awsNativeAccount GraphQL query
-var awsNativeAccountQuery = `query SdkGolangAwsNativeAccount($awsNativeAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!) {
+var awsNativeAccountQuery = `query SdkGolangAwsNativeAccount($awsNativeAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeature!) {
 	awsNativeAccount(awsNativeAccountRubrikId: $awsNativeAccountRubrikId, awsNativeProtectionFeature: $awsNativeProtectionFeature) {
 		id
 		regionSpecs {
@@ -129,7 +129,29 @@ var awsNativeAccountQuery = `query SdkGolangAwsNativeAccount($awsNativeAccountRu
 		}
 		status
 		name
-    	slaAssignment
+		slaAssignment
+		configuredSlaDomain {
+			id
+			name
+		}
+		effectiveSlaDomain {
+			id
+			name
+		}
+	}
+}`
+
+// awsNativeAccountV0 GraphQL query
+var awsNativeAccountV0Query = `query SdkGolangAwsNativeAccountV0($awsNativeAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!) {
+	awsNativeAccount(awsNativeAccountRubrikId: $awsNativeAccountRubrikId, awsNativeProtectionFeature: $awsNativeProtectionFeature) {
+		id
+		regionSpecs {
+			region
+			isExocomputeConfigured
+		}
+		status
+		name
+		slaAssignment
 		configuredSlaDomain {
 			id
 			name
@@ -142,7 +164,38 @@ var awsNativeAccountQuery = `query SdkGolangAwsNativeAccount($awsNativeAccountRu
 }`
 
 // awsNativeAccounts GraphQL query
-var awsNativeAccountsQuery = `query SdkGolangAwsNativeAccounts($after: String, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!, $filter: String!) {
+var awsNativeAccountsQuery = `query SdkGolangAwsNativeAccounts($after: String, $awsNativeProtectionFeature: AwsNativeProtectionFeature!, $filter: String!) {
+	awsNativeAccounts(after: $after, awsNativeProtectionFeature: $awsNativeProtectionFeature, accountFilters: {nameSubstringFilter: {nameSubstring: $filter}}) {
+		count
+		edges {
+			node {
+				id
+				regionSpecs {
+					region
+					isExocomputeConfigured
+				}
+				status
+				name
+				slaAssignment
+				configuredSlaDomain {
+					id
+					name
+				}
+				effectiveSlaDomain {
+					id
+					name
+				}
+			}
+		}
+		pageInfo {
+			endCursor
+			hasNextPage
+		}
+	}
+}`
+
+// awsNativeAccountsV0 GraphQL query
+var awsNativeAccountsV0Query = `query SdkGolangAwsNativeAccountsV0($after: String, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!, $filter: String!) {
 	awsNativeAccounts(after: $after, awsNativeProtectionFeature: $awsNativeProtectionFeature, accountFilters: {nameSubstringFilter: {nameSubstring: $filter}}) {
 		count
 		edges {
@@ -259,7 +312,19 @@ var startAwsExocomputeDisableJobQuery = `mutation SdkGolangStartAwsExocomputeDis
 }`
 
 // startAwsNativeAccountDisableJob GraphQL query
-var startAwsNativeAccountDisableJobQuery = `mutation SdkGolangStartAwsNativeAccountDisableJob($awsAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!, $shouldDeleteNativeSnapshots: Boolean!) {
+var startAwsNativeAccountDisableJobQuery = `mutation SdkGolangStartAwsNativeAccountDisableJob($awsAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeature!, $shouldDeleteNativeSnapshots: Boolean!) {
+    startAwsNativeAccountDisableJob(input: {
+        awsAccountRubrikId:          $awsAccountRubrikId,
+        shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots,
+        awsNativeProtectionFeature:  $awsNativeProtectionFeature
+    }) {
+        error
+        jobId
+    }
+}`
+
+// startAwsNativeAccountDisableJobV0 GraphQL query
+var startAwsNativeAccountDisableJobV0Query = `mutation SdkGolangStartAwsNativeAccountDisableJobV0($awsAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!, $shouldDeleteNativeSnapshots: Boolean!) {
     startAwsNativeAccountDisableJob(input: {
         awsAccountRubrikId:          $awsAccountRubrikId,
         shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots,
