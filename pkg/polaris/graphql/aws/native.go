@@ -53,7 +53,7 @@ func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature Protection
 	a.GQL.Log().Print(log.Trace)
 
 	query := awsNativeAccountQuery
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = awsNativeAccountV0Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
@@ -84,7 +84,7 @@ func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filt
 	a.GQL.Log().Print(log.Trace)
 
 	query := awsNativeAccountsQuery
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = awsNativeAccountsV0Query
 	}
 	var accounts []NativeAccount
@@ -139,7 +139,7 @@ func (a API) StartNativeAccountDisableJob(ctx context.Context, id uuid.UUID, fea
 	a.GQL.Log().Print(log.Trace)
 
 	query := startAwsNativeAccountDisableJobQuery
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = startAwsNativeAccountDisableJobV0Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
