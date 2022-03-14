@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -63,7 +64,11 @@ type CloudAccountWithFeature struct {
 func (a API) CloudAccountListProjects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountWithFeature, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, gcpCloudAccountListProjectsQuery, struct {
+	query := gcpCloudAccountListProjectsQuery
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
+		query = gcpCloudAccountListProjectsV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Feature core.Feature `json:"feature"`
 		Filter  string       `json:"projectSearchText"`
 	}{Feature: feature, Filter: filter})
@@ -71,7 +76,7 @@ func (a API) CloudAccountListProjects(ctx context.Context, feature core.Feature,
 		return nil, fmt.Errorf("failed to request CloudAccountListProjects: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "gcpCloudAccountListProjects(%q, %q): %s", feature, filter, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), feature, filter, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -89,7 +94,11 @@ func (a API) CloudAccountListProjects(ctx context.Context, feature core.Feature,
 func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, projectName string, projectNumber int64, orgName, jwtConfig string, feature core.Feature) error {
 	a.GQL.Log().Print(log.Trace)
 
-	_, err := a.GQL.Request(ctx, gcpCloudAccountAddManualAuthProjectQuery, struct {
+	query := gcpCloudAccountAddManualAuthProjectQuery
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
+		query = gcpCloudAccountAddManualAuthProjectV0Query
+	}
+	_, err := a.GQL.Request(ctx, query, struct {
 		Feature   core.Feature `json:"feature"`
 		ID        string       `json:"gcpNativeProjectId"`
 		Name      string       `json:"gcpProjectName"`
@@ -145,14 +154,18 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 func (a API) CloudAccountListPermissions(ctx context.Context, feature core.Feature) (permissions []string, err error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, gcpCloudAccountListPermissionsQuery, struct {
+	query := gcpCloudAccountListPermissionsQuery
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
+		query = gcpCloudAccountListPermissionsV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Feature core.Feature `json:"feature"`
 	}{Feature: feature})
 	if err != nil {
 		return nil, fmt.Errorf("failed to request CloudAccountListPermissions: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "gcpCloudAccountListPermissions(%q): %s", feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q): %s", graphql.QueryName(query), feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -179,7 +192,11 @@ func (a API) CloudAccountListPermissions(ctx context.Context, feature core.Featu
 func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, upgradeGcpCloudAccountPermissionsWithoutOauthQuery, struct {
+	query := upgradeGcpCloudAccountPermissionsWithoutOauthQuery
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
+		query = upgradeGcpCloudAccountPermissionsWithoutOauthV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID    `json:"cloudAccountId"`
 		Feature core.Feature `json:"feature"`
 	}{ID: id, Feature: feature})
@@ -187,8 +204,7 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id 
 		return fmt.Errorf("failed to request UpgradeCloudAccountPermissionsWithoutOAuth: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "upgradeGcpCloudAccountPermissionsWithoutOauth(%q, %q): %s",
-		id, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), id, feature, string(buf))
 
 	var payload struct {
 		Data struct {

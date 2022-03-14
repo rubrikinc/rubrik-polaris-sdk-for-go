@@ -73,7 +73,7 @@ func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature
 	a.GQL.Log().Print(log.Trace)
 
 	query := awsCloudAccountWithFeaturesQuery
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = awsCloudAccountWithFeaturesV0Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
@@ -105,7 +105,7 @@ func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature
 	a.GQL.Log().Print(log.Trace)
 
 	query := allAwsCloudAccountsWithFeaturesQuery
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = allAwsCloudAccountsWithFeaturesV0Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
@@ -149,7 +149,7 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 	a.GQL.Log().Print(log.Trace)
 
 	query := validateAndCreateAwsCloudAccountQuery
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = validateAndCreateAwsCloudAccountV0Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
@@ -203,7 +203,7 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string
 	a.GQL.Log().Print(log.Trace)
 
 	query := finalizeAwsCloudAccountProtectionQuery
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = finalizeAwsCloudAccountProtectionV0Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
@@ -253,7 +253,7 @@ func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feat
 	a.GQL.Log().Print(log.Trace)
 
 	query := prepareAwsCloudAccountDeletionQuery
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = prepareAwsCloudAccountDeletionV0Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
@@ -290,7 +290,7 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 	a.GQL.Log().Print(log.Trace)
 
 	query := finalizeAwsCloudAccountDeletionQuery
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = finalizeAwsCloudAccountDeletionV0Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
@@ -329,7 +329,7 @@ func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAct
 	a.GQL.Log().Print(log.Trace)
 
 	query := updateAwsCloudAccountQuery
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = updateAwsCloudAccountV0Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
@@ -412,7 +412,7 @@ func (a API) PrepareFeatureUpdateForAwsCloudAccount(ctx context.Context, id uuid
 	a.GQL.Log().Print(log.Trace)
 
 	query := prepareFeatureUpdateForAwsCloudAccountQuery
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220315") {
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = prepareFeatureUpdateForAwsCloudAccountV0Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
