@@ -1,4 +1,4 @@
-mutation RubrikPolarisSDKRequest($features: [CloudAccountFeature!]!, $regionsToAdd: [AzureCloudAccountRegion!], $regionsToRemove: [AzureCloudAccountRegion!], $subscriptions: [AzureCloudAccountSubscriptionInput!]!) {
+mutation RubrikPolarisSDKRequest($features: [CloudAccountFeatureEnum!]!, $regionsToAdd: [AzureCloudAccountRegion!], $regionsToRemove: [AzureCloudAccountRegion!], $subscriptions: [AzureCloudAccountSubscriptionInput!]!) {
     result: updateAzureCloudAccount(input: {
         features:        $features,
         regionsToAdd:    $regionsToAdd,

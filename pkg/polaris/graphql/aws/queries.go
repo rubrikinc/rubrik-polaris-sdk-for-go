@@ -25,7 +25,27 @@
 package aws
 
 // allAwsCloudAccountsWithFeatures GraphQL query
-var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWithFeatures($feature: CloudAccountFeatureEnum!, $columnSearchFilter: String!) {
+var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWithFeatures($feature: CloudAccountFeature!, $columnSearchFilter: String!) {
+    result: allAwsCloudAccountsWithFeatures(awsCloudAccountsArg: {columnSearchFilter: $columnSearchFilter, statusFilters: [], feature: $feature}) {
+        awsCloudAccount {
+            cloudType
+            id
+            nativeId
+            message
+            accountName
+        }
+        featureDetails {
+            feature
+            roleArn
+            stackArn
+            status
+            awsRegions
+        }
+    }
+}`
+
+// allAwsCloudAccountsWithFeaturesV0 GraphQL query
+var allAwsCloudAccountsWithFeaturesV0Query = `query SdkGolangAllAwsCloudAccountsWithFeaturesV0($feature: CloudAccountFeatureEnum!, $columnSearchFilter: String!) {
     result: allAwsCloudAccountsWithFeatures(awsCloudAccountsArg: {columnSearchFilter: $columnSearchFilter, statusFilters: [], feature: $feature}) {
         awsCloudAccount {
             cloudType
@@ -100,7 +120,27 @@ var allVpcsByRegionFromAwsQuery = `query SdkGolangAllVpcsByRegionFromAws($awsAcc
 }`
 
 // awsCloudAccountWithFeatures GraphQL query
-var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatures($cloudAccountId: UUID!, $features: [CloudAccountFeatureEnum!]!) {
+var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatures($cloudAccountId: UUID!, $features: [CloudAccountFeature!]!) {
+    result: awsCloudAccountWithFeatures(cloudAccountId: $cloudAccountId, awsCloudAccountArg: {features: $features}) {
+        awsCloudAccount {
+            cloudType
+            id
+            nativeId
+            message
+            accountName
+        }
+        featureDetails {
+            feature
+            roleArn
+            stackArn
+            status
+            awsRegions
+        }
+    }
+}`
+
+// awsCloudAccountWithFeaturesV0 GraphQL query
+var awsCloudAccountWithFeaturesV0Query = `query SdkGolangAwsCloudAccountWithFeaturesV0($cloudAccountId: UUID!, $features: [CloudAccountFeatureEnum!]!) {
     result: awsCloudAccountWithFeatures(cloudAccountId: $cloudAccountId, awsCloudAccountArg: {features: $features}) {
         awsCloudAccount {
             cloudType
@@ -259,14 +299,44 @@ var deleteAwsExocomputeConfigsQuery = `mutation SdkGolangDeleteAwsExocomputeConf
 }`
 
 // finalizeAwsCloudAccountDeletion GraphQL query
-var finalizeAwsCloudAccountDeletionQuery = `mutation SdkGolangFinalizeAwsCloudAccountDeletion($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
+var finalizeAwsCloudAccountDeletionQuery = `mutation SdkGolangFinalizeAwsCloudAccountDeletion($cloudAccountId: UUID!, $feature: CloudAccountFeature!) {
+    finalizeAwsCloudAccountDeletion(input: {cloudAccountId: $cloudAccountId, feature: $feature}) {
+        message
+    }
+}`
+
+// finalizeAwsCloudAccountDeletionV0 GraphQL query
+var finalizeAwsCloudAccountDeletionV0Query = `mutation SdkGolangFinalizeAwsCloudAccountDeletionV0($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
     finalizeAwsCloudAccountDeletion(input: {cloudAccountId: $cloudAccountId, feature: $feature}) {
         message
     }
 }`
 
 // finalizeAwsCloudAccountProtection GraphQL query
-var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloudAccountProtection($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegionEnum!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $feature: CloudAccountFeatureEnum!, $stackName: String!) {
+var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloudAccountProtection($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegionEnum!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $feature: CloudAccountFeature!, $stackName: String!) {
+    finalizeAwsCloudAccountProtection(input: {
+        action: CREATE,
+        awsChildAccounts: [{
+            accountName: $accountName,
+            nativeId: $nativeId,
+        }],
+        awsRegions: $awsRegions,
+        externalId: $externalId,
+        featureVersion: $featureVersion,
+        features: [$feature],
+        stackName: $stackName,
+    }) {
+       awsChildAccounts {
+           accountName
+           nativeId
+           message
+       }
+       message
+    }
+}`
+
+// finalizeAwsCloudAccountProtectionV0 GraphQL query
+var finalizeAwsCloudAccountProtectionV0Query = `mutation SdkGolangFinalizeAwsCloudAccountProtectionV0($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegionEnum!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $feature: CloudAccountFeatureEnum!, $stackName: String!) {
     finalizeAwsCloudAccountProtection(input: {
         action: CREATE,
         awsChildAccounts: [{
@@ -289,14 +359,29 @@ var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloud
 }`
 
 // prepareAwsCloudAccountDeletion GraphQL query
-var prepareAwsCloudAccountDeletionQuery = `mutation SdkGolangPrepareAwsCloudAccountDeletion($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
+var prepareAwsCloudAccountDeletionQuery = `mutation SdkGolangPrepareAwsCloudAccountDeletion($cloudAccountId: UUID!, $feature: CloudAccountFeature!) {
+    prepareAwsCloudAccountDeletion(input: {cloudAccountId: $cloudAccountId, feature: $feature}) {
+        cloudFormationUrl
+    }
+}`
+
+// prepareAwsCloudAccountDeletionV0 GraphQL query
+var prepareAwsCloudAccountDeletionV0Query = `mutation SdkGolangPrepareAwsCloudAccountDeletionV0($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
     prepareAwsCloudAccountDeletion(input: {cloudAccountId: $cloudAccountId, feature: $feature}) {
         cloudFormationUrl
     }
 }`
 
 // prepareFeatureUpdateForAwsCloudAccount GraphQL query
-var prepareFeatureUpdateForAwsCloudAccountQuery = `mutation SdkGolangPrepareFeatureUpdateForAwsCloudAccount($cloudAccountId: UUID!, $features: [CloudAccountFeatureEnum!]!) {
+var prepareFeatureUpdateForAwsCloudAccountQuery = `mutation SdkGolangPrepareFeatureUpdateForAwsCloudAccount($cloudAccountId: UUID!, $features: [CloudAccountFeature!]!) {
+    result: prepareFeatureUpdateForAwsCloudAccount(input: {cloudAccountId: $cloudAccountId, features: $features}) {
+        cloudFormationUrl
+        templateUrl
+    }
+}`
+
+// prepareFeatureUpdateForAwsCloudAccountV0 GraphQL query
+var prepareFeatureUpdateForAwsCloudAccountV0Query = `mutation SdkGolangPrepareFeatureUpdateForAwsCloudAccountV0($cloudAccountId: UUID!, $features: [CloudAccountFeatureEnum!]!) {
     result: prepareFeatureUpdateForAwsCloudAccount(input: {cloudAccountId: $cloudAccountId, features: $features}) {
         cloudFormationUrl
         templateUrl
@@ -336,14 +421,56 @@ var startAwsNativeAccountDisableJobV0Query = `mutation SdkGolangStartAwsNativeAc
 }`
 
 // updateAwsCloudAccount GraphQL query
-var updateAwsCloudAccountQuery = `mutation SdkGolangUpdateAwsCloudAccount($action: CloudAccountActionEnum!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegionEnum!]!, $feature: CloudAccountFeatureEnum!) {
+var updateAwsCloudAccountQuery = `mutation SdkGolangUpdateAwsCloudAccount($action: CloudAccountActionEnum!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegionEnum!]!, $feature: CloudAccountFeature!) {
+    updateAwsCloudAccount(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
+        message
+    }
+}`
+
+// updateAwsCloudAccountV0 GraphQL query
+var updateAwsCloudAccountV0Query = `mutation SdkGolangUpdateAwsCloudAccountV0($action: CloudAccountActionEnum!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegionEnum!]!, $feature: CloudAccountFeatureEnum!) {
     updateAwsCloudAccount(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
         message
     }
 }`
 
 // validateAndCreateAwsCloudAccount GraphQL query
-var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($nativeId: String!, $accountName: String!, $features: [CloudAccountFeatureEnum!]!) {
+var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!]!) {
+    result: validateAndCreateAwsCloudAccount(input: {
+        action: CREATE,
+        awsChildAccounts: [{
+            accountName: $accountName,
+            nativeId: $nativeId,
+        }],
+        features: $features
+    }) {
+        initiateResponse {
+            cloudFormationUrl
+            externalId
+            featureVersions {
+                feature
+                version
+            }
+            stackName
+            templateUrl
+        }
+        validateResponse {
+            invalidAwsAccounts {
+                accountName
+                nativeId
+                message
+            }
+            invalidAwsAdminAccount {
+                accountName
+                nativeId
+                message
+            }
+        }
+    }
+}`
+
+// validateAndCreateAwsCloudAccountV0 GraphQL query
+var validateAndCreateAwsCloudAccountV0Query = `mutation SdkGolangValidateAndCreateAwsCloudAccountV0($nativeId: String!, $accountName: String!, $features: [CloudAccountFeatureEnum!]!) {
     result: validateAndCreateAwsCloudAccount(input: {
         action: CREATE,
         awsChildAccounts: [{

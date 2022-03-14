@@ -1,4 +1,4 @@
-mutation RubrikPolarisSDKRequest($nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!]!) {
+mutation RubrikPolarisSDKRequest($nativeId: String!, $accountName: String!, $features: [CloudAccountFeatureEnum!]!) {
     result: validateAndCreateAwsCloudAccount(input: {
         action: CREATE,
         awsChildAccounts: [{

@@ -1,4 +1,4 @@
-mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $feature: CloudAccountFeature!) {
+mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
     prepareAwsCloudAccountDeletion(input: {cloudAccountId: $cloudAccountId, feature: $feature}) {
         cloudFormationUrl
     }

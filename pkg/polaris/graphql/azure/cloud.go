@@ -109,7 +109,11 @@ type CloudAccountFeature struct {
 func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.Feature, filter string) (CloudAccountTenant, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, azureCloudAccountTenantQuery, struct {
+	query := azureCloudAccountTenantQuery
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
+		query = azureCloudAccountTenantV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID    `json:"tenantId"`
 		Feature core.Feature `json:"feature"`
 		Filter  string       `json:"subscriptionSearchText"`
@@ -118,7 +122,8 @@ func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.
 		return CloudAccountTenant{}, fmt.Errorf("failed to request CloudAccountTenant: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "azureCloudAccountTenant(%q, %q, %q): %s", id, feature, filter, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q, %q): %s", graphql.QueryName(query), id, feature, filter,
+		string(buf))
 
 	var payload struct {
 		Data struct {
@@ -138,7 +143,11 @@ func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.
 func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, includeSubscriptions bool) ([]CloudAccountTenant, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, allAzureCloudAccountTenantsQuery, struct {
+	query := allAzureCloudAccountTenantsQuery
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
+		query = allAzureCloudAccountTenantsV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Feature              core.Feature `json:"feature"`
 		IncludeSubscriptions bool         `json:"includeSubscriptionDetails"`
 	}{Feature: feature, IncludeSubscriptions: includeSubscriptions})
@@ -146,7 +155,7 @@ func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, incl
 		return nil, fmt.Errorf("failed to request CloudAccountTenants: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "allAzureCloudAccountTenants(%q, %t): %s", feature, includeSubscriptions, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %t): %s", graphql.QueryName(query), feature, includeSubscriptions, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -225,8 +234,9 @@ func (a API) DeleteCloudAccountWithoutOAuth(ctx context.Context, id uuid.UUID, f
 	query := deleteAzureCloudAccountWithoutOauthQuery
 	if graphql.VersionOlderThan(a.Version, "master-45622", "v20220222") {
 		query = deleteAzureCloudAccountWithoutOauthV0Query
+	} else if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
+		query = deleteAzureCloudAccountWithoutOauthV1Query
 	}
-
 	buf, err := a.GQL.Request(ctx, query, struct {
 		IDs      []uuid.UUID    `json:"subscriptionIds"`
 		Features []core.Feature `json:"features"`
@@ -274,6 +284,8 @@ func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.
 	query := updateAzureCloudAccountQuery
 	if graphql.VersionOlderThan(a.Version, "master-45693", "v20220301") {
 		query = updateAzureCloudAccountV0Query
+	} else if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
+		query = updateAzureCloudAccountV1Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Features      []core.Feature       `json:"features"`
@@ -330,14 +342,18 @@ type PermissionConfig struct {
 func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feature) (PermissionConfig, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, azureCloudAccountPermissionConfigQuery, struct {
+	query := azureCloudAccountPermissionConfigQuery
+	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
+		query = azureCloudAccountPermissionConfigV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Feature core.Feature `json:"feature"`
 	}{Feature: feature})
 	if err != nil {
 		return PermissionConfig{}, fmt.Errorf("failed to request CloudAccountPermissionConfig: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "azureCloudAccountPermissionConfig(%q): %s", feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q): %s", graphql.QueryName(query), feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -357,7 +373,11 @@ func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feat
 func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, upgradeAzureCloudAccountPermissionsWithoutOauthQuery, struct {
+	query := upgradeAzureCloudAccountPermissionsWithoutOauthQuery
+	if graphql.VersionOlderThan(a.Version, "master-45693", "v20220301") {
+		query = upgradeAzureCloudAccountPermissionsWithoutOauthV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID    `json:"cloudAccountId"`
 		Feature core.Feature `json:"feature"`
 	}{ID: id, Feature: feature})
@@ -365,7 +385,7 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id 
 		return fmt.Errorf("failed to request UpgradeCloudAccountPermissionsWithoutOAuth: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "upgradeAzureCloudAccountPermissionsWithoutOauth(%q, %q): %s", id, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), id, feature, string(buf))
 
 	var payload struct {
 		Data struct {

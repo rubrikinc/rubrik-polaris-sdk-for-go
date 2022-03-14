@@ -25,7 +25,20 @@
 package gcp
 
 // gcpCloudAccountAddManualAuthProject GraphQL query
-var gcpCloudAccountAddManualAuthProjectQuery = `mutation SdkGolangGcpCloudAccountAddManualAuthProject($feature: CloudAccountFeatureEnum!, $gcpNativeProjectId: String!, $gcpProjectName: String!, $gcpProjectNumber: Long!, $organizationName: String, $serviceAccountJwtConfigOptional: String)
+var gcpCloudAccountAddManualAuthProjectQuery = `mutation SdkGolangGcpCloudAccountAddManualAuthProject($feature: CloudAccountFeature!, $gcpNativeProjectId: String!, $gcpProjectName: String!, $gcpProjectNumber: Long!, $organizationName: String, $serviceAccountJwtConfigOptional: String)
+{
+    gcpCloudAccountAddManualAuthProject(
+        features: [$feature],
+        gcpNativeProjectId: $gcpNativeProjectId,
+        gcpProjectName: $gcpProjectName,
+        gcpProjectNumber: $gcpProjectNumber,
+        organizationName: $organizationName,
+        serviceAccountJwtConfigOptional: $serviceAccountJwtConfigOptional,
+    )
+}`
+
+// gcpCloudAccountAddManualAuthProjectV0 GraphQL query
+var gcpCloudAccountAddManualAuthProjectV0Query = `mutation SdkGolangGcpCloudAccountAddManualAuthProjectV0($feature: CloudAccountFeatureEnum!, $gcpNativeProjectId: String!, $gcpProjectName: String!, $gcpProjectNumber: Long!, $organizationName: String, $serviceAccountJwtConfigOptional: String)
 {
     gcpCloudAccountAddManualAuthProject(
         features: [$feature],
@@ -47,14 +60,39 @@ var gcpCloudAccountDeleteProjectsQuery = `mutation SdkGolangGcpCloudAccountDelet
 }`
 
 // gcpCloudAccountListPermissions GraphQL query
-var gcpCloudAccountListPermissionsQuery = `query SdkGolangGcpCloudAccountListPermissions($feature: CloudAccountFeatureEnum!) {
+var gcpCloudAccountListPermissionsQuery = `query SdkGolangGcpCloudAccountListPermissions($feature: CloudAccountFeature!) {
+    gcpCloudAccountListPermissions(feature: $feature){
+        permission
+    }
+}`
+
+// gcpCloudAccountListPermissionsV0 GraphQL query
+var gcpCloudAccountListPermissionsV0Query = `query SdkGolangGcpCloudAccountListPermissionsV0($feature: CloudAccountFeatureEnum!) {
     gcpCloudAccountListPermissions(feature: $feature){
         permission
     }
 }`
 
 // gcpCloudAccountListProjects GraphQL query
-var gcpCloudAccountListProjectsQuery = `query SdkGolangGcpCloudAccountListProjects($feature: CloudAccountFeatureEnum!, $projectSearchText: String!) {
+var gcpCloudAccountListProjectsQuery = `query SdkGolangGcpCloudAccountListProjects($feature: CloudAccountFeature!, $projectSearchText: String!) {
+    gcpCloudAccountListProjects(feature: $feature, projectStatusFilters: [], projectSearchText: $projectSearchText) {
+        project {
+            id
+            name
+            projectId
+            projectNumber
+            roleId
+            usesGlobalConfig
+        }
+        featureDetail {
+            feature
+            status
+        }
+    }
+}`
+
+// gcpCloudAccountListProjectsV0 GraphQL query
+var gcpCloudAccountListProjectsV0Query = `query SdkGolangGcpCloudAccountListProjectsV0($feature: CloudAccountFeatureEnum!, $projectSearchText: String!) {
     gcpCloudAccountListProjects(feature: $feature, projectStatusFilters: [], projectSearchText: $projectSearchText) {
         project {
             id
@@ -140,7 +178,21 @@ var gcpSetDefaultServiceAccountJwtConfigQuery = `mutation SdkGolangGcpSetDefault
 }`
 
 // upgradeGcpCloudAccountPermissionsWithoutOauth GraphQL query
-var upgradeGcpCloudAccountPermissionsWithoutOauthQuery = `mutation SdkGolangUpgradeGcpCloudAccountPermissionsWithoutOauth($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
+var upgradeGcpCloudAccountPermissionsWithoutOauthQuery = `mutation SdkGolangUpgradeGcpCloudAccountPermissionsWithoutOauth($cloudAccountId: UUID!, $feature: CloudAccountFeature!) {
+    result: upgradeGcpCloudAccountPermissionsWithoutOauth(input: {
+        cloudAccountId: $cloudAccountId,
+        feature:        $feature
+    }) {
+        status {
+            projectUuid
+            success
+            error
+        }
+    }
+}`
+
+// upgradeGcpCloudAccountPermissionsWithoutOauthV0 GraphQL query
+var upgradeGcpCloudAccountPermissionsWithoutOauthV0Query = `mutation SdkGolangUpgradeGcpCloudAccountPermissionsWithoutOauthV0($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
     result: upgradeGcpCloudAccountPermissionsWithoutOauth(input: {
         cloudAccountId: $cloudAccountId,
         feature:        $feature
