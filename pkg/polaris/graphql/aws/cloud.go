@@ -205,6 +205,8 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string
 	query := finalizeAwsCloudAccountProtectionQuery
 	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = finalizeAwsCloudAccountProtectionV0Query
+	} else if graphql.VersionOlderThan(a.Version, "master-50000", "v20220322") {
+		query = finalizeAwsCloudAccountProtectionV1Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ID             string           `json:"nativeId"`
@@ -331,6 +333,8 @@ func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAct
 	query := updateAwsCloudAccountQuery
 	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = updateAwsCloudAccountV0Query
+	} else if graphql.VersionOlderThan(a.Version, "master-50000", "v20220322") {
+		query = updateAwsCloudAccountV1Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Action  core.CloudAccountAction `json:"action"`
@@ -383,7 +387,11 @@ type VPC struct {
 func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, regions Region) ([]VPC, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, allVpcsByRegionFromAwsQuery, struct {
+	query := allVpcsByRegionFromAwsQuery
+	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220322") {
+		query = allVpcsByRegionFromAwsV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID     uuid.UUID `json:"awsAccountRubrikId"`
 		Region Region    `json:"region"`
 	}{ID: id, Region: regions})
@@ -391,7 +399,7 @@ func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, regions Region) 
 		return nil, fmt.Errorf("failed to request AllVpcsByRegion: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "allVpcsByRegionFromAws(%q, %q): %s", id, regions, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), id, regions, string(buf))
 
 	var payload struct {
 		Data struct {

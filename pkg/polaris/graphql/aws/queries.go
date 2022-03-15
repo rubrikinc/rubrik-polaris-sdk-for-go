@@ -103,7 +103,24 @@ var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsN
 }`
 
 // allVpcsByRegionFromAws GraphQL query
-var allVpcsByRegionFromAwsQuery = `query SdkGolangAllVpcsByRegionFromAws($awsAccountRubrikId: UUID!, $region: AwsNativeRegionEnum!) {
+var allVpcsByRegionFromAwsQuery = `query SdkGolangAllVpcsByRegionFromAws($awsAccountRubrikId: UUID!, $region: AwsNativeRegion!) {
+    allVpcsByRegionFromAws(awsAccountRubrikId: $awsAccountRubrikId, region: $region) {
+        id
+        name
+        subnets {
+            id
+            name
+            availabilityZone
+        }
+        securityGroups {
+            id
+            name
+        }
+    }
+}`
+
+// allVpcsByRegionFromAwsV0 GraphQL query
+var allVpcsByRegionFromAwsV0Query = `query SdkGolangAllVpcsByRegionFromAwsV0($awsAccountRubrikId: UUID!, $region: AwsNativeRegionEnum!) {
     allVpcsByRegionFromAws(awsAccountRubrikId: $awsAccountRubrikId, region: $region) {
         id
         name
@@ -313,7 +330,7 @@ var finalizeAwsCloudAccountDeletionV0Query = `mutation SdkGolangFinalizeAwsCloud
 }`
 
 // finalizeAwsCloudAccountProtection GraphQL query
-var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloudAccountProtection($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegionEnum!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $feature: CloudAccountFeature!, $stackName: String!) {
+var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloudAccountProtection($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegion!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $feature: CloudAccountFeature!, $stackName: String!) {
     finalizeAwsCloudAccountProtection(input: {
         action: CREATE,
         awsChildAccounts: [{
@@ -337,6 +354,29 @@ var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloud
 
 // finalizeAwsCloudAccountProtectionV0 GraphQL query
 var finalizeAwsCloudAccountProtectionV0Query = `mutation SdkGolangFinalizeAwsCloudAccountProtectionV0($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegionEnum!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $feature: CloudAccountFeatureEnum!, $stackName: String!) {
+    finalizeAwsCloudAccountProtection(input: {
+        action: CREATE,
+        awsChildAccounts: [{
+            accountName: $accountName,
+            nativeId: $nativeId,
+        }],
+        awsRegions: $awsRegions,
+        externalId: $externalId,
+        featureVersion: $featureVersion,
+        features: [$feature],
+        stackName: $stackName,
+    }) {
+       awsChildAccounts {
+           accountName
+           nativeId
+           message
+       }
+       message
+    }
+}`
+
+// finalizeAwsCloudAccountProtectionV1 GraphQL query
+var finalizeAwsCloudAccountProtectionV1Query = `mutation SdkGolangFinalizeAwsCloudAccountProtectionV1($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegionEnum!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $feature: CloudAccountFeature!, $stackName: String!) {
     finalizeAwsCloudAccountProtection(input: {
         action: CREATE,
         awsChildAccounts: [{
@@ -421,7 +461,7 @@ var startAwsNativeAccountDisableJobV0Query = `mutation SdkGolangStartAwsNativeAc
 }`
 
 // updateAwsCloudAccount GraphQL query
-var updateAwsCloudAccountQuery = `mutation SdkGolangUpdateAwsCloudAccount($action: CloudAccountActionEnum!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegionEnum!]!, $feature: CloudAccountFeature!) {
+var updateAwsCloudAccountQuery = `mutation SdkGolangUpdateAwsCloudAccount($action: CloudAccountAction!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegion!]!, $feature: CloudAccountFeature!) {
     updateAwsCloudAccount(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
         message
     }
@@ -429,6 +469,13 @@ var updateAwsCloudAccountQuery = `mutation SdkGolangUpdateAwsCloudAccount($actio
 
 // updateAwsCloudAccountV0 GraphQL query
 var updateAwsCloudAccountV0Query = `mutation SdkGolangUpdateAwsCloudAccountV0($action: CloudAccountActionEnum!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegionEnum!]!, $feature: CloudAccountFeatureEnum!) {
+    updateAwsCloudAccount(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
+        message
+    }
+}`
+
+// updateAwsCloudAccountV1 GraphQL query
+var updateAwsCloudAccountV1Query = `mutation SdkGolangUpdateAwsCloudAccountV1($action: CloudAccountActionEnum!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegionEnum!]!, $feature: CloudAccountFeature!) {
     updateAwsCloudAccount(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
         message
     }
