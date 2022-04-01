@@ -542,7 +542,7 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	// as archival encryption is a child feature and cannot be
 	// added without that.
 	subscription := azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
-	id, err := client.Azure().AddSubscription(
+	_, err = client.Azure().AddSubscription(
 		ctx,
 		subscription,
 		core.FeatureCloudNativeArchival,
@@ -556,7 +556,7 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 
 	// Add archival encryption feature.
 	subscription = azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
-	id, err = client.Azure().AddSubscription(
+	id, err := client.Azure().AddSubscription(
 		ctx,
 		subscription,
 		core.FeatureCloudNativeArchivalEncryption,
@@ -574,7 +574,6 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 			make(map[string]string),
 		),
 	)
-
 	if err != nil {
 		t.Fatal(err)
 	}
