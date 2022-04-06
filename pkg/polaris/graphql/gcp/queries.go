@@ -117,6 +117,13 @@ var gcpGetDefaultCredentialsServiceAccountQuery = `query SdkGolangGcpGetDefaultC
 // gcpNativeDisableProject GraphQL query
 var gcpNativeDisableProjectQuery = `mutation SdkGolangGcpNativeDisableProject($projectId: UUID!, $shouldDeleteNativeSnapshots: Boolean!) {
   gcpNativeDisableProject(projectId: $projectId, shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots) {
+    jobId
+  }
+}`
+
+// gcpNativeDisableProjectV0 GraphQL query
+var gcpNativeDisableProjectV0Query = `mutation SdkGolangGcpNativeDisableProjectV0($projectId: UUID!, $shouldDeleteNativeSnapshots: Boolean!) {
+  gcpNativeDisableProject(projectId: $projectId, shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots) {
     taskchainUuid
   }
 }`
@@ -144,7 +151,37 @@ var gcpNativeProjectQuery = `query SdkGolangGcpNativeProject($fid: UUID!) {
 
 // gcpNativeProjectConnection GraphQL query
 var gcpNativeProjectConnectionQuery = `query SdkGolangGcpNativeProjectConnection($after: String, $filter: String!) {
-    gcpNativeProjectConnection(after: $after, projectFilters: {nameOrNumberSubstringFilter: {nameOrNumberSubstring: $filter}}){
+    result: gcpNativeProjectConnection(after: $after, projectFilters: {nameOrNumberSubstringFilter: {nameOrNumberSubstring: $filter}}){
+        count
+        edges {
+            node {
+                id
+                name
+                nativeId
+                nativeName
+                projectNumber
+                organizationName
+                slaAssignment
+                configuredSlaDomain{
+                    id
+                    name
+                }
+                effectiveSlaDomain{
+                    id
+                    name
+                }
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
+// gcpNativeProjects GraphQL query
+var gcpNativeProjectsQuery = `query SdkGolangGcpNativeProjects($after: String, $filter: String!) {
+    result: gcpNativeProjects(after: $after, projectFilters: {nameOrNumberSubstringFilter: {nameOrNumberSubstring: $filter}}){
         count
         edges {
             node {
