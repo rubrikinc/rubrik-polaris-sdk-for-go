@@ -1,5 +1,5 @@
 query RubrikPolarisSDKRequest($after: String, $filter: String!) {
-    result: gcpNativeProjectConnection(after: $after, projectFilters: {nameOrNumberSubstringFilter: {nameOrNumberSubstring: $filter}}){
+    result: gcpNativeProjects(after: $after, projectFilters: {nameOrNumberSubstringFilter: {nameOrNumberSubstring: $filter}}){
         count
         edges {
             node {
