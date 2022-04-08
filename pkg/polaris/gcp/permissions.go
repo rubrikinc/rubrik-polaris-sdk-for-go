@@ -92,7 +92,7 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 
 	permSet := make(map[string]struct{})
 	for _, feature := range features {
-		perms, err := gcp.Wrap(a.gql).CloudAccountListPermissions(ctx, feature)
+		perms, err := gcp.Wrap(a.gql).FeaturePermissionsForCloudAccount(ctx, feature)
 		if err != nil {
 			return Permissions{}, fmt.Errorf("failed to get permissions: %v", err)
 		}
