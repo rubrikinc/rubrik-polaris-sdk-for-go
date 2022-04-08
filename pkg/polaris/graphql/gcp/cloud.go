@@ -58,15 +58,17 @@ type CloudAccountWithFeature struct {
 	Feature Feature      `json:"featureDetail"`
 }
 
-// CloudAccountListProjects returns the cloud accounts matching the specified
-// filter. The filter can be used to search for project id, project name and
-// project number.
-func (a API) CloudAccountListProjects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountWithFeature, error) {
+// CloudAccountProjectsByFeature returns the cloud accounts matching the
+// specified filter. The filter can be used to search for project id, project
+// name and project number.
+func (a API) CloudAccountProjectsByFeature(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountWithFeature, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	query := gcpCloudAccountListProjectsQuery
+	query := allGcpCloudAccountProjectsByFeatureQuery
 	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = gcpCloudAccountListProjectsV0Query
+	} else if graphql.VersionOlderThan(a.Version, "master-46713", "v20220412") {
+		query = gcpCloudAccountListProjectsQuery
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Feature core.Feature `json:"feature"`
@@ -80,7 +82,7 @@ func (a API) CloudAccountListProjects(ctx context.Context, feature core.Feature,
 
 	var payload struct {
 		Data struct {
-			Accounts []CloudAccountWithFeature `json:"gcpCloudAccountListProjects"`
+			Accounts []CloudAccountWithFeature `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
@@ -149,14 +151,16 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 	return nil
 }
 
-// CloudAccountListPermissions list the permissions needed to enable the given
-// Polaris cloud account feature.
-func (a API) CloudAccountListPermissions(ctx context.Context, feature core.Feature) (permissions []string, err error) {
+// FeaturePermissionsForCloudAccount list the permissions needed to enable the
+// given Polaris cloud account feature.
+func (a API) FeaturePermissionsForCloudAccount(ctx context.Context, feature core.Feature) (permissions []string, err error) {
 	a.GQL.Log().Print(log.Trace)
 
-	query := gcpCloudAccountListPermissionsQuery
+	query := allFeaturePermissionsForGcpCloudAccountQuery
 	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = gcpCloudAccountListPermissionsV0Query
+	} else if graphql.VersionOlderThan(a.Version, "master-46713", "v20220412") {
+		query = gcpCloudAccountListPermissionsQuery
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Feature core.Feature `json:"feature"`
@@ -171,7 +175,7 @@ func (a API) CloudAccountListPermissions(ctx context.Context, feature core.Featu
 		Data struct {
 			Permissions []struct {
 				Permission string `json:"permission"`
-			} `json:"gcpCloudAccountListPermissions"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {

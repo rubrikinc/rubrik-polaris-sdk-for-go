@@ -24,6 +24,31 @@
 
 package gcp
 
+// allFeaturePermissionsForGcpCloudAccount GraphQL query
+var allFeaturePermissionsForGcpCloudAccountQuery = `query SdkGolangAllFeaturePermissionsForGcpCloudAccount($feature: CloudAccountFeature!) {
+    result: allFeaturePermissionsForGcpCloudAccount(feature: $feature){
+        permission
+    }
+}`
+
+// allGcpCloudAccountProjectsByFeature GraphQL query
+var allGcpCloudAccountProjectsByFeatureQuery = `query SdkGolangAllGcpCloudAccountProjectsByFeature($feature: CloudAccountFeature!, $projectSearchText: String!) {
+    result: allGcpCloudAccountProjectsByFeature(feature: $feature, projectStatusFilters: [], projectSearchText: $projectSearchText) {
+        project {
+            id
+            name
+            projectId
+            projectNumber
+            roleId
+            usesGlobalConfig
+        }
+        featureDetail {
+            feature
+            status
+        }
+    }
+}`
+
 // gcpCloudAccountAddManualAuthProject GraphQL query
 var gcpCloudAccountAddManualAuthProjectQuery = `mutation SdkGolangGcpCloudAccountAddManualAuthProject($feature: CloudAccountFeature!, $gcpNativeProjectId: String!, $gcpProjectName: String!, $gcpProjectNumber: Long!, $organizationName: String, $serviceAccountJwtConfigOptional: String)
 {
@@ -61,21 +86,21 @@ var gcpCloudAccountDeleteProjectsQuery = `mutation SdkGolangGcpCloudAccountDelet
 
 // gcpCloudAccountListPermissions GraphQL query
 var gcpCloudAccountListPermissionsQuery = `query SdkGolangGcpCloudAccountListPermissions($feature: CloudAccountFeature!) {
-    gcpCloudAccountListPermissions(feature: $feature){
+    result: gcpCloudAccountListPermissions(feature: $feature){
         permission
     }
 }`
 
 // gcpCloudAccountListPermissionsV0 GraphQL query
 var gcpCloudAccountListPermissionsV0Query = `query SdkGolangGcpCloudAccountListPermissionsV0($feature: CloudAccountFeatureEnum!) {
-    gcpCloudAccountListPermissions(feature: $feature){
+    result: gcpCloudAccountListPermissions(feature: $feature){
         permission
     }
 }`
 
 // gcpCloudAccountListProjects GraphQL query
 var gcpCloudAccountListProjectsQuery = `query SdkGolangGcpCloudAccountListProjects($feature: CloudAccountFeature!, $projectSearchText: String!) {
-    gcpCloudAccountListProjects(feature: $feature, projectStatusFilters: [], projectSearchText: $projectSearchText) {
+    result: gcpCloudAccountListProjects(feature: $feature, projectStatusFilters: [], projectSearchText: $projectSearchText) {
         project {
             id
             name
@@ -93,7 +118,7 @@ var gcpCloudAccountListProjectsQuery = `query SdkGolangGcpCloudAccountListProjec
 
 // gcpCloudAccountListProjectsV0 GraphQL query
 var gcpCloudAccountListProjectsV0Query = `query SdkGolangGcpCloudAccountListProjectsV0($feature: CloudAccountFeatureEnum!, $projectSearchText: String!) {
-    gcpCloudAccountListProjects(feature: $feature, projectStatusFilters: [], projectSearchText: $projectSearchText) {
+    result: gcpCloudAccountListProjects(feature: $feature, projectStatusFilters: [], projectSearchText: $projectSearchText) {
         project {
             id
             name

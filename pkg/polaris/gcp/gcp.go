@@ -91,7 +91,7 @@ var allFeatures = []core.Feature{
 func (a API) projects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
 	a.gql.Log().Print(log.Trace)
 
-	accountsWithFeature, err := gcp.Wrap(a.gql).CloudAccountListProjects(ctx, feature, filter)
+	accountsWithFeature, err := gcp.Wrap(a.gql).CloudAccountProjectsByFeature(ctx, feature, filter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get projects: %v", err)
 	}
