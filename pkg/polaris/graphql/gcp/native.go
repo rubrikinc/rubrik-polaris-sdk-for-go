@@ -23,6 +23,7 @@ package gcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -132,6 +133,8 @@ func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnaps
 	query := gcpNativeDisableProjectQuery
 	if graphql.VersionOlderThan(a.Version, "master-46700", "v20220412") {
 		query = gcpNativeDisableProjectV0Query
+	} else if graphql.VersionOlderThan(a.Version, "master-50000", "v20220426") {
+		query = gcpNativeDisableProjectV1Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ID              uuid.UUID `json:"projectId"`
@@ -148,6 +151,7 @@ func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnaps
 			Query struct {
 				JobID       uuid.UUID `json:"jobId"`
 				TaskChainID uuid.UUID `json:"taskchainUuid"`
+				Error       string    `json:"error"`
 			} `json:"gcpNativeDisableProject"`
 		} `json:"data"`
 	}
@@ -157,6 +161,12 @@ func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnaps
 
 	if graphql.VersionOlderThan(a.Version, "master-46700", "v20220412") {
 		return payload.Data.Query.TaskChainID, nil
+	}
+	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220426") {
+		return payload.Data.Query.JobID, nil
+	}
+	if payload.Data.Query.Error != "" {
+		return uuid.Nil, errors.New(payload.Data.Query.Error)
 	}
 	return payload.Data.Query.JobID, nil
 }
