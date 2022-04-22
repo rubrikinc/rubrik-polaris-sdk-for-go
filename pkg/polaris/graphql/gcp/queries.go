@@ -50,8 +50,19 @@ var allGcpCloudAccountProjectsByFeatureQuery = `query SdkGolangAllGcpCloudAccoun
 }`
 
 // gcpCloudAccountAddManualAuthProject GraphQL query
-var gcpCloudAccountAddManualAuthProjectQuery = `mutation SdkGolangGcpCloudAccountAddManualAuthProject($feature: CloudAccountFeature!, $gcpNativeProjectId: String!, $gcpProjectName: String!, $gcpProjectNumber: Long!, $organizationName: String, $serviceAccountJwtConfigOptional: String)
-{
+var gcpCloudAccountAddManualAuthProjectQuery = `mutation SdkGolangGcpCloudAccountAddManualAuthProject($gcpNativeProjectId: String!, $gcpProjectName: String!, $gcpProjectNumber: Long!, $organizationName: String, $serviceAccountJwtConfig: String, $feature: CloudAccountFeature!) {
+    gcpCloudAccountAddManualAuthProject(input: {
+        gcpNativeProjectId:      $gcpNativeProjectId,
+        gcpProjectName:          $gcpProjectName,
+        gcpProjectNumber:        $gcpProjectNumber,
+        organizationName:        $organizationName,
+        serviceAccountJwtConfig: $serviceAccountJwtConfig,
+        features:                [$feature],
+    })
+}`
+
+// gcpCloudAccountAddManualAuthProjectV0 GraphQL query
+var gcpCloudAccountAddManualAuthProjectV0Query = `mutation SdkGolangGcpCloudAccountAddManualAuthProjectV0($feature: CloudAccountFeatureEnum!, $gcpNativeProjectId: String!, $gcpProjectName: String!, $gcpProjectNumber: Long!, $organizationName: String, $serviceAccountJwtConfigOptional: String) {
     gcpCloudAccountAddManualAuthProject(
         features: [$feature],
         gcpNativeProjectId: $gcpNativeProjectId,
@@ -62,9 +73,8 @@ var gcpCloudAccountAddManualAuthProjectQuery = `mutation SdkGolangGcpCloudAccoun
     )
 }`
 
-// gcpCloudAccountAddManualAuthProjectV0 GraphQL query
-var gcpCloudAccountAddManualAuthProjectV0Query = `mutation SdkGolangGcpCloudAccountAddManualAuthProjectV0($feature: CloudAccountFeatureEnum!, $gcpNativeProjectId: String!, $gcpProjectName: String!, $gcpProjectNumber: Long!, $organizationName: String, $serviceAccountJwtConfigOptional: String)
-{
+// gcpCloudAccountAddManualAuthProjectV1 GraphQL query
+var gcpCloudAccountAddManualAuthProjectV1Query = `mutation SdkGolangGcpCloudAccountAddManualAuthProjectV1($feature: CloudAccountFeature!, $gcpNativeProjectId: String!, $gcpProjectName: String!, $gcpProjectNumber: Long!, $organizationName: String, $serviceAccountJwtConfigOptional: String) {
     gcpCloudAccountAddManualAuthProject(
         features: [$feature],
         gcpNativeProjectId: $gcpNativeProjectId,
@@ -76,7 +86,21 @@ var gcpCloudAccountAddManualAuthProjectV0Query = `mutation SdkGolangGcpCloudAcco
 }`
 
 // gcpCloudAccountDeleteProjects GraphQL query
-var gcpCloudAccountDeleteProjectsQuery = `mutation SdkGolangGcpCloudAccountDeleteProjects($nativeProtectionProjectUuids: [UUID!]!) {
+var gcpCloudAccountDeleteProjectsQuery = `mutation SdkGolangGcpCloudAccountDeleteProjects($nativeProtectionProjectId: UUID!) {
+    gcpCloudAccountDeleteProjects(input: {
+        nativeProtectionProjectIds: [$nativeProtectionProjectId],
+        sharedVpcHostProjectIds:    [],
+        cloudAccountsProjectIds:    [],
+        skipResourceDeletion:       true,
+    }) {
+        projectUuid
+        success
+        error
+    }
+}`
+
+// gcpCloudAccountDeleteProjectsV0 GraphQL query
+var gcpCloudAccountDeleteProjectsV0Query = `mutation SdkGolangGcpCloudAccountDeleteProjectsV0($nativeProtectionProjectUuids: [UUID!]!) {
     gcpCloudAccountDeleteProjects(nativeProtectionProjectUuids: $nativeProtectionProjectUuids, sharedVpcHostProjectUuids: [], cloudAccountsProjectUuids: [], skipResourceDeletion: true) {
         projectUuid
         success
@@ -141,8 +165,12 @@ var gcpGetDefaultCredentialsServiceAccountQuery = `query SdkGolangGcpGetDefaultC
 
 // gcpNativeDisableProject GraphQL query
 var gcpNativeDisableProjectQuery = `mutation SdkGolangGcpNativeDisableProject($projectId: UUID!, $shouldDeleteNativeSnapshots: Boolean!) {
-  gcpNativeDisableProject(projectId: $projectId, shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots) {
+  gcpNativeDisableProject(input: {
+    projectId:                   $projectId,
+    shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots
+  }) {
     jobId
+    error
   }
 }`
 
@@ -150,6 +178,13 @@ var gcpNativeDisableProjectQuery = `mutation SdkGolangGcpNativeDisableProject($p
 var gcpNativeDisableProjectV0Query = `mutation SdkGolangGcpNativeDisableProjectV0($projectId: UUID!, $shouldDeleteNativeSnapshots: Boolean!) {
   gcpNativeDisableProject(projectId: $projectId, shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots) {
     taskchainUuid
+  }
+}`
+
+// gcpNativeDisableProjectV1 GraphQL query
+var gcpNativeDisableProjectV1Query = `mutation SdkGolangGcpNativeDisableProjectV1($projectId: UUID!, $shouldDeleteNativeSnapshots: Boolean!) {
+  gcpNativeDisableProject(projectId: $projectId, shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots) {
+    jobId
   }
 }`
 
@@ -235,8 +270,16 @@ var gcpNativeProjectsQuery = `query SdkGolangGcpNativeProjects($after: String, $
 }`
 
 // gcpSetDefaultServiceAccountJwtConfig GraphQL query
-var gcpSetDefaultServiceAccountJwtConfigQuery = `mutation SdkGolangGcpSetDefaultServiceAccountJwtConfig($serviceAccountName: String!, $serviceAccountJWTConfig: String!) {
-    gcpSetDefaultServiceAccountJwtConfig(serviceAccountJWTConfig: $serviceAccountJWTConfig, serviceAccountName: $serviceAccountName)
+var gcpSetDefaultServiceAccountJwtConfigQuery = `mutation SdkGolangGcpSetDefaultServiceAccountJwtConfig($serviceAccountName: String!, $serviceAccountJwtConfig: String!) {
+    gcpSetDefaultServiceAccountJwtConfig(input: {
+        serviceAccountJwtConfig: $serviceAccountJwtConfig,
+        serviceAccountName:      $serviceAccountName,
+    })
+}`
+
+// gcpSetDefaultServiceAccountJwtConfigV0 GraphQL query
+var gcpSetDefaultServiceAccountJwtConfigV0Query = `mutation SdkGolangGcpSetDefaultServiceAccountJwtConfigV0($serviceAccountName: String!, $serviceAccountJwtConfig: String!) {
+    gcpSetDefaultServiceAccountJwtConfig(serviceAccountJWTConfig: $serviceAccountJwtConfig, serviceAccountName: $serviceAccountName)
 }`
 
 // upgradeGcpCloudAccountPermissionsWithoutOauth GraphQL query

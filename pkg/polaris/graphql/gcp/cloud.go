@@ -99,18 +99,22 @@ func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, pr
 	query := gcpCloudAccountAddManualAuthProjectQuery
 	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = gcpCloudAccountAddManualAuthProjectV0Query
+	} else if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
+		query = gcpCloudAccountAddManualAuthProjectV1Query
 	}
 	_, err := a.GQL.Request(ctx, query, struct {
-		Feature   core.Feature `json:"feature"`
-		ID        string       `json:"gcpNativeProjectId"`
-		Name      string       `json:"gcpProjectName"`
-		Number    int64        `json:"gcpProjectNumber"`
-		OrgName   string       `json:"organizationName,omitempty"`
-		JwtConfig string       `json:"serviceAccountJwtConfigOptional,omitempty"`
-	}{Feature: feature, ID: projectID, Name: projectName, Number: projectNumber, OrgName: orgName, JwtConfig: jwtConfig})
+		ID           string       `json:"gcpNativeProjectId"`
+		Name         string       `json:"gcpProjectName"`
+		Number       int64        `json:"gcpProjectNumber"`
+		OrgName      string       `json:"organizationName,omitempty"`
+		JwtConfig    string       `json:"serviceAccountJwtConfig,omitempty"`
+		JwtConfigOpt string       `json:"serviceAccountJwtConfigOptional,omitempty"`
+		Feature      core.Feature `json:"feature"`
+	}{ID: projectID, Name: projectName, Number: projectNumber, OrgName: orgName, JwtConfig: jwtConfig, JwtConfigOpt: jwtConfig, Feature: feature})
 	if err != nil {
 		return fmt.Errorf("failed to request CloudAccountAddManualAuthProject: %v", err)
 	}
+
 	return nil
 }
 
@@ -119,14 +123,19 @@ func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, pr
 func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, gcpCloudAccountDeleteProjectsQuery, struct {
+	query := gcpCloudAccountDeleteProjectsQuery
+	if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
+		query = gcpCloudAccountDeleteProjectsV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ID  uuid.UUID   `json:"nativeProtectionProjectId"`
 		IDs []uuid.UUID `json:"nativeProtectionProjectUuids"`
-	}{IDs: []uuid.UUID{id}})
+	}{ID: id, IDs: []uuid.UUID{id}})
 	if err != nil {
 		return fmt.Errorf("failed to request CloudAccountDeleteProject: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "gcpCloudAccountDeleteProjects(%q): %s", []uuid.UUID{id}, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q): %s", graphql.QueryName(query), id, string(buf))
 
 	var payload struct {
 		Data struct {
