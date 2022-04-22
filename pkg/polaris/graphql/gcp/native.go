@@ -133,7 +133,7 @@ func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnaps
 	query := gcpNativeDisableProjectQuery
 	if graphql.VersionOlderThan(a.Version, "master-46700", "v20220412") {
 		query = gcpNativeDisableProjectV0Query
-	} else if graphql.VersionOlderThan(a.Version, "master-50000", "v20220426") {
+	} else if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
 		query = gcpNativeDisableProjectV1Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
@@ -162,7 +162,7 @@ func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnaps
 	if graphql.VersionOlderThan(a.Version, "master-46700", "v20220412") {
 		return payload.Data.Query.TaskChainID, nil
 	}
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220426") {
+	if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
 		return payload.Data.Query.JobID, nil
 	}
 	if payload.Data.Query.Error != "" {

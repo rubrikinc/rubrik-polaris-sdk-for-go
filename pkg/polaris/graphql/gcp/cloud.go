@@ -99,7 +99,7 @@ func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, pr
 	query := gcpCloudAccountAddManualAuthProjectQuery
 	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
 		query = gcpCloudAccountAddManualAuthProjectV0Query
-	} else if graphql.VersionOlderThan(a.Version, "master-50000", "v20220426") {
+	} else if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
 		query = gcpCloudAccountAddManualAuthProjectV1Query
 	}
 	_, err := a.GQL.Request(ctx, query, struct {
@@ -124,7 +124,7 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 	a.GQL.Log().Print(log.Trace)
 
 	query := gcpCloudAccountDeleteProjectsQuery
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220426") {
+	if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
 		query = gcpCloudAccountDeleteProjectsV0Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {

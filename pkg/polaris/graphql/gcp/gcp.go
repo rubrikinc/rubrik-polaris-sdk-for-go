@@ -76,7 +76,7 @@ func (a API) SetDefaultServiceAccount(ctx context.Context, name, jwtConfig strin
 	a.GQL.Log().Print(log.Trace)
 
 	query := gcpSetDefaultServiceAccountJwtConfigQuery
-	if graphql.VersionOlderThan(a.Version, "master-50000", "v20220426") {
+	if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
 		query = gcpSetDefaultServiceAccountJwtConfigV0Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
