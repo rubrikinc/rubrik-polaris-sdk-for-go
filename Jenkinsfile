@@ -23,7 +23,7 @@
 pipeline {
     agent any
     tools {
-        go 'go-1.17.3'
+        go 'go-1.18'
     }
     triggers {
         cron(env.BRANCH_NAME == 'main' ? 'H 20 * * *' : '')
@@ -51,12 +51,14 @@ pipeline {
         TEST_GCPPROJECT_FILE           = credentials('tf-sdk-test-gcp-project')
         GOOGLE_APPLICATION_CREDENTIALS = credentials('tf-sdk-test-gcp-service-account')
 
-        // Run integration tests with the nightly build, or when explicitly requested via parameter.
+        // Run integration tests with the nightly build, or when explicitly
+        // requested via parameter.
         TEST_INTEGRATION = "${currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0 ? 'true' : params.RUN_INTEGRATION_TEST}"
     }
     stages {
         stage('Lint') {
             steps {
+                sh 'go mod tidy'
                 sh 'go vet ./...'
                 sh 'go run honnef.co/go/tools/cmd/staticcheck@latest ./...'
                 sh 'bash -c "diff -u <(echo -n) <(gofmt -d .)"'
@@ -70,7 +72,7 @@ pipeline {
         stage('Pre-test') {
             when { expression { env.TEST_INTEGRATION == "true" } }
             steps {
-                sh 'go run ./internal/cmd/testenv -precheck'
+                sh 'go run ./cmd/testenv -precheck'
             }
         }
         stage('Test') {
@@ -92,7 +94,7 @@ pipeline {
         always {
             script {
                 if (env.TEST_INTEGRATION == "true") {
-                    sh 'go run ./internal/cmd/testenv -cleanup'
+                    sh 'go run ./cmd/testenv -cleanup'
                 }
             }
         }
