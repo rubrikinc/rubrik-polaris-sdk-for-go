@@ -29,6 +29,9 @@ import (
 	"strings"
 
 	"golang.org/x/oauth2/google"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/option"
 )
@@ -164,7 +167,7 @@ func KeyFileAndProject(keyFile, projectID string) ProjectFunc {
 // specified values.
 func Project(id string, number int64) ProjectFunc {
 	return func(ctx context.Context) (project, error) {
-		name := strings.Title(strings.ReplaceAll(id, "-", " "))
+		name := cases.Title(language.Und).String(strings.ReplaceAll(id, "-", " "))
 		return project{id: id, number: number, name: name, orgName: name + " Org"}, nil
 	}
 }
