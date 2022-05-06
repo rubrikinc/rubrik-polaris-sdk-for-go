@@ -1,14 +1,12 @@
 mutation RubrikPolarisSDKRequest($nativeProtectionProjectId: UUID!) {
-    result: gcpCloudAccountDeleteProjects(input: {
+    gcpCloudAccountDeleteProjects(input: {
         nativeProtectionProjectIds: [$nativeProtectionProjectId],
         sharedVpcHostProjectIds:    [],
         cloudAccountsProjectIds:    [],
         skipResourceDeletion:       true,
     }) {
-        gcpProjectDeleteStatuses {
-            projectUuid
-            success
-            error
-        }
+        projectUuid
+        success
+        error
     }
 }

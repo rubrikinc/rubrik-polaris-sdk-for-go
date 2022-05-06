@@ -126,6 +126,8 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 	query := gcpCloudAccountDeleteProjectsQuery
 	if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
 		query = gcpCloudAccountDeleteProjectsV0Query
+	} else if graphql.VersionOlderThan(a.Version, "master-47412", "v20220509") {
+		query = gcpCloudAccountDeleteProjectsV1Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ID  uuid.UUID   `json:"nativeProtectionProjectId"`
@@ -137,6 +139,9 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 
 	a.GQL.Log().Printf(log.Debug, "%s(%q): %s", graphql.QueryName(query), id, string(buf))
 
+	// An additional level has been introduced to the GraphQL result structure.
+	// The Projects part is the old structure and the Result part is the new
+	// structure.
 	var payload struct {
 		Data struct {
 			Projects []struct {
@@ -144,17 +149,38 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 				Success     bool   `json:"success"`
 				Error       string `json:"error"`
 			} `json:"gcpCloudAccountDeleteProjects"`
+			Result struct {
+				Status []struct {
+					ProjectUUID string `json:"projectUuid"`
+					Success     bool   `json:"success"`
+					Error       string `json:"error"`
+				} `json:"gcpProjectDeleteStatuses"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return fmt.Errorf("failed to unmarshal CloudAccountDeleteProject: %v", err)
 	}
-	if len(payload.Data.Projects) != 1 {
+
+	// Look at the old GraphQL result structure.
+	if len(payload.Data.Projects) > 1 {
 		return errors.New("expected a single result")
 	}
 
-	if !payload.Data.Projects[0].Success {
-		return errors.New(payload.Data.Projects[0].Error)
+	if len(payload.Data.Projects) == 1 {
+		if !payload.Data.Projects[0].Success {
+			return errors.New(payload.Data.Projects[0].Error)
+		}
+		return nil
+	}
+
+	// Look at the new GraphQL result structure.
+	if len(payload.Data.Result.Status) != 1 {
+		return errors.New("expected a single result")
+	}
+
+	if !payload.Data.Result.Status[0].Success {
+		return errors.New(payload.Data.Result.Status[0].Error)
 	}
 
 	return nil
