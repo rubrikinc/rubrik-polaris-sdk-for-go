@@ -87,21 +87,37 @@ var gcpCloudAccountAddManualAuthProjectV1Query = `mutation SdkGolangGcpCloudAcco
 
 // gcpCloudAccountDeleteProjects GraphQL query
 var gcpCloudAccountDeleteProjectsQuery = `mutation SdkGolangGcpCloudAccountDeleteProjects($nativeProtectionProjectId: UUID!) {
-    gcpCloudAccountDeleteProjects(input: {
+    result: gcpCloudAccountDeleteProjects(input: {
         nativeProtectionProjectIds: [$nativeProtectionProjectId],
         sharedVpcHostProjectIds:    [],
         cloudAccountsProjectIds:    [],
         skipResourceDeletion:       true,
     }) {
-        projectUuid
-        success
-        error
+        gcpProjectDeleteStatuses {
+            projectUuid
+            success
+            error
+        }
     }
 }`
 
 // gcpCloudAccountDeleteProjectsV0 GraphQL query
 var gcpCloudAccountDeleteProjectsV0Query = `mutation SdkGolangGcpCloudAccountDeleteProjectsV0($nativeProtectionProjectUuids: [UUID!]!) {
     gcpCloudAccountDeleteProjects(nativeProtectionProjectUuids: $nativeProtectionProjectUuids, sharedVpcHostProjectUuids: [], cloudAccountsProjectUuids: [], skipResourceDeletion: true) {
+        projectUuid
+        success
+        error
+    }
+}`
+
+// gcpCloudAccountDeleteProjectsV1 GraphQL query
+var gcpCloudAccountDeleteProjectsV1Query = `mutation SdkGolangGcpCloudAccountDeleteProjectsV1($nativeProtectionProjectId: UUID!) {
+    gcpCloudAccountDeleteProjects(input: {
+        nativeProtectionProjectIds: [$nativeProtectionProjectId],
+        sharedVpcHostProjectIds:    [],
+        cloudAccountsProjectIds:    [],
+        skipResourceDeletion:       true,
+    }) {
         projectUuid
         success
         error
