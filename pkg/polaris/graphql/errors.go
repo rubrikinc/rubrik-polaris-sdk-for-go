@@ -25,7 +25,4 @@ import "errors"
 var (
 	// ErrNotFound signals that the specified entity could not be found.
 	ErrNotFound = errors.New("not found")
-
-	// ErrNotUnique signals that a request did not result in a unique entity.
-	ErrNotUnique = errors.New("not unique")
 )

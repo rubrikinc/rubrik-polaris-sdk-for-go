@@ -32,6 +32,8 @@ import (
 )
 
 // NativeSubscription represents a Polaris native subscription.
+// NativeSubscriptions are connected to CloudAccounts through the NativeID
+// field.
 type NativeSubscription struct {
 	ID            uuid.UUID          `json:"id"`
 	Name          string             `json:"name"`

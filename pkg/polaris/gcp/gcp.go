@@ -159,7 +159,7 @@ func (a API) Project(ctx context.Context, id IdentityFunc, feature core.Feature)
 		return CloudAccount{}, fmt.Errorf("failed to lookup identity: %v", err)
 	}
 
-	if identity.internal {
+	if identity.kind == internalID {
 		id, err := uuid.Parse(identity.id)
 		if err != nil {
 			return CloudAccount{}, fmt.Errorf("failed to parse identity: %v", err)
@@ -170,6 +170,7 @@ func (a API) Project(ctx context.Context, id IdentityFunc, feature core.Feature)
 			return CloudAccount{}, fmt.Errorf("failed to get projects: %v", err)
 		}
 
+		// Find the exact match.
 		for _, account := range accounts {
 			if account.ID == id {
 				return account, nil
@@ -180,11 +181,20 @@ func (a API) Project(ctx context.Context, id IdentityFunc, feature core.Feature)
 		if err != nil {
 			return CloudAccount{}, fmt.Errorf("failed to get projects: %v", err)
 		}
-		if len(accounts) > 1 {
-			return CloudAccount{}, fmt.Errorf("project %w", graphql.ErrNotUnique)
-		}
-		if len(accounts) == 1 {
-			return accounts[0], nil
+
+		// Find the exact match.
+		if identity.kind == externalID {
+			for _, account := range accounts {
+				if account.NativeID == identity.id {
+					return account, nil
+				}
+			}
+		} else {
+			for _, account := range accounts {
+				if strconv.FormatInt(account.ProjectNumber, 10) == identity.id {
+					return account, nil
+				}
+			}
 		}
 	}
 
@@ -217,15 +227,15 @@ func (a API) Projects(ctx context.Context, feature core.Feature, filter string) 
 		if err != nil {
 			return nil, fmt.Errorf("failed to get native projects: %v", err)
 		}
-		if len(natives) < 1 {
-			accounts[i].OrganizationName = "<Native Disabled>"
-			continue
-		}
-		if len(natives) > 1 {
-			return nil, fmt.Errorf("native project %w", graphql.ErrNotUnique)
-		}
 
-		accounts[i].OrganizationName = natives[0].OrganizationName
+		// Find the exact match.
+		accounts[i].OrganizationName = "<Native Disabled>"
+		for _, native := range natives {
+			if native.NativeID == accounts[i].NativeID {
+				accounts[i].OrganizationName = native.OrganizationName
+				break
+			}
+		}
 	}
 
 	return accounts, nil
@@ -312,14 +322,20 @@ func (a API) RemoveProject(ctx context.Context, id IdentityFunc, feature core.Fe
 		if err != nil {
 			return fmt.Errorf("failed to get native projects: %v", err)
 		}
-		if len(natives) < 1 {
+
+		// Find the exact match.
+		var nativeID uuid.UUID
+		for _, native := range natives {
+			if native.NativeID == account.NativeID {
+				nativeID = native.ID
+				break
+			}
+		}
+		if nativeID == uuid.Nil {
 			return fmt.Errorf("native project %w", graphql.ErrNotFound)
 		}
-		if len(natives) > 1 {
-			return fmt.Errorf("native project %w", graphql.ErrNotUnique)
-		}
 
-		jobID, err := gcp.Wrap(a.gql).NativeDisableProject(ctx, natives[0].ID, deleteSnapshots)
+		jobID, err := gcp.Wrap(a.gql).NativeDisableProject(ctx, nativeID, deleteSnapshots)
 		if err != nil {
 			return fmt.Errorf("failed to disable native project: %v", err)
 		}

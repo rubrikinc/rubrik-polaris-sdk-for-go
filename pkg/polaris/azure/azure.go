@@ -109,13 +109,12 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 		return uuid.Nil, fmt.Errorf("failed to lookup identity: %v", err)
 	}
 
+	uid, err := uuid.Parse(identity.id)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to parse identity: %v", err)
+	}
 	if identity.internal {
-		id, err := uuid.Parse(identity.id)
-		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to parse identity: %v", err)
-		}
-
-		return id, nil
+		return uid, nil
 	}
 
 	// Note that the same tenant can show up for multiple features.
@@ -136,14 +135,13 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("failed to get tenant: %v", err)
 			}
-			if len(tenantWithAccounts.Accounts) == 0 {
-				continue
-			}
-			if len(tenantWithAccounts.Accounts) > 1 {
-				return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotUnique)
-			}
 
-			return tenantWithAccounts.Accounts[0].ID, nil
+			// Find the exact match.
+			for _, account := range tenantWithAccounts.Accounts {
+				if account.NativeID == uid {
+					return account.ID, nil
+				}
+			}
 		}
 	}
 
@@ -281,19 +279,20 @@ func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Fea
 		return CloudAccount{}, fmt.Errorf("failed to lookup identity: %v", err)
 	}
 
-	if identity.internal {
-		id, err := uuid.Parse(identity.id)
-		if err != nil {
-			return CloudAccount{}, fmt.Errorf("failed to parse identity: %v", err)
-		}
+	uid, err := uuid.Parse(identity.id)
+	if err != nil {
+		return CloudAccount{}, fmt.Errorf("failed to parse identity: %v", err)
+	}
 
+	if identity.internal {
 		accounts, err := a.Subscriptions(ctx, feature, "")
 		if err != nil {
 			return CloudAccount{}, fmt.Errorf("failed to get subscriptions: %v", err)
 		}
 
+		// Find the exact match.
 		for _, account := range accounts {
-			if account.ID == id {
+			if account.ID == uid {
 				return account, nil
 			}
 		}
@@ -302,11 +301,12 @@ func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Fea
 		if err != nil {
 			return CloudAccount{}, fmt.Errorf("failed to get subscriptions: %v", err)
 		}
-		if len(accounts) > 1 {
-			return CloudAccount{}, fmt.Errorf("subscription %w", graphql.ErrNotUnique)
-		}
-		if len(accounts) == 1 {
-			return accounts[0], nil
+
+		// Find the exact match.
+		for _, account := range accounts {
+			if account.NativeID == uid {
+				return account, nil
+			}
 		}
 	}
 

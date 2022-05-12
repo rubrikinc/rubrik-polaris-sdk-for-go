@@ -867,6 +867,14 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 		t.Errorf("invalid number of features: %v", n)
 	}
 
+	// Verify that the Project function does not return a project given a prefix
+	// of the project id.
+	prefix := testProject.ProjectID[:len(testProject.ProjectID)/2]
+	account, err = client.GCP().Project(ctx, gcp.ProjectID(prefix), core.FeatureCloudNativeProtection)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatalf("invalid error: %v", err)
+	}
+
 	// Remove GCP project from Polaris keeping the snapshots.
 	err = client.GCP().RemoveProject(ctx, gcp.ID(gcp.Default()), core.FeatureCloudNativeProtection, false)
 	if err != nil {
