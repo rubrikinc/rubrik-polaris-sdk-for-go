@@ -132,8 +132,8 @@ func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filt
 	return accounts, nil
 }
 
-// StartNativeAccountDisableJob starts a task chain job to disables the native
-// account with the specified Polaris native account id. Returns the Polaris
+// StartNativeAccountDisableJob starts a task chain job to disable the native
+// account with the specified Polaris cloud account id. Returns the Polaris
 // task chain id.
 func (a API) StartNativeAccountDisableJob(ctx context.Context, id uuid.UUID, feature ProtectionFeature, deleteSnapshots bool) (uuid.UUID, error) {
 	a.GQL.Log().Print(log.Trace)

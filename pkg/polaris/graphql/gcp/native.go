@@ -33,7 +33,8 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// NativeProject represents a Polaris native project.
+// NativeProject represents a Polaris native project. NativeProjects are
+// connected to CloudAccounts through the NativeID field.
 type NativeProject struct {
 	ID               uuid.UUID          `json:"id"`
 	Name             string             `json:"name"`

@@ -29,9 +29,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type identityKind int
+
+const (
+	internalID identityKind = iota
+	externalID
+	externalNumber
+)
+
 type identity struct {
-	id       string
-	internal bool
+	id   string
+	kind identityKind
 }
 
 // IdentityFunc returns a project identity initialized from the values passed
@@ -42,7 +50,7 @@ type IdentityFunc func(ctx context.Context) (identity, error)
 // the specified Polaris cloud account id.
 func CloudAccountID(id uuid.UUID) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
-		return identity{id: id.String(), internal: true}, nil
+		return identity{id: id.String(), kind: internalID}, nil
 	}
 }
 
@@ -55,7 +63,7 @@ func ID(project ProjectFunc) IdentityFunc {
 			return identity{}, fmt.Errorf("failed to lookup project: %v", err)
 		}
 
-		return identity{id: config.id, internal: false}, nil
+		return identity{id: config.id, kind: externalID}, nil
 	}
 }
 
@@ -67,7 +75,7 @@ func ProjectID(id string) IdentityFunc {
 			return identity{}, errors.New("invalid GCP project id")
 		}
 
-		return identity{id: id, internal: false}, nil
+		return identity{id: id, kind: externalID}, nil
 	}
 }
 
@@ -75,6 +83,6 @@ func ProjectID(id string) IdentityFunc {
 // specified project number.
 func ProjectNumber(number int64) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
-		return identity{id: strconv.FormatInt(number, 10), internal: false}, nil
+		return identity{id: strconv.FormatInt(number, 10), kind: externalNumber}, nil
 	}
 }
