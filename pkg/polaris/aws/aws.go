@@ -447,7 +447,7 @@ func (a API) UpdateAccount(ctx context.Context, id IdentityFunc, feature core.Fe
 		return fmt.Errorf("failed to get account: %v", err)
 	}
 
-	err = aws.Wrap(a.gql).UpdateCloudAccount(ctx, core.UpdateRegions, account.ID, feature, options.regions)
+	err = aws.Wrap(a.gql).UpdateCloudAccountFeature(ctx, core.UpdateRegions, account.ID, feature, options.regions)
 	if err != nil {
 		return fmt.Errorf("failed to update account: %v", err)
 	}
