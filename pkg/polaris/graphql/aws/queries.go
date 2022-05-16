@@ -462,21 +462,28 @@ var startAwsNativeAccountDisableJobV0Query = `mutation SdkGolangStartAwsNativeAc
 
 // updateAwsCloudAccount GraphQL query
 var updateAwsCloudAccountQuery = `mutation SdkGolangUpdateAwsCloudAccount($action: CloudAccountAction!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegion!]!, $feature: CloudAccountFeature!) {
-    updateAwsCloudAccount(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
+    result: updateAwsCloudAccountFeature(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
         message
     }
 }`
 
 // updateAwsCloudAccountV0 GraphQL query
 var updateAwsCloudAccountV0Query = `mutation SdkGolangUpdateAwsCloudAccountV0($action: CloudAccountActionEnum!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegionEnum!]!, $feature: CloudAccountFeatureEnum!) {
-    updateAwsCloudAccount(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
+    result: updateAwsCloudAccount(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
         message
     }
 }`
 
 // updateAwsCloudAccountV1 GraphQL query
 var updateAwsCloudAccountV1Query = `mutation SdkGolangUpdateAwsCloudAccountV1($action: CloudAccountActionEnum!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegionEnum!]!, $feature: CloudAccountFeature!) {
-    updateAwsCloudAccount(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
+    result: updateAwsCloudAccount(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
+        message
+    }
+}`
+
+// updateAwsCloudAccountV2 GraphQL query
+var updateAwsCloudAccountV2Query = `mutation SdkGolangUpdateAwsCloudAccountV2($action: CloudAccountAction!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegion!]!, $feature: CloudAccountFeature!) {
+    result: updateAwsCloudAccount(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
         message
     }
 }`

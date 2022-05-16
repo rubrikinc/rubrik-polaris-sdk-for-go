@@ -324,10 +324,10 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 	return nil
 }
 
-// UpdateCloudAccount updates the settings of the cloud account. The message
-// returned by the GraphQL API call is converted into a Go error. At this time
-// only the regions can be updated.
-func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAction, id uuid.UUID, feature core.Feature, regions []Region) error {
+// UpdateCloudAccountFeature updates the settings of the cloud account. The
+// message returned by the GraphQL API call is converted into a Go error. At
+// this time only the regions can be updated.
+func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAccountAction, id uuid.UUID, feature core.Feature, regions []Region) error {
 	a.GQL.Log().Print(log.Trace)
 
 	query := updateAwsCloudAccountQuery
@@ -335,6 +335,8 @@ func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAct
 		query = updateAwsCloudAccountV0Query
 	} else if graphql.VersionOlderThan(a.Version, "master-46203", "v20220322") {
 		query = updateAwsCloudAccountV1Query
+	} else if graphql.VersionOlderThan(a.Version, "master-47593", "v20220516") {
+		query = updateAwsCloudAccountV2Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Action  core.CloudAccountAction `json:"action"`
@@ -350,9 +352,9 @@ func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAct
 
 	var payload struct {
 		Data struct {
-			Query struct {
+			Result struct {
 				Message string `json:"message"`
-			} `json:"updateAwsCloudAccount"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
@@ -360,8 +362,8 @@ func (a API) UpdateCloudAccount(ctx context.Context, action core.CloudAccountAct
 	}
 
 	// On success the message starts with "successfully".
-	if !strings.HasPrefix(strings.ToLower(payload.Data.Query.Message), "successfully") {
-		return errors.New(payload.Data.Query.Message)
+	if !strings.HasPrefix(strings.ToLower(payload.Data.Result.Message), "successfully") {
+		return errors.New(payload.Data.Result.Message)
 	}
 
 	return nil
