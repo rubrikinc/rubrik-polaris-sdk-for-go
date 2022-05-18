@@ -177,6 +177,32 @@ func azurePrincipalFromAzFile(ctx context.Context, tenantDomain string) (service
 	return principal, nil
 }
 
+// principalAzureError is used to tag errors originating from Azure while
+// loading a service principal from file. The main use case is to capture errors
+// relating to expired secrets.
+type principalAzureError struct {
+	err error
+}
+
+func (e principalAzureError) Error() string {
+	return e.err.Error()
+}
+
+func (e principalAzureError) Is(target error) bool {
+	if _, ok := target.(principalAzureError); ok {
+		return true
+	}
+	if _, ok := target.(*principalAzureError); ok {
+		return true
+	}
+
+	return false
+}
+
+func (e principalAzureError) Unwrap() error {
+	return e.err
+}
+
 // principalV0 format is used by v0.1.x versions of the Polaris SDK.
 type principalV0 struct {
 	AppID        string `json:"app_id"`
@@ -211,7 +237,8 @@ func decodePrincipalV0(ctx context.Context, data, tenantDomain string) (serviceP
 	rmConfig := auth.NewClientCredentialsConfig(v0.AppID, v0.AppSecret, tenantDomain)
 	rmAuthorizer, err := rmConfig.Authorizer()
 	if err != nil {
-		return servicePrincipal{}, fmt.Errorf("failed to get Azure Resource Manager authorizer: %v", err)
+		err = fmt.Errorf("failed to get Azure Resource Manager authorizer: %v", err)
+		return servicePrincipal{}, principalAzureError{err: err}
 	}
 
 	principal := servicePrincipal{
@@ -232,12 +259,13 @@ func decodePrincipalV0(ctx context.Context, data, tenantDomain string) (serviceP
 	}
 	graphAuthorizer, err := graphConfig.Authorizer()
 	if err != nil {
-		return servicePrincipal{}, fmt.Errorf("failed to get Azure Graph authorizer: %v", err)
+		err = fmt.Errorf("failed to get Azure Graph authorizer: %v", err)
+		return servicePrincipal{}, principalAzureError{err: err}
 	}
 
 	if err := azureGraph(ctx, graphAuthorizer, &principal); err != nil {
-		return servicePrincipal{},
-			fmt.Errorf("failed to lookup app display name and object id for service principal: %v", err)
+		err = fmt.Errorf("failed to lookup app display name and object id for service principal: %v", err)
+		return servicePrincipal{}, principalAzureError{err: err}
 	}
 
 	if v0.AppName != "" {
@@ -281,7 +309,8 @@ func decodePrincipalV1(ctx context.Context, data, tenantDomain string) (serviceP
 	rmConfig := auth.NewClientCredentialsConfig(v1.AppID, v1.AppSecret, tenantDomain)
 	rmAuthorizer, err := rmConfig.Authorizer()
 	if err != nil {
-		return servicePrincipal{}, fmt.Errorf("failed to get Azure Resource Manager authorizer: %v", err)
+		err = fmt.Errorf("failed to get Azure Resource Manager authorizer: %v", err)
+		return servicePrincipal{}, principalAzureError{err: err}
 	}
 
 	principal := servicePrincipal{
@@ -302,12 +331,14 @@ func decodePrincipalV1(ctx context.Context, data, tenantDomain string) (serviceP
 	}
 	graphAuthorizer, err := graphConfig.Authorizer()
 	if err != nil {
-		return servicePrincipal{}, fmt.Errorf("failed to get Azure Graph authorizer: %v", err)
+		err = fmt.Errorf("failed to get Azure Graph authorizer: %v", err)
+		return servicePrincipal{}, principalAzureError{err: err}
 	}
 
 	if err := azureGraph(ctx, graphAuthorizer, &principal); err != nil {
-		return servicePrincipal{},
-			fmt.Errorf("failed to lookup app display name and object id for service principal: %v", err)
+		err = fmt.Errorf("failed to lookup app display name and object id for service principal: %v", err)
+		return servicePrincipal{}, principalAzureError{err: err}
+
 	}
 
 	if v1.AppName != "" {
@@ -347,7 +378,8 @@ func decodePrincipalV2(ctx context.Context, data, tenantDomain string) (serviceP
 	rmConfig := auth.NewClientCredentialsConfig(v2.AppID, v2.AppSecret, tenantDomain)
 	rmAuthorizer, err := rmConfig.Authorizer()
 	if err != nil {
-		return servicePrincipal{}, fmt.Errorf("failed to get Azure Resource Manager authorizer: %v", err)
+		err = fmt.Errorf("failed to get Azure Resource Manager authorizer: %v", err)
+		return servicePrincipal{}, principalAzureError{err: err}
 	}
 
 	principal := servicePrincipal{
@@ -368,12 +400,13 @@ func decodePrincipalV2(ctx context.Context, data, tenantDomain string) (serviceP
 	}
 	graphAuthorizer, err := graphConfig.Authorizer()
 	if err != nil {
-		return servicePrincipal{}, fmt.Errorf("failed to get Azure Graph authorizer: %v", err)
+		err = fmt.Errorf("failed to get Azure Graph authorizer: %v", err)
+		return servicePrincipal{}, principalAzureError{err: err}
 	}
 
 	if err := azureGraph(ctx, graphAuthorizer, &principal); err != nil {
-		return servicePrincipal{},
-			fmt.Errorf("failed to lookup app display name and object id for service principal: %v", err)
+		err = fmt.Errorf("failed to lookup app display name and object id for service principal: %v", err)
+		return servicePrincipal{}, principalAzureError{err: err}
 	}
 
 	if v2.AppName != "" {
@@ -400,14 +433,28 @@ func azurePrincipalFromKeyFile(ctx context.Context, keyFile, tenantDomain string
 		return servicePrincipal{}, fmt.Errorf("failed to read key file: %v", err)
 	}
 
-	if principal, err := decodePrincipalV2(ctx, string(buf), tenantDomain); err == nil {
+	principal, err := decodePrincipalV2(ctx, string(buf), tenantDomain)
+	if err == nil {
 		return principal, nil
 	}
-	if principal, err := decodePrincipalV1(ctx, string(buf), tenantDomain); err == nil {
+	if errors.Is(err, principalAzureError{}) {
+		return servicePrincipal{}, err
+	}
+
+	principal, err = decodePrincipalV1(ctx, string(buf), tenantDomain)
+	if err == nil {
 		return principal, nil
 	}
-	if principal, err := decodePrincipalV0(ctx, string(buf), tenantDomain); err == nil {
+	if errors.Is(err, principalAzureError{}) {
+		return servicePrincipal{}, err
+	}
+
+	principal, err = decodePrincipalV0(ctx, string(buf), tenantDomain)
+	if err == nil {
 		return principal, nil
+	}
+	if errors.Is(err, principalAzureError{}) {
+		return servicePrincipal{}, err
 	}
 
 	return servicePrincipal{}, fmt.Errorf("unrecognized file format: %v", keyFile)
