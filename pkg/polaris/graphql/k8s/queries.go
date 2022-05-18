@@ -158,6 +158,32 @@ var getTaskchainInfoQuery = `query SdkGolangGetTaskchainInfo(
     }
 }`
 
+// k8sAppManifest GraphQL query
+var k8sAppManifestQuery = `query SdkGolangK8sAppManifest(
+    $app: String!,
+    $version: String!,
+    $retrieveLatestVersion: Boolean!,
+) {
+    k8sAppManifest(
+        app: $app,
+        version: $version,
+        retrieveLatestVersion: $retrieveLatestVersion,
+    ) {
+        version
+        isSuccessful
+        toApply {
+            manifest
+            shaChecksum
+            shaAlgorithm
+        }
+        toDelete {
+            manifest
+            shaChecksum
+            shaAlgorithm
+        }
+    }
+}`
+
 // k8sNamespace GraphQL query
 var k8sNamespaceQuery = `query SdkGolangK8sNamespace(
     $after: String

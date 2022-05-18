@@ -1201,7 +1201,7 @@ func TestTakeK8NamespaceSnapshot(t *testing.T) {
 
 	ns := nss[0] // get first namespace
 	info, err := client.K8s().TakeK8NamespaceSnapshot(ctx, ns.ID, "00000000-0000-0000-0000-000000000000")
-	if err!= nil {
+	if err != nil {
 		t.Fatal(err)
 	}
 	fmt.Printf("%v\n", info)
@@ -1234,7 +1234,7 @@ func TestGetTaskchainInfo(t *testing.T) {
 
 	ns := nss[1] // get first namespace
 	info, err := client.K8s().TakeK8NamespaceSnapshot(ctx, ns.ID, "00000000-0000-0000-0000-000000000000")
-	if err!= nil {
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -1347,6 +1347,7 @@ func TestGetAllSnapshotPvcs(t *testing.T) {
 	fmt.Printf("%v\n", len(s))
 	fmt.Printf("%v\n", s)
 }
+
 // TestRestoreK8NamespaceSnapshot verifies that the SDK can restore a
 // namespace snapshot
 func TestRestoreK8NamespaceSnapshot(t *testing.T) {
@@ -1370,9 +1371,9 @@ func TestRestoreK8NamespaceSnapshot(t *testing.T) {
 	pvcIds := []string{"a9b72331-f1b2-482e-8848-67f2036b4696"}
 
 	matchExpression := k8s.LabelSelectorRequirement{
-		Key: "rubrik.com/k8s-pvc-label",
+		Key:      "rubrik.com/k8s-pvc-label",
 		Operator: "In",
-		Values: pvcIds,
+		Values:   pvcIds,
 	}
 	labelSelector := k8s.LabelSelector{
 		MatchExpressions: []k8s.LabelSelectorRequirement{matchExpression},
@@ -1428,4 +1429,40 @@ func TestGetActivitySeries(t *testing.T) {
 	fmt.Printf("%v\n", len(as))
 	fmt.Printf("%v\n", as)
 	fmt.Printf("%v\n", cursor)
+}
+
+// TestK8sAppManifest verifies that the SDK can get the app manifest
+func TestK8sAppManifest(t *testing.T) {
+	ctx := context.Background()
+	testServiceAccount := ServiceAccount{
+		ClientID:       "client|sIIw3uAxHqFsn3kUR78AUf1zMewyLB7p",
+		ClientSecret:   "WnmUX2luK5X_TcrMMzZUrFh-mU7gWWti0VS90onJ_uwygXsYajUwVOlWE1MArIs_",
+		Name:           "test",
+		AccessTokenURI: "https://manifest.dev-045.my.rubrik-lab.com/api/client_token",
+	}
+
+	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Using 'operator' and 'test' version
+	app := "operator"
+	version := "test"
+	retrieveLatestVersion := false
+
+	info, err := client.K8s().GetK8sAppManifest(
+		ctx,
+		app,
+		version,
+		retrieveLatestVersion,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("%v\n", info)
+
+	if !info.IsSuccessful {
+		t.Fatal(errors.New("query failed"))
+	}
 }

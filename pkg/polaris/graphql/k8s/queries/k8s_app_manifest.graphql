@@ -1,0 +1,24 @@
+query RubrikPolarisSDKRequest(
+    $app: String!,
+    $version: String!,
+    $retrieveLatestVersion: Boolean!,
+) {
+    k8sAppManifest(
+        app: $app,
+        version: $version,
+        retrieveLatestVersion: $retrieveLatestVersion,
+    ) {
+        version
+        isSuccessful
+        toApply {
+            manifest
+            shaChecksum
+            shaAlgorithm
+        }
+        toDelete {
+            manifest
+            shaChecksum
+            shaAlgorithm
+        }
+    }
+}
