@@ -199,7 +199,7 @@ func (e principalAzureError) Is(target error) bool {
 	return false
 }
 
-func (e principalAzureError) Unwrap(err error) error {
+func (e principalAzureError) Unwrap() error {
 	return e.err
 }
 
