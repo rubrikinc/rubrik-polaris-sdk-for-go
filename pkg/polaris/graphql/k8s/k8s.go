@@ -1,4 +1,4 @@
-//go:generate go run ../queries_gen.go gcp
+//go:generate go run ../queries_gen.go k8s
 
 // Copyright 2021 Rubrik, Inc.
 //
@@ -60,19 +60,19 @@ type Filter struct {
 }
 
 type ActivitySeriesConnectionFilter struct {
-	ObjectType []string   `json:"objectType,omitempty"`
-	LastUpdatedGt time.Time   `json:"lastUpdated_gt,omitempty"`
+	ObjectType    []string  `json:"objectType,omitempty"`
+	LastUpdatedGt time.Time `json:"lastUpdated_gt,omitempty"`
 }
 
 type TimeRangeInput struct {
-	Start time.Time   `json:"start,omitempty"`
-	End time.Time   `json:"end,omitempty"`
+	Start time.Time `json:"start,omitempty"`
+	End   time.Time `json:"end,omitempty"`
 }
 
 type PolarisSnapshotFilterInput struct {
-	SnappableId string   `json:"snappableId,omitempty"`
-	IsOnDemandSnapshot bool   `json:"lastUpdated_gt,omitempty"`
-	TimeRange TimeRangeInput   `json:"timeRange,omitempty"`
+	SnappableId        string         `json:"snappableId,omitempty"`
+	IsOnDemandSnapshot bool           `json:"lastUpdated_gt,omitempty"`
+	TimeRange          TimeRangeInput `json:"timeRange,omitempty"`
 }
 
 type K8sNamespace struct {
@@ -85,18 +85,18 @@ type K8sNamespace struct {
 }
 
 type PvcInformation struct {
-	ID	string	`json:"id"`
-	Name	string	`json:"name"`
-	Capacity	string	`json:"capacity"`
-	AccessMode	string	`json:"accessMode"`
-	StorageClass	string	`json:"storageClass"`
-	Volume	string	`json:"volume"`
-	Labels	string	`json:"labels"`
-	Phase	string	`json:"phase"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Capacity     string `json:"capacity"`
+	AccessMode   string `json:"accessMode"`
+	StorageClass string `json:"storageClass"`
+	Volume       string `json:"volume"`
+	Labels       string `json:"labels"`
+	Phase        string `json:"phase"`
 }
 
 type ActivityConnection struct {
-	Message string   `json:"message,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 type ActivitySeriesConnection struct {
@@ -136,7 +136,7 @@ type ActivitySeriesConnection struct {
 	Progress string `json:"progress,omitempty"`
 
 	ActivityConnection struct {
-		Node[] ActivityConnection `json:"nodes"`
+		Node []ActivityConnection `json:"nodes"`
 	} `json:"activityConnection"`
 }
 
@@ -163,47 +163,47 @@ type ActivitySeries struct {
 }
 
 type Snapshot struct {
-	Id	uuid.UUID `json:"id"`
-	Date	time.Time `json:"date"`
-	IsOnDemandSnapshot bool `json:"isOnDemandSnapshot"`
-	ExpirationDate time.Time `json:"expirationDate"`
-	IsCorrupted bool `json:"isCorrupted"`
-	IsDeletedFromSource bool `json:"isDeletedFromSource"`
-	IsReplicated bool `json:"isReplicated"`
-	IsArchived bool `json:"isArchived"`
-	IsReplica bool `json:"isReplica"`
-	IsExpired bool `json:"isExpired"`
+	Id                  uuid.UUID `json:"id"`
+	Date                time.Time `json:"date"`
+	IsOnDemandSnapshot  bool      `json:"isOnDemandSnapshot"`
+	ExpirationDate      time.Time `json:"expirationDate"`
+	IsCorrupted         bool      `json:"isCorrupted"`
+	IsDeletedFromSource bool      `json:"isDeletedFromSource"`
+	IsReplicated        bool      `json:"isReplicated"`
+	IsArchived          bool      `json:"isArchived"`
+	IsReplica           bool      `json:"isReplica"`
+	IsExpired           bool      `json:"isExpired"`
 }
 
 type TaskchainInfo struct {
-	TaskchainId	string `json:"taskchainId"`
-	State string `json:"state"`
-	StartTime time.Time `json:"startTime"`
-	EndTime time.Time `json:"endTime"`
-	Progress int64 `json:"progress"`
-	JobId int64 `json:"jobId"`
-	JobType string `json:"jobType"`
-	Error string `json:"error"`
-	Account string `json:"account"`
+	TaskchainId string    `json:"taskchainId"`
+	State       string    `json:"state"`
+	StartTime   time.Time `json:"startTime"`
+	EndTime     time.Time `json:"endTime"`
+	Progress    int64     `json:"progress"`
+	JobId       int64     `json:"jobId"`
+	JobType     string    `json:"jobType"`
+	Error       string    `json:"error"`
+	Account     string    `json:"account"`
 }
 
 type NamespaceSnapshot struct {
-	NamespaceId	uuid.UUID `json:"namespaceId"`
-	OnDemandSnapshotSlaId string `json:"onDemandSnapshotSlaId"`
+	NamespaceId           uuid.UUID `json:"namespaceId"`
+	OnDemandSnapshotSlaId string    `json:"onDemandSnapshotSlaId"`
 }
 
 type CreateK8sNamespaceSnapshots struct {
-	SnapshotInput	[]NamespaceSnapshot `json:"snapshotInput"`
+	SnapshotInput []NamespaceSnapshot `json:"snapshotInput"`
 }
 
 type LabelSelectorRequirement struct {
-	Key string `json:"key"`
-	Operator string `json:"operator"`
-	Values[] string `json:"values"`
+	Key      string   `json:"key"`
+	Operator string   `json:"operator"`
+	Values   []string `json:"values"`
 }
 
 type LabelSelector struct {
-	MatchExpressions[] LabelSelectorRequirement `json:"matchExpressions"`
+	MatchExpressions []LabelSelectorRequirement `json:"matchExpressions"`
 }
 
 type NamespaceRestoreRequest struct {
@@ -214,8 +214,21 @@ type NamespaceRestoreRequest struct {
 }
 
 type NamespaceSnaphotInfo struct {
-	TaskchainId	string `json:"taskchainId"`
-	JobId int64 `json:"jobId"`
+	TaskchainId string `json:"taskchainId"`
+	JobId       int64  `json:"jobId"`
+}
+
+type Manifest struct {
+	Manifest     string `json:"manifest"`
+	ShaChecksum  string `json:"shaChecksum"`
+	ShaAlgorithm string `json:"shaAlgorithm"`
+}
+
+type AppManifestInfo struct {
+	Version      string   `json:"version"`
+	IsSuccessful bool     `json:"isSuccessful"`
+	ToApply      Manifest `json:"toApply"`
+	ToDelete     Manifest `json:"toDelete"`
 }
 
 func (a API) ListSLA(ctx context.Context) ([]core.GlobalSLA, error) {
@@ -383,7 +396,7 @@ func (a API) TakeK8NamespaceSnapshot(
 	input := CreateK8sNamespaceSnapshots{SnapshotInput: []NamespaceSnapshot{namespaceSnapshot}}
 	buf, err := a.GQL.Request(ctx, snapshotK8sNamespaceQuery, struct {
 		Input CreateK8sNamespaceSnapshots `json:"input"`
-	}{Input:	input})
+	}{Input: input})
 	if err != nil {
 		return NamespaceSnaphotInfo{}, err
 	}
@@ -425,8 +438,8 @@ func (a API) GetActivitySeriesConnection(
 				After   string                         `json:"after,omitempty"`
 				Filters ActivitySeriesConnectionFilter `json:"filters,omitempty"`
 			}{
-				After:     cursor,
-				Filters:    ActivitySeriesConnectionFilter{
+				After: cursor,
+				Filters: ActivitySeriesConnectionFilter{
 					ObjectType: objectType, LastUpdatedGt: lastUpdatedGtInUTC,
 				},
 			},
@@ -474,13 +487,13 @@ func (a API) RestoreK8NamespaceSnapshot(
 	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.RestoreK8NamespaceSnapshot")
 
 	buf, err := a.GQL.Request(ctx, restoreK8sNamespaceQuery, struct {
-		K8sNamespaceRestoreRequest NamespaceRestoreRequest    `json:"k8sNamespaceRestoreRequest"`
+		K8sNamespaceRestoreRequest NamespaceRestoreRequest `json:"k8sNamespaceRestoreRequest"`
 	}{
-		K8sNamespaceRestoreRequest:	NamespaceRestoreRequest{
-			SnapshotUUID: snapshotUUID,
-			TargetClusterUUID: targetClusterUUID,
+		K8sNamespaceRestoreRequest: NamespaceRestoreRequest{
+			SnapshotUUID:        snapshotUUID,
+			TargetClusterUUID:   targetClusterUUID,
 			TargetNamespaceName: targetNamespaceName,
-			LabelSelector: labelSelector,
+			LabelSelector:       labelSelector,
 		},
 	})
 	if err != nil {
@@ -489,7 +502,7 @@ func (a API) RestoreK8NamespaceSnapshot(
 
 	a.GQL.Log().Printf(
 		log.Debug,
-		"RestoreK8NamespaceSnapshot for (snapshotUUID: %s), " +
+		"RestoreK8NamespaceSnapshot for (snapshotUUID: %s), "+
 			"(targetClusterUUID: %s) and (targetNamespaceName: %s)",
 		snapshotUUID, targetClusterUUID, targetNamespaceName,
 	)
@@ -519,11 +532,11 @@ func (a API) GetActivitySeries(
 		ctx,
 		getActivitySeriesQuery,
 		struct {
-			ActivitySeriesId     uuid.UUID    `json:"activitySeriesId"`
-			After     string    `json:"after,omitempty"`
+			ActivitySeriesId uuid.UUID `json:"activitySeriesId"`
+			After            string    `json:"after,omitempty"`
 		}{
-			ActivitySeriesId:     activitySeriesId,
-			After:     cursor,
+			ActivitySeriesId: activitySeriesId,
+			After:            cursor,
 		},
 	)
 	if err != nil {
@@ -533,7 +546,7 @@ func (a API) GetActivitySeries(
 		Data struct {
 			ActivitySeriesData struct {
 				ActivityConnection struct {
-					Nodes []ActivitySeries `json:"nodes"`
+					Nodes    []ActivitySeries `json:"nodes"`
 					PageInfo struct {
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`
@@ -568,13 +581,13 @@ func (a API) GetK8sNamespace(
 		ctx,
 		k8sNamespaceQuery,
 		struct {
-			After     string    `json:"after,omitempty"`
-			Filters    PolarisSnapshotFilterInput  `json:"filters,omitempty"`
-			Fid    uuid.UUID  `json:"fid,omitempty"`
+			After   string                     `json:"after,omitempty"`
+			Filters PolarisSnapshotFilterInput `json:"filters,omitempty"`
+			Fid     uuid.UUID                  `json:"fid,omitempty"`
 		}{
-			After:     cursor,
-			Filters:    PolarisSnapshotFilterInput{
-				TimeRange: TimeRangeInput{Start:startTime, End:endTime},
+			After: cursor,
+			Filters: PolarisSnapshotFilterInput{
+				TimeRange: TimeRangeInput{Start: startTime, End: endTime},
 			},
 			Fid: snappableId,
 		},
@@ -621,11 +634,11 @@ func (a API) GetAllSnapshotPVCS(
 		ctx,
 		allSnapshotPvcsQuery,
 		struct {
-			SnapshotId     string    `json:"snapshotId"`
-			SnappableId    uuid.UUID  `json:"snappableId"`
+			SnapshotId  string    `json:"snapshotId"`
+			SnappableId uuid.UUID `json:"snappableId"`
 		}{
-			SnapshotId:     snapshotId,
-			SnappableId:    snappableId,
+			SnapshotId:  snapshotId,
+			SnappableId: snappableId,
 		},
 	)
 	if err != nil {
@@ -634,7 +647,7 @@ func (a API) GetAllSnapshotPVCS(
 
 	var payload struct {
 		Data struct {
-			PvcInfo[] PvcInformation `json:"allSnapshotPvcs"`
+			PvcInfo []PvcInformation `json:"allSnapshotPvcs"`
 		} `json:"data"`
 	}
 
@@ -643,4 +656,40 @@ func (a API) GetAllSnapshotPVCS(
 	}
 
 	return payload.Data.PvcInfo, nil
+}
+
+func (a API) GetK8sAppManifest(
+	ctx context.Context,
+	app string,
+	version string,
+	retrieveLatestVersion bool,
+) (AppManifestInfo, error) {
+	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.k8sAppManifest")
+	buf, err := a.GQL.Request(
+		ctx,
+		k8sAppManifestQuery,
+		struct {
+			App                   string `json:"app"`
+			Version               string `json:"version"`
+			RetrieveLatestVersion bool   `json:"retrieveLatestVersion"`
+		}{
+			App:                   app,
+			Version:               version,
+			RetrieveLatestVersion: retrieveLatestVersion,
+		},
+	)
+	if err != nil {
+		return AppManifestInfo{}, err
+	}
+
+	var payload struct {
+		Data struct {
+			Info AppManifestInfo `json:"k8sAppManifest"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return AppManifestInfo{}, err
+	}
+
+	return payload.Data.Info, nil
 }
