@@ -173,11 +173,13 @@ var k8sAppManifestQuery = `query SdkGolangK8sAppManifest(
         isSuccessful
         toApply {
             manifest
+            manifestContentType
             shaChecksum
             shaAlgorithm
         }
         toDelete {
             manifest
+            manifestContentType
             shaChecksum
             shaAlgorithm
         }
