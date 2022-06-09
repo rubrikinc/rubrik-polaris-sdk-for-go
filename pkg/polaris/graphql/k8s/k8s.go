@@ -219,9 +219,10 @@ type NamespaceSnaphotInfo struct {
 }
 
 type Manifest struct {
-	Manifest     string `json:"manifest"`
-	ShaChecksum  string `json:"shaChecksum"`
-	ShaAlgorithm string `json:"shaAlgorithm"`
+	Manifest            string `json:"manifest"`
+	ManifestContentType string `json:"manifestContentType"`
+	ShaChecksum         string `json:"shaChecksum"`
+	ShaAlgorithm        string `json:"shaAlgorithm"`
 }
 
 type AppManifestInfo struct {
