@@ -24,6 +24,28 @@
 
 package core
 
+// assignSlaForSnappableHierarchies GraphQL query
+var assignSlaForSnappableHierarchiesQuery = `mutation SdkGolangAssignSlaForSnappableHierarchies(
+    $globalSlaOptionalFid: UUID,
+    $globalSlaAssignType: SlaAssignTypeEnum!,
+    $objectIds: [UUID!]!,
+    $applicableSnappableTypes: [SnappableLevelHierarchyTypeEnum!],
+    $shouldApplyToExistingSnapshots: Boolean,
+    $shouldApplyToNonPolicySnapshots: Boolean,
+    $globalExistingSnapshotRetention: GlobalExistingSnapshotRetentionEnum) {
+        assignSlasForSnappableHierarchies(
+            globalSlaOptionalFid: $globalSlaOptionalFid,
+            globalSlaAssignType: $globalSlaAssignType,
+            objectIds: $objectIds,
+            applicableSnappableTypes: $applicableSnappableTypes,
+            shouldApplyToExistingSnapshots: $shouldApplyToExistingSnapshots,
+            shouldApplyToNonPolicySnapshots: $shouldApplyToNonPolicySnapshots,
+            globalExistingSnapshotRetention: $globalExistingSnapshotRetention
+        ) {
+            success
+        }
+}`
+
 // deploymentVersion GraphQL query
 var deploymentVersionQuery = `query SdkGolangDeploymentVersion {
     deploymentVersion
@@ -37,5 +59,54 @@ var getKorgTaskchainStatusQuery = `query SdkGolangGetKorgTaskchainStatus($taskch
             state
             taskchainUuid
         }
+    }
+}`
+
+// globalSlaConnection GraphQL query
+var globalSlaConnectionQuery = `query SdkGolangGlobalSlaConnection(
+  $first: Int,
+  $after: String,
+  $last: Int,
+  $before: String,
+  $sortBy: SLAQuerySortByFieldEnum,
+  $sortOrder: SLAQuerySortByOrderEnum,
+  $filter: [GlobalSlaFilterInput!],
+  $contextFilter: ContextFilterTypeEnum,
+  $contextFilterInput: [ContextFilterInputField!],
+  $showSyncStatus: Boolean,
+  $showProtectedObjectCount: Boolean,
+  $showUpgradeInfo: Boolean) {
+    globalSlaConnection(
+      first: $first,
+      after: $after,
+      last: $last,
+      before: $before,
+      sortBy: $sortBy,
+      sortOrder: $sortOrder,
+      filter: $filter,
+      contextFilter: $contextFilter,
+      contextFilterInput: $contextFilterInput,
+      showSyncStatus: $showSyncStatus,
+      showProtectedObjectCount: $showProtectedObjectCount,
+      showUpgradeInfo: $showUpgradeInfo
+    ) {
+      edges {
+        node {
+          id,
+          name,
+          ... on GlobalSla {
+            baseFrequency {
+              duration,
+              unit,
+            },
+            objectTypeList,
+          }
+        }
+      }
+      pageInfo {
+        endCursor,
+        hasNextPage,
+      },
+      count,
     }
 }`

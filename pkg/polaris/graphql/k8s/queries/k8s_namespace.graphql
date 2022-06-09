@@ -1,0 +1,26 @@
+query RubrikPolarisSDKRequest(
+    $after: String
+    $filter: PolarisSnapshotFilterInput,
+    $fid: UUID!,
+) {
+    k8sNamespace(fid: $fid) {
+        snapshotConnection(after: $after, filter: $filter) {
+            pageInfo {
+                endCursor
+                hasNextPage
+            }
+            nodes {
+                id
+                date
+                isOnDemandSnapshot
+                expirationDate
+                isCorrupted
+                isDeletedFromSource
+                isReplicated
+                isArchived
+                isReplica
+                isExpired
+            }
+        }
+    }
+}
