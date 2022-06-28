@@ -1,0 +1,19 @@
+query RubrikPolarisSDKRequest(
+    $taskchainId: String!,
+    $jobType: String!,
+) {
+    getTaskchainInfo(
+        taskchainId: $taskchainId,
+        jobType: $jobType,
+    ) {
+        taskchainId,
+        state,
+        startTime,
+        endTime,
+        progress,
+        jobId,
+        jobType,
+        error,
+        account,
+    }
+}

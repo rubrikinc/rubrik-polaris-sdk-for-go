@@ -1,0 +1,20 @@
+mutation RubrikPolarisSDKRequest(
+    $globalSlaOptionalFid: UUID,
+    $globalSlaAssignType: SlaAssignTypeEnum!,
+    $objectIds: [UUID!]!,
+    $applicableSnappableTypes: [SnappableLevelHierarchyTypeEnum!],
+    $shouldApplyToExistingSnapshots: Boolean,
+    $shouldApplyToNonPolicySnapshots: Boolean,
+    $globalExistingSnapshotRetention: GlobalExistingSnapshotRetentionEnum) {
+        assignSlasForSnappableHierarchies(
+            globalSlaOptionalFid: $globalSlaOptionalFid,
+            globalSlaAssignType: $globalSlaAssignType,
+            objectIds: $objectIds,
+            applicableSnappableTypes: $applicableSnappableTypes,
+            shouldApplyToExistingSnapshots: $shouldApplyToExistingSnapshots,
+            shouldApplyToNonPolicySnapshots: $shouldApplyToNonPolicySnapshots,
+            globalExistingSnapshotRetention: $globalExistingSnapshotRetention
+        ) {
+            success
+        }
+}
