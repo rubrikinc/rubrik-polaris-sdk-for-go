@@ -1132,6 +1132,14 @@ func TestListK8sNamespace(t *testing.T) {
 	}
 	for _, ns := range nss {
 		fmt.Printf("%v\n", ns)
+		// all returned values should match the filter
+		if ns.K8sClusterID != testClusterID {
+			t.Fatalf(
+				"failed to filter based on clusterID: found clusterID %s, but expected %s",
+				ns.K8sClusterID,
+				testClusterID,
+			)
+		}
 	}
 
 }

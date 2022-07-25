@@ -302,13 +302,13 @@ func (a API) ListK8sNamespace(ctx context.Context, clusterID uuid.UUID) ([]K8sNa
 			ctx,
 			getNamespacesQuery,
 			struct {
-				After     string    `json:"after,omitempty"`
-				Filter    []Filter  `json:"filter,omitempty"`
-				ClusterID uuid.UUID `json:"clusterID"`
+				After        string    `json:"after,omitempty"`
+				Filter       []Filter  `json:"filter,omitempty"`
+				K8sClusterId uuid.UUID `json:"k8sClusterId"`
 			}{
-				After:     cursor,
-				Filter:    []Filter{},
-				ClusterID: clusterID,
+				After:        cursor,
+				Filter:       []Filter{},
+				K8sClusterId: clusterID,
 			},
 		)
 		if err != nil {
@@ -582,12 +582,12 @@ func (a API) GetK8sNamespace(
 		ctx,
 		k8sNamespaceQuery,
 		struct {
-			After   string                     `json:"after,omitempty"`
-			Filters PolarisSnapshotFilterInput `json:"filters,omitempty"`
-			Fid     uuid.UUID                  `json:"fid,omitempty"`
+			After  string                     `json:"after,omitempty"`
+			Filter PolarisSnapshotFilterInput `json:"filter,omitempty"`
+			Fid    uuid.UUID                  `json:"fid,omitempty"`
 		}{
 			After: cursor,
-			Filters: PolarisSnapshotFilterInput{
+			Filter: PolarisSnapshotFilterInput{
 				TimeRange: TimeRangeInput{Start: startTime, End: endTime},
 			},
 			Fid: snappableId,
