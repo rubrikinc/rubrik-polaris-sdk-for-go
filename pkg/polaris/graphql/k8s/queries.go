@@ -142,7 +142,7 @@ var getTaskchainInfoQuery = `query SdkGolangGetTaskchainInfo(
     $taskchainId: String!,
     $jobType: String!,
 ) {
-    getTaskchainInfo(
+    taskchainInfo(
         taskchainId: $taskchainId,
         jobType: $jobType,
     ) {
@@ -218,7 +218,7 @@ var k8sNamespaceQuery = `query SdkGolangK8sNamespace(
 var listSlaQuery = `query SdkGolangListSla(
     $after: String,
     $filter: [GlobalSlaFilterInput!]) {
-    globalSlaConnection(
+    slaDomains(
         after: $after,
         filter: $filter,
     ) {
@@ -226,7 +226,7 @@ var listSlaQuery = `query SdkGolangListSla(
             node {
                 id,
                 name,
-                ... on GlobalSla {
+                ... on GlobalSlaReply {
                     baseFrequency {
                         duration,
                         unit,
