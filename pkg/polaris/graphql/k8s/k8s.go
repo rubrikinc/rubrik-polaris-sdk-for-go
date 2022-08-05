@@ -261,7 +261,7 @@ func (a API) ListSLA(ctx context.Context) ([]core.GlobalSLA, error) {
 			return nil, err
 		}
 
-		a.GQL.Log().Printf(log.Debug, "globalSlaConnection(): %s", string(buf))
+		a.GQL.Log().Printf(log.Debug, "slaDomains(): %s", string(buf))
 
 		var payload struct {
 			Data struct {
@@ -274,7 +274,7 @@ func (a API) ListSLA(ctx context.Context) ([]core.GlobalSLA, error) {
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`
 					} `json:"pageInfo"`
-				} `json:"globalSlaConnection"`
+				} `json:"slaDomains"`
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
@@ -368,7 +368,7 @@ func (a API) GetTaskchainInfo(
 	)
 	var payload struct {
 		Data struct {
-			Info TaskchainInfo `json:"getTaskchainInfo"`
+			Info TaskchainInfo `json:"taskchainInfo"`
 		} `json:"data"`
 	}
 
@@ -596,6 +596,7 @@ func (a API) GetK8sNamespace(
 	if err != nil {
 		return nil, "", err
 	}
+	a.GQL.Log().Printf(log.Debug, "GetK8sNamespace(%s): %s", snappableId.String(), string(buf))
 
 	var payload struct {
 		Data struct {

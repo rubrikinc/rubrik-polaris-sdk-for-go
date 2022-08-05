@@ -2,7 +2,7 @@ query RubrikPolarisSDKRequest(
     $taskchainId: String!,
     $jobType: String!,
 ) {
-    getTaskchainInfo(
+    taskchainInfo(
         taskchainId: $taskchainId,
         jobType: $jobType,
     ) {

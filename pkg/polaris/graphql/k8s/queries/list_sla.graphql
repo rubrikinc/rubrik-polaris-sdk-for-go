@@ -1,7 +1,7 @@
 query RubrikPolarisSDKRequest(
     $after: String,
     $filter: [GlobalSlaFilterInput!]) {
-    globalSlaConnection(
+    slaDomains(
         after: $after,
         filter: $filter,
     ) {
@@ -9,7 +9,7 @@ query RubrikPolarisSDKRequest(
             node {
                 id,
                 name,
-                ... on GlobalSla {
+                ... on GlobalSlaReply {
                     baseFrequency {
                         duration,
                         unit,
