@@ -54,6 +54,10 @@ pipeline {
         // Run integration tests with the nightly build, or when explicitly
         // requested via parameter.
         TEST_INTEGRATION = "${currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0 ? 'true' : params.RUN_INTEGRATION_TEST}"
+
+        // Run appliance integration tests. Note that this only takes effect if
+        // TEST_INTEGRATION is true.
+        TEST_INTEGRATION_APPLIANCE = credentials('tf-sdk-integration-appliance')
     }
     stages {
         stage('Lint') {
