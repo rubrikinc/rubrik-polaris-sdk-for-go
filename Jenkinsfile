@@ -29,7 +29,8 @@ pipeline {
         cron(env.BRANCH_NAME == 'main' ? 'H 20 * * *' : '')
     }
     parameters {
-        booleanParam(name: 'RUN_INTEGRATION_TEST', defaultValue: false)
+        booleanParam(name: 'RUN_INTEGRATION_TEST', defaultValue: false, description: 'Run integration test')
+        booleanParam(name: 'RUN_INTEGRATION_APPLIANCE_TEST', defaultValue: false, description: 'Run appliance integration test')
     }
     environment {
         // Polaris credentials.
