@@ -38,6 +38,7 @@ import (
 // variable needs to be set:
 //  * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 // 	* TEST_INTEGRATION=1
+//  * TEST_INTEGRATION_APPLIANCE=1
 //  * TEST_APPLIANCE_ID=<appliance-uuid/cluster-uuid>
 //
 // In addition to the above environment variables, an appliance must be added to
@@ -45,6 +46,10 @@ import (
 func TestApplianceTokenFromServiceAccount(t *testing.T) {
 	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION_APPLIANCE") {
+		t.Skipf("skipping due to env TEST_INTEGRATION_APPLIANCE not set")
 	}
 
 	testApplianceID := os.Getenv("TEST_APPLIANCE_ID")
