@@ -41,6 +41,14 @@ var allSnapshotPvcsQuery = `query SdkGolangAllSnapshotPvcs(
     }
 }`
 
+// exportK8sNamespace GraphQL query
+var exportK8sNamespaceQuery = `mutation SdkGolangExportK8sNamespace($k8sNamespaceExportRequest: ExportK8sNamespaceInput!) {
+    exportK8sNamespace(k8sNamespaceExportRequest: $k8sNamespaceExportRequest) {
+        taskchainId
+        jobId
+    }
+}`
+
 // getActivitySeries GraphQL query
 var getActivitySeriesQuery = `query SdkGolangGetActivitySeries(
     $activitySeriesId: UUID!,
@@ -210,6 +218,29 @@ var k8sNamespaceQuery = `query SdkGolangK8sNamespace(
                 isReplica
                 isExpired
             }
+        }
+    }
+}`
+
+// k8sSnapshotInfo GraphQL query
+var k8sSnapshotInfoQuery = `query SdkGolangK8sSnapshotInfo(
+    $snapshotId: UUID!,
+    $namespaceId: UUID!,
+) {
+    k8sSnapshotInfo(snapshotId: $snapshotId, namespaceId: $namespaceId) {
+        namespace
+        snapshotTime
+        expirationTime
+        isArchived
+        pvcList{
+            id
+            name
+            capacity
+            accessMode
+            storageClass
+            volume
+            labels
+            phase
         }
     }
 }`

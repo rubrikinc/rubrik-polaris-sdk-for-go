@@ -1356,6 +1356,93 @@ func TestGetAllSnapshotPvcs(t *testing.T) {
 	fmt.Printf("%v\n", s)
 }
 
+// TestK8sSnapshotInfo verifies that the SDK can fetch the information about a
+// snapshot like the creation time, pvc list etc.
+func TestK8sSnapshotInfo(t *testing.T) {
+	ctx := context.Background()
+	testServiceAccount := ServiceAccount{
+		ClientID:       "client|sIIw3uAxHqFsn3kUR78AUf1zMewyLB7p",
+		ClientSecret:   "WnmUX2luK5X_TcrMMzZUrFh-mU7gWWti0VS90onJ_uwygXsYajUwVOlWE1MArIs_",
+		Name:           "test",
+		AccessTokenURI: "https://manifest.dev-045.my.rubrik-lab.com/api/client_token",
+	}
+
+	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	namespaceId, err := uuid.Parse("4da74f8d-c8fd-5e53-b5ce-876261c28798")
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshotId, err := uuid.Parse("8bc7f9da-80e5-51f3-a4e2-9c4ea0537edd")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := client.K8s().GetK8sSnapshotInfo(ctx, namespaceId, snapshotId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("%v\n", len(s.PvcList))
+	fmt.Printf("%+v\n", s)
+}
+
+// TestExportK8NamespaceSnapshot verifies that the SDK can export a
+// namespace snapshot
+func TestExportK8NamespaceSnapshot(t *testing.T) {
+	ctx := context.Background()
+	testServiceAccount := ServiceAccount{
+		ClientID:       "client|sIIw3uAxHqFsn3kUR78AUf1zMewyLB7p",
+		ClientSecret:   "WnmUX2luK5X_TcrMMzZUrFh-mU7gWWti0VS90onJ_uwygXsYajUwVOlWE1MArIs_",
+		Name:           "test",
+		AccessTokenURI: "https://manifest.dev-045.my.rubrik-lab.com/api/client_token",
+	}
+
+	client, err := NewClient(ctx, &testServiceAccount, &polaris_log.DiscardLogger{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Export
+	snapshotUUID, _ := uuid.Parse("8bc7f9da-80e5-51f3-a4e2-9c4ea0537edd")
+	targetClusterUUID, _ := uuid.Parse("2a47d1f1-0236-4030-87d4-837d2a75b370")
+	targetNamespaceName := "testacme2"
+	pvcIds := []string{"8a530758-6a5e-4f28-ac9b-875c9a099305"}
+
+	matchExpression := k8s.LabelSelectorRequirement{
+		Key:      "rubrik.com/k8s-pvc-label",
+		Operator: "In",
+		Values:   pvcIds,
+	}
+	labelSelector := k8s.LabelSelector{
+		MatchExpressions: []k8s.LabelSelectorRequirement{matchExpression},
+	}
+
+	info, err := client.K8s().ExportK8NamespaceSnapshot(
+		ctx,
+		snapshotUUID,
+		targetClusterUUID,
+		targetNamespaceName,
+		&labelSelector,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 50; i++ {
+		tk, err := client.K8s().GetTaskchainInfo(ctx, info.TaskchainId, "export-namespace")
+		if err == nil {
+			fmt.Printf("%v\n", tk)
+			return
+		}
+		time.Sleep(30 * time.Second)
+	}
+
+	t.Fatal("Task chain does not start")
+}
+
 // TestRestoreK8NamespaceSnapshot verifies that the SDK can restore a
 // namespace snapshot
 func TestRestoreK8NamespaceSnapshot(t *testing.T) {
