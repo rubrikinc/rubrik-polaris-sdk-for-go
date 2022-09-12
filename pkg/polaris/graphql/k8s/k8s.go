@@ -95,6 +95,14 @@ type PvcInformation struct {
 	Phase        string `json:"phase"`
 }
 
+type K8sSnapshotInfo struct {
+	Namespace      string           `json:"namespace"`
+	SnapshotTime   time.Time        `json:"snapshotTime"`
+	ExpirationTime time.Time        `json:"expirationTime"`
+	IsArchived     bool             `json:"isArchived"`
+	PvcList        []PvcInformation `json:"pvcList"`
+}
+
 type ActivityConnection struct {
 	Message string `json:"message,omitempty"`
 }
@@ -209,6 +217,13 @@ type LabelSelector struct {
 type NamespaceRestoreRequest struct {
 	SnapshotUUID        uuid.UUID      `json:"snapshotUUID"`
 	TargetClusterUUID   uuid.UUID      `json:"targetClusterUUID"`
+	TargetNamespaceName string         `json:"targetNamespaceName"`
+	LabelSelector       *LabelSelector `json:"labelSelector,omitempty"`
+}
+
+type NamespaceExportRequest struct {
+	SnapshotUuid        uuid.UUID      `json:"snapshotUuid"`
+	TargetClusterUuid   uuid.UUID      `json:"targetClusterUuid"`
 	TargetNamespaceName string         `json:"targetNamespaceName"`
 	LabelSelector       *LabelSelector `json:"labelSelector,omitempty"`
 }
@@ -523,6 +538,51 @@ func (a API) RestoreK8NamespaceSnapshot(
 	return payload.Data.Info, nil
 }
 
+func (a API) ExportK8NamespaceSnapshot(
+	ctx context.Context,
+	snapshotUUID uuid.UUID,
+	targetClusterUUID uuid.UUID,
+	targetNamespaceName string,
+	labelSelector *LabelSelector,
+) (NamespaceSnaphotInfo, error) {
+	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.ExportK8NamespaceSnapshot")
+
+	buf, err := a.GQL.Request(ctx, exportK8sNamespaceQuery, struct {
+		K8sNamespaceExportRequest NamespaceExportRequest `json:"k8sNamespaceExportRequest"`
+	}{
+		K8sNamespaceExportRequest: NamespaceExportRequest{
+			SnapshotUuid:        snapshotUUID,
+			TargetClusterUuid:   targetClusterUUID,
+			TargetNamespaceName: targetNamespaceName,
+			LabelSelector:       labelSelector,
+		},
+	})
+	if err != nil {
+		return NamespaceSnaphotInfo{}, err
+	}
+
+	a.GQL.Log().Printf(
+		log.Debug,
+		"ExportK8NamespaceSnapshot for (snapshotUUID: %s), "+
+			"(targetClusterUUID: %s) and (targetNamespaceName: %s)",
+		snapshotUUID, targetClusterUUID, targetNamespaceName,
+	)
+	var payload struct {
+		Data struct {
+			Info NamespaceSnaphotInfo `json:"exportK8sNamespace"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return NamespaceSnaphotInfo{}, fmt.Errorf(
+			"failed to unmarshal ExportK8NamespaceSnapshot: %v",
+			err,
+		)
+	}
+
+	return payload.Data.Info, nil
+}
+
 func (a API) GetActivitySeries(
 	ctx context.Context,
 	activitySeriesId uuid.UUID,
@@ -658,6 +718,41 @@ func (a API) GetAllSnapshotPVCS(
 	}
 
 	return payload.Data.PvcInfo, nil
+}
+
+func (a API) GetK8sSnapshotInfo(
+	ctx context.Context,
+	namespaceId uuid.UUID,
+	snapshotId uuid.UUID,
+) (K8sSnapshotInfo, error) {
+	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.k8sSnapshotInfoQuery")
+	buf, err := a.GQL.Request(
+		ctx,
+		k8sSnapshotInfoQuery,
+		struct {
+			SnapshotId  uuid.UUID `json:"snapshotId"`
+			NamespaceId uuid.UUID `json:"namespaceId"`
+		}{
+			SnapshotId:  snapshotId,
+			NamespaceId: namespaceId,
+		},
+	)
+	if err != nil {
+		return K8sSnapshotInfo{}, err
+	}
+	a.GQL.Log().Printf(log.Debug, "GetK8sSnapshotInfo(%s): %s", snapshotId.String(), string(buf))
+
+	var payload struct {
+		Data struct {
+			Info K8sSnapshotInfo `json:"k8sSnapshotInfo"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return K8sSnapshotInfo{}, err
+	}
+
+	return payload.Data.Info, nil
 }
 
 func (a API) GetK8sAppManifest(

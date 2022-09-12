@@ -1,0 +1,21 @@
+query RubrikPolarisSDKRequest(
+    $snapshotId: UUID!,
+    $namespaceId: UUID!,
+) {
+    k8sSnapshotInfo(snapshotId: $snapshotId, namespaceId: $namespaceId) {
+        namespace
+        snapshotTime
+        expirationTime
+        isArchived
+        pvcList{
+            id
+            name
+            capacity
+            accessMode
+            storageClass
+            volume
+            labels
+            phase
+        }
+    }
+}
