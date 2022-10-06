@@ -91,15 +91,18 @@ func gcpProject(ctx context.Context, creds *google.Credentials, id string) (proj
 	}
 
 	// Lookup parent organization.
-	orgName := proj.Parent.Id
-	if proj.Parent.Type == "organization" {
-		org, err := client.Organizations.Get("organizations/" + proj.Parent.Id).Do()
-		if err != nil {
-			return project{}, fmt.Errorf("failed to get GCP project organization: %v", err)
-		}
+	orgName := "<no-organization>"
+	if proj.Parent != nil {
+		orgName = proj.Parent.Id
+		if proj.Parent.Type == "organization" {
+			org, err := client.Organizations.Get("organizations/" + proj.Parent.Id).Do()
+			if err != nil {
+				return project{}, fmt.Errorf("failed to get GCP project organization: %v", err)
+			}
 
-		if org.DisplayName != "" {
-			orgName = org.DisplayName
+			if org.DisplayName != "" {
+				orgName = org.DisplayName
+			}
 		}
 	}
 
