@@ -56,7 +56,7 @@ type gqlLocation struct {
 
 type gqlDetails struct {
 	Message   string        `json:"message"`
-	Path      []string      `json:"path"`
+	Path      []interface{} `json:"path"`
 	Locations []gqlLocation `json:"locations"`
 }
 
