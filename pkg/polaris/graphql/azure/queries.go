@@ -374,7 +374,20 @@ var deleteAzureCloudAccountWithoutOauthV1Query = `mutation SdkGolangDeleteAzureC
 }`
 
 // setAzureCloudAccountCustomerAppCredentials GraphQL query
-var setAzureCloudAccountCustomerAppCredentialsQuery = `mutation SdkGolangSetAzureCloudAccountCustomerAppCredentials($azureCloudType: AzureCloudType!, $appId: String!, $appName: String, $appSecretKey: String!, $appTenantId: String, $tenantDomainName: String) {
+var setAzureCloudAccountCustomerAppCredentialsQuery = `mutation SdkGolangSetAzureCloudAccountCustomerAppCredentials($azureCloudType: AzureCloudType!, $appId: String!, $appName: String, $appSecretKey: String!, $appTenantId: String, $tenantDomainName: String, $shouldReplace: Boolean!) {
+    result: setAzureCloudAccountCustomerAppCredentials(input: {
+        appId:            $appId,
+        appSecretKey:     $appSecretKey,
+        appTenantId:      $appTenantId,
+        appName:          $appName,
+        tenantDomainName: $tenantDomainName,
+        shouldReplace:    $shouldReplace,
+        azureCloudType:   $azureCloudType
+    })
+}`
+
+// setAzureCloudAccountCustomerAppCredentialsV0 GraphQL query
+var setAzureCloudAccountCustomerAppCredentialsV0Query = `mutation SdkGolangSetAzureCloudAccountCustomerAppCredentialsV0($azureCloudType: AzureCloudTypeEnum!, $appId: String!, $appName: String, $appSecretKey: String!, $appTenantId: String, $tenantDomainName: String) {
     result: setAzureCloudAccountCustomerAppCredentials(input: {
         appId:            $appId,
         appSecretKey:     $appSecretKey,
@@ -385,8 +398,8 @@ var setAzureCloudAccountCustomerAppCredentialsQuery = `mutation SdkGolangSetAzur
     })
 }`
 
-// setAzureCloudAccountCustomerAppCredentialsV0 GraphQL query
-var setAzureCloudAccountCustomerAppCredentialsV0Query = `mutation SdkGolangSetAzureCloudAccountCustomerAppCredentialsV0($azureCloudType: AzureCloudTypeEnum!, $appId: String!, $appName: String, $appSecretKey: String!, $appTenantId: String, $tenantDomainName: String) {
+// setAzureCloudAccountCustomerAppCredentialsV1 GraphQL query
+var setAzureCloudAccountCustomerAppCredentialsV1Query = `mutation SdkGolangSetAzureCloudAccountCustomerAppCredentialsV1($azureCloudType: AzureCloudType!, $appId: String!, $appName: String, $appSecretKey: String!, $appTenantId: String, $tenantDomainName: String) {
     result: setAzureCloudAccountCustomerAppCredentials(input: {
         appId:            $appId,
         appSecretKey:     $appSecretKey,
