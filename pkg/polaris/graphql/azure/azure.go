@@ -224,29 +224,33 @@ func Wrap(gql *graphql.Client) API {
 }
 
 // SetCloudAccountCustomerAppCredentials sets the credentials for the customer
-// application for the specified tenant domain. If the tenant domain is empty,
-// set it for all the tenants of the customer.
-func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cloud, appID, appTenantID uuid.UUID, appName, appTenantDomain, appSecretKey string) error {
+// application for the specified tenant domain. If shouldReplace is true and the
+// app already has a service principal, it will be replaced. If the tenant
+// domain is empty, set it for all the tenants of the customer.
+func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cloud, appID, appTenantID uuid.UUID, appName, appTenantDomain, appSecretKey string, shouldReplace bool) error {
 	a.GQL.Log().Print(log.Trace)
 
 	query := setAzureCloudAccountCustomerAppCredentialsQuery
 	if graphql.VersionOlderThan(a.Version, "master-45693", "v20220301") {
 		query = setAzureCloudAccountCustomerAppCredentialsV0Query
+	} else if graphql.VersionOlderThan(a.Version, "master-51681", "v20221102") {
+		query = setAzureCloudAccountCustomerAppCredentialsV1Query
 	}
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Cloud        Cloud     `json:"azureCloudType"`
-		ID           uuid.UUID `json:"appId"`
-		Name         string    `json:"appName"`
-		SecretKey    string    `json:"appSecretKey"`
-		TenantID     uuid.UUID `json:"appTenantId"`
-		TenantDomain string    `json:"tenantDomainName"`
-	}{Cloud: cloud, ID: appID, Name: appName, TenantID: appTenantID, TenantDomain: appTenantDomain, SecretKey: appSecretKey})
+		Cloud         Cloud     `json:"azureCloudType"`
+		ID            uuid.UUID `json:"appId"`
+		Name          string    `json:"appName"`
+		SecretKey     string    `json:"appSecretKey"`
+		TenantID      uuid.UUID `json:"appTenantId"`
+		TenantDomain  string    `json:"tenantDomainName"`
+		ShouldReplace bool      `json:"shouldReplace"`
+	}{Cloud: cloud, ID: appID, Name: appName, TenantID: appTenantID, TenantDomain: appTenantDomain, SecretKey: appSecretKey, ShouldReplace: shouldReplace})
 	if err != nil {
 		return fmt.Errorf("failed to request SetCloudAccountCustomerAppCredentials: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "%s(%q, %q, %q, \"<REDACTED>\", %q, %q): %s", graphql.QueryName(query), cloud,
-		appID, appName, appTenantID, appTenantDomain, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%v, %v, %v, \"<REDACTED>\", %v, %v, %v): %s", graphql.QueryName(query), cloud,
+		appID, appName, appTenantID, appTenantDomain, shouldReplace, string(buf))
 
 	var payload struct {
 		Data struct {

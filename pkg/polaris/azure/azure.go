@@ -524,10 +524,11 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 	return nil
 }
 
-// SetServicePrincipal sets the default service principal. Note that it's not
-// possible to remove a service account once it has been set. Returns the
-// application id of the service principal set.
-func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipalFunc) (uuid.UUID, error) {
+// AddServicePrincipal adds the service principal for the app. If shouldReplace
+// is true and the app already has a service principal, it will be replaced.
+// Note that it's not possible to remove a service principal once it has been
+// set. Returns the application id of the service principal set.
+func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipalFunc, shouldReplace bool) (uuid.UUID, error) {
 	a.gql.Log().Print(log.Trace)
 
 	config, err := principal(ctx)
@@ -536,10 +537,20 @@ func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipal
 	}
 
 	err = azure.Wrap(a.gql).SetCloudAccountCustomerAppCredentials(ctx, azure.PublicCloud, config.appID,
-		config.tenantID, config.appName, config.tenantDomain, config.appSecret)
+		config.tenantID, config.appName, config.tenantDomain, config.appSecret, shouldReplace)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to set customer app credentials: %v", err)
 	}
 
 	return config.appID, nil
+}
+
+// SetServicePrincipal sets the service principal for the app. If the app
+// already has a service principal, it will be replaced. Note that it's not
+// possible to remove a service principal once it has been set. Returns the
+// application id of the service principal set.
+func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipalFunc) (uuid.UUID, error) {
+	a.gql.Log().Print(log.Trace)
+
+	return a.AddServicePrincipal(ctx, principal, true)
 }
