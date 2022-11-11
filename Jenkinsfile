@@ -65,6 +65,9 @@ pipeline {
         // Run appliance integration tests. Note that this only takes effect if
         // TEST_INTEGRATION is true.
         TEST_INTEGRATION_APPLIANCE = "${currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0 ? 'false' : params.RUN_INTEGRATION_APPLIANCE_TEST}"
+
+        // Enable trace logging.
+        RUBRIK_POLARIS_LOGLEVEL = 'TRACE'
     }
     stages {
         stage('Lint') {

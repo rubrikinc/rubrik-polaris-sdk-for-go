@@ -87,7 +87,7 @@ func (a API) SetDefaultServiceAccount(ctx context.Context, name, jwtConfig strin
 		return fmt.Errorf("failed to request SetDefaultServiceAccount: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), name, jwtConfig,
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), name, "<JWT REDACTED>",
 		string(buf))
 
 	var payload struct {
