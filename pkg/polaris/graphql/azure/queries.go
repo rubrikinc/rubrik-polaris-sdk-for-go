@@ -31,7 +31,22 @@ var addAzureCloudAccountExocomputeConfigurationsQuery = `mutation SdkGolangAddAz
     }) {
         configs {
             configUuid
-            isPolarisManaged
+            isRscManaged
+            message
+            region
+            subnetNativeId
+        }
+    }
+}`
+
+// addAzureCloudAccountExocomputeConfigurationsV0 GraphQL query
+var addAzureCloudAccountExocomputeConfigurationsV0Query = `mutation SdkGolangAddAzureCloudAccountExocomputeConfigurationsV0($cloudAccountId: UUID!, $azureExocomputeRegionConfigs: [AzureExocomputeAddConfigInputType!]!) {
+    result: addAzureCloudAccountExocomputeConfigurations(input: {
+        cloudAccountId: $cloudAccountId, azureExocomputeRegionConfigs: $azureExocomputeRegionConfigs
+    }) {
+        configs {
+            configUuid
+            isRscManaged: isPolarisManaged
             message
             region
             subnetNativeId
@@ -209,7 +224,36 @@ var allAzureExocomputeConfigsInAccountQuery = `query SdkGolangAllAzureExocompute
         }
         configs {
             configUuid
-            isPolarisManaged
+            isRscManaged
+            message
+            region
+            subnetNativeId
+        }
+        exocomputeEligibleRegions
+        featureDetails {
+            feature
+            regions
+            status
+        }
+    }
+}`
+
+// allAzureExocomputeConfigsInAccountV0 GraphQL query
+var allAzureExocomputeConfigsInAccountV0Query = `query SdkGolangAllAzureExocomputeConfigsInAccountV0($cloudAccountIDs: [UUID!], $azureExocomputeSearchQuery: String!) {
+    result: allAzureExocomputeConfigsInAccount(cloudAccountIDs: $cloudAccountIDs, azureExocomputeSearchQuery: $azureExocomputeSearchQuery) {
+        azureCloudAccount {
+            id
+            name
+            nativeId
+            featureDetail {
+                feature
+                regions
+                status
+            }
+        }
+        configs {
+            configUuid
+            isRscManaged: isPolarisManaged
             message
             region
             subnetNativeId

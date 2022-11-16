@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -38,8 +39,8 @@ type ExocomputeConfig struct {
 	SubnetID string    `json:"subnetNativeId"`
 	Message  string    `json:"message"`
 
-	// When true Polaris will manage the security groups.
-	IsPolarisManaged bool `json:"isPolarisManaged"`
+	// When true RSC will manage the security groups.
+	IsManagedByRubrik bool `json:"isRscManaged"`
 }
 
 // ExocomputeConfigsForAccount holds all exocompute configs for a specific
@@ -56,7 +57,12 @@ type ExocomputeConfigsForAccount struct {
 func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigsForAccount, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, allAzureExocomputeConfigsInAccountQuery, struct {
+	query := allAzureExocomputeConfigsInAccountQuery
+	if graphql.VersionOlderThan(a.Version, "master-52083", "v20221116") {
+		query = allAzureExocomputeConfigsInAccountV0Query
+	}
+
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Filter string `json:"azureExocomputeSearchQuery"`
 	}{Filter: filter})
 	if err != nil {
@@ -73,7 +79,6 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal ExocomputeConfigs: %v", err)
 	}
-
 	return payload.Data.Result, nil
 }
 
@@ -83,8 +88,8 @@ type ExocomputeConfigCreate struct {
 	Region   Region `json:"region"`
 	SubnetID string `json:"subnetNativeId"`
 
-	// When true Polaris will manage the security groups.
-	IsPolarisManaged bool `json:"isPolarisManaged"`
+	// When true Rubrik will manage the security groups.
+	IsManagedByRubrik bool `json:"isRscManaged"`
 }
 
 // AddCloudAccountExocomputeConfigurations creates a new exocompute config for
@@ -93,10 +98,32 @@ type ExocomputeConfigCreate struct {
 func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, addAzureCloudAccountExocomputeConfigurationsQuery, struct {
+	query := addAzureCloudAccountExocomputeConfigurationsQuery
+	var vars interface{} = struct {
 		ID      uuid.UUID                `json:"cloudAccountId"`
 		Configs []ExocomputeConfigCreate `json:"azureExocomputeRegionConfigs"`
-	}{ID: id, Configs: []ExocomputeConfigCreate{config}})
+	}{ID: id, Configs: []ExocomputeConfigCreate{config}}
+
+	if graphql.VersionOlderThan(a.Version, "master-52083", "v20221116") {
+		query = addAzureCloudAccountExocomputeConfigurationsV0Query
+		// IsManagedByRubrik was renamed in master-52083 so until that version
+		// is deployed we use a legacy vars struct with the old json tag.
+		type legacyConfig struct {
+			Region   Region `json:"region"`
+			SubnetID string `json:"subnetNativeId"`
+
+			// When true Rubrik will manage the security groups.
+			IsManagedByRubrik bool `json:"isPolarisManaged"`
+		}
+		vars = struct {
+			ID      uuid.UUID      `json:"cloudAccountId"`
+			Configs []legacyConfig `json:"azureExocomputeRegionConfigs"`
+		}{
+			ID:      id,
+			Configs: []legacyConfig{(legacyConfig)(config)},
+		}
+	}
+	buf, err := a.GQL.Request(ctx, query, vars)
 	if err != nil {
 		return ExocomputeConfig{}, fmt.Errorf("failed to request AddCloudAccountExocomputeConfigurations: %v", err)
 	}

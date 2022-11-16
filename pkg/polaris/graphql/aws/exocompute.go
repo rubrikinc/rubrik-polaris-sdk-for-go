@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -47,7 +48,7 @@ type ExocomputeConfig struct {
 	Message string    `json:"message"`
 
 	// When true Polaris manages the security groups.
-	IsPolarisManaged bool `json:"areSecurityGroupsPolarisManaged"`
+	IsManagedByRubrik bool `json:"areSecurityGroupsRscManaged"`
 
 	// Security group ids of cluster control plane and worker node. Only needs
 	// to be specified if IsPolarisManaged is false.
@@ -69,7 +70,11 @@ type ExocomputeConfigsForAccount struct {
 func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigsForAccount, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, allAwsExocomputeConfigsQuery, struct {
+	query := allAwsExocomputeConfigsQuery
+	if graphql.VersionOlderThan(a.Version, "master-52101", "v20221116") {
+		query = allAwsExocomputeConfigsV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Filter string `json:"awsNativeAccountIdOrNamePrefix"`
 	}{Filter: filter})
 	if err != nil {
@@ -98,7 +103,7 @@ type ExocomputeConfigCreate struct {
 	Subnets []Subnet `json:"subnets"`
 
 	// When true Polaris will manage the security groups.
-	IsPolarisManaged bool `json:"isPolarisManaged"`
+	IsManagedByRubrik bool `json:"isRscManaged"`
 
 	// Security group ids of cluster control plane and worker node. Only needs
 	// to be specified if IsPolarisManaged is false.
@@ -111,10 +116,29 @@ type ExocomputeConfigCreate struct {
 func (a API) CreateExocomputeConfig(ctx context.Context, id uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, createAwsExocomputeConfigsQuery, struct {
+	query := createAwsExocomputeConfigsQuery
+	var vars interface{} = struct {
 		ID      uuid.UUID                `json:"cloudAccountId"`
 		Configs []ExocomputeConfigCreate `json:"configs"`
-	}{ID: id, Configs: []ExocomputeConfigCreate{config}})
+	}{ID: id, Configs: []ExocomputeConfigCreate{config}}
+
+	if graphql.VersionOlderThan(a.Version, "master-52101", "v20221116") {
+		query = createAwsExocomputeConfigsV0Query
+		type legacyExocomputeConfigCreate struct {
+			Region                 Region   `json:"region"`
+			VPCID                  string   `json:"vpcId"`
+			Subnets                []Subnet `json:"subnets"`
+			IsManagedByRubrik      bool     `json:"isPolarisManaged"`
+			ClusterSecurityGroupId string   `json:"clusterSecurityGroupId"`
+			NodeSecurityGroupId    string   `json:"nodeSecurityGroupId"`
+		}
+		vars = struct {
+			ID      uuid.UUID                      `json:"cloudAccountId"`
+			Configs []legacyExocomputeConfigCreate `json:"configs"`
+		}{ID: id, Configs: []legacyExocomputeConfigCreate{(legacyExocomputeConfigCreate)(config)}}
+
+	}
+	buf, err := a.GQL.Request(ctx, query, vars)
 	if err != nil {
 		return ExocomputeConfig{}, fmt.Errorf("failed to request CreateExocomputeConfig: %v", err)
 	}

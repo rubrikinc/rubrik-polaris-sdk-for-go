@@ -75,7 +75,45 @@ var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsN
             accountName
         }
         configs {
-            areSecurityGroupsPolarisManaged
+            areSecurityGroupsRscManaged
+            clusterSecurityGroupId
+            configUuid
+            message
+            nodeSecurityGroupId
+            region
+            subnet1 {
+                availabilityZone
+                subnetId
+            }
+            subnet2 {
+                availabilityZone
+                subnetId
+             }
+            vpcId
+        }
+        exocomputeEligibleRegions
+        featureDetail {
+            feature
+            roleArn
+            stackArn
+            status
+            awsRegions
+        }
+    }
+}`
+
+// allAwsExocomputeConfigsV0 GraphQL query
+var allAwsExocomputeConfigsV0Query = `query SdkGolangAllAwsExocomputeConfigsV0($awsNativeAccountIdOrNamePrefix: String!) {
+    result: allAwsExocomputeConfigs(awsNativeAccountIdOrNamePrefix: $awsNativeAccountIdOrNamePrefix) {
+        awsCloudAccount {
+            cloudType
+            id
+            nativeId
+            message
+            accountName
+        }
+        configs {
+            areSecurityGroupsRscManaged: areSecurityGroupsPolarisManaged
             clusterSecurityGroupId
             configUuid
             message
@@ -286,7 +324,30 @@ var awsNativeAccountsV0Query = `query SdkGolangAwsNativeAccountsV0($after: Strin
 var createAwsExocomputeConfigsQuery = `mutation SdkGolangCreateAwsExocomputeConfigs($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
     createAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
         configs {
-            areSecurityGroupsPolarisManaged
+            areSecurityGroupsRscManaged
+            clusterSecurityGroupId
+            configUuid
+            message
+            nodeSecurityGroupId
+            region
+            subnet1 {
+                availabilityZone
+                subnetId
+            }
+            subnet2 {
+                availabilityZone
+                subnetId
+            }
+            vpcId
+        }
+    }
+}`
+
+// createAwsExocomputeConfigsV0 GraphQL query
+var createAwsExocomputeConfigsV0Query = `mutation SdkGolangCreateAwsExocomputeConfigsV0($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
+    createAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
+        configs {
+            areSecurityGroupsRscManaged: areSecurityGroupsPolarisManaged
             clusterSecurityGroupId
             configUuid
             message

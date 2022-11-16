@@ -12,7 +12,7 @@ query RubrikPolarisSDKRequest($cloudAccountIDs: [UUID!], $azureExocomputeSearchQ
         }
         configs {
             configUuid
-            isRscManaged
+            isRscManaged: isPolarisManaged
             message
             region
             subnetNativeId

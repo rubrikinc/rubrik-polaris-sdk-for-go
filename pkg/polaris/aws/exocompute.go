@@ -46,7 +46,7 @@ type ExocomputeConfig struct {
 	Subnets []Subnet
 
 	// When true Polaris manages the security groups.
-	PolarisManaged bool
+	ManagedByRubrik bool
 
 	// Security group ids of cluster control plane and worker node.
 	ClusterSecurityGroupID string
@@ -127,10 +127,10 @@ func Managed(region, vpcID string, subnetIDs []string) ExoConfigFunc {
 		}
 
 		return aws.ExocomputeConfigCreate{
-			Region:           reg,
-			VPCID:            vpcID,
-			Subnets:          []aws.Subnet{subnet1, subnet2},
-			IsPolarisManaged: true,
+			Region:            reg,
+			VPCID:             vpcID,
+			Subnets:           []aws.Subnet{subnet1, subnet2},
+			IsManagedByRubrik: true,
 		}, nil
 	}
 }
@@ -181,7 +181,7 @@ func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID,
 			Region:                 reg,
 			VPCID:                  vpcID,
 			Subnets:                []aws.Subnet{subnet1, subnet2},
-			IsPolarisManaged:       false,
+			IsManagedByRubrik:      false,
 			ClusterSecurityGroupId: clusterSecurityGroupID,
 			NodeSecurityGroupId:    nodeSecurityGroupID,
 		}, nil
@@ -199,7 +199,7 @@ func toExocomputeConfig(config aws.ExocomputeConfig) ExocomputeConfig {
 			{ID: config.Subnet1.ID, AvailabilityZone: config.Subnet1.AvailabilityZone},
 			{ID: config.Subnet2.ID, AvailabilityZone: config.Subnet2.AvailabilityZone},
 		},
-		PolarisManaged:         config.IsPolarisManaged,
+		ManagedByRubrik:        config.IsManagedByRubrik,
 		ClusterSecurityGroupID: config.ClusterSecurityGroupID,
 		NodeSecurityGroupID:    config.NodeSecurityGroupID,
 	}

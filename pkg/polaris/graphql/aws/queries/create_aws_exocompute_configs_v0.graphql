@@ -1,7 +1,7 @@
 mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
     createAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
         configs {
-            areSecurityGroupsRscManaged
+            areSecurityGroupsRscManaged: areSecurityGroupsPolarisManaged
             clusterSecurityGroupId
             configUuid
             message
