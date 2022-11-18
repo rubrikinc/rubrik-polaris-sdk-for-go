@@ -45,7 +45,7 @@ type ExocomputeConfig struct {
 	VPCID   string
 	Subnets []Subnet
 
-	// When true Polaris manages the security groups.
+	// When true Rubrik manages the security groups.
 	ManagedByRubrik bool
 
 	// Security group ids of cluster control plane and worker node.

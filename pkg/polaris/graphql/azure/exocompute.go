@@ -39,7 +39,7 @@ type ExocomputeConfig struct {
 	SubnetID string    `json:"subnetNativeId"`
 	Message  string    `json:"message"`
 
-	// When true RSC will manage the security groups.
+	// When true Rubrik will manage the security groups.
 	IsManagedByRubrik bool `json:"isRscManaged"`
 }
 
@@ -69,7 +69,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 		return nil, fmt.Errorf("failed to request ExocomputeConfigs: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "allAzureExocomputeConfigsInAccount(%q): %s", filter, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q): %s", graphql.QueryName(query), filter, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -128,7 +128,7 @@ func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uui
 		return ExocomputeConfig{}, fmt.Errorf("failed to request AddCloudAccountExocomputeConfigurations: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "addAzureCloudAccountExocomputeConfigurations(%q, %v): %s", id, config, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %v): %s", graphql.QueryName(query), id, config, string(buf))
 
 	var payload struct {
 		Data struct {

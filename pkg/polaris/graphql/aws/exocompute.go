@@ -81,7 +81,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 		return nil, fmt.Errorf("failed to request ExocomputeConfigs: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "allAwsExocomputeConfigs(%q): %s", filter, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q): %s", graphql.QueryName(query), filter, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -102,7 +102,7 @@ type ExocomputeConfigCreate struct {
 	VPCID   string   `json:"vpcId"`
 	Subnets []Subnet `json:"subnets"`
 
-	// When true Polaris will manage the security groups.
+	// When true Rubrik will manage the security groups.
 	IsManagedByRubrik bool `json:"isRscManaged"`
 
 	// Security group ids of cluster control plane and worker node. Only needs
