@@ -37,8 +37,8 @@ type ExocomputeConfig struct {
 	Region   string
 	SubnetID string
 
-	// When true Polaris will manage the security groups.
-	PolarisManaged bool
+	// When true Rubrik will manage the security groups.
+	ManagedByRubrik bool
 }
 
 // ExoConfigFunc returns an exocompute config initialized from the values
@@ -46,18 +46,17 @@ type ExocomputeConfig struct {
 type ExoConfigFunc func(ctx context.Context) (azure.ExocomputeConfigCreate, error)
 
 // Managed returns an ExoConfigFunc that initializes an exocompute config with
-// security groups managed by Polaris using the specified values.
+// security groups managed by Rubrik using the specified values.
 func Managed(region, subnetID string) ExoConfigFunc {
 	return func(ctx context.Context) (azure.ExocomputeConfigCreate, error) {
 		r, err := azure.ParseRegion(region)
 		if err != nil {
 			return azure.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
 		}
-
 		return azure.ExocomputeConfigCreate{
-			Region:           r,
-			SubnetID:         subnetID,
-			IsPolarisManaged: true,
+			Region:            r,
+			SubnetID:          subnetID,
+			IsManagedByRubrik: true,
 		}, nil
 	}
 }
@@ -72,9 +71,9 @@ func Unmanaged(region, subnetID string) ExoConfigFunc {
 		}
 
 		return azure.ExocomputeConfigCreate{
-			Region:           r,
-			SubnetID:         subnetID,
-			IsPolarisManaged: false,
+			Region:            r,
+			SubnetID:          subnetID,
+			IsManagedByRubrik: false,
 		}, nil
 	}
 }
@@ -83,10 +82,10 @@ func Unmanaged(region, subnetID string) ExoConfigFunc {
 // polaris/azure exocompute config.
 func toExocomputeConfig(config azure.ExocomputeConfig) ExocomputeConfig {
 	return ExocomputeConfig{
-		ID:             config.ID,
-		Region:         azure.FormatRegion(config.Region),
-		SubnetID:       config.SubnetID,
-		PolarisManaged: config.IsPolarisManaged,
+		ID:              config.ID,
+		Region:          azure.FormatRegion(config.Region),
+		SubnetID:        config.SubnetID,
+		ManagedByRubrik: config.IsManagedByRubrik,
 	}
 }
 
