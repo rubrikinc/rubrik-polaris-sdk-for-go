@@ -1,6 +1,6 @@
 query RubrikPolarisSDKRequest(
     $after: String,
-    $filters: ActivitySeriesFilterInput,
+    $filters: ActivitySeriesFilter,
 ) {
     activitySeriesConnection(
         after: $after,

@@ -11,7 +11,7 @@ query RubrikPolarisSDKRequest(
         edges {
             node {
                 id,
-                k8sClusterID,
+                k8sClusterId,
                 namespaceName,
                 isRelic,
                 configuredSlaDomain{

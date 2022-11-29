@@ -61,7 +61,12 @@ type Filter struct {
 
 type ActivitySeriesConnectionFilter struct {
 	ObjectType    []string  `json:"objectType,omitempty"`
-	LastUpdatedGt time.Time `json:"lastUpdated_gt,omitempty"`
+	LastUpdatedGt time.Time `json:"lastUpdatedTimeGt,omitempty"`
+}
+
+type ActivitySeriesInput struct {
+	ActivitySeriesId uuid.UUID `json:"activitySeriesId"`
+	ClusterUuid      uuid.UUID `json:"clusterUuid,omitempty"`
 }
 
 type TimeRangeInput struct {
@@ -71,13 +76,13 @@ type TimeRangeInput struct {
 
 type PolarisSnapshotFilterInput struct {
 	SnappableId        string         `json:"snappableId,omitempty"`
-	IsOnDemandSnapshot bool           `json:"lastUpdated_gt,omitempty"`
+	IsOnDemandSnapshot bool           `json:"isOnDemandSnapshot,omitempty"`
 	TimeRange          TimeRangeInput `json:"timeRange,omitempty"`
 }
 
 type K8sNamespace struct {
 	ID                  uuid.UUID      `json:"id"`
-	K8sClusterID        uuid.UUID      `json:"k8sClusterID"`
+	K8sClusterID        uuid.UUID      `json:"k8sClusterId"`
 	NamespaceName       string         `json:"namespaceName"`
 	IsRelic             bool           `json:"isRelic"`
 	ConfiguredSLADomain core.SLADomain `json:"configuredSlaDomain"`
@@ -214,9 +219,9 @@ type LabelSelector struct {
 	MatchExpressions []LabelSelectorRequirement `json:"matchExpressions"`
 }
 
-type NamespaceRestoreRequest struct {
-	SnapshotUUID        uuid.UUID      `json:"snapshotUUID"`
-	TargetClusterUUID   uuid.UUID      `json:"targetClusterUUID"`
+type RestoreK8sNamespaceInput struct {
+	SnapshotUUID        uuid.UUID      `json:"snapshotUuid"`
+	TargetClusterUUID   uuid.UUID      `json:"targetClusterUuid"`
 	TargetNamespaceName string         `json:"targetNamespaceName"`
 	LabelSelector       *LabelSelector `json:"labelSelector,omitempty"`
 }
@@ -503,9 +508,9 @@ func (a API) RestoreK8NamespaceSnapshot(
 	a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.RestoreK8NamespaceSnapshot")
 
 	buf, err := a.GQL.Request(ctx, restoreK8sNamespaceQuery, struct {
-		K8sNamespaceRestoreRequest NamespaceRestoreRequest `json:"k8sNamespaceRestoreRequest"`
+		K8sNamespaceRestoreRequest RestoreK8sNamespaceInput `json:"k8sNamespaceRestoreRequest"`
 	}{
-		K8sNamespaceRestoreRequest: NamespaceRestoreRequest{
+		K8sNamespaceRestoreRequest: RestoreK8sNamespaceInput{
 			SnapshotUUID:        snapshotUUID,
 			TargetClusterUUID:   targetClusterUUID,
 			TargetNamespaceName: targetNamespaceName,
@@ -593,11 +598,11 @@ func (a API) GetActivitySeries(
 		ctx,
 		getActivitySeriesQuery,
 		struct {
-			ActivitySeriesId uuid.UUID `json:"activitySeriesId"`
-			After            string    `json:"after,omitempty"`
+			Input ActivitySeriesInput `json:"input"`
+			After string              `json:"after,omitempty"`
 		}{
-			ActivitySeriesId: activitySeriesId,
-			After:            cursor,
+			Input: ActivitySeriesInput{ActivitySeriesId: activitySeriesId},
+			After: cursor,
 		},
 	)
 	if err != nil {

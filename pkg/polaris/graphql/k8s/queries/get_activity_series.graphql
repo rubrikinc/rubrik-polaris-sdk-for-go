@@ -1,9 +1,8 @@
 query RubrikPolarisSDKRequest(
-    $activitySeriesId: UUID!,
-    $clusterUuid: UUID,
+    $input: ActivitySeriesInput!
     $after: String,
 ) {
-    activitySeries(activitySeriesId: $activitySeriesId, clusterUuid: $clusterUuid) {
+    activitySeries(input: $input) {
         activityConnection(after: $after) {
             nodes {
                 activityInfo
