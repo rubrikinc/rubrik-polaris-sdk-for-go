@@ -29,6 +29,9 @@ import (
 	"strings"
 
 	"golang.org/x/oauth2/google"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/option"
 )
@@ -88,15 +91,18 @@ func gcpProject(ctx context.Context, creds *google.Credentials, id string) (proj
 	}
 
 	// Lookup parent organization.
-	orgName := proj.Parent.Id
-	if proj.Parent.Type == "organization" {
-		org, err := client.Organizations.Get("organizations/" + proj.Parent.Id).Do()
-		if err != nil {
-			return project{}, fmt.Errorf("failed to get GCP project organization: %v", err)
-		}
+	orgName := "<no-organization>"
+	if proj.Parent != nil {
+		orgName = proj.Parent.Id
+		if proj.Parent.Type == "organization" {
+			org, err := client.Organizations.Get("organizations/" + proj.Parent.Id).Do()
+			if err != nil {
+				return project{}, fmt.Errorf("failed to get GCP project organization: %v", err)
+			}
 
-		if org.DisplayName != "" {
-			orgName = org.DisplayName
+			if org.DisplayName != "" {
+				orgName = org.DisplayName
+			}
 		}
 	}
 
@@ -164,7 +170,7 @@ func KeyFileAndProject(keyFile, projectID string) ProjectFunc {
 // specified values.
 func Project(id string, number int64) ProjectFunc {
 	return func(ctx context.Context) (project, error) {
-		name := strings.Title(strings.ReplaceAll(id, "-", " "))
+		name := cases.Title(language.Und).String(strings.ReplaceAll(id, "-", " "))
 		return project{id: id, number: number, name: name, orgName: name + " Org"}, nil
 	}
 }

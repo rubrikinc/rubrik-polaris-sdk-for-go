@@ -75,15 +75,20 @@ func (a API) DefaultCredentialsServiceAccount(ctx context.Context) (name string,
 func (a API) SetDefaultServiceAccount(ctx context.Context, name, jwtConfig string) error {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, gcpSetDefaultServiceAccountJwtConfigQuery, struct {
+	query := gcpSetDefaultServiceAccountJwtConfigQuery
+	if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
+		query = gcpSetDefaultServiceAccountJwtConfigV0Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Name      string `json:"serviceAccountName"`
-		JwtConfig string `json:"serviceAccountJWTConfig"`
+		JwtConfig string `json:"serviceAccountJwtConfig"`
 	}{Name: name, JwtConfig: jwtConfig})
 	if err != nil {
 		return fmt.Errorf("failed to request SetDefaultServiceAccount: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "gcpSetDefaultServiceAccount(%q, %q): %s", name, jwtConfig, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), name, "<JWT REDACTED>",
+		string(buf))
 
 	var payload struct {
 		Data struct {

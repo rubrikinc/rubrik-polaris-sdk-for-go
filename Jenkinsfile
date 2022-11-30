@@ -23,13 +23,20 @@
 pipeline {
     agent any
     tools {
-        go 'go-1.17.3'
+        go 'go-1.18'
     }
     triggers {
         cron(env.BRANCH_NAME == 'main' ? 'H 20 * * *' : '')
     }
     parameters {
-        booleanParam(name: 'RUN_INTEGRATION_TEST', defaultValue: false)
+        booleanParam(
+            name: 'RUN_INTEGRATION_TEST',
+            defaultValue: false,
+            description: 'Run integration tests.')
+        booleanParam(
+            name: 'RUN_INTEGRATION_APPLIANCE_TEST',
+            defaultValue: false,
+            description: 'Run appliance integration tests as part of the integration test suite. Note that this requires RUN_INTEGRATION_TEST to be selected.')
     }
     environment {
         // Polaris credentials.
@@ -51,12 +58,21 @@ pipeline {
         TEST_GCPPROJECT_FILE           = credentials('tf-sdk-test-gcp-project')
         GOOGLE_APPLICATION_CREDENTIALS = credentials('tf-sdk-test-gcp-service-account')
 
-        // Run integration tests with the nightly build, or when explicitly requested via parameter.
+        // Run integration tests with the nightly build, or when explicitly
+        // requested via parameter.
         TEST_INTEGRATION = "${currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0 ? 'true' : params.RUN_INTEGRATION_TEST}"
+
+        // Run appliance integration tests. Note that this only takes effect if
+        // TEST_INTEGRATION is true.
+        TEST_INTEGRATION_APPLIANCE = "${currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0 ? 'false' : params.RUN_INTEGRATION_APPLIANCE_TEST}"
+
+        // Enable trace logging.
+        RUBRIK_POLARIS_LOGLEVEL = 'TRACE'
     }
     stages {
         stage('Lint') {
             steps {
+                sh 'go mod tidy'
                 sh 'go vet ./...'
                 sh 'go run honnef.co/go/tools/cmd/staticcheck@latest ./...'
                 sh 'bash -c "diff -u <(echo -n) <(gofmt -d .)"'
@@ -70,7 +86,7 @@ pipeline {
         stage('Pre-test') {
             when { expression { env.TEST_INTEGRATION == "true" } }
             steps {
-                sh 'go run ./internal/cmd/testenv -precheck'
+                sh 'go run ./cmd/testenv -precheck'
             }
         }
         stage('Test') {
@@ -92,7 +108,7 @@ pipeline {
         always {
             script {
                 if (env.TEST_INTEGRATION == "true") {
-                    sh 'go run ./internal/cmd/testenv -cleanup'
+                    sh 'go run ./cmd/testenv -cleanup'
                 }
             }
         }

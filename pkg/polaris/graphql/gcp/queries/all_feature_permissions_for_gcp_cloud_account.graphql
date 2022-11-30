@@ -1,0 +1,5 @@
+query RubrikPolarisSDKRequest($feature: CloudAccountFeature!) {
+    result: allFeaturePermissionsForGcpCloudAccount(feature: $feature){
+        permission
+    }
+}

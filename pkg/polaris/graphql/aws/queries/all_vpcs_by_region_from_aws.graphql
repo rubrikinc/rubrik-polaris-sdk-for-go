@@ -1,4 +1,4 @@
-query RubrikPolarisSDKRequest($awsAccountRubrikId: UUID!, $region: AwsNativeRegionEnum!) {
+query RubrikPolarisSDKRequest($awsAccountRubrikId: UUID!, $region: AwsNativeRegion!) {
     allVpcsByRegionFromAws(awsAccountRubrikId: $awsAccountRubrikId, region: $region) {
         id
         name

@@ -8,7 +8,7 @@ query RubrikPolarisSDKRequest($awsNativeAccountIdOrNamePrefix: String!) {
             accountName
         }
         configs {
-            areSecurityGroupsPolarisManaged
+            areSecurityGroupsRscManaged
             clusterSecurityGroupId
             configUuid
             message

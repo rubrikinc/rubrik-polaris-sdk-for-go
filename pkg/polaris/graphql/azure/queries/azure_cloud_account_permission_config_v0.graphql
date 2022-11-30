@@ -1,0 +1,11 @@
+query RubrikPolarisSDKRequest($feature: CloudAccountFeatureEnum!) {
+    azureCloudAccountPermissionConfig(feature: $feature) {
+        permissionVersion
+        rolePermissions {
+            excludedActions
+            excludedDataActions
+            includedActions
+            includedDataActions
+        }
+    }
+}

@@ -1,4 +1,4 @@
-query RubrikPolarisSDKRequest($awsNativeAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!) {
+query RubrikPolarisSDKRequest($awsNativeAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeature!) {
 	awsNativeAccount(awsNativeAccountRubrikId: $awsNativeAccountRubrikId, awsNativeProtectionFeature: $awsNativeProtectionFeature) {
 		id
 		regionSpecs {
@@ -7,7 +7,7 @@ query RubrikPolarisSDKRequest($awsNativeAccountRubrikId: UUID!, $awsNativeProtec
 		}
 		status
 		name
-    	slaAssignment
+		slaAssignment
 		configuredSlaDomain {
 			id
 			name

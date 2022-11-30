@@ -159,3 +159,35 @@ func TestRequestWithInternalServerErrorTextBody(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestExtractOperationName(t *testing.T) {
+	tt := []struct {
+		query      string
+		expectedOp string
+	}{
+		// empty / invalid
+		{"", ""},
+		{"{ foo }", ""},
+		{"{ foo() }", ""},
+		{"{ foo(bar) }", ""},
+		{"{ (", ""},
+		{"{ query(", ""},
+		{" query ({", ""},
+		{" query {", ""},
+
+		// valid
+		{"mutation RubrikPolarisSDKRequest($input: String!) { foo(input: $input){} }", "RubrikPolarisSDKRequest"},
+		{" query Foo { foo(input: $input){} }", "Foo"},
+		{"query Bar () { foo(input: $input){} }", "Bar"},
+		{"query	Buz	{ foo(input: $input){} }", "Buz"}, // with tabs
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.query, func(t *testing.T) {
+			if op := operationName(tc.query); op != tc.expectedOp {
+				t.Fatalf("%q returned %q, expected %q", tc.query, op, tc.expectedOp)
+			}
+		})
+	}
+}
