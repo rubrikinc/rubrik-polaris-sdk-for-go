@@ -1,11 +1,10 @@
-mutation RubrikPolarisSDKRequest($feature: CloudAccountFeatureEnum!, $gcpNativeProjectId: String!, $gcpProjectName: String!, $gcpProjectNumber: Long!, $organizationName: String, $serviceAccountJwtConfigOptional: String)
-{
-    gcpCloudAccountAddManualAuthProject(
-        features: [$feature],
-        gcpNativeProjectId: $gcpNativeProjectId,
-        gcpProjectName: $gcpProjectName,
-        gcpProjectNumber: $gcpProjectNumber,
-        organizationName: $organizationName,
-        serviceAccountJwtConfigOptional: $serviceAccountJwtConfigOptional,
-    )
+mutation RubrikPolarisSDKRequest($gcpNativeProjectId: String!, $gcpProjectName: String!, $gcpProjectNumber: Long!, $organizationName: String, $serviceAccountJwtConfig: String, $feature: CloudAccountFeature!) {
+    gcpCloudAccountAddManualAuthProject(input: {
+        gcpNativeProjectId:      $gcpNativeProjectId,
+        gcpProjectName:          $gcpProjectName,
+        gcpProjectNumber:        $gcpProjectNumber,
+        organizationName:        $organizationName,
+        serviceAccountJwtConfig: $serviceAccountJwtConfig,
+        features:                [$feature],
+    })
 }

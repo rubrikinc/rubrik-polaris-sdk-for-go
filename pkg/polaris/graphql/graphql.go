@@ -56,7 +56,7 @@ type gqlLocation struct {
 
 type gqlDetails struct {
 	Message   string        `json:"message"`
-	Path      []string      `json:"path"`
+	Path      []interface{} `json:"path"`
 	Locations []gqlLocation `json:"locations"`
 }
 
@@ -131,6 +131,37 @@ func NewTestClient(username, password string, logger log.Logger) (*Client, *test
 	return client, listener
 }
 
+// operationName tries to extract the operation name from a query
+// e.g.:
+//   "mutation RubrikPolarisSDKRequest($input: String!) { foo(input: $input){} }"
+// returns:
+//   "RubrikPolarisSDKRequest".
+//
+// TODO: do we need to improve this since it currently is just a best effort extraction?
+func operationName(query string) string {
+	// Trim leading white spaces
+	query = strings.TrimSpace(query)
+
+	// Find index of first GQL whitespace (either space or tab)
+	i := strings.Index(query, " ")
+	if i2 := strings.Index(query, "\t"); i2 != -1 && i2 < i {
+		i = i2
+	}
+
+	j := strings.Index(query, "{")
+	// Check if it is a query shorthand (or invalid query)
+	if i == -1 || j == -1 || j < i {
+		return ""
+	}
+
+	// Do not include variable definitions
+	if k := strings.Index(query[i:j], "("); k != -1 {
+		return strings.TrimSpace(query[i : i+k])
+	}
+
+	return strings.TrimSpace(query[i:j])
+}
+
 // Request posts the specified GraphQL query with the given variables to the
 // Polaris platform. Returns the response JSON text as is.
 func (c *Client) Request(ctx context.Context, query string, variables interface{}) ([]byte, error) {
@@ -138,12 +169,7 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 
 	// Extract operation name from query to pass in the body of the request for
 	// metrics.
-	var operation string
-	i := strings.Index(query, " ")
-	j := strings.Index(query, "(")
-	if i != -1 && j != -1 {
-		operation = query[i+1 : j]
-	}
+	operation := operationName(query)
 
 	// Prepare the query request body.
 	buf, err := json.Marshal(struct {

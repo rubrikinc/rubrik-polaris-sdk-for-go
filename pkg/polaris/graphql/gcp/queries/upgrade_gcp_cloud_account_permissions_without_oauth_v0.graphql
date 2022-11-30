@@ -1,0 +1,12 @@
+mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $feature: CloudAccountFeatureEnum!) {
+    result: upgradeGcpCloudAccountPermissionsWithoutOauth(input: {
+        cloudAccountId: $cloudAccountId,
+        feature:        $feature
+    }) {
+        status {
+            projectUuid
+            success
+            error
+        }
+    }
+}

@@ -23,15 +23,18 @@ package gcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// NativeProject represents a Polaris native project.
+// NativeProject represents a Polaris native project. NativeProjects are
+// connected to CloudAccounts through the NativeID field.
 type NativeProject struct {
 	ID               uuid.UUID          `json:"id"`
 	Name             string             `json:"name"`
@@ -78,7 +81,11 @@ func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject
 	var accounts []NativeProject
 	var cursor string
 	for {
-		buf, err := a.GQL.Request(ctx, gcpNativeProjectConnectionQuery, struct {
+		query := gcpNativeProjectsQuery
+		if graphql.VersionOlderThan(a.Version, "master-46700", "v20220412") {
+			query = gcpNativeProjectConnectionQuery
+		}
+		buf, err := a.GQL.Request(ctx, query, struct {
 			After  string `json:"after,omitempty"`
 			Filter string `json:"filter"`
 		}{After: cursor, Filter: filter})
@@ -86,11 +93,11 @@ func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject
 			return nil, fmt.Errorf("failed to request NativeProjects: %v", err)
 		}
 
-		a.GQL.Log().Printf(log.Debug, "gcpNativeProjectConnection(%q): %s", filter, string(buf))
+		a.GQL.Log().Printf(log.Debug, "%s(%q): %s", graphql.QueryName(query), filter, string(buf))
 
 		var payload struct {
 			Data struct {
-				Query struct {
+				Result struct {
 					Count int `json:"count"`
 					Edges []struct {
 						Node NativeProject `json:"node"`
@@ -99,32 +106,38 @@ func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`
 					} `json:"pageInfo"`
-				} `json:"gcpNativeProjectConnection"`
+				} `json:"result"`
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal NativeProjects: %v", err)
 		}
-		for _, account := range payload.Data.Query.Edges {
+		for _, account := range payload.Data.Result.Edges {
 			accounts = append(accounts, account.Node)
 		}
 
-		if !payload.Data.Query.PageInfo.HasNextPage {
+		if !payload.Data.Result.PageInfo.HasNextPage {
 			break
 		}
-		cursor = payload.Data.Query.PageInfo.EndCursor
+		cursor = payload.Data.Result.PageInfo.EndCursor
 	}
 
 	return accounts, nil
 }
 
-// NativeDisableProject starts a task chain job to disables the native project
+// NativeDisableProject starts a task chain job to disable the native project
 // with the specified Polaris native project id. If deleteSnapshots is true the
 // snapshots are deleted. Returns the Polaris task chain id.
 func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnapshots bool) (uuid.UUID, error) {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, gcpNativeDisableProjectQuery, struct {
+	query := gcpNativeDisableProjectQuery
+	if graphql.VersionOlderThan(a.Version, "master-46700", "v20220412") {
+		query = gcpNativeDisableProjectV0Query
+	} else if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
+		query = gcpNativeDisableProjectV1Query
+	}
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID              uuid.UUID `json:"projectId"`
 		DeleteSnapshots bool      `json:"shouldDeleteNativeSnapshots"`
 	}{ID: id, DeleteSnapshots: deleteSnapshots})
@@ -132,12 +145,14 @@ func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnaps
 		return uuid.Nil, fmt.Errorf("failed to request NativeDisableProject: %v", err)
 	}
 
-	a.GQL.Log().Printf(log.Debug, "gcpNativeDisableProject(%q, %t): %s", id, deleteSnapshots, string(buf))
+	a.GQL.Log().Printf(log.Debug, "%s(%q, %t): %s", graphql.QueryName(query), id, deleteSnapshots, string(buf))
 
 	var payload struct {
 		Data struct {
 			Query struct {
+				JobID       uuid.UUID `json:"jobId"`
 				TaskChainID uuid.UUID `json:"taskchainUuid"`
+				Error       string    `json:"error"`
 			} `json:"gcpNativeDisableProject"`
 		} `json:"data"`
 	}
@@ -145,5 +160,14 @@ func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnaps
 		return uuid.Nil, fmt.Errorf("failed to unmarshal NativeDisableProject: %v", err)
 	}
 
-	return payload.Data.Query.TaskChainID, nil
+	if graphql.VersionOlderThan(a.Version, "master-46700", "v20220412") {
+		return payload.Data.Query.TaskChainID, nil
+	}
+	if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
+		return payload.Data.Query.JobID, nil
+	}
+	if payload.Data.Query.Error != "" {
+		return uuid.Nil, errors.New(payload.Data.Query.Error)
+	}
+	return payload.Data.Query.JobID, nil
 }

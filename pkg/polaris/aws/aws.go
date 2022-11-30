@@ -116,14 +116,15 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to get account: %v", err)
 	}
-	if len(accountsWithFeatures) < 1 {
-		return uuid.Nil, fmt.Errorf("account %w", graphql.ErrNotFound)
-	}
-	if len(accountsWithFeatures) > 1 {
-		return uuid.Nil, fmt.Errorf("account %w", graphql.ErrNotUnique)
+
+	// Find the exact match.
+	for _, accountWithFeatures := range accountsWithFeatures {
+		if accountWithFeatures.Account.NativeID == identity.id {
+			return accountWithFeatures.Account.ID, nil
+		}
 	}
 
-	return accountsWithFeatures[0].Account.ID, nil
+	return uuid.Nil, fmt.Errorf("account %w", graphql.ErrNotFound)
 }
 
 // toNativeID returns the AWS account id for the specified identity. If the
@@ -201,6 +202,7 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 			return CloudAccount{}, fmt.Errorf("failed to get account: %v", err)
 		}
 
+		// Find the exact match.
 		for _, accountWithFeatures := range accountsWithFeatures {
 			if accountWithFeatures.Account.ID == cloudAccountID {
 				return toCloudAccount(accountWithFeatures), nil
@@ -211,11 +213,12 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 		if err != nil {
 			return CloudAccount{}, fmt.Errorf("failed to get account: %v", err)
 		}
-		if len(accountsWithFeatures) == 1 {
-			return toCloudAccount(accountsWithFeatures[0]), nil
-		}
-		if len(accountsWithFeatures) > 1 {
-			return CloudAccount{}, fmt.Errorf("account %w", graphql.ErrNotUnique)
+
+		// Find the exact match.
+		for _, accountWithFeatures := range accountsWithFeatures {
+			if accountWithFeatures.Account.NativeID == identity.id {
+				return toCloudAccount(accountWithFeatures), nil
+			}
 		}
 	}
 
@@ -444,7 +447,7 @@ func (a API) UpdateAccount(ctx context.Context, id IdentityFunc, feature core.Fe
 		return fmt.Errorf("failed to get account: %v", err)
 	}
 
-	err = aws.Wrap(a.gql).UpdateCloudAccount(ctx, core.UpdateRegions, account.ID, feature, options.regions)
+	err = aws.Wrap(a.gql).UpdateCloudAccountFeature(ctx, core.UpdateRegions, account.ID, feature, options.regions)
 	if err != nil {
 		return fmt.Errorf("failed to update account: %v", err)
 	}

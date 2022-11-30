@@ -76,11 +76,11 @@ func TestMain(m *testing.M) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
-//   * TEST_INTEGRATION=1
-//   * TEST_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
-//   * AWS_SHARED_CREDENTIALS_FILE=<path-to-aws-credentials-file>
-//   * AWS_CONFIG_FILE=<path-to-aws-config-file>
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
+//   - AWS_SHARED_CREDENTIALS_FILE=<path-to-aws-credentials-file>
+//   - AWS_CONFIG_FILE=<path-to-aws-config-file>
 //
 // The file referred to by TEST_AWSACCOUNT_FILE should contain a single
 // testAwsAccount JSON object.
@@ -165,11 +165,11 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
-//   * TEST_INTEGRATION=1
-//   * TEST_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
-//   * AWS_SHARED_CREDENTIALS_FILE=<path-to-aws-credentials-file>
-//   * AWS_CONFIG_FILE=<path-to-aws-config-file>
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
+//   - AWS_SHARED_CREDENTIALS_FILE=<path-to-aws-credentials-file>
+//   - AWS_CONFIG_FILE=<path-to-aws-config-file>
 //
 // The file referred to by TEST_AWSACCOUNT_FILE should contain a single
 // testAwsAccount JSON object.
@@ -262,8 +262,8 @@ func TestAwsExocompute(t *testing.T) {
 	if exoConfig.Subnets[1].AvailabilityZone != testAccount.Exocompute.Subnets[0].AvailabilityZone && exoConfig.Subnets[1].AvailabilityZone != testAccount.Exocompute.Subnets[1].AvailabilityZone {
 		t.Errorf("invalid subnet availability zone: %v", exoConfig.Subnets[1].AvailabilityZone)
 	}
-	if !exoConfig.PolarisManaged {
-		t.Errorf("invalid polaris managed state: %t", exoConfig.PolarisManaged)
+	if !exoConfig.ManagedByRubrik {
+		t.Errorf("invalid polaris managed state: %t", exoConfig.ManagedByRubrik)
 	}
 
 	// Remove the exocompute config.
@@ -308,10 +308,10 @@ func TestAwsExocompute(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
-//   * TEST_INTEGRATION=1
-//   * TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
-//   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
+//   - AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
 //
 // The file referred to by TEST_AZURESUBSCRIPTION_FILE should contain a single
 // testAzureSubscription JSON object.
@@ -407,10 +407,10 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
-//   * TEST_INTEGRATION=1
-//   * TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
-//   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
+//   - AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
 //
 // The file referred to by TEST_AZURESUBSCRIPTION_FILE should contain a single
 // testAzureSubscription JSON object.
@@ -516,10 +516,10 @@ func TestAzureArchivalSubscriptionAddAndRemove(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
-//   * TEST_INTEGRATION=1
-//   * TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
-//   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
+//   - AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
 //
 // The file referred to by TEST_AZURESUBSCRIPTION_FILE should contain a single
 // testAzureSubscription JSON object.
@@ -546,7 +546,7 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	// as archival encryption is a child feature and cannot be
 	// added without that.
 	subscription := azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
-	id, err := client.Azure().AddSubscription(
+	_, err = client.Azure().AddSubscription(
 		ctx,
 		subscription,
 		core.FeatureCloudNativeArchival,
@@ -560,7 +560,7 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 
 	// Add archival encryption feature.
 	subscription = azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
-	id, err = client.Azure().AddSubscription(
+	id, err := client.Azure().AddSubscription(
 		ctx,
 		subscription,
 		core.FeatureCloudNativeArchivalEncryption,
@@ -578,7 +578,6 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 			make(map[string]string),
 		),
 	)
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -652,10 +651,10 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
-//   * TEST_INTEGRATION=1
-//   * TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
-//   * AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
+//   - AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
 //
 // The file referred to by TEST_AZURESUBSCRIPTION_FILE should contain a single
 // testAzureSubscription JSON object.
@@ -743,8 +742,8 @@ func TestAzureExocompute(t *testing.T) {
 	if exoConfig.SubnetID != testSubscription.Exocompute.SubnetID {
 		t.Errorf("invalid subnet id: %v", exoConfig.SubnetID)
 	}
-	if !exoConfig.PolarisManaged {
-		t.Errorf("invalid polaris managed state: %t", exoConfig.PolarisManaged)
+	if !exoConfig.ManagedByRubrik {
+		t.Errorf("invalid polaris managed state: %t", exoConfig.ManagedByRubrik)
 	}
 
 	// Remove the exocompute config.
@@ -789,8 +788,8 @@ func TestAzureExocompute(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
-//   * TEST_INTEGRATION=1
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
 func TestAzurePermissions(t *testing.T) {
 	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
@@ -819,10 +818,10 @@ func TestAzurePermissions(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
-//   * TEST_INTEGRATION=1
-//   * TEST_GCPPROJECT_FILE=<path-to-test-gcp-project-file>
-//   * GOOGLE_APPLICATION_CREDENTIALS=<path-to-gcp-service-account-key-file>
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_GCPPROJECT_FILE=<path-to-test-gcp-project-file>
+//   - GOOGLE_APPLICATION_CREDENTIALS=<path-to-gcp-service-account-key-file>
 //
 // The file referred to by TEST_GCPPROJECT_FILE should contain a single
 // testGcpProject JSON object.
@@ -872,6 +871,14 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 		t.Errorf("invalid number of features: %v", n)
 	}
 
+	// Verify that the Project function does not return a project given a prefix
+	// of the project id.
+	prefix := testProject.ProjectID[:len(testProject.ProjectID)/2]
+	account, err = client.GCP().Project(ctx, gcp.ProjectID(prefix), core.FeatureCloudNativeProtection)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatalf("invalid error: %v", err)
+	}
+
 	// Remove GCP project from Polaris keeping the snapshots.
 	err = client.GCP().RemoveProject(ctx, gcp.ID(gcp.Default()), core.FeatureCloudNativeProtection, false)
 	if err != nil {
@@ -891,10 +898,10 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
-//   * TEST_INTEGRATION=1
-//   * TEST_GCPPROJECT_FILE=<path-to-test-gcp-project-file>
-//   * GOOGLE_APPLICATION_CREDENTIALS=<path-to-gcp-service-account-key-file>
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_GCPPROJECT_FILE=<path-to-test-gcp-project-file>
+//   - GOOGLE_APPLICATION_CREDENTIALS=<path-to-gcp-service-account-key-file>
 //
 // The file referred to by TEST_GCPPROJECT_FILE should contain a single
 // testGcpProject JSON object.
@@ -967,8 +974,8 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 //
 // To run this test against a Polaris instance the following environment
 // variables needs to be set:
-//   * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
-//   * TEST_INTEGRATION=1
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
 func TestGcpPermissions(t *testing.T) {
 	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")

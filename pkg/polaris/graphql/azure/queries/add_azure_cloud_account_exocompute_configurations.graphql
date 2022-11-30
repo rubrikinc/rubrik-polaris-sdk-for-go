@@ -4,7 +4,7 @@ mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $azureExocomputeRegionC
     }) {
         configs {
             configUuid
-            isPolarisManaged
+            isRscManaged
             message
             region
             subnetNativeId

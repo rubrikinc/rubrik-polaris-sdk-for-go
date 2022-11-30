@@ -86,6 +86,15 @@ func (f Feature) HasRegion(region string) bool {
 	return false
 }
 
+// Polaris does not support the AllFeatures for Azure cloud accounts. We work
+// around this by translating FeatureAll to the following list of features.
+var allFeatures = []core.Feature{
+	core.FeatureCloudNativeArchival,
+	core.FeatureCloudNativeArchivalEncryption,
+	core.FeatureCloudNativeProtection,
+	core.FeatureExocompute,
+}
+
 // toCloudAccountID returns the Polaris cloud account id for the specified
 // identity. If the identity is a Polaris cloud account id no remote endpoint
 // is called.
@@ -100,33 +109,40 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 		return uuid.Nil, fmt.Errorf("failed to lookup identity: %v", err)
 	}
 
-	if identity.internal {
-		id, err := uuid.Parse(identity.id)
-		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to parse identity: %v", err)
-		}
-
-		return id, nil
-	}
-
-	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, core.FeatureCloudNativeProtection, false)
+	uid, err := uuid.Parse(identity.id)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get tenants: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to parse identity: %v", err)
+	}
+	if identity.internal {
+		return uid, nil
 	}
 
-	for _, tenant := range tenants {
-		tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.FeatureCloudNativeProtection, identity.id)
+	// Note that the same tenant can show up for multiple features.
+	tenantIDs := make(map[uuid.UUID]struct{})
+	for _, feature := range allFeatures {
+		tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, feature, false)
 		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to get tenant: %v", err)
+			return uuid.Nil, fmt.Errorf("failed to get tenants: %v", err)
 		}
-		if len(tenantWithAccounts.Accounts) == 0 {
-			continue
+		for _, tenant := range tenants {
+			tenantIDs[tenant.ID] = struct{}{}
 		}
-		if len(tenantWithAccounts.Accounts) > 1 {
-			return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotUnique)
-		}
+	}
 
-		return tenantWithAccounts.Accounts[0].ID, nil
+	for tenantID := range tenantIDs {
+		for _, feature := range allFeatures {
+			tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenantID, feature, identity.id)
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("failed to get tenant: %v", err)
+			}
+
+			// Find the exact match.
+			for _, account := range tenantWithAccounts.Accounts {
+				if account.NativeID == uid {
+					return account.ID, nil
+				}
+			}
+		}
 	}
 
 	return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotFound)
@@ -154,33 +170,33 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error)
 		return uid, nil
 	}
 
-	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, core.FeatureCloudNativeProtection, false)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get tenants: %v", err)
+	// Note that the same tenant can show up for multiple features.
+	tenantIDs := make(map[uuid.UUID]struct{})
+	for _, feature := range allFeatures {
+		tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, feature, false)
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("failed to get tenants: %v", err)
+		}
+		for _, tenant := range tenants {
+			tenantIDs[tenant.ID] = struct{}{}
+		}
 	}
 
-	for _, tenant := range tenants {
-		tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, core.FeatureCloudNativeProtection, "")
-		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to get tenant: %v", err)
-		}
-		for _, account := range tenantWithAccounts.Accounts {
-			if account.ID == uid {
-				return account.ID, nil
+	for tenantID := range tenantIDs {
+		for _, feature := range allFeatures {
+			tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenantID, feature, "")
+			if err != nil {
+				return uuid.Nil, fmt.Errorf("failed to get tenant: %v", err)
+			}
+			for _, account := range tenantWithAccounts.Accounts {
+				if account.ID == uid {
+					return account.ID, nil
+				}
 			}
 		}
 	}
 
 	return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotFound)
-}
-
-// Polaris does not support the AllFeatures for Azure cloud accounts. We work
-// around this by translating FeatureAll to the following list of features.
-var allFeatures = []core.Feature{
-	core.FeatureCloudNativeArchival,
-	core.FeatureCloudNativeArchivalEncryption,
-	core.FeatureCloudNativeProtection,
-	core.FeatureExocompute,
 }
 
 // subscriptions return all subscriptions for the given feature and filter.
@@ -263,19 +279,20 @@ func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Fea
 		return CloudAccount{}, fmt.Errorf("failed to lookup identity: %v", err)
 	}
 
-	if identity.internal {
-		id, err := uuid.Parse(identity.id)
-		if err != nil {
-			return CloudAccount{}, fmt.Errorf("failed to parse identity: %v", err)
-		}
+	uid, err := uuid.Parse(identity.id)
+	if err != nil {
+		return CloudAccount{}, fmt.Errorf("failed to parse identity: %v", err)
+	}
 
+	if identity.internal {
 		accounts, err := a.Subscriptions(ctx, feature, "")
 		if err != nil {
 			return CloudAccount{}, fmt.Errorf("failed to get subscriptions: %v", err)
 		}
 
+		// Find the exact match.
 		for _, account := range accounts {
-			if account.ID == id {
+			if account.ID == uid {
 				return account, nil
 			}
 		}
@@ -284,11 +301,12 @@ func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Fea
 		if err != nil {
 			return CloudAccount{}, fmt.Errorf("failed to get subscriptions: %v", err)
 		}
-		if len(accounts) > 1 {
-			return CloudAccount{}, fmt.Errorf("subscription %w", graphql.ErrNotUnique)
-		}
-		if len(accounts) == 1 {
-			return accounts[0], nil
+
+		// Find the exact match.
+		for _, account := range accounts {
+			if account.NativeID == uid {
+				return account, nil
+			}
 		}
 	}
 
@@ -506,10 +524,11 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 	return nil
 }
 
-// SetServicePrincipal sets the default service principal. Note that it's not
-// possible to remove a service account once it has been set. Returns the
-// application id of the service principal set.
-func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipalFunc) (uuid.UUID, error) {
+// AddServicePrincipal adds the service principal for the app. If shouldReplace
+// is true and the app already has a service principal, it will be replaced.
+// Note that it's not possible to remove a service principal once it has been
+// set. Returns the application id of the service principal set.
+func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipalFunc, shouldReplace bool) (uuid.UUID, error) {
 	a.gql.Log().Print(log.Trace)
 
 	config, err := principal(ctx)
@@ -518,10 +537,20 @@ func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipal
 	}
 
 	err = azure.Wrap(a.gql).SetCloudAccountCustomerAppCredentials(ctx, azure.PublicCloud, config.appID,
-		config.tenantID, config.appName, config.tenantDomain, config.appSecret)
+		config.tenantID, config.appName, config.tenantDomain, config.appSecret, shouldReplace)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to set customer app credentials: %v", err)
 	}
 
 	return config.appID, nil
+}
+
+// SetServicePrincipal sets the service principal for the app. If the app
+// already has a service principal, it will be replaced. Note that it's not
+// possible to remove a service principal once it has been set. Returns the
+// application id of the service principal set.
+func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipalFunc) (uuid.UUID, error) {
+	a.gql.Log().Print(log.Trace)
+
+	return a.AddServicePrincipal(ctx, principal, true)
 }

@@ -1,4 +1,4 @@
-query RubrikPolarisSDKRequest($feature: CloudAccountFeatureEnum!) {
+query RubrikPolarisSDKRequest($feature: CloudAccountFeature!) {
     azureCloudAccountPermissionConfig(feature: $feature) {
         permissionVersion
         rolePermissions {

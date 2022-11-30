@@ -1,5 +1,9 @@
 mutation RubrikPolarisSDKRequest($projectId: UUID!, $shouldDeleteNativeSnapshots: Boolean!) {
-  gcpNativeDisableProject(projectId: $projectId, shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots) {
-    taskchainUuid
+  gcpNativeDisableProject(input: {
+    projectId:                   $projectId,
+    shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots
+  }) {
+    jobId
+    error
   }
 }

@@ -1,4 +1,4 @@
-query RubrikPolarisSDKRequest($after: String, $awsNativeProtectionFeature: AwsNativeProtectionFeatureEnum!, $filter: String!) {
+query RubrikPolarisSDKRequest($after: String, $awsNativeProtectionFeature: AwsNativeProtectionFeature!, $filter: String!) {
 	awsNativeAccounts(after: $after, awsNativeProtectionFeature: $awsNativeProtectionFeature, accountFilters: {nameSubstringFilter: {nameSubstring: $filter}}) {
 		count
 		edges {
