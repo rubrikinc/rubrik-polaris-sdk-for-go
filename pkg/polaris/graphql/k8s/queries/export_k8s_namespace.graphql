@@ -1,5 +1,5 @@
 mutation RubrikPolarisSDKRequest($k8sNamespaceExportRequest: ExportK8sNamespaceInput!) {
-    exportK8sNamespace(k8sNamespaceExportRequest: $k8sNamespaceExportRequest) {
+    exportK8sNamespace(input: $k8sNamespaceExportRequest) {
         taskchainId
         jobId
     }

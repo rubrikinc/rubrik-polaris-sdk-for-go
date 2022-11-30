@@ -29,10 +29,10 @@ var assignSlaForSnappableHierarchiesQuery = `mutation SdkGolangAssignSlaForSnapp
     $globalSlaOptionalFid: UUID,
     $globalSlaAssignType: SlaAssignTypeEnum!,
     $objectIds: [UUID!]!,
-    $applicableSnappableTypes: [SnappableLevelHierarchyTypeEnum!],
+    $applicableSnappableTypes: [WorkloadLevelHierarchy!],
     $shouldApplyToExistingSnapshots: Boolean,
     $shouldApplyToNonPolicySnapshots: Boolean,
-    $globalExistingSnapshotRetention: GlobalExistingSnapshotRetentionEnum) {
+    $globalExistingSnapshotRetention: GlobalExistingSnapshotRetention) {
         assignSlasForSnappableHierarchies(
             globalSlaOptionalFid: $globalSlaOptionalFid,
             globalSlaAssignType: $globalSlaAssignType,

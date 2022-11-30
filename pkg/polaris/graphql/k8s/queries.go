@@ -43,7 +43,7 @@ var allSnapshotPvcsQuery = `query SdkGolangAllSnapshotPvcs(
 
 // exportK8sNamespace GraphQL query
 var exportK8sNamespaceQuery = `mutation SdkGolangExportK8sNamespace($k8sNamespaceExportRequest: ExportK8sNamespaceInput!) {
-    exportK8sNamespace(k8sNamespaceExportRequest: $k8sNamespaceExportRequest) {
+    exportK8sNamespace(input: $k8sNamespaceExportRequest) {
         taskchainId
         jobId
     }
@@ -51,11 +51,10 @@ var exportK8sNamespaceQuery = `mutation SdkGolangExportK8sNamespace($k8sNamespac
 
 // getActivitySeries GraphQL query
 var getActivitySeriesQuery = `query SdkGolangGetActivitySeries(
-    $activitySeriesId: UUID!,
-    $clusterUuid: UUID,
+    $input: ActivitySeriesInput!
     $after: String,
 ) {
-    activitySeries(activitySeriesId: $activitySeriesId, clusterUuid: $clusterUuid) {
+    activitySeries(input: $input) {
         activityConnection(after: $after) {
             nodes {
                 activityInfo
@@ -76,7 +75,7 @@ var getActivitySeriesQuery = `query SdkGolangGetActivitySeries(
 // getActivitySeriesConnection GraphQL query
 var getActivitySeriesConnectionQuery = `query SdkGolangGetActivitySeriesConnection(
     $after: String,
-    $filters: ActivitySeriesFilterInput,
+    $filters: ActivitySeriesFilter,
 ) {
     activitySeriesConnection(
         after: $after,
@@ -122,7 +121,7 @@ var getNamespacesQuery = `query SdkGolangGetNamespaces(
         edges {
             node {
                 id,
-                k8sClusterID,
+                k8sClusterId,
                 namespaceName,
                 isRelic,
                 configuredSlaDomain{
@@ -295,8 +294,8 @@ var listSlaQuery = `query SdkGolangListSla(
 }`
 
 // restoreK8sNamespace GraphQL query
-var restoreK8sNamespaceQuery = `mutation SdkGolangRestoreK8sNamespace($k8sNamespaceRestoreRequest: K8sNamespaceRestore!) {
-    restoreK8sNamespace(k8sNamespaceRestoreRequest: $k8sNamespaceRestoreRequest) {
+var restoreK8sNamespaceQuery = `mutation SdkGolangRestoreK8sNamespace($k8sNamespaceRestoreRequest: RestoreK8sNamespaceInput!) {
+    restoreK8sNamespace(input: $k8sNamespaceRestoreRequest) {
         taskchainId
         jobId
     }
