@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -78,13 +79,20 @@ type Account interface {
 // RUBRIK_POLARIS_LOGLEVEL.
 func NewClient(ctx context.Context, account Account, logger log.Logger) (*Client, error) {
 	if serviceAccount, ok := account.(*ServiceAccount); ok {
-		return newClientFromServiceAccount(ctx, serviceAccount, logger)
+		return newClientFromServiceAccount(ctx, serviceAccount, http.DefaultTransport, logger)
 	}
 
 	if userAccount, ok := account.(*UserAccount); ok {
 		return newClientFromUserAccount(ctx, userAccount, logger)
 	}
 
+	return nil, errors.New("invalid account type")
+}
+
+func NewClientFromServiceAccountWithTransport(ctx context.Context, account Account, transport http.RoundTripper, logger log.Logger) (*Client, error) {
+	if serviceAccount, ok := account.(*ServiceAccount); ok {
+		return newClientFromServiceAccount(ctx, serviceAccount, transport, logger)
+	}
 	return nil, errors.New("invalid account type")
 }
 
@@ -143,7 +151,7 @@ func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger 
 // newClientFromServiceAccount returns a new Client from the specified
 // ServiceAccount. The log level of the given logger can be changed at runtime
 // using the environment variable RUBRIK_POLARIS_LOGLEVEL.
-func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, logger log.Logger) (*Client, error) {
+func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, transport http.RoundTripper, logger log.Logger) (*Client, error) {
 	if account.Name == "" {
 		return nil, errors.New("invalid name")
 	}
@@ -180,8 +188,16 @@ func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, l
 
 	// The gql client is initialized without a version. Query cluster to find
 	// out the current version.
-	gqlClient := graphql.NewClientFromServiceAccount("custom", apiURL, account.AccessTokenURI, account.ClientID,
-		account.ClientSecret, logger)
+	gqlClient := graphql.NewClientFromServiceAccountWithTransport(
+		"custom",
+		apiURL,
+		account.AccessTokenURI,
+		account.ClientID,
+		account.ClientSecret,
+		transport,
+		logger,
+	)
+
 	version, err := core.Wrap(gqlClient).DeploymentVersion(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get deployment version: %v", err)
