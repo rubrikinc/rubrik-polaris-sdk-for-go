@@ -86,33 +86,42 @@ type Client struct {
 	log     log.Logger
 }
 
-// NewClientFromLocalUser returns a new Client with the specified configuration.
-func NewClientFromLocalUser(app, apiURL, username, password string, logger log.Logger) *Client {
-	tokenSource := token.NewLocalUserSource(http.DefaultClient, apiURL, username, password, logger)
-
+func NewClient(
+	app,
+	gqlURL string,
+	tokenSource token.Source,
+	transport http.RoundTripper,
+	logger log.Logger,
+	) *Client {
 	return &Client{
 		app:    app,
-		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
+		gqlURL: gqlURL,
 		client: &http.Client{
-			Transport: token.NewRoundTripper(http.DefaultTransport, tokenSource),
+			Transport: token.NewRoundTripper(transport, tokenSource),
 		},
 		log: logger,
 	}
+}
+
+// NewClientFromLocalUser returns a new Client with the specified configuration.
+func NewClientFromLocalUser(app, apiURL, username, password string, logger log.Logger) *Client {
+	tokenSource := token.NewLocalUserSource(http.DefaultClient, apiURL, username, password, logger)
+	gqlURL := fmt.Sprintf("%s/graphql", apiURL)
+	return NewClient(app, gqlURL, tokenSource, http.DefaultTransport, logger)
 }
 
 // NewClientFromServiceAccount returns a new Client with the specified
 // configuration.
 func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSecret string, logger log.Logger) *Client {
 	tokenSource := token.NewServiceAccountSource(http.DefaultClient, accessTokenURI, clientID, clientSecret, logger)
+	gqlURL := fmt.Sprintf("%s/graphql", apiURL)
+	return NewClient(app, gqlURL, tokenSource, http.DefaultTransport, logger)
+}
 
-	return &Client{
-		app:    app,
-		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
-		client: &http.Client{
-			Transport: token.NewRoundTripper(http.DefaultTransport, tokenSource),
-		},
-		log: logger,
-	}
+func NewClientFromServiceAccountWithTransport(app, apiURL, accessTokenURI, clientID, clientSecret string, transport http.RoundTripper, logger log.Logger) *Client {
+	tokenSource := token.NewServiceAccountSource(http.DefaultClient, accessTokenURI, clientID, clientSecret, logger)
+	gqlURL := fmt.Sprintf("%s/graphql", apiURL)
+	return NewClient(app, gqlURL, tokenSource, transport, logger)
 }
 
 // NewTestClient returns a new Client intended to be used by unit tests.
