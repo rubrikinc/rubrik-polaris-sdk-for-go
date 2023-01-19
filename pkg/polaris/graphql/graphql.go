@@ -119,7 +119,7 @@ func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSe
 }
 
 func NewClientFromServiceAccountWithTransport(app, apiURL, accessTokenURI, clientID, clientSecret string, transport http.RoundTripper, logger log.Logger) *Client {
-	tokenSource := token.NewServiceAccountSource(http.DefaultClient, accessTokenURI, clientID, clientSecret, logger)
+	tokenSource := token.NewServiceAccountSource(&http.Client{Transport: transport}, accessTokenURI, clientID, clientSecret, logger)
 	gqlURL := fmt.Sprintf("%s/graphql", apiURL)
 	return NewClient(app, gqlURL, tokenSource, transport, logger)
 }
