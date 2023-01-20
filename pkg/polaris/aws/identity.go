@@ -44,7 +44,7 @@ type IdentityFunc func(ctx context.Context) (identity, error)
 func AccountID(awsAccountID string) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
 		if !verifyAccountID(awsAccountID) {
-			errors.New("invalid AWS id")
+			return identity{}, errors.New("invalid AWS id")
 		}
 
 		return identity{id: awsAccountID, internal: false}, nil
@@ -81,7 +81,7 @@ func Role(roleARN string) IdentityFunc {
 			return identity{}, fmt.Errorf("failed to parse role ARN: %v", err)
 		}
 		if !verifyAccountID(arn.AccountID) {
-			errors.New("invalid AWS id")
+			return identity{}, errors.New("invalid AWS id")
 		}
 
 		return identity{id: arn.AccountID, internal: false}, nil
