@@ -38,9 +38,9 @@ type IdentityFunc func(ctx context.Context) (identity, error)
 
 // CloudAccountID returns an IdentityFunc that initializes the identity with
 // the specified Polaris cloud account id.
-func CloudAccountID(id uuid.UUID) IdentityFunc {
+func CloudAccountID(cloudAccountID uuid.UUID) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
-		return identity{id.String(), true}, nil
+		return identity{cloudAccountID.String(), true}, nil
 	}
 }
 
@@ -59,8 +59,8 @@ func ID(subscription SubscriptionFunc) IdentityFunc {
 
 // SubscriptionID returns an IdentityFunc that initializes the identity with
 // the specified subscription id.
-func SubscriptionID(id uuid.UUID) IdentityFunc {
+func SubscriptionID(subscriptionID uuid.UUID) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
-		return identity{id.String(), false}, nil
+		return identity{subscriptionID.String(), false}, nil
 	}
 }

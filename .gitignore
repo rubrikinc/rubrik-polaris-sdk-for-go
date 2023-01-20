@@ -1,4 +1,5 @@
 /aws_account
+/aws_cross_account_role
 /aws_exocompute
 /azure_exocompute
 /azure_permissions

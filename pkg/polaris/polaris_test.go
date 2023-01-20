@@ -156,6 +156,88 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	}
 }
 
+// TestAwsCrossAccountAddAndRemove verifies that the SDK can perform the basic
+// AWS cross account operations on a real Polaris instance.
+//
+// To run this test against a Polaris instance the following environment
+// variables needs to be set:
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
+//   - AWS_SHARED_CREDENTIALS_FILE=<path-to-aws-credentials-file>
+//   - AWS_CONFIG_FILE=<path-to-aws-config-file>
+//
+// The file referred to by TEST_AWSACCOUNT_FILE should contain a single
+// testAwsAccount JSON object.
+func TestAwsCrossAccountAddAndRemove(t *testing.T) {
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	ctx := context.Background()
+
+	testAccount, err := testsetup.AWSAccount()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Use the default profile to add an AWS account to Polaris using a cross
+	// account role. Note that the profile needs to have a region.
+	id, err := client.AWS().AddAccount(ctx,
+		aws.ProfileWithRole(testAccount.Profile, testAccount.CrossAccountRole), core.FeatureCloudNativeProtection,
+		aws.Name(testAccount.CrossAccountName), aws.Regions("us-east-2"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the account was successfully added.
+	account, err := client.AWS().Account(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection)
+	if err != nil {
+		t.Error(err)
+	}
+	if account.Name != testAccount.CrossAccountName {
+		t.Errorf("invalid name: %v", account.Name)
+	}
+	if account.NativeID != testAccount.CrossAccountID {
+		t.Errorf("invalid native id: %v", account.NativeID)
+	}
+	if n := len(account.Features); n == 1 {
+		if account.Features[0].Name != "CLOUD_NATIVE_PROTECTION" {
+			t.Errorf("invalid feature name: %v", account.Features[0].Name)
+		}
+		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+			t.Errorf("invalid feature regions: %v", regions)
+		}
+		if account.Features[0].Status != "CONNECTED" {
+			t.Errorf("invalid feature status: %v", account.Features[0].Status)
+		}
+	} else {
+		t.Errorf("invalid number of features: %v", n)
+	}
+
+	// Verify that it's possible to search for the account using a role.
+	account, err = client.AWS().Account(ctx, aws.Role(testAccount.CrossAccountRole), core.FeatureCloudNativeProtection)
+	if err != nil {
+		t.Error(err)
+	}
+	if account.ID != id {
+		t.Errorf("invalid id: %v", account.ID)
+	}
+
+	// Remove AWS account from Polaris using a cross account role.
+	err = client.AWS().RemoveAccount(ctx, aws.ProfileWithRole(testAccount.Profile, testAccount.CrossAccountRole),
+		core.FeatureCloudNativeProtection, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the account was successfully removed.
+	account, err = client.AWS().Account(ctx, aws.AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal(err)
+	}
+}
+
 // TestAwsExocompute verifies that the SDK can perform basic Exocompute
 // operations on a real Polaris instance.
 //
