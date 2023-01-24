@@ -14,7 +14,7 @@ type testAwsAccount struct {
 	Profile          string `json:"profile"`
 	AccountID        string `json:"accountId"`
 	AccountName      string `json:"accountName"`
-	CrossAccountID   string `json:"CrossAccountId"`
+	CrossAccountID   string `json:"crossAccountId"`
 	CrossAccountName string `json:"crossAccountName"`
 	CrossAccountRole string `json:"crossAccountRole"`
 
