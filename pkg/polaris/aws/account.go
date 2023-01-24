@@ -23,9 +23,9 @@ package aws
 import (
 	"context"
 	"fmt"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/organizations"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
@@ -40,42 +40,13 @@ type account struct {
 // function creating the AccountFunc.
 type AccountFunc func(ctx context.Context) (account, error)
 
-// awsAccountID returns the account id.
-func awsAccountID(ctx context.Context, config aws.Config) (string, error) {
-	stsClient := sts.NewFromConfig(config)
-	id, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
-	if err != nil {
-		return "", fmt.Errorf("failed to get AWS identity from STS: %v", err)
-	}
-
-	return *id.Account, nil
-}
-
-// awsAccount returns the account id and name. Note that if the AWS user does
-// not have permissions for Organizations the account name will be empty.
-func awsAccount(ctx context.Context, config aws.Config) (string, string, error) {
-	id, err := awsAccountID(ctx, config)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to get AWS account id: %v", err)
-	}
-
-	// Organizations calls might fail due to missing permissions.
-	orgClient := organizations.NewFromConfig(config)
-	info, err := orgClient.DescribeAccount(ctx, &organizations.DescribeAccountInput{AccountId: &id})
-	if err != nil {
-		return id, "", nil
-	}
-
-	return id, *info.Account.Name, nil
-}
-
 // Config returns an AccountFunc that initializes the account with values from
-// the specified config and the cloud.
+// the specified AWS configuration and values from the AWS cloud.
 func Config(config aws.Config) AccountFunc {
 	return func(ctx context.Context) (account, error) {
-		id, name, err := awsAccount(ctx, config)
+		id, name, err := awsAccountInfo(ctx, config)
 		if err != nil {
-			return account{}, fmt.Errorf("failed to get AWS account: %v", err)
+			return account{}, fmt.Errorf("failed to access AWS account: %v", err)
 		}
 
 		if name == "" {
@@ -87,53 +58,102 @@ func Config(config aws.Config) AccountFunc {
 }
 
 // Default returns an AccountFunc that initializes the account with values from
-// the default credentials, the default region and the cloud.
+// the default profile (~/.aws/credentials and ~/.aws/config) and the AWS cloud.
 func Default() AccountFunc {
-	return func(ctx context.Context) (account, error) {
-		config, err := config.LoadDefaultConfig(ctx)
-		if err != nil {
-			return account{}, fmt.Errorf("failed to read default AWS config: %v", err)
-		}
+	return ProfileWithRegionAndRole("", "", "")
+}
 
-		id, name, err := awsAccount(ctx, config)
-		if err != nil {
-			return account{}, fmt.Errorf("failed to get AWS account: %v", err)
-		}
+// DefaultWithRegion returns an AccountFunc that initializes the account with
+// values from the default profile (~/.aws/credentials and ~/.aws/config) and
+// the AWS cloud.
+func DefaultWithRegion(region string) AccountFunc {
+	return ProfileWithRegionAndRole("", region, "")
+}
 
-		if name == "" {
-			name = id + " : default"
-		}
+// DefaultWithRole returns an AccountFunc that initializes the account with
+// values from the default profile (~/.aws/credentials and ~/.aws/config) and
+// the AWS cloud. After the account has been initialized it assumes the role
+// specified by the role ARN.
+func DefaultWithRole(roleARN string) AccountFunc {
+	return ProfileWithRegionAndRole("", "", roleARN)
+}
 
-		return account{id: id, name: name, config: config}, nil
-	}
+// DefaultWithRegionAndRole returns an AccountFunc that initializes the account
+// with values from the default profile (~/.aws/credentials and ~/.aws/config)
+// and the AWS cloud. After the account has been initialized it assumes the role
+// specified by the role ARN.
+func DefaultWithRegionAndRole(region, roleARN string) AccountFunc {
+	return ProfileWithRegionAndRole("", region, roleARN)
 }
 
 // Profile returns an AccountFunc that initializes the account with values from
-// the specified profile, the default region and the cloud.
+// the named profile (~/.aws/credentials and ~/.aws/config) and the AWS cloud.
 func Profile(profile string) AccountFunc {
-	return ProfileAndRegion(profile, "")
+	return ProfileWithRegionAndRole(profile, "", "")
 }
 
-// ProfileAndRegion returns an AccountFunc that initializes the account with
-// values from the specified profile, the given region and the cloud.
-func ProfileAndRegion(profile, region string) AccountFunc {
+// ProfileWithRegion returns an AccountFunc that initializes the account with
+// values from the named profile (~/.aws/credentials and ~/.aws/config) and the
+// AWS cloud.
+func ProfileWithRegion(profile, region string) AccountFunc {
+	return ProfileWithRegionAndRole(profile, region, "")
+}
+
+// ProfileWithRole returns an AccountFunc that initializes the account with
+// values from the named profile (~/.aws/credentials and ~/.aws/config) and the
+// AWS cloud. After the account has been initialized it assumes the role
+// specified by the role ARN.
+func ProfileWithRole(profile string, roleArn string) AccountFunc {
+	return ProfileWithRegionAndRole(profile, "", roleArn)
+}
+
+// ProfileWithRegionAndRole returns an AccountFunc that initializes the account
+// with values from the named profile (~/.aws/credentials and ~/.aws/config) and
+// the AWS cloud. After the account has been initialized it assumes the role
+// specified by the role ARN.
+func ProfileWithRegionAndRole(profile, region, roleARN string) AccountFunc {
 	return func(ctx context.Context) (account, error) {
 		config, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profile),
 			config.WithRegion(region))
+		if profile == "" {
+			profile = "default"
+		}
 		if err != nil {
-			return account{}, fmt.Errorf("failed to read %q AWS config: %v", profile, err)
+			return account{}, fmt.Errorf("failed to load profile %q: %v", profile, err)
 		}
 
-		id, name, err := awsAccount(ctx, config)
-		if err != nil {
-			return account{}, fmt.Errorf("failed to get AWS account: %v", err)
+		if roleARN != "" {
+			stsClient := sts.NewFromConfig(config)
+			config.Credentials = aws.NewCredentialsCache(stscreds.NewAssumeRoleProvider(stsClient, roleARN))
 		}
 
-		// Derive name from AWS id and profile.
+		id, name, err := awsAccountInfo(ctx, config)
+		if err != nil {
+			return account{}, fmt.Errorf("failed to access AWS account: %v", err)
+		}
 		if name == "" {
 			name = id + " : " + profile
 		}
 
 		return account{id: id, name: name, config: config}, nil
 	}
+}
+
+// awsAccount returns the account id and name. Note that if the AWS user does
+// not have permissions for Organizations the account name will be empty.
+func awsAccountInfo(ctx context.Context, config aws.Config) (string, string, error) {
+	stsClient := sts.NewFromConfig(config)
+	callerID, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get AWS identity from STS: %v", err)
+	}
+
+	// Organizations call might fail due to missing permissions.
+	orgClient := organizations.NewFromConfig(config)
+	info, err := orgClient.DescribeAccount(ctx, &organizations.DescribeAccountInput{AccountId: callerID.Account})
+	if err != nil {
+		return *callerID.Account, "", nil
+	}
+
+	return *callerID.Account, *info.Account.Name, nil
 }

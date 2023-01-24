@@ -11,9 +11,12 @@ import (
 // testAwsAccount hold AWS account information used in the integration tests.
 // Normally used to assert that the information read from Polaris is correct.
 type testAwsAccount struct {
-	AccountID   string `json:"accountId"`
-	AccountName string `json:"accountName"`
-	Profile     string `json:"profile"`
+	Profile          string `json:"profile"`
+	AccountID        string `json:"accountId"`
+	AccountName      string `json:"accountName"`
+	CrossAccountID   string `json:"crossAccountId"`
+	CrossAccountName string `json:"crossAccountName"`
+	CrossAccountRole string `json:"crossAccountRole"`
 
 	Exocompute struct {
 		VPCID   string `json:"vpcId"`
@@ -24,7 +27,7 @@ type testAwsAccount struct {
 	} `json:"exocompute"`
 }
 
-// Load test account information from the file pointed to by the
+// AWSAccount loads test account information from the file pointed to by the
 // TEST_AWSACCOUNT_FILE environment variable.
 func AWSAccount() (testAwsAccount, error) {
 	buf, err := os.ReadFile(os.Getenv("TEST_AWSACCOUNT_FILE"))
@@ -66,8 +69,8 @@ type testAzureSubscription struct {
 	} `json:"archival"`
 }
 
-// Load test project information from the file pointed to by the
-// TEST_AZURESUBSCRIPTION_FILE environment variable.
+// AzureSubscription loads test project information from the file pointed to by
+// the TEST_AZURESUBSCRIPTION_FILE environment variable.
 func AzureSubscription() (testAzureSubscription, error) {
 	buf, err := os.ReadFile(os.Getenv("TEST_AZURESUBSCRIPTION_FILE"))
 	if err != nil {
@@ -91,7 +94,7 @@ type testGcpProject struct {
 	OrganizationName string `json:"organizationName"`
 }
 
-// Load test project information from the file pointed to by the
+// GCPProject loads test project information from the file pointed to by the
 // TEST_GCPPROJECT_FILE environment variable.
 func GCPProject() (testGcpProject, error) {
 	buf, err := os.ReadFile(os.Getenv("TEST_GCPPROJECT_FILE"))
