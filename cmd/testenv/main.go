@@ -57,13 +57,29 @@ func main() {
 func check(ctx context.Context, client *polaris.Client) error {
 	var g errgroup.Group
 
-	// AWS
+	// AWS with profile
 	g.Go(func() error {
 		testAcc, err := testsetup.AWSAccount()
 		if err != nil {
 			return err
 		}
 		awsAccount, err := client.AWS().Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
+		switch {
+		case err == nil:
+			return fmt.Errorf("found pre-existing AWS account: %v", pretty.Sprint(awsAccount))
+		case !errors.Is(err, graphql.ErrNotFound):
+			return fmt.Errorf("failed to check AWS account: %v", err)
+		}
+		return nil
+	})
+
+	// AWS with cross account role
+	g.Go(func() error {
+		testAcc, err := testsetup.AWSAccount()
+		if err != nil {
+			return err
+		}
+		awsAccount, err := client.AWS().Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
 		switch {
 		case err == nil:
 			return fmt.Errorf("found pre-existing AWS account: %v", pretty.Sprint(awsAccount))
@@ -111,7 +127,7 @@ func check(ctx context.Context, client *polaris.Client) error {
 func clean(ctx context.Context, client *polaris.Client) error {
 	var g errgroup.Group
 
-	// AWS
+	// AWS with profile
 	g.Go(func() error {
 		testAcc, err := testsetup.AWSAccount()
 		if err != nil {
@@ -131,6 +147,28 @@ func clean(ctx context.Context, client *polaris.Client) error {
 		// TODO: we might need to iterate over awsAccount.Features to remove
 		// all of them in the future
 		return client.AWS().RemoveAccount(ctx, aws.Profile(testAcc.Profile), core.FeatureCloudNativeProtection, false)
+	})
+
+	// AWS with cross account role
+	g.Go(func() error {
+		testAcc, err := testsetup.AWSAccount()
+		if err != nil {
+			return err
+		}
+		awsAccount, err := client.AWS().Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
+		switch {
+		case errors.Is(err, graphql.ErrNotFound):
+			return nil
+		case err != nil:
+			return fmt.Errorf("failed to check AWS account: %v", err)
+		}
+		if awsAccount.NativeID != testAcc.CrossAccountID {
+			return fmt.Errorf("existing AWS account %q isn't expected test account %q, won't remove",
+				awsAccount.NativeID, testAcc.CrossAccountID)
+		}
+		// TODO: we might need to iterate over awsAccount.Features to remove
+		// all of them in the future
+		return client.AWS().RemoveAccount(ctx, aws.DefaultWithRole(testAcc.CrossAccountRole), core.FeatureCloudNativeProtection, false)
 	})
 
 	// Azure
