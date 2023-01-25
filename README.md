@@ -129,9 +129,9 @@ Note that it's possible to prevent the above environment variable from overridin
 `allowEnvOverride` to `false`.
 
 ### AWS Credentials
-To perform AWS operations with the SDK an AWS profile and default region is required. The SDK will look for those in the
-default `~/.aws/credentials` and `~/.aws/config` files. Which profile and region that is used by the SDK depends on the
-account function used: `aws.Default`, `aws.Profile` or  `aws.ProfileAndRegion`. Please see the
+To perform AWS operations with the SDK an AWS profile and region is required. The SDK will look for those in the
+default `~/.aws/credentials` and `~/.aws/config` files. The profile and region used by the SDK depends on the account
+function used, please see the
 [SDK documentation](https://pkg.go.dev/github.com/rubrikinc/rubrik-polaris-sdk-for-go@main/pkg/polaris/aws#AccountFunc)
 for more information.
 
@@ -201,6 +201,9 @@ correctly to Polaris:
     "profile": "<aws-profile-name>",
     "accountId": "<aws-account-id>",
     "accountName": "<aws-account-name>",
+    "crossAccountId": "<aws-cross-account-id>",
+    "crossAccountName": "<aws-cross-account-name>",
+    "crossAccountRole": "<aws-cross-account-role>",
     "exocompute": {
         "vpcId": "<aws-vpc-id>",
         "subnets": [{
