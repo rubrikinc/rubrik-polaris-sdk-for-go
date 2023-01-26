@@ -22,6 +22,7 @@ package aws
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -120,6 +121,9 @@ func ProfileWithRegionAndRole(profile, region, roleARN string) AccountFunc {
 		}
 		if err != nil {
 			return account{}, fmt.Errorf("failed to load profile %q: %v", profile, err)
+		}
+		if config.Region == "" {
+			return account{}, errors.New("missing AWS region, used for AWS CloudFormation stack operations")
 		}
 
 		if roleARN != "" {

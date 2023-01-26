@@ -47,7 +47,7 @@ func awsStackExist(ctx context.Context, config aws.Config, stackName string) (bo
 		return false, nil
 	}
 
-	return false, fmt.Errorf("failed to get CloudFormation stack: %v", err)
+	return false, fmt.Errorf("failed to get CloudFormation stack %q from region %q: %v", stackName, config.Region, err)
 }
 
 // awsWaitForStack blocks until the CloudFormation stack create/update/delete
@@ -60,7 +60,7 @@ func awsWaitForStack(ctx context.Context, config aws.Config, stackName string) (
 			StackName: &stackName,
 		})
 		if err != nil {
-			return "", fmt.Errorf("failed to get CloudFormation stack: %v", err)
+			return "", fmt.Errorf("failed to access CloudFormation stack %q from region %q: %v", stackName, config.Region, err)
 		}
 		stack := stacks.Stacks[0]
 
@@ -95,7 +95,7 @@ func awsUpdateStack(ctx context.Context, logger log.Logger, config aws.Config, s
 	logger.Printf(log.Debug, "Accessing CloudFormation stack: %v", stackName)
 	exist, err := awsStackExist(ctx, config, stackName)
 	if err != nil {
-		return fmt.Errorf("failed to check if CloudFormation stack exist: %v", err)
+		return fmt.Errorf("failed to check if CloudFormation stack %q in region %q exist: %v", stackName, config.Region, err)
 	}
 
 	if exist {
@@ -106,15 +106,15 @@ func awsUpdateStack(ctx context.Context, logger log.Logger, config aws.Config, s
 			Capabilities: []types.Capability{types.CapabilityCapabilityIam},
 		})
 		if err != nil {
-			return fmt.Errorf("failed to update CloudFormation stack: %v", err)
+			return fmt.Errorf("failed to update CloudFormation stack %q in region %q: %v", stackName, config.Region, err)
 		}
 
 		stackStatus, err := awsWaitForStack(ctx, config, *stack.StackId)
 		if err != nil {
-			return fmt.Errorf("failed to wait for CloudFormation stack: %v", err)
+			return fmt.Errorf("failed to wait for CloudFormation stack %q in region %q: %v", stackName, config.Region, err)
 		}
 		if stackStatus != types.StackStatusUpdateComplete {
-			return fmt.Errorf("failed to update CloudFormation stack: id=%v, status=%v", *stack.StackId, stackStatus)
+			return fmt.Errorf("failed to update CloudFormation stack %q in region %q: id=%v, status=%v", stackName, config.Region, *stack.StackId, stackStatus)
 		}
 	} else {
 		logger.Printf(log.Debug, "Creating CloudFormation stack: %v", stackName)
@@ -124,15 +124,15 @@ func awsUpdateStack(ctx context.Context, logger log.Logger, config aws.Config, s
 			Capabilities: []types.Capability{types.CapabilityCapabilityIam},
 		})
 		if err != nil {
-			return fmt.Errorf("failed to create CloudFormation stack: %v", err)
+			return fmt.Errorf("failed to create CloudFormation stack %q in region %q: %v", stackName, config.Region, err)
 		}
 
 		stackStatus, err := awsWaitForStack(ctx, config, *stack.StackId)
 		if err != nil {
-			return fmt.Errorf("failed to wait for CloudFormation stack: %v", err)
+			return fmt.Errorf("failed to wait for CloudFormation stack %q in region %q: %v", stackName, config.Region, err)
 		}
 		if stackStatus != types.StackStatusCreateComplete {
-			return fmt.Errorf("failed to create CloudFormation stack: id=%v, status=%v", *stack.StackId, stackStatus)
+			return fmt.Errorf("failed to create CloudFormation stack %q in region %q: id=%v, status=%v", stackName, config.Region, *stack.StackId, stackStatus)
 		}
 	}
 
@@ -146,15 +146,15 @@ func awsDeleteStack(ctx context.Context, logger log.Logger, config aws.Config, s
 	logger.Printf(log.Debug, "Deleting CloudFormation stack: %v", stackName)
 	_, err := client.DeleteStack(ctx, &cloudformation.DeleteStackInput{StackName: &stackName})
 	if err != nil {
-		return fmt.Errorf("failed to delete CloudFormation stack: %v", err)
+		return fmt.Errorf("failed to delete CloudFormation stack %q in region %q: %v", stackName, config.Region, err)
 	}
 
 	stackStatus, err := awsWaitForStack(ctx, config, stackName)
 	if err != nil {
-		return fmt.Errorf("failed to wait for CloudFormation stack: %v", err)
+		return fmt.Errorf("failed to wait for CloudFormation stack %q in region %q: %v", stackName, config.Region, err)
 	}
 	if stackStatus != types.StackStatusDeleteComplete {
-		return fmt.Errorf("failed to delete CloudFormation stack: %v", stackName)
+		return fmt.Errorf("failed to delete CloudFormation stack %q in region %q: %v", stackName, config.Region, stackName)
 	}
 
 	return nil
