@@ -1,0 +1,33 @@
+query RubrikPolarisSDKRequest(
+    $after: String,
+    $filters: ActivitySeriesFilterInput,
+) {
+    activitySeriesConnection(
+        after: $after,
+        filters: $filters,
+    ) {
+        edges {
+            node {
+                id
+                lastActivityType
+                lastActivityStatus
+                severity
+                objectId
+                objectName
+                objectType
+                activitySeriesId
+                progress
+                activityConnection {
+                    nodes {
+                        message
+                    }
+                }
+            }
+        }
+        pageInfo {
+            endCursor,
+            hasNextPage,
+        },
+        count,
+    }
+}

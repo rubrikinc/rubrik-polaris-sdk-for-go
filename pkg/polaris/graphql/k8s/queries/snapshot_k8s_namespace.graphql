@@ -1,0 +1,6 @@
+mutation RubrikPolarisSDKRequest($input: CreateK8sNamespaceSnapshotsInput!) {
+    createK8sNamespaceSnapshots(input: $input) {
+        taskchainId
+        jobId
+    }
+}
