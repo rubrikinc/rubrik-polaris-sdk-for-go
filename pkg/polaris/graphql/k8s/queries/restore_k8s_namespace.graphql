@@ -1,0 +1,6 @@
+mutation RubrikPolarisSDKRequest($k8sNamespaceRestoreRequest: RestoreK8sNamespaceInput!) {
+    restoreK8sNamespace(input: $k8sNamespaceRestoreRequest) {
+        taskchainId
+        jobId
+    }
+}

@@ -1,0 +1,6 @@
+mutation RubrikPolarisSDKRequest($k8sNamespaceExportRequest: ExportK8sNamespaceInput!) {
+    exportK8sNamespace(input: $k8sNamespaceExportRequest) {
+        taskchainId
+        jobId
+    }
+}
