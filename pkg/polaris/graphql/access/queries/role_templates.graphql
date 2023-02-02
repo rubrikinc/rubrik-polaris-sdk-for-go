@@ -1,0 +1,28 @@
+query RubrikPolarisSDKRequest($after: String, $first: Int, $nameFilter: String) {
+    result: roleTemplates(
+        after:      $after,
+        first:      $first,
+        nameFilter: $nameFilter,
+    ) {
+        edges {
+            node {
+                id
+                name
+                description
+                explicitlyAssignedPermissions {
+                    operation
+                    objectsForHierarchyTypes {
+                        objectIds
+                        snappableType
+                    }
+                }
+            }
+        }
+        pageInfo {
+          startCursor
+          endCursor
+          hasNextPage
+          hasPreviousPage
+        }
+    }
+}

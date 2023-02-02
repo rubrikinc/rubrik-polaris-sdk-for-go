@@ -40,7 +40,7 @@ import (
 
 // API for Amazon Web Services.
 type API struct {
-	Version string
+	Version string // Deprecated
 	gql     *graphql.Client
 }
 

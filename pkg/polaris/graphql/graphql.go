@@ -60,20 +60,20 @@ type gqlDetails struct {
 	Locations []gqlLocation `json:"locations"`
 }
 
-// gqlError is returned by Polaris in the body of a response as a JSON document
-// when certain types of GraphQL errors occur.
-type gqlError struct {
+// GQLError is returned by RSC in the body of a response as a JSON document when
+// certain types of GraphQL errors occur.
+type GQLError struct {
 	Data   interface{}  `json:"data"`
 	Errors []gqlDetails `json:"errors"`
 }
 
 // isError determines if the gqlError unmarshalled from a JSON document
 // represents an error or not.
-func (e gqlError) isError() bool {
+func (e GQLError) isError() bool {
 	return len(e.Errors) > 0
 }
 
-func (e gqlError) Error() string {
+func (e GQLError) Error() string {
 	return e.Errors[0].Message
 }
 
@@ -225,20 +225,20 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 	// error message formats.
 	var jsonErr errors.JSONError
 	if err := json.Unmarshal(buf, &jsonErr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
+		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %w",
 			res.StatusCode, err)
 	}
 	if jsonErr.IsError() {
-		return nil, fmt.Errorf("graphql response body is an error (status code %d): %v", res.StatusCode, jsonErr)
+		return nil, fmt.Errorf("graphql response body is an error (status code %d): %w", res.StatusCode, jsonErr)
 	}
 
-	var gqlErr gqlError
+	var gqlErr GQLError
 	if err := json.Unmarshal(buf, &gqlErr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
+		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %w",
 			res.StatusCode, err)
 	}
 	if gqlErr.isError() {
-		return nil, fmt.Errorf("graphql response body is an error (status code %d): %v", res.StatusCode, gqlErr)
+		return nil, fmt.Errorf("graphql response body is an error (status code %d): %w", res.StatusCode, gqlErr)
 	}
 
 	if res.StatusCode != 200 {
