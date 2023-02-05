@@ -36,10 +36,10 @@ import (
 //
 // To run this test against a Polaris instance the following environment
 // variable needs to be set:
-//  * RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
-// 	* TEST_INTEGRATION=1
-//  * TEST_INTEGRATION_APPLIANCE=1
-//  * TEST_APPLIANCE_ID=<appliance-uuid/cluster-uuid>
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_INTEGRATION_APPLIANCE=1
+//   - TEST_APPLIANCE_ID=<appliance-uuid/cluster-uuid>
 //
 // In addition to the above environment variables, an appliance must be added to
 // the Polaris instance.
