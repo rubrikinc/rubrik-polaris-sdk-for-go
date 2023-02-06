@@ -115,17 +115,17 @@ func userAccountFromFile(file, name string) (UserAccount, error) {
 // the Account fields but be all lower case. Note that the Name field is used
 // as a key for the JSON object. E.g:
 //
-//   {
-//     "account-name-1": {
-//       "username": "username-1",
-//       "password": "password-1"
-//     },
-//     "account-name-2": {
-//       "username": "username-2",
-//       "password": "password-2",
-//       "url": "https://polaris-url/api"
-//     }
-//   }
+//	{
+//	  "account-name-1": {
+//	    "username": "username-1",
+//	    "password": "password-1"
+//	  },
+//	  "account-name-2": {
+//	    "username": "username-2",
+//	    "password": "password-2",
+//	    "url": "https://polaris-url/api"
+//	  }
+//	}
 //
 // If allowEnvOverride is true environment variables can be used to override
 // user information in the file. See AccountFromEnv for details. In addition

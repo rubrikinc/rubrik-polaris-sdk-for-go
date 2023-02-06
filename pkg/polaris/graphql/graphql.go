@@ -133,9 +133,12 @@ func NewTestClient(username, password string, logger log.Logger) (*Client, *test
 
 // operationName tries to extract the operation name from a query
 // e.g.:
-//   "mutation RubrikPolarisSDKRequest($input: String!) { foo(input: $input){} }"
+//
+//	"mutation RubrikPolarisSDKRequest($input: String!) { foo(input: $input){} }"
+//
 // returns:
-//   "RubrikPolarisSDKRequest".
+//
+//	"RubrikPolarisSDKRequest".
 //
 // TODO: do we need to improve this since it currently is just a best effort extraction?
 func operationName(query string) string {
