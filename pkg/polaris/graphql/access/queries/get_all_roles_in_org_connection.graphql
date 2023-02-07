@@ -1,31 +1,26 @@
-query RubrikPolarisSDKRequest($after: String, $first: Int, $sortBy: RoleFieldEnum, $sortOrder: SortOrder, $nameFilter: String) {
-  result: getAllRolesInOrgConnection(
-    after:      $after,
-    first:      $first,
-    sortBy:     $sortBy,
-    sortOrder:  $sortOrder,
-    nameFilter: $nameFilter,
-  ) {
-    edges {
-      node {
-        id
-        name
-        description
-        explicitlyAssignedPermissions {
-            operation
-            objectsForHierarchyTypes {
-              objectIds
-              snappableType
+query RubrikPolarisSDKRequest($after: String, $nameFilter: String) {
+    result: getAllRolesInOrgConnection(
+        after:      $after,
+        nameFilter: $nameFilter,
+    ) {
+        edges {
+            node {
+                id
+                name
+                description
+                isOrgAdmin
+                explicitlyAssignedPermissions {
+                    operation
+                    objectsForHierarchyTypes {
+                        objectIds
+                        snappableType
+                    }
+                }
             }
         }
-        isOrgAdmin
-      }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
     }
-    pageInfo {
-      startCursor
-      endCursor
-      hasNextPage
-      hasPreviousPage
-    }
-  }
 }

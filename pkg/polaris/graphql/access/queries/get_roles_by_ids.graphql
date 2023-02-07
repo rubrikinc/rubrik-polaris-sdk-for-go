@@ -3,7 +3,7 @@ query RubrikPolarisSDKRequest($roleIds: [String!]!) {
         id
         name
         description
-        isReadOnly
+        isOrgAdmin
         protectableClusters
         explicitlyAssignedPermissions {
             operation

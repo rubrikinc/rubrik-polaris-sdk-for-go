@@ -24,42 +24,46 @@
 
 package access
 
+// addRoleAssignment GraphQL query
+var addRoleAssignmentQuery = `mutation SdkGolangAddRoleAssignment($userIds: [String!]!, $groupIds: [String!], $roleIds: [String!]!) {
+    result: addRoleAssignments(
+        userIds:  $userIds
+        groupIds: $groupIds
+        roleIds:  $roleIds
+    )
+}`
+
 // deleteRole GraphQL query
-var deleteRoleQuery = `mutation DeleteRole($roleId: String!) {
-  result: deleteRole(roleId: $roleId)
+var deleteRoleQuery = `mutation SdkGolangDeleteRole($roleId: String!) {
+    result: deleteRole(roleId: $roleId)
 }`
 
 // getAllRolesInOrgConnection GraphQL query
-var getAllRolesInOrgConnectionQuery = `query SdkGolangGetAllRolesInOrgConnection($after: String, $first: Int, $sortBy: RoleFieldEnum, $sortOrder: SortOrder, $nameFilter: String) {
-  result: getAllRolesInOrgConnection(
-    after:      $after,
-    first:      $first,
-    sortBy:     $sortBy,
-    sortOrder:  $sortOrder,
-    nameFilter: $nameFilter,
-  ) {
-    edges {
-      node {
-        id
-        name
-        description
-        explicitlyAssignedPermissions {
-            operation
-            objectsForHierarchyTypes {
-              objectIds
-              snappableType
+var getAllRolesInOrgConnectionQuery = `query SdkGolangGetAllRolesInOrgConnection($after: String, $nameFilter: String) {
+    result: getAllRolesInOrgConnection(
+        after:      $after,
+        nameFilter: $nameFilter,
+    ) {
+        edges {
+            node {
+                id
+                name
+                description
+                isOrgAdmin
+                explicitlyAssignedPermissions {
+                    operation
+                    objectsForHierarchyTypes {
+                        objectIds
+                        snappableType
+                    }
+                }
             }
         }
-        isOrgAdmin
-      }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
     }
-    pageInfo {
-      startCursor
-      endCursor
-      hasNextPage
-      hasPreviousPage
-    }
-  }
 }`
 
 // getRolesByIds GraphQL query
@@ -68,7 +72,7 @@ var getRolesByIdsQuery = `query SdkGolangGetRolesByIds($roleIds: [String!]!) {
         id
         name
         description
-        isReadOnly
+        isOrgAdmin
         protectableClusters
         explicitlyAssignedPermissions {
             operation
@@ -92,10 +96,9 @@ var mutateRoleQuery = `mutation SdkGolangMutateRole($roleId: String, $name: Stri
 }`
 
 // roleTemplates GraphQL query
-var roleTemplatesQuery = `query SdkGolangRoleTemplates($after: String, $first: Int, $nameFilter: String) {
+var roleTemplatesQuery = `query SdkGolangRoleTemplates($after: String, $nameFilter: String) {
     result: roleTemplates(
         after:      $after,
-        first:      $first,
         nameFilter: $nameFilter,
     ) {
         edges {
@@ -113,10 +116,49 @@ var roleTemplatesQuery = `query SdkGolangRoleTemplates($after: String, $first: I
             }
         }
         pageInfo {
-          startCursor
-          endCursor
-          hasNextPage
-          hasPreviousPage
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
+// updateRoleAssignments GraphQL query
+var updateRoleAssignmentsQuery = `mutation SdkGolangUpdateRoleAssignments($userIds: [String!]!, $groupIds: [String!], $roleIds: [String!]!) {
+    result: updateRoleAssignments(
+        userIds:  $userIds,
+        groupIds: $groupIds,
+        roleIds:  $roleIds
+    )
+}`
+
+// usersInCurrentAndDescendantOrganization GraphQL query
+var usersInCurrentAndDescendantOrganizationQuery = `query SdkGolangUsersInCurrentAndDescendantOrganization($after: String, $emailFilter: String) {
+    result: usersInCurrentAndDescendantOrganization(after: $after, filter: {emailFilter: $emailFilter}) {
+        edges {
+            node {
+                id
+                email
+                status
+                isAccountOwner
+                roles {
+                    id
+                    name
+                    description
+                    isOrgAdmin
+                    protectableClusters
+                    explicitlyAssignedPermissions {
+                        operation
+                        objectsForHierarchyTypes {
+                            objectIds
+                            snappableType
+                        }
+                    }
+                }
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
         }
     }
 }`

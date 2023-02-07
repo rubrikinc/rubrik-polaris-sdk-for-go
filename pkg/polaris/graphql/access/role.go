@@ -55,7 +55,7 @@ type ObjectsForHierarchyType struct {
 
 // AllRolesInOrg returns all roles in the user's organization matching the
 // specified name filter.
-func (a API) AllRolesInOrg(ctx context.Context, filter string) ([]Role, error) {
+func (a API) AllRolesInOrg(ctx context.Context, nameFilter string) ([]Role, error) {
 	a.GQL.Log().Print(log.Trace)
 
 	var roles []Role
@@ -63,15 +63,12 @@ func (a API) AllRolesInOrg(ctx context.Context, filter string) ([]Role, error) {
 	for {
 		buf, err := a.GQL.Request(ctx, getAllRolesInOrgConnectionQuery, struct {
 			After      string `json:"after,omitempty"`
-			First      int    `json:"first,omitempty"`
-			SortBy     string `json:"sortBy,omitempty"`
-			SortOrder  string `json:"sortOrder,omitempty"`
 			NameFilter string `json:"nameFilter,omitempty"`
-		}{After: cursor, NameFilter: filter})
+		}{After: cursor, NameFilter: nameFilter})
 		if err != nil {
 			return nil, fmt.Errorf("failed to request AllRolesInOrg: %w", err)
 		}
-		a.GQL.Log().Printf(log.Debug, "getAllRolesInOrgConnection(%q): %s", filter, string(buf))
+		a.GQL.Log().Printf(log.Debug, "getAllRolesInOrgConnection(%q): %s", nameFilter, string(buf))
 
 		var payload struct {
 			Data struct {
@@ -87,7 +84,7 @@ func (a API) AllRolesInOrg(ctx context.Context, filter string) ([]Role, error) {
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal AllRolesInOrg: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal AllRolesInOrg response: %w", err)
 		}
 		for _, account := range payload.Data.Result.Edges {
 			roles = append(roles, account.Node)
@@ -120,7 +117,7 @@ func (a API) RolesByIDs(ctx context.Context, IDs []uuid.UUID) ([]Role, error) {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal RolesByIDs: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal RolesByIDs response: %w", err)
 	}
 
 	return payload.Data.Result, nil
@@ -149,7 +146,7 @@ func (a API) MutateRole(ctx context.Context, id string, name, description string
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to unmarshal MutateRole: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to unmarshal MutateRole response: %w", err)
 	}
 
 	return payload.Data.Result, nil
@@ -173,10 +170,69 @@ func (a API) DeleteRole(ctx context.Context, id uuid.UUID) error {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal DeleteRole: %w", err)
+		return fmt.Errorf("failed to unmarshal DeleteRole response: %w", err)
 	}
 	if !payload.Data.Result {
 		return fmt.Errorf("failed to delete role: %s", id)
+	}
+
+	return nil
+}
+
+// AddRoleAssignment assigns the roles to the users with the specified ids.
+func (a API) AddRoleAssignment(ctx context.Context, roleIDs []uuid.UUID, userIDs, groupIDs []string) error {
+	a.GQL.Log().Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, addRoleAssignmentQuery, struct {
+		RoleIDs  []uuid.UUID `json:"roleIds"`
+		UserIDs  []string    `json:"userIds"`
+		GroupIDs []string    `json:"groupIds"`
+	}{RoleIDs: roleIDs, UserIDs: userIDs, GroupIDs: groupIDs})
+	if err != nil {
+		return fmt.Errorf("failed to request AddRoleAssignment: %w", err)
+	}
+	a.GQL.Log().Printf(log.Debug, "addRoleAssignment(%v, %v, %v): %s", roleIDs, userIDs, groupIDs, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result bool `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal AddRoleAssignment response: %w", err)
+	}
+	if !payload.Data.Result {
+		return fmt.Errorf("failed to add assignments for roles: %v", roleIDs)
+	}
+
+	return nil
+}
+
+// UpdateRoleAssignment updates the role assignments for the users with the
+// specified ids.
+func (a API) UpdateRoleAssignment(ctx context.Context, roleIDs []uuid.UUID, userIDs, groupIDs []string) error {
+	a.GQL.Log().Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, updateRoleAssignmentsQuery, struct {
+		RoleIDs  []uuid.UUID `json:"roleIds"`
+		UserIDs  []string    `json:"userIds"`
+		GroupIDs []string    `json:"groupIds"`
+	}{RoleIDs: roleIDs, UserIDs: userIDs, GroupIDs: groupIDs})
+	if err != nil {
+		return fmt.Errorf("failed to request UpdateRoleAssignment: %w", err)
+	}
+	a.GQL.Log().Printf(log.Debug, "updateRoleAssignments(%v, %v, %v): %s", roleIDs, userIDs, groupIDs, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result bool `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal UpdateRoleAssignment response: %w", err)
+	}
+	if !payload.Data.Result {
+		return fmt.Errorf("failed to update assignments for roles: %v", roleIDs)
 	}
 
 	return nil
@@ -191,7 +247,7 @@ type RoleTemplate struct {
 }
 
 // RoleTemplates returns the role templates matching the specified name filter.
-func (a API) RoleTemplates(ctx context.Context, filter string) ([]RoleTemplate, error) {
+func (a API) RoleTemplates(ctx context.Context, nameFilter string) ([]RoleTemplate, error) {
 	a.GQL.Log().Print(log.Trace)
 
 	var templates []RoleTemplate
@@ -200,11 +256,11 @@ func (a API) RoleTemplates(ctx context.Context, filter string) ([]RoleTemplate, 
 		buf, err := a.GQL.Request(ctx, roleTemplatesQuery, struct {
 			After      string `json:"after,omitempty"`
 			NameFilter string `json:"nameFilter,omitempty"`
-		}{After: cursor, NameFilter: filter})
+		}{After: cursor, NameFilter: nameFilter})
 		if err != nil {
 			return nil, fmt.Errorf("failed to request RoleTemplates: %w", err)
 		}
-		a.GQL.Log().Printf(log.Debug, "roleTemplates(%q): %s", filter, string(buf))
+		a.GQL.Log().Printf(log.Debug, "roleTemplates(%q): %s", nameFilter, string(buf))
 
 		var payload struct {
 			Data struct {
@@ -220,7 +276,7 @@ func (a API) RoleTemplates(ctx context.Context, filter string) ([]RoleTemplate, 
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal RoleTemplates: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal RoleTemplates response: %w", err)
 		}
 		for _, edge := range payload.Data.Result.Edges {
 			templates = append(templates, edge.Node)

@@ -147,6 +147,58 @@ func (a API) RemoveRole(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// AssignRole assigns the role to the user with the specified user email
+// address.
+func (a API) AssignRole(ctx context.Context, roleID uuid.UUID, userEmail string) error {
+	a.client.Log.Print(log.Trace)
+
+	accessClient := access.Wrap(a.client.GQL)
+
+	users, err := accessClient.UsersInCurrentAndDescendantOrganization(ctx, userEmail)
+	if err != nil {
+		return fmt.Errorf("failed to lookup user by email address: %w", err)
+	}
+	user, err := findUserWithEmail(users, userEmail)
+	if err != nil {
+		return fmt.Errorf("failed to find user: %w", err)
+	}
+
+	if err := accessClient.AddRoleAssignment(ctx, []uuid.UUID{roleID}, []string{}, []string{user.ID}); err != nil {
+		return fmt.Errorf("failed to assign role: %w", err)
+	}
+
+	return nil
+}
+
+// UnassignRole unassigns the role from the user with the specified user email
+// address.
+func (a API) UnassignRole(ctx context.Context, roleID uuid.UUID, userEmail string) error {
+	a.client.Log.Print(log.Trace)
+
+	accessClient := access.Wrap(a.client.GQL)
+
+	users, err := accessClient.UsersInCurrentAndDescendantOrganization(ctx, userEmail)
+	if err != nil {
+		return fmt.Errorf("failed to lookup user by email address: %w", err)
+	}
+	user, err := findUserWithEmail(users, userEmail)
+	if err != nil {
+		return fmt.Errorf("failed to find user: %w", err)
+	}
+
+	var roleIDs []uuid.UUID
+	for _, role := range user.Roles {
+		if role.ID != roleID {
+			roleIDs = append(roleIDs, role.ID)
+		}
+	}
+	if err := accessClient.UpdateRoleAssignment(ctx, roleIDs, []string{}, []string{user.ID}); err != nil {
+		return fmt.Errorf("failed to unassign role: %w", err)
+	}
+
+	return nil
+}
+
 // RoleTemplate represents a named role template in RSC.
 type RoleTemplate struct {
 	ID                  uuid.UUID
@@ -165,6 +217,22 @@ func (a API) RoleTemplates(ctx context.Context, filter string) ([]RoleTemplate, 
 	}
 
 	return toRoleTemplates(roleTemplates), nil
+}
+
+// findUserWithEmail returns the user with an email address exactly matching the
+// specified email address.
+func findUserWithEmail(users []access.User, userEmail string) (access.User, error) {
+	if len(users) == 0 {
+		return access.User{}, fmt.Errorf("no user with email address %q found", userEmail)
+	}
+
+	for _, user := range users {
+		if user.Email == userEmail {
+			return user, nil
+		}
+	}
+
+	return access.User{}, fmt.Errorf("no user with email address matching %q found", userEmail)
 }
 
 func fromHierarchies(hierarchies []SnappableHierarchy) []access.ObjectsForHierarchyType {

@@ -1,7 +1,6 @@
-query RubrikPolarisSDKRequest($after: String, $first: Int, $nameFilter: String) {
+query RubrikPolarisSDKRequest($after: String, $nameFilter: String) {
     result: roleTemplates(
         after:      $after,
-        first:      $first,
         nameFilter: $nameFilter,
     ) {
         edges {
@@ -19,10 +18,8 @@ query RubrikPolarisSDKRequest($after: String, $first: Int, $nameFilter: String) 
             }
         }
         pageInfo {
-          startCursor
-          endCursor
-          hasNextPage
-          hasPreviousPage
+            endCursor
+            hasNextPage
         }
     }
 }
