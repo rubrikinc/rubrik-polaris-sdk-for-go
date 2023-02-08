@@ -107,3 +107,23 @@ func GCPProject() (testGcpProject, error) {
 	}
 	return testProject, nil
 }
+
+// testRSCConfig hold configuration information used in the integration tests.
+// Normally used to assert that the information read from Polaris is correct.
+type testRSCConfig struct {
+	UserEmail string `json:"userEmail"`
+}
+
+// RSCConfig loads test configuration information from the file pointed to by
+// the TEST_RSCCONFIG_FILE environment variable.
+func RSCConfig() (testRSCConfig, error) {
+	buf, err := os.ReadFile(os.Getenv("TEST_RSCCONFIG_FILE"))
+	if err != nil {
+		return testRSCConfig{}, fmt.Errorf("failed to read file pointed to by TEST_RSCCONFIG_FILE: %v", err)
+	}
+	testConfig := testRSCConfig{}
+	if err := json.Unmarshal(buf, &testConfig); err != nil {
+		return testRSCConfig{}, err
+	}
+	return testConfig, nil
+}

@@ -168,8 +168,7 @@ func TestRoleManagement(t *testing.T) {
 	}
 
 	// Remove role.
-	err = accessClient.RemoveRole(ctx, id)
-	if err != nil {
+	if err := accessClient.RemoveRole(ctx, id); err != nil {
 		t.Fatal(err)
 	}
 
