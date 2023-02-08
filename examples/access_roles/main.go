@@ -30,7 +30,7 @@ import (
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Example showing how to manage an AWS account with the Polaris Go SDK.
+// Example showing how to manage roles with the Polaris Go SDK.
 //
 // The Polaris service account key file identifying the Polaris account should
 // either be placed at ~/.rubrik/polaris-service-account.json or pointed out by
@@ -50,32 +50,40 @@ func main() {
 
 	accessClient := access.Wrap(client)
 
-	// List the roles available in RSC.
+	// Add role to RSC.
+	roleID, err := accessClient.AddRole(ctx, "Test Role", "Test Role Description",
+		[]access.Permission{{
+			Operation: "VIEW_CLUSTER",
+			Hierarchies: []access.SnappableHierarchy{{
+				SnappableType: "AllSubHierarchyType",
+				ObjectIDs:     []string{"CLUSTER_ROOT"},
+			}},
+		}}, access.NoProtectableClusters)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// List roles available in RSC.
 	roles, err := accessClient.Roles(ctx, "")
 	if err != nil {
 		log.Fatal(err)
 	}
 	for _, role := range roles {
-		fmt.Printf("Name: %q, Description: %q\n", role.Name, role.Description)
+		fmt.Printf("ID: %v, Name: %q, Description: %q\n", role.ID, role.Name, role.Description)
 	}
 
-	fmt.Println()
-
-	// List the role templates available in RSC.
-	templates, err := accessClient.RoleTemplates(ctx, "compliance")
-	if err != nil {
+	// Add role to user.
+	if err := accessClient.AssignRole(ctx, roleID, "user.name@example.com"); err != nil {
 		log.Fatal(err)
 	}
-	for _, template := range templates {
-		fmt.Printf("Name: %q, Description: %q\n", template.Name, template.Description)
-		for _, permission := range template.AssignedPermissions {
-			fmt.Printf("  Operation: %q\n", permission.Operation)
-			for _, hierarchy := range permission.Hierarchies {
-				fmt.Printf("    SnappableType: %s\n", hierarchy.SnappableType)
-				for _, objectID := range hierarchy.ObjectIDs {
-					fmt.Printf("      ObjectID: %s\n", objectID)
-				}
-			}
-		}
+
+	// Remove role from user.
+	if err := accessClient.UnassignRole(ctx, roleID, "user.name@example.com"); err != nil {
+		log.Fatal(err)
+	}
+
+	// Remove role from RSC.
+	if err := accessClient.RemoveRole(ctx, roleID); err != nil {
+		log.Fatal(err)
 	}
 }

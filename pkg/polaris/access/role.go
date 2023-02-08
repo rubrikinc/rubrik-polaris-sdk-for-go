@@ -163,7 +163,7 @@ func (a API) AssignRole(ctx context.Context, roleID uuid.UUID, userEmail string)
 		return fmt.Errorf("failed to find user: %w", err)
 	}
 
-	if err := accessClient.AddRoleAssignment(ctx, []uuid.UUID{roleID}, []string{}, []string{user.ID}); err != nil {
+	if err := accessClient.AddRoleAssignment(ctx, []uuid.UUID{roleID}, []string{user.ID}, nil); err != nil {
 		return fmt.Errorf("failed to assign role: %w", err)
 	}
 
@@ -192,7 +192,7 @@ func (a API) UnassignRole(ctx context.Context, roleID uuid.UUID, userEmail strin
 			roleIDs = append(roleIDs, role.ID)
 		}
 	}
-	if err := accessClient.UpdateRoleAssignment(ctx, roleIDs, []string{}, []string{user.ID}); err != nil {
+	if err := accessClient.UpdateRoleAssignment(ctx, roleIDs, []string{user.ID}, nil); err != nil {
 		return fmt.Errorf("failed to unassign role: %w", err)
 	}
 

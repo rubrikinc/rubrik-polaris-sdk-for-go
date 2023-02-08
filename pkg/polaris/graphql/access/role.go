@@ -186,7 +186,7 @@ func (a API) AddRoleAssignment(ctx context.Context, roleIDs []uuid.UUID, userIDs
 	buf, err := a.GQL.Request(ctx, addRoleAssignmentQuery, struct {
 		RoleIDs  []uuid.UUID `json:"roleIds"`
 		UserIDs  []string    `json:"userIds"`
-		GroupIDs []string    `json:"groupIds"`
+		GroupIDs []string    `json:"groupIds,omitempty"`
 	}{RoleIDs: roleIDs, UserIDs: userIDs, GroupIDs: groupIDs})
 	if err != nil {
 		return fmt.Errorf("failed to request AddRoleAssignment: %w", err)
