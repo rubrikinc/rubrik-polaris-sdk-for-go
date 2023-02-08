@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -68,6 +69,11 @@ func TestRoleManagement(t *testing.T) {
 	}
 
 	ctx := context.Background()
+
+	testConfig, err := testsetup.RSCConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	accessClient := Wrap(client)
 
@@ -134,7 +140,7 @@ func TestRoleManagement(t *testing.T) {
 	// Get role by filter.
 	roles, err := accessClient.Roles(ctx, "Integration Test")
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	if len(roles) != 1 {
 		t.Errorf("")
@@ -151,7 +157,13 @@ func TestRoleManagement(t *testing.T) {
 	if roles[0].IsOrgAdmin {
 		t.Error("is org admin is true")
 	}
-	if !reflect.DeepEqual(roles[0].AssignedPermissions, []Permission{{
+
+	// Sort permissions in ascending order before asserting.
+	permissions := roles[0].AssignedPermissions
+	sort.Slice(permissions, func(i, j int) bool {
+		return permissions[i].Operation < permissions[j].Operation
+	})
+	if !reflect.DeepEqual(permissions, []Permission{{
 		Operation: "REMOVE_CLUSTER",
 		Hierarchies: []SnappableHierarchy{{
 			SnappableType: "AllSubHierarchyType",
@@ -164,7 +176,35 @@ func TestRoleManagement(t *testing.T) {
 			ObjectIDs:     []string{"CLUSTER_ROOT"},
 		}},
 	}}) {
-		t.Errorf("invalid role permissions: %#v", roles[0].AssignedPermissions)
+		t.Errorf("invalid role permissions: %#v", permissions)
+	}
+
+	// Check that the user hasn't been assigned the role
+	user, err := accessClient.User(ctx, testConfig.UserEmail)
+	if err != nil {
+		t.Error(err)
+	}
+	if user.HasRole(id) {
+		t.Errorf("user should not be assigned role: %v", id)
+	}
+
+	// Assign the role to the user.
+	if err := accessClient.AssignRole(ctx, id, testConfig.UserEmail); err != nil {
+		t.Error(err)
+	}
+
+	// Check the user has been assigned the role.
+	user, err = accessClient.User(ctx, testConfig.UserEmail)
+	if err != nil {
+		t.Error(err)
+	}
+	if !user.HasRole(id) {
+		t.Errorf("user should be assigned role: %v", id)
+	}
+
+	// Unassign the role from the user.
+	if err := accessClient.UnassignRole(ctx, id, testConfig.UserEmail); err != nil {
+		t.Error(err)
 	}
 
 	// Remove role.
@@ -189,7 +229,13 @@ func TestRoleManagement(t *testing.T) {
 	if roleTemplates[0].Description != "Template for compliance officer" {
 		t.Errorf("invalid role template description: %v", roleTemplates[0].Description)
 	}
-	if !reflect.DeepEqual(roleTemplates[0].AssignedPermissions, []Permission{{
+
+	// Sort permissions in ascending order before asserting.
+	permissions = roleTemplates[0].AssignedPermissions
+	sort.Slice(permissions, func(i, j int) bool {
+		return permissions[i].Operation < permissions[j].Operation
+	})
+	if !reflect.DeepEqual(permissions, []Permission{{
 		Operation: "CONFIGURE_DATA_CLASS_GLOBAL",
 		Hierarchies: []SnappableHierarchy{{
 			SnappableType: "AllSubHierarchyType",
@@ -208,6 +254,6 @@ func TestRoleManagement(t *testing.T) {
 			ObjectIDs:     []string{"GlobalResource"},
 		}},
 	}}) {
-		t.Errorf("invalid role template permissions: %#v", roleTemplates[0].AssignedPermissions)
+		t.Errorf("invalid role template permissions: %#v", permissions)
 	}
 }
