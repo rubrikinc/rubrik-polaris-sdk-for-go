@@ -49,15 +49,17 @@ func main() {
 		log.Fatal(err)
 	}
 
+	gcpClient := gcp.NewAPI(client.GQL)
+
 	// Add the GCP default project to Polaris. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
-	id, err := client.GCP().AddProject(ctx, gcp.Default(), core.FeatureCloudNativeProtection)
+	id, err := gcpClient.AddProject(ctx, gcp.Default(), core.FeatureCloudNativeProtection)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// List the GCP projects added to Polaris.
-	account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
+	account, err := gcpClient.Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -69,7 +71,7 @@ func main() {
 	}
 
 	// Remove the GCP account from Polaris.
-	err = client.GCP().RemoveProject(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection, false)
+	err = gcpClient.RemoveProject(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		log.Fatal(err)
 	}

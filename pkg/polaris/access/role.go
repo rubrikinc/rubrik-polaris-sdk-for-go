@@ -121,7 +121,7 @@ func (a API) UpdateRole(ctx context.Context, id uuid.UUID, name, description str
 		protectableClusters = []string{}
 	}
 
-	_, err := access.Wrap(a.client.GQL).MutateRole(ctx, id.String(), name, description, fromPermissions(permissions), []string{""})
+	_, err := access.Wrap(a.client.GQL).MutateRole(ctx, id.String(), name, description, fromPermissions(permissions), protectableClusters)
 	if err != nil {
 		return fmt.Errorf("failed to update role: %w", err)
 	}

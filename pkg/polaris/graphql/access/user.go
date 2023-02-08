@@ -80,5 +80,5 @@ func (a API) UsersInCurrentAndDescendantOrganization(ctx context.Context, emailF
 		cursor = payload.Data.Result.PageInfo.EndCursor
 	}
 
-	return nil, nil
+	return users, nil
 }

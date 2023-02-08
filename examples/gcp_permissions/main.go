@@ -50,9 +50,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	gcpClient := gcp.NewAPI(client.GQL)
+
 	// List GCP permissions needed for features.
 	features := []core.Feature{core.FeatureCloudNativeProtection}
-	perms, err := client.GCP().Permissions(ctx, features)
+	perms, err := gcpClient.Permissions(ctx, features)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -64,11 +66,11 @@ func main() {
 
 	// Notify Polaris about updated permissions for the Cloud Native Protection
 	// feature of the already added default project.
-	account, err := client.GCP().Project(ctx, gcp.ID(gcp.Default()), core.FeatureCloudNativeProtection)
+	account, err := gcpClient.Project(ctx, gcp.ID(gcp.Default()), core.FeatureCloudNativeProtection)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = client.GCP().PermissionsUpdated(ctx, gcp.CloudAccountID(account.ID), features)
+	err = gcpClient.PermissionsUpdated(ctx, gcp.CloudAccountID(account.ID), features)
 	if err != nil {
 		log.Fatal(err)
 	}
