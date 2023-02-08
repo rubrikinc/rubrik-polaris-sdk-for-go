@@ -81,11 +81,11 @@ func (a API) Role(ctx context.Context, id uuid.UUID) (Role, error) {
 	return toRole(roles[0]), nil
 }
 
-// Roles returns the roles matching the specified filter.
-func (a API) Roles(ctx context.Context, filter string) ([]Role, error) {
+// Roles returns the roles matching the specified name filter.
+func (a API) Roles(ctx context.Context, nameFilter string) ([]Role, error) {
 	a.client.Log.Print(log.Trace)
 
-	roles, err := access.Wrap(a.client.GQL).AllRolesInOrg(ctx, filter)
+	roles, err := access.Wrap(a.client.GQL).AllRolesInOrg(ctx, nameFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get roles: %w", err)
 	}
@@ -147,58 +147,6 @@ func (a API) RemoveRole(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// AssignRole assigns the role to the user with the specified user email
-// address.
-func (a API) AssignRole(ctx context.Context, roleID uuid.UUID, userEmail string) error {
-	a.client.Log.Print(log.Trace)
-
-	accessClient := access.Wrap(a.client.GQL)
-
-	users, err := accessClient.UsersInCurrentAndDescendantOrganization(ctx, userEmail)
-	if err != nil {
-		return fmt.Errorf("failed to lookup user by email address: %w", err)
-	}
-	user, err := findUserWithEmail(users, userEmail)
-	if err != nil {
-		return fmt.Errorf("failed to find user: %w", err)
-	}
-
-	if err := accessClient.AddRoleAssignment(ctx, []uuid.UUID{roleID}, []string{user.ID}, nil); err != nil {
-		return fmt.Errorf("failed to assign role: %w", err)
-	}
-
-	return nil
-}
-
-// UnassignRole unassigns the role from the user with the specified user email
-// address.
-func (a API) UnassignRole(ctx context.Context, roleID uuid.UUID, userEmail string) error {
-	a.client.Log.Print(log.Trace)
-
-	accessClient := access.Wrap(a.client.GQL)
-
-	users, err := accessClient.UsersInCurrentAndDescendantOrganization(ctx, userEmail)
-	if err != nil {
-		return fmt.Errorf("failed to lookup user by email address: %w", err)
-	}
-	user, err := findUserWithEmail(users, userEmail)
-	if err != nil {
-		return fmt.Errorf("failed to find user: %w", err)
-	}
-
-	var roleIDs []uuid.UUID
-	for _, role := range user.Roles {
-		if role.ID != roleID {
-			roleIDs = append(roleIDs, role.ID)
-		}
-	}
-	if err := accessClient.UpdateRoleAssignment(ctx, roleIDs, []string{user.ID}, nil); err != nil {
-		return fmt.Errorf("failed to unassign role: %w", err)
-	}
-
-	return nil
-}
-
 // RoleTemplate represents a named role template in RSC.
 type RoleTemplate struct {
 	ID                  uuid.UUID
@@ -219,44 +167,23 @@ func (a API) RoleTemplates(ctx context.Context, filter string) ([]RoleTemplate, 
 	return toRoleTemplates(roleTemplates), nil
 }
 
-// findUserWithEmail returns the user with an email address exactly matching the
-// specified email address.
-func findUserWithEmail(users []access.User, userEmail string) (access.User, error) {
-	if len(users) == 0 {
-		return access.User{}, fmt.Errorf("no user with email address %q found", userEmail)
+func toRoles(accessRole []access.Role) []Role {
+	roles := make([]Role, 0, len(accessRole))
+	for _, role := range accessRole {
+		roles = append(roles, toRole(role))
 	}
 
-	for _, user := range users {
-		if user.Email == userEmail {
-			return user, nil
-		}
-	}
-
-	return access.User{}, fmt.Errorf("no user with email address matching %q found", userEmail)
+	return roles
 }
 
-func fromHierarchies(hierarchies []SnappableHierarchy) []access.ObjectsForHierarchyType {
-	accessHierarchies := make([]access.ObjectsForHierarchyType, 0, len(hierarchies))
-	for _, hierarchy := range hierarchies {
-		accessHierarchies = append(accessHierarchies, access.ObjectsForHierarchyType{
-			SnappableType: hierarchy.SnappableType,
-			ObjectIDs:     hierarchy.ObjectIDs,
-		})
+func toRole(accessRole access.Role) Role {
+	return Role{
+		ID:                  accessRole.ID,
+		Name:                accessRole.Name,
+		Description:         accessRole.Description,
+		AssignedPermissions: toPermissions(accessRole.ExplicitlyAssignedPermissions),
+		IsOrgAdmin:          accessRole.IsOrgAdmin,
 	}
-
-	return accessHierarchies
-}
-
-func toHierarchies(accessHierarchies []access.ObjectsForHierarchyType) []SnappableHierarchy {
-	hierarchies := make([]SnappableHierarchy, 0, len(accessHierarchies))
-	for _, hierarchy := range accessHierarchies {
-		hierarchies = append(hierarchies, SnappableHierarchy{
-			SnappableType: hierarchy.SnappableType,
-			ObjectIDs:     hierarchy.ObjectIDs,
-		})
-	}
-
-	return hierarchies
 }
 
 func fromPermissions(permissions []Permission) []access.Permission {
@@ -283,23 +210,28 @@ func toPermissions(accessPermissions []access.Permission) []Permission {
 	return permissions
 }
 
-func toRole(accessRole access.Role) Role {
-	return Role{
-		ID:                  accessRole.ID,
-		Name:                accessRole.Name,
-		Description:         accessRole.Description,
-		AssignedPermissions: toPermissions(accessRole.ExplicitlyAssignedPermissions),
-		IsOrgAdmin:          accessRole.IsOrgAdmin,
+func fromHierarchies(hierarchies []SnappableHierarchy) []access.ObjectsForHierarchyType {
+	accessHierarchies := make([]access.ObjectsForHierarchyType, 0, len(hierarchies))
+	for _, hierarchy := range hierarchies {
+		accessHierarchies = append(accessHierarchies, access.ObjectsForHierarchyType{
+			SnappableType: hierarchy.SnappableType,
+			ObjectIDs:     hierarchy.ObjectIDs,
+		})
 	}
+
+	return accessHierarchies
 }
 
-func toRoles(accessRole []access.Role) []Role {
-	roles := make([]Role, 0, len(accessRole))
-	for _, role := range accessRole {
-		roles = append(roles, toRole(role))
+func toHierarchies(accessHierarchies []access.ObjectsForHierarchyType) []SnappableHierarchy {
+	hierarchies := make([]SnappableHierarchy, 0, len(accessHierarchies))
+	for _, hierarchy := range accessHierarchies {
+		hierarchies = append(hierarchies, SnappableHierarchy{
+			SnappableType: hierarchy.SnappableType,
+			ObjectIDs:     hierarchy.ObjectIDs,
+		})
 	}
 
-	return roles
+	return hierarchies
 }
 
 func toRoleTemplates(accessTemplates []access.RoleTemplate) []RoleTemplate {

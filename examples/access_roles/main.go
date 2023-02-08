@@ -73,12 +73,12 @@ func main() {
 	}
 
 	// Add role to user.
-	if err := accessClient.AssignRole(ctx, roleID, "user.name@example.com"); err != nil {
+	if err := accessClient.AssignRole(ctx, roleID, "firstname.lastname@example.com"); err != nil {
 		log.Fatal(err)
 	}
 
 	// Remove role from user.
-	if err := accessClient.UnassignRole(ctx, roleID, "user.name@example.com"); err != nil {
+	if err := accessClient.UnassignRole(ctx, roleID, "firstname.lastname@example.com"); err != nil {
 		log.Fatal(err)
 	}
 
