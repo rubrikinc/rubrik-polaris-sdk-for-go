@@ -243,10 +243,14 @@ func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) 
 	return accounts, nil
 }
 
-// AddAccount adds the AWS account to Polaris for the given feature. If name
-// isn't given as an option it's derived from information in the cloud. The
-// result can vary slightly depending on permissions. Returns the Polaris cloud
-// account id of the added account.
+// AddAccount adds the AWS account to Polaris for the given feature. Returns
+// the Polaris cloud account id of the added account. If name isn't given as
+// an option it's derived from information in the cloud. The result can vary
+// slightly depending on permissions.
+//
+// If adding the account fails due to permission problems when creating the
+// CloudFormation stack, it's safe to call AddAccount again with the same
+// parameters after the permission problems have been resolved.
 func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
 	a.gql.Log().Print(log.Trace)
 
@@ -272,11 +276,23 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 	// we use the same account name when adding the feature. Polaris does not
 	// allow the name to change between features.
 	akkount, err := a.Account(ctx, AccountID(config.id), core.FeatureAll)
-	if err == nil {
-		config.name = akkount.Name
-	}
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 		return uuid.Nil, fmt.Errorf("failed to get account: %v", err)
+	}
+	if err == nil {
+		// If the specified feature has already been added, but it's in
+		// connecting state and there are no stack ARN or role ARN it means a
+		// previous attempt to create a CloudFormation stack failed. Attempt to
+		// create the stack.
+		if feature, ok := akkount.Feature(feature); ok && feature.Status == core.StatusConnecting && feature.StackArn == "" && feature.RoleArn == "" {
+			if err := a.UpdatePermissions(ctx, account, []core.Feature{feature.Name}); err != nil {
+				return uuid.Nil, fmt.Errorf("failed to update permissions for feature %q: %w", feature.Name, err)
+			}
+
+			return akkount.ID, nil
+		}
+
+		config.name = akkount.Name
 	}
 
 	accountInit, err := aws.Wrap(a.gql).ValidateAndCreateCloudAccount(ctx, config.id, config.name, feature)
