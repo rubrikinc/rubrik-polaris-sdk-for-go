@@ -27,6 +27,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -162,7 +163,7 @@ type TaskChain struct {
 }
 
 // KorgTaskChainStatus returns the task chain for the specified task chain id.
-// If the task chain id refers to a task chain that was just created it's state
+// If the task chain id refers to a task chain that was just created its state
 // might not have reached ready yet. This can be detected by state being
 // TaskChainInvalid and error is nil.
 func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, error) {
@@ -172,7 +173,7 @@ func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, 
 		TaskChainID uuid.UUID `json:"taskchainId,omitempty"`
 	}{TaskChainID: id})
 	if err != nil {
-		return TaskChain{}, fmt.Errorf("failed to request KorgTaskChainStatus: %v", err)
+		return TaskChain{}, fmt.Errorf("failed to request KorgTaskChainStatus: %w", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "getKorgTaskchainStatus(%q): %s", id, string(buf))
@@ -185,7 +186,7 @@ func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return TaskChain{}, fmt.Errorf("failed to unmarshal KorgTaskChainStatus: %v", err)
+		return TaskChain{}, fmt.Errorf("failed to unmarshal KorgTaskChainStatus: %w", err)
 	}
 
 	return payload.Data.Query.TaskChain, nil
@@ -201,7 +202,15 @@ func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Durat
 	for {
 		taskChain, err := a.KorgTaskChainStatus(ctx, id)
 		if err != nil {
-			return TaskChainInvalid, err
+			var gqlErr graphql.GQLError
+			if !errors.As(err, &gqlErr) {
+				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status: %w", err)
+			}
+			if !strings.HasSuffix(gqlErr.Error(), "Failed to do RBAC checks for ViewJobInstance") {
+				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status: %w", err)
+			}
+
+			taskChain.State = TaskChainRunning
 		}
 
 		if taskChain.State == TaskChainSucceeded || taskChain.State == TaskChainCanceled || taskChain.State == TaskChainFailed {
@@ -224,7 +233,7 @@ func (a API) DeploymentVersion(ctx context.Context) (string, error) {
 
 	buf, err := a.GQL.Request(ctx, deploymentVersionQuery, struct{}{})
 	if err != nil {
-		return "", fmt.Errorf("failed to request DeploymentVersion: %v", err)
+		return "", fmt.Errorf("failed to request DeploymentVersion: %w", err)
 	}
 
 	a.GQL.Log().Printf(log.Debug, "deploymentVersion(): %s", string(buf))
@@ -235,7 +244,7 @@ func (a API) DeploymentVersion(ctx context.Context) (string, error) {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", fmt.Errorf("failed to unmarshal DeploymentVersion: %v", err)
+		return "", fmt.Errorf("failed to unmarshal DeploymentVersion: %w", err)
 	}
 
 	return payload.Data.DeploymentVersion, nil
