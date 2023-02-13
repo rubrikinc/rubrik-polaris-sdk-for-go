@@ -48,23 +48,23 @@ const (
 
 // Client is used to make calls to the Polaris platform.
 type Client struct {
-	gql *graphql.Client
-	log log.Logger
+	GQL *graphql.Client
+	Log log.Logger
 }
 
-// AWS returns the AWS part of the API.
+// Deprecated: use aws.NewAPI(client.GQL) instead.
 func (c *Client) AWS() aws.API {
-	return aws.NewAPI(c.gql)
+	return aws.NewAPI(c.GQL)
 }
 
-// Azure returns the Azure part of the API.
+// Deprecated: use azure.NewAPI(client.GQL) instead.
 func (c *Client) Azure() azure.API {
-	return azure.NewAPI(c.gql)
+	return azure.NewAPI(c.GQL)
 }
 
-// GCP returns the GCP part of the API.
+// Deprecated: use gcp.NewAPI(client.GQL) instead.
 func (c *Client) GCP() gcp.API {
-	return gcp.NewAPI(c.gql)
+	return gcp.NewAPI(c.GQL)
 }
 
 // Account represents a Polaris account. Implemented by UserAccount and
@@ -133,8 +133,8 @@ func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger 
 	logger.Printf(log.Info, "Polaris version: %s", version)
 
 	client := &Client{
-		gql: gqlClient,
-		log: logger,
+		GQL: gqlClient,
+		Log: logger,
 	}
 
 	return client, nil
@@ -191,15 +191,14 @@ func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, l
 	logger.Printf(log.Info, "Polaris version: %s", version)
 
 	client := &Client{
-		gql: gqlClient,
-		log: logger,
+		GQL: gqlClient,
+		Log: logger,
 	}
 
 	return client, nil
 }
 
-// GQLClient returns the underlaying GraphQL client. Can be used to execute low
-// level and raw GraphQL queries against the Polaris platform.
+// Deprecated: use Client.GQL instead.
 func (c *Client) GQLClient() *graphql.Client {
-	return c.gql
+	return c.GQL
 }

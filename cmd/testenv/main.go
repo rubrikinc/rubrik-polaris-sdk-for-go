@@ -63,7 +63,7 @@ func check(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		awsAccount, err := client.AWS().Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
+		awsAccount, err := aws.NewAPI(client.GQL).Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
 		switch {
 		case err == nil:
 			return fmt.Errorf("found pre-existing AWS account: %s\n%v", awsAccount.ID, pretty.Sprint(awsAccount))
@@ -79,7 +79,7 @@ func check(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		awsAccount, err := client.AWS().Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
+		awsAccount, err := aws.NewAPI(client.GQL).Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
 		switch {
 		case err == nil:
 			return fmt.Errorf("found pre-existing AWS account: %s\n%v", awsAccount.ID, pretty.Sprint(awsAccount))
@@ -95,7 +95,7 @@ func check(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		azureAcc, err := client.Azure().Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
+		azureAcc, err := azure.NewAPI(client.GQL).Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
 		switch {
 		case err == nil:
 			return fmt.Errorf("found pre-existing Azure subscription: %s\n%v", azureAcc.ID, pretty.Sprint(azureAcc))
@@ -111,7 +111,7 @@ func check(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		proj, err := client.GCP().Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
+		proj, err := gcp.NewAPI(client.GQL).Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
 		switch {
 		case err == nil:
 			return fmt.Errorf("found pre-existing GCP projects: %s\n%v", proj.ID, pretty.Sprint(proj))
@@ -133,7 +133,9 @@ func clean(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		awsAccount, err := client.AWS().Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
+
+		awsClient := aws.NewAPI(client.GQL)
+		awsAccount, err := awsClient.Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
 		switch {
 		case errors.Is(err, graphql.ErrNotFound):
 			return nil
@@ -144,9 +146,10 @@ func clean(ctx context.Context, client *polaris.Client) error {
 			return fmt.Errorf("existing AWS account %q isn't expected test account %q, won't remove",
 				awsAccount.NativeID, testAcc.AccountID)
 		}
+
 		// TODO: we might need to iterate over awsAccount.Features to remove
 		// all of them in the future
-		return client.AWS().RemoveAccount(ctx, aws.Profile(testAcc.Profile), core.FeatureCloudNativeProtection, false)
+		return awsClient.RemoveAccount(ctx, aws.Profile(testAcc.Profile), core.FeatureCloudNativeProtection, false)
 	})
 
 	// AWS with cross account role
@@ -155,7 +158,9 @@ func clean(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		awsAccount, err := client.AWS().Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
+
+		awsClient := aws.NewAPI(client.GQL)
+		awsAccount, err := awsClient.Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
 		switch {
 		case errors.Is(err, graphql.ErrNotFound):
 			return nil
@@ -166,9 +171,10 @@ func clean(ctx context.Context, client *polaris.Client) error {
 			return fmt.Errorf("existing AWS account %q isn't expected test account %q, won't remove",
 				awsAccount.NativeID, testAcc.CrossAccountID)
 		}
+
 		// TODO: we might need to iterate over awsAccount.Features to remove
 		// all of them in the future
-		return client.AWS().RemoveAccount(ctx, aws.DefaultWithRole(testAcc.CrossAccountRole), core.FeatureCloudNativeProtection, false)
+		return awsClient.RemoveAccount(ctx, aws.DefaultWithRole(testAcc.CrossAccountRole), core.FeatureCloudNativeProtection, false)
 	})
 
 	// Azure
@@ -178,7 +184,8 @@ func clean(ctx context.Context, client *polaris.Client) error {
 			return err
 		}
 
-		azureAcc, err := client.Azure().Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
+		azureClient := azure.NewAPI(client.GQL)
+		azureAcc, err := azureClient.Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
 		switch {
 		case errors.Is(err, graphql.ErrNotFound):
 			return nil
@@ -192,19 +199,19 @@ func clean(ctx context.Context, client *polaris.Client) error {
 
 		// Polaris doesn't automatically remove exocompute configs when removing
 		// the subscription, so we need to do it manually here.
-		exoCfgs, err := client.Azure().ExocomputeConfigs(ctx, azure.CloudAccountID(azureAcc.ID))
+		exoCfgs, err := azureClient.ExocomputeConfigs(ctx, azure.CloudAccountID(azureAcc.ID))
 		if err != nil {
 			return err
 		}
 		for i := range exoCfgs {
-			if err := client.Azure().RemoveExocomputeConfig(ctx, exoCfgs[i].ID); err != nil {
+			if err := azureClient.RemoveExocomputeConfig(ctx, exoCfgs[i].ID); err != nil {
 				return fmt.Errorf("failed to remove Azure ExocomputeConfig: %v", pretty.Sprint(exoCfgs[i]))
 			}
 		}
 
 		// Remove all features for the subscription.
 		for _, feature := range azureAcc.Features {
-			if err := client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(azureAcc.ID), feature.Name, false); err != nil {
+			if err := azureClient.RemoveSubscription(ctx, azure.CloudAccountID(azureAcc.ID), feature.Name, false); err != nil {
 				return fmt.Errorf("failed to remove Azure cloud account fetaure: %v", pretty.Sprint(feature))
 			}
 		}
@@ -218,7 +225,9 @@ func clean(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		proj, err := client.GCP().Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
+
+		gcpClient := gcp.NewAPI(client.GQL)
+		proj, err := gcpClient.Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
 		switch {
 		case errors.Is(err, graphql.ErrNotFound):
 			return nil
@@ -229,7 +238,8 @@ func clean(ctx context.Context, client *polaris.Client) error {
 			return fmt.Errorf("existing GCP project %q isn't expected test project %q, won't remove",
 				pn, testProj.ProjectNumber)
 		}
-		return client.GCP().RemoveProject(ctx, gcp.ProjectNumber(testProj.ProjectNumber), core.FeatureCloudNativeProtection, false)
+
+		return gcpClient.RemoveProject(ctx, gcp.ProjectNumber(testProj.ProjectNumber), core.FeatureCloudNativeProtection, false)
 	})
 
 	return g.Wait()

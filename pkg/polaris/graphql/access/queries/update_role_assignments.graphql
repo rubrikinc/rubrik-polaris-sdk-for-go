@@ -1,0 +1,7 @@
+mutation RubrikPolarisSDKRequest($userIds: [String!]!, $groupIds: [String!], $roleIds: [String!]!) {
+    result: updateRoleAssignments(
+        userIds:  $userIds,
+        groupIds: $groupIds,
+        roleIds:  $roleIds
+    )
+}

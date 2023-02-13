@@ -40,7 +40,7 @@ func TestErrorsWithNoError(t *testing.T) {
         }
 	}`)
 
-	var gqlErr gqlError
+	var gqlErr GQLError
 	if err := json.Unmarshal(buf, &gqlErr); err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestGqlError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var gqlErr gqlError
+	var gqlErr GQLError
 	if err := json.Unmarshal(buf, &gqlErr); err != nil {
 		t.Fatal(err)
 	}

@@ -38,7 +38,7 @@ import (
 
 // API for Microsoft Azure.
 type API struct {
-	Version string
+	Version string // Deprecated
 	gql     *graphql.Client
 }
 

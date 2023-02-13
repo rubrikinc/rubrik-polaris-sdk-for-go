@@ -179,13 +179,24 @@ $ go test ./...
 ```
 
 ### Integration Tests
-Note that the integration tests requires a polaris instance and, depending on which tests are run, an appliance
+Note that the integration tests requires an RSC instance and, depending on which tests are run, an appliance
 connected to the Polaris instance, an AWS account, an Azure subscription and a GCP project. See below for additional
 requirements for each cloud service provider.
 
 To execute the integration test suite run:
 ```
 $ TEST_INTEGRATION=1 go test -timeout=60m ./...
+```
+
+#### Access
+To run the access integration tests, an RSC test user must be created. It also requires that the environment variable
+`TEST_RSCCONFIG_FILE` points to a JSON file containing information used to assert that users and access operation were
+performed correctly: 
+
+```json
+{
+    "userEmail": "<rsc-test-user-email-address>"
+}
 ```
 
 #### Appliance
@@ -196,7 +207,7 @@ instance and the environment variable `TEST_APPLIANCE_ID` must be set to the id 
 Requires a default AWS profile along with a default region for the profile. It also requires that the environment
 variable `TEST_AWSACCOUNT_FILE` points to a JSON file containing information used to assert that the account was added
 correctly to Polaris:
-```
+```json
 {
     "profile": "<aws-profile-name>",
     "accountId": "<aws-account-id>",
@@ -222,7 +233,7 @@ Note that the exocompute part is only needed when running the AWS Exocompute int
 To run the Azure integration tests an Azure service principal is required. It also requires that the environment
 variable `TEST_AZURESUBSCRIPTION_FILE` points to a JSON file containing information used to assert that the account was
 added correctly to Polaris:
-```
+```json
 {
     "subscriptionId": "<azure-subscription-id>",
     "subscriptionName": "<azure-subscription-name>",
@@ -242,7 +253,7 @@ Note that the exocompute part is only needed when running the Azure Exocompute i
 To run the GCP integration tests a GCP service account is required. It also requires that the environment
 variable `TEST_GCPPROJECT_FILE` points to a JSON file containing information used to assert that the account was added
 correctly to Polaris:
-```
+```json
 {
     "projectId": "<gcp-project-id>",
     "projectName": "<gcp-project-name>",

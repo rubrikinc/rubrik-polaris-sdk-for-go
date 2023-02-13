@@ -1,0 +1,26 @@
+query RubrikPolarisSDKRequest($after: String, $nameFilter: String) {
+    result: getAllRolesInOrgConnection(
+        after:      $after,
+        nameFilter: $nameFilter,
+    ) {
+        edges {
+            node {
+                id
+                name
+                description
+                isOrgAdmin
+                explicitlyAssignedPermissions {
+                    operation
+                    objectsForHierarchyTypes {
+                        objectIds
+                        snappableType
+                    }
+                }
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}

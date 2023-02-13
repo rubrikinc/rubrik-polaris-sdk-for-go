@@ -1,4 +1,4 @@
-// Copyright 2021 Rubrik, Inc.
+// Copyright 2023 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -25,15 +25,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Example showing how to manage permissions for an Azure subscription with the
-// Polaris Go SDK.
+// Example showing how to manage roles with the Polaris Go SDK.
 //
 // The Polaris service account key file identifying the Polaris account should
 // either be placed at ~/.rubrik/polaris-service-account.json or pointed out by
@@ -51,38 +48,42 @@ func main() {
 		log.Fatal(err)
 	}
 
-	azureClient := azure.NewAPI(client.GQL)
+	accessClient := access.Wrap(client)
 
-	// List Azure permissions needed for features.
-	features := []core.Feature{core.FeatureCloudNativeProtection}
-	perms, err := azureClient.Permissions(ctx, features)
+	// Add role to RSC.
+	roleID, err := accessClient.AddRole(ctx, "Test Role", "Test Role Description",
+		[]access.Permission{{
+			Operation: "VIEW_CLUSTER",
+			Hierarchies: []access.SnappableHierarchy{{
+				SnappableType: "AllSubHierarchyType",
+				ObjectIDs:     []string{"CLUSTER_ROOT"},
+			}},
+		}}, access.NoProtectableClusters)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Permissions requried for Cloud Native Protection:")
-	for _, perm := range perms.Actions {
-		fmt.Println(perm)
-	}
-	for _, perm := range perms.NotActions {
-		fmt.Println(perm)
-	}
-	for _, perm := range perms.DataActions {
-		fmt.Println(perm)
-	}
-	for _, perm := range perms.NotDataActions {
-		fmt.Println(perm)
-	}
-
-	// Notify Polaris about updated permissions for the Cloud Native Protection
-	// feature of the already added subscription.
-	account, err := azureClient.Subscription(ctx,
-		azure.SubscriptionID(uuid.MustParse("27dce22c-1b84-11ec-9992-a3d4a0eb7b90")), core.FeatureCloudNativeProtection)
+	// List roles available in RSC using the role name filter.
+	roles, err := accessClient.Roles(ctx, "Test")
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = azureClient.PermissionsUpdated(ctx, azure.CloudAccountID(account.ID), features)
-	if err != nil {
+	for _, role := range roles {
+		fmt.Printf("ID: %v, Name: %q, Description: %q\n", role.ID, role.Name, role.Description)
+	}
+
+	// Add role to user.
+	if err := accessClient.AssignRole(ctx, roleID, "name@example.com"); err != nil {
+		log.Fatal(err)
+	}
+
+	// Remove role from user.
+	if err := accessClient.UnassignRole(ctx, roleID, "name@example.com"); err != nil {
+		log.Fatal(err)
+	}
+
+	// Remove role from RSC.
+	if err := accessClient.RemoveRole(ctx, roleID); err != nil {
 		log.Fatal(err)
 	}
 }

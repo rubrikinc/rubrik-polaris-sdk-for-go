@@ -39,7 +39,7 @@ import (
 
 // API for Google Cloud Platform.
 type API struct {
-	Version string
+	Version string // Deprecated
 	gql     *graphql.Client
 }
 

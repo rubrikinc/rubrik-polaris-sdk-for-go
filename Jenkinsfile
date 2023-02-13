@@ -41,6 +41,7 @@ pipeline {
     environment {
         // Polaris credentials.
         RUBRIK_POLARIS_SERVICEACCOUNT_FILE = credentials('tf-sdk-test-polaris-service-account')
+        TEST_RSCCONFIG_FILE                = credentials('tf-sdk-test-rsc-config')
 
         // Appliance credentials.
         TEST_APPLIANCE_ID = credentials('tf-sdk-appliance-id')
@@ -74,7 +75,7 @@ pipeline {
             steps {
                 sh 'go mod tidy'
                 sh 'go vet ./...'
-                sh 'go run honnef.co/go/tools/cmd/staticcheck@latest ./...'
+                sh 'go run honnef.co/go/tools/cmd/staticcheck@e682878 ./...'
                 sh 'bash -c "diff -u <(echo -n) <(gofmt -d .)"'
             }
         }
