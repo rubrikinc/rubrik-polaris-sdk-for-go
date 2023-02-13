@@ -22,6 +22,7 @@ package access
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -31,6 +32,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -76,6 +78,12 @@ func TestRoleManagement(t *testing.T) {
 	}
 
 	accessClient := Wrap(client)
+
+	// Verify that Role returns ErrNotFound for non-existent UUIDs.
+	_, err = accessClient.Role(ctx, uuid.MustParse("c4c53ec0-aa02-4582-9443-bc4be0045653"))
+	if err == nil || !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal("expected graphql.ErrNotFound")
+	}
 
 	// Add role.
 	id, err := accessClient.AddRole(ctx, "Integration Test Role", "Test Role Description", []Permission{{
@@ -137,13 +145,13 @@ func TestRoleManagement(t *testing.T) {
 		t.Error(err)
 	}
 
-	// Get role by filter.
+	// Get role by name filter.
 	roles, err := accessClient.Roles(ctx, "Integration Test")
 	if err != nil {
 		t.Error(err)
 	}
-	if len(roles) != 1 {
-		t.Errorf("")
+	if n := len(roles); n != 1 {
+		t.Errorf("invalid number of roles: %v", n)
 	}
 	if roles[0].ID != id {
 		t.Errorf("invalid role id: %v", roles[0].ID)
@@ -212,7 +220,9 @@ func TestRoleManagement(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// List role templates.
+	// List role templates using a name filter. A number of role templates comes
+	// bundled with RSC. They can be used to create roles with a predefined set
+	// of permissions.
 	roleTemplates, err := accessClient.RoleTemplates(ctx, "Office")
 	if err != nil {
 		t.Fatal(err)

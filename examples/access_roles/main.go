@@ -63,8 +63,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// List roles available in RSC.
-	roles, err := accessClient.Roles(ctx, "")
+	// List roles available in RSC using the role name filter.
+	roles, err := accessClient.Roles(ctx, "Test")
 	if err != nil {
 		log.Fatal(err)
 	}

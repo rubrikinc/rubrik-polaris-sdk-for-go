@@ -24,7 +24,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -67,9 +66,8 @@ func (a API) Role(ctx context.Context, id uuid.UUID) (Role, error) {
 	if err != nil {
 		var gqlErr graphql.GQLError
 		if errors.As(err, &gqlErr) {
-			msg := gqlErr.Error()
-			if strings.HasPrefix(msg, "NOT_FOUND: ") {
-				err = fmt.Errorf("%s: %w", msg[11:], graphql.ErrNotFound)
+			if gqlErr.Errors[0].Extensions.Code == 404 {
+				err = fmt.Errorf("%s: %w", gqlErr.Error(), graphql.ErrNotFound)
 			}
 		}
 		return Role{}, fmt.Errorf("failed to get role: %w", err)
@@ -81,7 +79,9 @@ func (a API) Role(ctx context.Context, id uuid.UUID) (Role, error) {
 	return toRole(roles[0]), nil
 }
 
-// Roles returns the roles matching the specified name filter.
+// Roles returns the roles matching the specified role name filter. The name
+// filter matches all roles that has the specified name as a prefix of their
+// name.
 func (a API) Roles(ctx context.Context, nameFilter string) ([]Role, error) {
 	a.client.Log.Print(log.Trace)
 
@@ -99,10 +99,6 @@ func (a API) Roles(ctx context.Context, nameFilter string) ([]Role, error) {
 func (a API) AddRole(ctx context.Context, name, description string, permissions []Permission, protectableClusters []string) (uuid.UUID, error) {
 	a.client.Log.Print(log.Trace)
 
-	if protectableClusters == nil {
-		protectableClusters = []string{}
-	}
-
 	id, err := access.Wrap(a.client.GQL).MutateRole(ctx, "", name, description, fromPermissions(permissions), protectableClusters)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to add role: %w", err)
@@ -116,10 +112,6 @@ func (a API) AddRole(ctx context.Context, name, description string, permissions 
 // specified.
 func (a API) UpdateRole(ctx context.Context, id uuid.UUID, name, description string, permissions []Permission, protectableClusters []string) error {
 	a.client.Log.Print(log.Trace)
-
-	if protectableClusters == nil {
-		protectableClusters = []string{}
-	}
 
 	_, err := access.Wrap(a.client.GQL).MutateRole(ctx, id.String(), name, description, fromPermissions(permissions), protectableClusters)
 	if err != nil {
@@ -147,7 +139,9 @@ func (a API) RemoveRole(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// RoleTemplate represents a named role template in RSC.
+// RoleTemplate represents a named role template in RSC. A number of role
+// templates comes bundled with RSC. They can be used to create roles with a
+// predefined set of permissions.
 type RoleTemplate struct {
 	ID                  uuid.UUID
 	Name                string
@@ -155,11 +149,13 @@ type RoleTemplate struct {
 	AssignedPermissions []Permission
 }
 
-// RoleTemplates returns the role templates matching the specified filter.
-func (a API) RoleTemplates(ctx context.Context, filter string) ([]RoleTemplate, error) {
+// RoleTemplates returns the role templates matching the specified role template
+// name filter. The name filter matches all role templates that has the
+// specified name as a prefix of their name.
+func (a API) RoleTemplates(ctx context.Context, nameFilter string) ([]RoleTemplate, error) {
 	a.client.Log.Print(log.Trace)
 
-	roleTemplates, err := access.Wrap(a.client.GQL).RoleTemplates(ctx, filter)
+	roleTemplates, err := access.Wrap(a.client.GQL).RoleTemplates(ctx, nameFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get role templates: %w", err)
 	}
@@ -213,10 +209,7 @@ func toPermissions(accessPermissions []access.Permission) []Permission {
 func fromHierarchies(hierarchies []SnappableHierarchy) []access.ObjectsForHierarchyType {
 	accessHierarchies := make([]access.ObjectsForHierarchyType, 0, len(hierarchies))
 	for _, hierarchy := range hierarchies {
-		accessHierarchies = append(accessHierarchies, access.ObjectsForHierarchyType{
-			SnappableType: hierarchy.SnappableType,
-			ObjectIDs:     hierarchy.ObjectIDs,
-		})
+		accessHierarchies = append(accessHierarchies, access.ObjectsForHierarchyType(hierarchy))
 	}
 
 	return accessHierarchies
@@ -225,10 +218,7 @@ func fromHierarchies(hierarchies []SnappableHierarchy) []access.ObjectsForHierar
 func toHierarchies(accessHierarchies []access.ObjectsForHierarchyType) []SnappableHierarchy {
 	hierarchies := make([]SnappableHierarchy, 0, len(accessHierarchies))
 	for _, hierarchy := range accessHierarchies {
-		hierarchies = append(hierarchies, SnappableHierarchy{
-			SnappableType: hierarchy.SnappableType,
-			ObjectIDs:     hierarchy.ObjectIDs,
-		})
+		hierarchies = append(hierarchies, SnappableHierarchy(hierarchy))
 	}
 
 	return hierarchies

@@ -128,6 +128,10 @@ func (a API) RolesByIDs(ctx context.Context, IDs []uuid.UUID) ([]Role, error) {
 func (a API) MutateRole(ctx context.Context, id string, name, description string, permissions []Permission, protectableClusters []string) (uuid.UUID, error) {
 	a.GQL.Log().Print(log.Trace)
 
+	if protectableClusters == nil {
+		protectableClusters = []string{}
+	}
+
 	buf, err := a.GQL.Request(ctx, mutateRoleQuery, struct {
 		ID                  string       `json:"roleId,omitempty"`
 		Name                string       `json:"name"`

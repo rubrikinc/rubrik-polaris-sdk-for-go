@@ -49,22 +49,26 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/token"
 )
 
-type gqlLocation struct {
-	Line   int `json:"line"`
-	Column int `json:"column"`
-}
-
-type gqlDetails struct {
-	Message   string        `json:"message"`
-	Path      []interface{} `json:"path"`
-	Locations []gqlLocation `json:"locations"`
-}
-
 // GQLError is returned by RSC in the body of a response as a JSON document when
 // certain types of GraphQL errors occur.
 type GQLError struct {
-	Data   interface{}  `json:"data"`
-	Errors []gqlDetails `json:"errors"`
+	Data   interface{} `json:"data"`
+	Errors []struct {
+		Message   string        `json:"message"`
+		Path      []interface{} `json:"path"`
+		Locations []struct {
+			Line   int `json:"line"`
+			Column int `json:"column"`
+		} `json:"locations"`
+		Extensions struct {
+			Code  int `json:"code"`
+			Trace struct {
+				Operation string `json:"operation"`
+				TraceID   string `json:"traceId"`
+				SpanID    string `json:"spanId"`
+			} `json:"trace"`
+		} `json:"extensions"`
+	} `json:"errors"`
 }
 
 // isError determines if the gqlError unmarshalled from a JSON document
