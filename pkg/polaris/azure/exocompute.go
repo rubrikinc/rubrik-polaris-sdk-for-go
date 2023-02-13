@@ -61,8 +61,7 @@ func Managed(region, subnetID string) ExoConfigFunc {
 	}
 }
 
-// Unmanaged returns an ExoConfigFunc that initializes an exocompute config
-// with security groups managed by the user using the specified values.
+// Deprecated: Use Managed.
 func Unmanaged(region, subnetID string) ExoConfigFunc {
 	return func(ctx context.Context) (azure.ExocomputeConfigCreate, error) {
 		r, err := azure.ParseRegion(region)
