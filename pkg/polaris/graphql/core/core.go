@@ -27,7 +27,6 @@ package core
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -202,15 +201,7 @@ func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Durat
 	for {
 		taskChain, err := a.KorgTaskChainStatus(ctx, id)
 		if err != nil {
-			var gqlErr graphql.GQLError
-			if !errors.As(err, &gqlErr) {
-				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status: %w", err)
-			}
-			if !strings.HasSuffix(gqlErr.Error(), "Failed to do RBAC checks for ViewJobInstance") {
-				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status: %w", err)
-			}
-
-			taskChain.State = TaskChainRunning
+			return TaskChainInvalid, fmt.Errorf("failed to get tashchain status: %w", err)
 		}
 
 		if taskChain.State == TaskChainSucceeded || taskChain.State == TaskChainCanceled || taskChain.State == TaskChainFailed {
