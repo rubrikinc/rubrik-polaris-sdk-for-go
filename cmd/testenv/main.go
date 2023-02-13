@@ -66,7 +66,7 @@ func check(ctx context.Context, client *polaris.Client) error {
 		awsAccount, err := client.AWS().Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
 		switch {
 		case err == nil:
-			return fmt.Errorf("found pre-existing AWS account: %s\n%v", awsAccount.ID.String(), pretty.Sprint(awsAccount))
+			return fmt.Errorf("found pre-existing AWS account: %s\n%v", awsAccount.ID, pretty.Sprint(awsAccount))
 		case !errors.Is(err, graphql.ErrNotFound):
 			return fmt.Errorf("failed to check AWS account: %v", err)
 		}
@@ -82,7 +82,7 @@ func check(ctx context.Context, client *polaris.Client) error {
 		awsAccount, err := client.AWS().Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
 		switch {
 		case err == nil:
-			return fmt.Errorf("found pre-existing AWS account: %s\n%v", awsAccount.ID.String(), pretty.Sprint(awsAccount))
+			return fmt.Errorf("found pre-existing AWS account: %s\n%v", awsAccount.ID, pretty.Sprint(awsAccount))
 		case !errors.Is(err, graphql.ErrNotFound):
 			return fmt.Errorf("failed to check AWS account: %v", err)
 		}
@@ -98,7 +98,7 @@ func check(ctx context.Context, client *polaris.Client) error {
 		azureAcc, err := client.Azure().Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
 		switch {
 		case err == nil:
-			return fmt.Errorf("found pre-existing Azure subscription: %s\n%v", azureAcc.ID.String(), pretty.Sprint(azureAcc))
+			return fmt.Errorf("found pre-existing Azure subscription: %s\n%v", azureAcc.ID, pretty.Sprint(azureAcc))
 		case !errors.Is(err, graphql.ErrNotFound):
 			return fmt.Errorf("failed to check Azure account: %v", err)
 		}
@@ -114,7 +114,7 @@ func check(ctx context.Context, client *polaris.Client) error {
 		proj, err := client.GCP().Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
 		switch {
 		case err == nil:
-			return fmt.Errorf("found pre-existing GCP projects: %s\n%v", proj.ID.String(), pretty.Sprint(proj))
+			return fmt.Errorf("found pre-existing GCP projects: %s\n%v", proj.ID, pretty.Sprint(proj))
 		case !errors.Is(err, graphql.ErrNotFound):
 			return fmt.Errorf("failed to check GCP project: %v", err)
 		}
