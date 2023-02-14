@@ -276,23 +276,11 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 	// we use the same account name when adding the feature. Polaris does not
 	// allow the name to change between features.
 	akkount, err := a.Account(ctx, AccountID(config.id), core.FeatureAll)
+	if err == nil {
+		config.name = akkount.Name
+	}
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 		return uuid.Nil, fmt.Errorf("failed to get account: %v", err)
-	}
-	if err == nil {
-		// If the specified feature has already been added, but it's in
-		// connecting state and there are no stack ARN or role ARN it means a
-		// previous attempt to create a CloudFormation stack failed. Attempt to
-		// create the stack.
-		if feature, ok := akkount.Feature(feature); ok && feature.Status == core.StatusConnecting && feature.StackArn == "" && feature.RoleArn == "" {
-			if err := a.UpdatePermissions(ctx, account, []core.Feature{feature.Name}); err != nil {
-				return uuid.Nil, fmt.Errorf("failed to update permissions for feature %q: %w", feature.Name, err)
-			}
-
-			return akkount.ID, nil
-		}
-
-		config.name = akkount.Name
 	}
 
 	accountInit, err := aws.Wrap(a.gql).ValidateAndCreateCloudAccount(ctx, config.id, config.name, feature)
