@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
@@ -60,13 +61,16 @@ func Config(config aws.Config) AccountFunc {
 
 // Default returns an AccountFunc that initializes the account with values from
 // the default profile (~/.aws/credentials and ~/.aws/config) and the AWS cloud.
+// Credentials and region from the profile can be overriden by environment
+// variables.
 func Default() AccountFunc {
 	return ProfileWithRegionAndRole("", "", "")
 }
 
 // DefaultWithRegion returns an AccountFunc that initializes the account with
 // values from the default profile (~/.aws/credentials and ~/.aws/config) and
-// the AWS cloud.
+// the AWS cloud. Credentials and region from the profile can be overriden by
+// environment variables.
 func DefaultWithRegion(region string) AccountFunc {
 	return ProfileWithRegionAndRole("", region, "")
 }
@@ -74,7 +78,8 @@ func DefaultWithRegion(region string) AccountFunc {
 // DefaultWithRole returns an AccountFunc that initializes the account with
 // values from the default profile (~/.aws/credentials and ~/.aws/config) and
 // the AWS cloud. After the account has been initialized it assumes the role
-// specified by the role ARN.
+// specified by the role ARN. Credentials and region from the profile can be
+// overriden by environment variables.
 func DefaultWithRole(roleARN string) AccountFunc {
 	return ProfileWithRegionAndRole("", "", roleARN)
 }
@@ -82,20 +87,24 @@ func DefaultWithRole(roleARN string) AccountFunc {
 // DefaultWithRegionAndRole returns an AccountFunc that initializes the account
 // with values from the default profile (~/.aws/credentials and ~/.aws/config)
 // and the AWS cloud. After the account has been initialized it assumes the role
-// specified by the role ARN.
+// specified by the role ARN. Credentials and region from the profile can be
+// overriden by environment variables.
 func DefaultWithRegionAndRole(region, roleARN string) AccountFunc {
 	return ProfileWithRegionAndRole("", region, roleARN)
 }
 
 // Profile returns an AccountFunc that initializes the account with values from
 // the named profile (~/.aws/credentials and ~/.aws/config) and the AWS cloud.
+// If the profile specified is "default", credentials and region from the
+// profile can be overriden by environment variables.
 func Profile(profile string) AccountFunc {
 	return ProfileWithRegionAndRole(profile, "", "")
 }
 
 // ProfileWithRegion returns an AccountFunc that initializes the account with
 // values from the named profile (~/.aws/credentials and ~/.aws/config) and the
-// AWS cloud.
+// AWS cloud. If the profile specified is "default", credentials and region from
+// the profile can be overriden by environment variables.
 func ProfileWithRegion(profile, region string) AccountFunc {
 	return ProfileWithRegionAndRole(profile, region, "")
 }
@@ -103,7 +112,8 @@ func ProfileWithRegion(profile, region string) AccountFunc {
 // ProfileWithRole returns an AccountFunc that initializes the account with
 // values from the named profile (~/.aws/credentials and ~/.aws/config) and the
 // AWS cloud. After the account has been initialized it assumes the role
-// specified by the role ARN.
+// specified by the role ARN. If the profile specified is "default", credentials
+// and region from the profile can be overriden by environment variables.
 func ProfileWithRole(profile string, roleArn string) AccountFunc {
 	return ProfileWithRegionAndRole(profile, "", roleArn)
 }
@@ -111,17 +121,22 @@ func ProfileWithRole(profile string, roleArn string) AccountFunc {
 // ProfileWithRegionAndRole returns an AccountFunc that initializes the account
 // with values from the named profile (~/.aws/credentials and ~/.aws/config) and
 // the AWS cloud. After the account has been initialized it assumes the role
-// specified by the role ARN.
+// specified by the role ARN. If the profile specified is "default", credentials
+// and region from the profile can be overriden by environment variables.
 func ProfileWithRegionAndRole(profile, region, roleARN string) AccountFunc {
 	return func(ctx context.Context) (account, error) {
-		config, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profile),
-			config.WithRegion(region))
-		if profile == "" {
-			profile = "default"
+		// When profileToLoad is the empty string environment variables can be
+		// used to override the credentials loaded by LoadDefaultConfig.
+		profileToLoad := profile
+		if profileToLoad == "default" {
+			profileToLoad = ""
 		}
+		config, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profileToLoad),
+			config.WithRegion(region))
 		if err != nil {
 			return account{}, fmt.Errorf("failed to load profile %q: %v", profile, err)
 		}
+
 		if config.Region == "" {
 			return account{}, errors.New("missing AWS region, used for AWS CloudFormation stack operations")
 		}
