@@ -75,7 +75,7 @@ pipeline {
             steps {
                 sh 'go mod tidy'
                 sh 'go vet ./...'
-                sh 'go run honnef.co/go/tools/cmd/staticcheck@e682878 ./...'
+                sh 'go run honnef.co/go/tools/cmd/staticcheck@v0.4.1 ./...'
                 sh 'bash -c "diff -u <(echo -n) <(gofmt -d .)"'
             }
         }
