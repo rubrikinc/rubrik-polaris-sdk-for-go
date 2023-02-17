@@ -27,6 +27,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -83,7 +84,7 @@ func FormatFeature(feature Feature) string {
 	return strings.ReplaceAll(strings.ToLower(string(feature)), "_", "-")
 }
 
-// ParseFeature returns the Feature matching the given feature name. Case
+// ParseFeature returns the Feature matching the given feature name. Case-
 // insensitive.
 func ParseFeature(feature string) (Feature, error) {
 	feature = strings.ReplaceAll(feature, "-", "_")
@@ -95,6 +96,12 @@ func ParseFeature(feature string) (Feature, error) {
 
 	return FeatureInvalid, fmt.Errorf("invalid feature: %s", feature)
 }
+
+const (
+	// Number of attempts before failing to wait for the Korg job when the error
+	// returned is a 403, objects not authorized.
+	waitAttempts = 6
+)
 
 // Status represents a Polaris cloud account status.
 type Status string
@@ -198,10 +205,18 @@ func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, 
 func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Duration) (TaskChainState, error) {
 	a.GQL.Log().Print(log.Trace)
 
+	attempt := 0
 	for {
 		taskChain, err := a.KorgTaskChainStatus(ctx, id)
 		if err != nil {
-			return TaskChainInvalid, fmt.Errorf("failed to get tashchain status: %w", err)
+			var gqlErr graphql.GQLError
+			if !errors.As(err, &gqlErr) || len(gqlErr.Errors) < 1 || gqlErr.Errors[0].Extensions.Code != 403 {
+				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status: %w", err)
+			}
+			if attempt++; attempt > waitAttempts {
+				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status: %w", err)
+			}
+			a.GQL.Log().Printf(log.Debug, "RBAC not ready (attempt: %d)", attempt)
 		}
 
 		if taskChain.State == TaskChainSucceeded || taskChain.State == TaskChainCanceled || taskChain.State == TaskChainFailed {
