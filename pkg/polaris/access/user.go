@@ -25,6 +25,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -76,7 +77,7 @@ func findUserByEmail(users []User, userEmail string) (User, error) {
 		}
 	}
 
-	return User{}, fmt.Errorf("no user with email address %q found", userEmail)
+	return User{}, fmt.Errorf("user with email address %q %w", userEmail, graphql.ErrNotFound)
 }
 
 // Users returns the users matching the specified email address filter.
@@ -91,9 +92,37 @@ func (a API) Users(ctx context.Context, emailFilter string) ([]User, error) {
 	return toUsers(users), nil
 }
 
+// AddUser adds a new user with the specified email address and roles. Note that
+// a user needs at least one role assigned at all times.
+func (a API) AddUser(ctx context.Context, userEmail string, roleIDs []uuid.UUID) error {
+	a.client.Log.Print(log.Trace)
+
+	if _, err := access.Wrap(a.client.GQL).CreateUser(ctx, userEmail, roleIDs); err != nil {
+		return fmt.Errorf("failed to add user: %w", err)
+	}
+
+	return nil
+}
+
+// RemoveUser removes the user with the specified email address.
+func (a API) RemoveUser(ctx context.Context, userEmail string) error {
+	a.client.Log.Print(log.Trace)
+
+	user, err := a.User(ctx, userEmail)
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if err := access.Wrap(a.client.GQL).DeleteUserFromAccount(ctx, []string{user.ID}); err != nil {
+		return fmt.Errorf("failed to remove user: %w", err)
+	}
+
+	return nil
+}
+
 // AssignRole assigns the role to the user with the specified user email
 // address.
-func (a API) AssignRole(ctx context.Context, roleID uuid.UUID, userEmail string) error {
+func (a API) AssignRole(ctx context.Context, userEmail string, roleID uuid.UUID) error {
 	a.client.Log.Print(log.Trace)
 
 	accessClient := access.Wrap(a.client.GQL)
@@ -112,7 +141,7 @@ func (a API) AssignRole(ctx context.Context, roleID uuid.UUID, userEmail string)
 
 // UnassignRole unassigns the role from the user with the specified user email
 // address.
-func (a API) UnassignRole(ctx context.Context, roleID uuid.UUID, userEmail string) error {
+func (a API) UnassignRole(ctx context.Context, userEmail string, roleID uuid.UUID) error {
 	a.client.Log.Print(log.Trace)
 
 	accessClient := access.Wrap(a.client.GQL)
@@ -128,8 +157,26 @@ func (a API) UnassignRole(ctx context.Context, roleID uuid.UUID, userEmail strin
 			roleIDs = append(roleIDs, role.ID)
 		}
 	}
-	if err := accessClient.UpdateRoleAssignment(ctx, roleIDs, []string{user.ID}, nil); err != nil {
+	if err := accessClient.UpdateRoleAssignment(ctx, []string{user.ID}, nil, roleIDs); err != nil {
 		return fmt.Errorf("failed to unassign role: %w", err)
+	}
+
+	return nil
+}
+
+// ReplaceRoles replaces all the roles for the specified user.
+func (a API) ReplaceRoles(ctx context.Context, userEmail string, newRoleIDs []uuid.UUID) error {
+	a.client.Log.Print(log.Trace)
+
+	accessClient := access.Wrap(a.client.GQL)
+
+	user, err := a.User(ctx, userEmail)
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if err := accessClient.UpdateRoleAssignment(ctx, []string{user.ID}, nil, newRoleIDs); err != nil {
+		return fmt.Errorf("failed to replace roles: %w", err)
 	}
 
 	return nil

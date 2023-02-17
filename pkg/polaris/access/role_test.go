@@ -23,67 +23,23 @@ package access
 import (
 	"context"
 	"errors"
-	"fmt"
-	"os"
 	"reflect"
 	"sort"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// client is the common Polaris client used for tests. By reusing the same
-// client we reduce the risk of hitting rate limits when access tokens are
-// created.
-var client *polaris.Client
-
-func TestMain(m *testing.M) {
-	if testsetup.BoolEnvSet("TEST_INTEGRATION") {
-		// Load configuration and create client. Usually resolved using the
-		// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-		polAccount, err := polaris.DefaultServiceAccount(true)
-		if err != nil {
-			fmt.Printf("failed to get default service account: %v\n", err)
-			os.Exit(1)
-		}
-
-		// The integration tests defaults the log level to INFO. Note that
-		// RUBRIK_POLARIS_LOGLEVEL can be used to override this.
-		logger := polaris_log.NewStandardLogger()
-		logger.SetLogLevel(polaris_log.Info)
-		client, err = polaris.NewClient(context.Background(), polAccount, logger)
-		if err != nil {
-			fmt.Printf("failed to create polaris client: %v\n", err)
-			os.Exit(1)
-		}
-	}
-
-	os.Exit(m.Run())
-}
-
 func TestRoleManagement(t *testing.T) {
+	ctx := context.Background()
+
 	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
-	ctx := context.Background()
-
-	testConfig, err := testsetup.RSCConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	accessClient := Wrap(client)
-
-	// Verify that Role returns ErrNotFound for non-existent UUIDs.
-	_, err = accessClient.Role(ctx, uuid.MustParse("c4c53ec0-aa02-4582-9443-bc4be0045653"))
-	if err == nil || !errors.Is(err, graphql.ErrNotFound) {
-		t.Fatal("expected graphql.ErrNotFound")
-	}
 
 	// Add role.
 	id, err := accessClient.AddRole(ctx, "Integration Test Role", "Test Role Description", []Permission{{
@@ -96,11 +52,8 @@ func TestRoleManagement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if id == uuid.Nil {
-		t.Fatal("id is nil")
-	}
 
-	// Get role by role id.
+	// Get role by id.
 	role, err := accessClient.Role(ctx, id)
 	if err != nil {
 		t.Error(err)
@@ -125,6 +78,45 @@ func TestRoleManagement(t *testing.T) {
 		}},
 	}}) {
 		t.Errorf("invalid role permissions: %v", role.AssignedPermissions)
+	}
+
+	// Verify that Role returns ErrNotFound for non-existent UUIDs.
+	_, err = accessClient.Role(ctx, uuid.MustParse("c4c53ec0-aa02-4582-9443-bc4be0045653"))
+	if err == nil || !errors.Is(err, graphql.ErrNotFound) {
+		t.Errorf("expected graphql.ErrNotFound: %v", err)
+	}
+
+	// Get role by name.
+	role, err = accessClient.RoleByName(ctx, "Integration Test Role")
+	if err != nil {
+		t.Error(err)
+	}
+	if role.ID != id {
+		t.Errorf("invalid role id: %v", role.ID)
+	}
+	if role.Name != "Integration Test Role" {
+		t.Errorf("invalid role name: %s", role.Name)
+	}
+	if role.Description != "Test Role Description" {
+		t.Errorf("invalid role description: %s", role.Description)
+	}
+	if role.IsOrgAdmin {
+		t.Error("is org admin is true")
+	}
+	if !reflect.DeepEqual(role.AssignedPermissions, []Permission{{
+		Operation: "VIEW_CLUSTER",
+		Hierarchies: []SnappableHierarchy{{
+			SnappableType: "AllSubHierarchyType",
+			ObjectIDs:     []string{"CLUSTER_ROOT"},
+		}},
+	}}) {
+		t.Errorf("invalid role permissions: %v", role.AssignedPermissions)
+	}
+
+	// Verify that RoleByName returns ErrNotFound for non-exact matches.
+	_, err = accessClient.RoleByName(ctx, "Integration Test")
+	if err == nil || !errors.Is(err, graphql.ErrNotFound) {
+		t.Errorf("expected graphql.ErrNotFound: %v", err)
 	}
 
 	// Update role.
@@ -187,43 +179,65 @@ func TestRoleManagement(t *testing.T) {
 		t.Errorf("invalid role permissions: %#v", permissions)
 	}
 
-	// Check that the user hasn't been assigned the role
-	user, err := accessClient.User(ctx, testConfig.UserEmail)
-	if err != nil {
-		t.Error(err)
-	}
-	if user.HasRole(id) {
-		t.Errorf("user should not be assigned role: %v", id)
-	}
-
-	// Assign the role to the user.
-	if err := accessClient.AssignRole(ctx, id, testConfig.UserEmail); err != nil {
-		t.Error(err)
-	}
-
-	// Check the user has been assigned the role.
-	user, err = accessClient.User(ctx, testConfig.UserEmail)
-	if err != nil {
-		t.Error(err)
-	}
-	if !user.HasRole(id) {
-		t.Errorf("user should be assigned role: %v", id)
-	}
-
-	// Unassign the role from the user.
-	if err := accessClient.UnassignRole(ctx, id, testConfig.UserEmail); err != nil {
-		t.Error(err)
-	}
-
 	// Remove role.
 	if err := accessClient.RemoveRole(ctx, id); err != nil {
 		t.Fatal(err)
 	}
 
+	// Check that the role has been removed.
+	if _, err = accessClient.Role(ctx, id); err == nil || !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal("role should have been removed")
+	}
+}
+
+func TestRoleTemplates(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	accessClient := Wrap(client)
+
+	roleTemplate, err := accessClient.RoleTemplateByName(ctx, "Compliance Auditor")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if roleTemplate.ID != uuid.MustParse("00000000-0000-0000-0000-000000000007") {
+		t.Errorf("invalid role template id: %v", roleTemplate.ID)
+	}
+	if roleTemplate.Name != "Compliance Auditor" {
+		t.Errorf("invalid role template name: %v", roleTemplate.Name)
+	}
+	if roleTemplate.Description != "Template for compliance auditor" {
+		t.Errorf("invalid role template description: %v", roleTemplate.Description)
+	}
+
+	// Sort permissions in ascending order before asserting.
+	permissions := roleTemplate.AssignedPermissions
+	sort.Slice(permissions, func(i, j int) bool {
+		return permissions[i].Operation < permissions[j].Operation
+	})
+	if !reflect.DeepEqual(permissions, []Permission{{
+		Operation: "EXPORT_DATA_CLASS_GLOBAL",
+		Hierarchies: []SnappableHierarchy{{
+			SnappableType: "AllSubHierarchyType",
+			ObjectIDs:     []string{"GlobalResource"},
+		}},
+	}, {
+		Operation: "VIEW_DATA_CLASS_GLOBAL",
+		Hierarchies: []SnappableHierarchy{{
+			SnappableType: "AllSubHierarchyType",
+			ObjectIDs:     []string{"GlobalResource"},
+		}},
+	}}) {
+		t.Errorf("invalid role template permissions: %#v", permissions)
+	}
+
 	// List role templates using a name filter. A number of role templates comes
 	// bundled with RSC. They can be used to create roles with a predefined set
 	// of permissions.
-	roleTemplates, err := accessClient.RoleTemplates(ctx, "Office")
+	roleTemplates, err := accessClient.RoleTemplates(ctx, "Officer")
 	if err != nil {
 		t.Fatal(err)
 	}

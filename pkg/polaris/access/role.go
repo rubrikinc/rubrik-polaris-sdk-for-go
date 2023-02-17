@@ -79,15 +79,44 @@ func (a API) Role(ctx context.Context, id uuid.UUID) (Role, error) {
 	return toRole(roles[0]), nil
 }
 
+// RoleByName returns the role with a name exactly matching the specified name.
+func (a API) RoleByName(ctx context.Context, name string) (Role, error) {
+	a.client.Log.Print(log.Trace)
+
+	roles, err := a.Roles(ctx, name)
+	if err != nil {
+		return Role{}, fmt.Errorf("failed to get roles: %w", err)
+	}
+
+	role, err := findRoleByName(roles, name)
+	if err != nil {
+		return Role{}, fmt.Errorf("failed to find role: %w", err)
+	}
+
+	return role, nil
+}
+
+// findRoleByName returns the role with a name exactly matching the specified
+// name.
+func findRoleByName(roles []Role, name string) (Role, error) {
+	for _, role := range roles {
+		if role.Name == name {
+			return role, nil
+		}
+	}
+
+	return Role{}, fmt.Errorf("role with name %q %w", name, graphql.ErrNotFound)
+}
+
 // Roles returns the roles matching the specified role name filter. The name
-// filter matches all roles that has the specified name as a prefix of their
+// filter matches all roles that has the specified name filter as part of their
 // name.
 func (a API) Roles(ctx context.Context, nameFilter string) ([]Role, error) {
 	a.client.Log.Print(log.Trace)
 
 	roles, err := access.Wrap(a.client.GQL).AllRolesInOrg(ctx, nameFilter)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get roles: %w", err)
+		return nil, fmt.Errorf("failed to lookup roles by name filter: %w", err)
 	}
 
 	return toRoles(roles), nil
@@ -149,9 +178,37 @@ type RoleTemplate struct {
 	AssignedPermissions []Permission
 }
 
+// RoleTemplateByName returns the role template with a name exactly matching the
+// specified name.
+func (a API) RoleTemplateByName(ctx context.Context, name string) (RoleTemplate, error) {
+	roleTemplates, err := a.RoleTemplates(ctx, name)
+	if err != nil {
+		return RoleTemplate{}, fmt.Errorf("failed to get role templates: %w", err)
+	}
+
+	roleTemplate, err := findRoleTemplateByName(roleTemplates, name)
+	if err != nil {
+		return RoleTemplate{}, fmt.Errorf("failed to find role template: %w", err)
+	}
+
+	return roleTemplate, nil
+}
+
+// findRoleTemplateByName returns the role template with a name exactly matching
+// the specified name.
+func findRoleTemplateByName(roleTemplates []RoleTemplate, name string) (RoleTemplate, error) {
+	for _, roleTemplate := range roleTemplates {
+		if roleTemplate.Name == name {
+			return roleTemplate, nil
+		}
+	}
+
+	return RoleTemplate{}, fmt.Errorf("role template with name %q %w", name, graphql.ErrNotFound)
+}
+
 // RoleTemplates returns the role templates matching the specified role template
 // name filter. The name filter matches all role templates that has the
-// specified name as a prefix of their name.
+// specified name filter as part of their name.
 func (a API) RoleTemplates(ctx context.Context, nameFilter string) ([]RoleTemplate, error) {
 	a.client.Log.Print(log.Trace)
 

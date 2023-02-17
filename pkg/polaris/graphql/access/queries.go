@@ -33,9 +33,19 @@ var addRoleAssignmentQuery = `mutation SdkGolangAddRoleAssignment($userIds: [Str
     )
 }`
 
+// createUser GraphQL query
+var createUserQuery = `mutation SdkGolangCreateUser($email: String!, $roleIds: [String!]!) {
+  result: createUser(email: $email, roleIds: $roleIds)
+}`
+
 // deleteRole GraphQL query
 var deleteRoleQuery = `mutation SdkGolangDeleteRole($roleId: String!) {
     result: deleteRole(roleId: $roleId)
+}`
+
+// deleteUserFromAccount GraphQL query
+var deleteUserFromAccountQuery = `mutation SdkGolangDeleteUserFromAccount($ids: [String!]!) {
+  result: deleteUsersFromAccount(ids: $ids)
 }`
 
 // getAllRolesInOrgConnection GraphQL query

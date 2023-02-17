@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -68,17 +69,30 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("Roles with \"Test\" as a name prefix:")
 	for _, role := range roles {
-		fmt.Printf("ID: %v, Name: %q, Description: %q\n", role.ID, role.Name, role.Description)
+		fmt.Printf("ID: %s, Name: %q, Description: %q\n", role.ID, role.Name, role.Description)
 	}
 
-	// Add role to user.
-	if err := accessClient.AssignRole(ctx, roleID, "name@example.com"); err != nil {
+	// Add a new user to RSC using the new role.
+	err = accessClient.AddUser(ctx, "test@rubrik.com", []uuid.UUID{roleID})
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Remove role from user.
-	if err := accessClient.UnassignRole(ctx, roleID, "name@example.com"); err != nil {
+	// List roles for the new user.
+	user, err := accessClient.User(ctx, "test@rubrik.com")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("User %q roles:\n", user.Email)
+	for _, role := range user.Roles {
+		fmt.Printf("ID: %s, Name: %q, Description: %q\n", role.ID, role.Name, role.Description)
+	}
+
+	// Remove user from RSC.
+	err = accessClient.RemoveUser(ctx, "test@rubrik.com")
+	if err != nil {
 		log.Fatal(err)
 	}
 
