@@ -26,6 +26,9 @@ func TestUserManagement(t *testing.T) {
 
 	// Look up the administrator role.
 	adminRole, err := accessClient.RoleByName(ctx, "Administrator")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Add user with administrator role.
 	err = accessClient.AddUser(ctx, testConfig.UserEmail, []uuid.UUID{adminRole.ID})
@@ -63,6 +66,9 @@ func TestUserManagement(t *testing.T) {
 
 	// List users.
 	users, err := accessClient.Users(ctx, testConfig.UserEmail)
+	if err != nil {
+		t.Error(err)
+	}
 	if n := len(users); n != 1 {
 		t.Errorf("invalid number of users: %v", n)
 	}
