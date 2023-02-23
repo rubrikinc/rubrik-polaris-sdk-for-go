@@ -358,3 +358,43 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id 
 
 	return nil
 }
+
+// StartDisableCloudAccountJob starts a task chain to disable the feature in the
+// cloud account with the specified cloud account id. Returns the RSC task chain
+// id.
+func (a API) StartDisableCloudAccountJob(ctx context.Context, id uuid.UUID, feature core.Feature) (uuid.UUID, error) {
+	a.GQL.Log().Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, startDisableAzureCloudAccountJobQuery, struct {
+		ID      uuid.UUID    `json:"cloudAccountId"`
+		Feature core.Feature `json:"feature"`
+	}{ID: id, Feature: feature})
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to request StartDisableCloudAccountJob: %w", err)
+	}
+	a.GQL.Log().Printf(log.Debug, "startDisableAzureCloudAccountJobQuery(%q, %q): %s", id, feature, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				JobIDs []struct {
+					JobID uuid.UUID `json:"jobId"`
+				} `json:"jobIds"`
+				Errors []struct {
+					Error string `json:"error"`
+				} `json:"errors"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, fmt.Errorf("failed to unmarshal StartDisableCloudAccountJob: %v", err)
+	}
+	if len(payload.Data.Result.Errors) != 0 {
+		return uuid.Nil, errors.New(payload.Data.Result.Errors[0].Error)
+	}
+	if len(payload.Data.Result.JobIDs) != 1 {
+		return uuid.Nil, fmt.Errorf("expected a single result")
+	}
+
+	return payload.Data.Result.JobIDs[0].JobID, nil
+}

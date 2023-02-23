@@ -64,7 +64,7 @@ func Config(config aws.Config) AccountFunc {
 // Credentials and region from the profile can be overriden by environment
 // variables.
 func Default() AccountFunc {
-	return ProfileWithRegionAndRole("", "", "")
+	return ProfileWithRegionAndRole("default", "", "")
 }
 
 // DefaultWithRegion returns an AccountFunc that initializes the account with
@@ -72,7 +72,7 @@ func Default() AccountFunc {
 // the AWS cloud. Credentials and region from the profile can be overriden by
 // environment variables.
 func DefaultWithRegion(region string) AccountFunc {
-	return ProfileWithRegionAndRole("", region, "")
+	return ProfileWithRegionAndRole("default", region, "")
 }
 
 // DefaultWithRole returns an AccountFunc that initializes the account with
@@ -81,7 +81,7 @@ func DefaultWithRegion(region string) AccountFunc {
 // specified by the role ARN. Credentials and region from the profile can be
 // overriden by environment variables.
 func DefaultWithRole(roleARN string) AccountFunc {
-	return ProfileWithRegionAndRole("", "", roleARN)
+	return ProfileWithRegionAndRole("default", "", roleARN)
 }
 
 // DefaultWithRegionAndRole returns an AccountFunc that initializes the account
@@ -90,7 +90,7 @@ func DefaultWithRole(roleARN string) AccountFunc {
 // specified by the role ARN. Credentials and region from the profile can be
 // overriden by environment variables.
 func DefaultWithRegionAndRole(region, roleARN string) AccountFunc {
-	return ProfileWithRegionAndRole("", region, roleARN)
+	return ProfileWithRegionAndRole("default", region, roleARN)
 }
 
 // Profile returns an AccountFunc that initializes the account with values from

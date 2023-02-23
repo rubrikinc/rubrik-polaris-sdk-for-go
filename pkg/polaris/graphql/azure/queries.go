@@ -212,6 +212,21 @@ var setAzureCloudAccountCustomerAppCredentialsQuery = `mutation SdkGolangSetAzur
     })
 }`
 
+// startDisableAzureCloudAccountJob GraphQL query
+var startDisableAzureCloudAccountJobQuery = `mutation SdkGolangStartDisableAzureCloudAccountJob($cloudAccountId: UUID!, $feature: CloudAccountFeature!) {
+  result: startDisableAzureCloudAccountJob(input: {
+    feature:         $feature,
+    cloudAccountIds: [$cloudAccountId],
+  }) {
+    jobIds {
+      jobId
+    }
+    errors {
+      error
+    }
+  }
+}`
+
 // startDisableAzureNativeSubscriptionProtectionJob GraphQL query
 var startDisableAzureNativeSubscriptionProtectionJobQuery = `mutation SdkGolangStartDisableAzureNativeSubscriptionProtectionJob($azureSubscriptionRubrikId: UUID!, $shouldDeleteNativeSnapshots: Boolean!, $azureNativeProtectionFeature: AzureNativeProtectionFeature!) {
     result: startDisableAzureNativeSubscriptionProtectionJob(input: {

@@ -211,10 +211,10 @@ func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Durat
 		if err != nil {
 			var gqlErr graphql.GQLError
 			if !errors.As(err, &gqlErr) || len(gqlErr.Errors) < 1 || gqlErr.Errors[0].Extensions.Code != 403 {
-				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status: %v", err)
+				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %q: %v", id, err)
 			}
 			if attempt++; attempt > waitAttempts {
-				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status after %d attempts: %v", attempt, err)
+				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %q after %d attempts: %v", id, attempt, err)
 			}
 			a.log.Printf(log.Debug, "RBAC not ready (attempt: %d)", attempt)
 		}

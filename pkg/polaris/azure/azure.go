@@ -365,7 +365,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		config.name = options.name
 	}
 
-	// If there already is a RSC cloud account for the given Azure subscription
+	// If there already is an RSC cloud account for the given Azure subscription
 	// we use the same name when adding the new feature.
 	account, err := a.Subscription(ctx, SubscriptionID(config.id), core.FeatureAll)
 	if err == nil {
@@ -398,7 +398,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 	if account.ID == uuid.Nil {
 		account, err = a.Subscription(ctx, SubscriptionID(config.id), feature)
 		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to get subscription: %v", err)
+			return uuid.Nil, fmt.Errorf("failed to get subscription: %w", err)
 		}
 	}
 
@@ -412,34 +412,39 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 
 	account, err := a.Subscription(ctx, id, feature)
 	if err != nil {
-		return fmt.Errorf("failed to get subscription: %v", err)
+		return fmt.Errorf("failed to get subscription: %w", err)
 	}
 
-	if account.Features[0].Name == core.FeatureCloudNativeProtection && account.Features[0].Status != core.StatusDisabled {
+	switch {
+	case account.Features[0].Name == core.FeatureCloudNativeProtection && account.Features[0].Status != core.StatusDisabled:
 		// Lookup the RSC native account id from the RSC subscription name and
 		// the Azure subscription id. The RSC native account id is needed to
 		// delete the RSC native account subscription.
-		natives, err := azure.Wrap(a.client).NativeSubscriptions(ctx, account.Name)
+		nativeSubscriptions, err := azure.Wrap(a.client).NativeSubscriptions(ctx, account.Name)
 		if err != nil {
 			return fmt.Errorf("failed to get native subscriptions: %v", err)
 		}
-
-		var nativeID uuid.UUID
-		for _, native := range natives {
-			if native.NativeID == account.NativeID {
-				nativeID = native.ID
-				break
-			}
-		}
-		if nativeID == uuid.Nil {
-			return fmt.Errorf("subscription %w", graphql.ErrNotFound)
+		nativeID, err := findNativeID(nativeSubscriptions, account.NativeID)
+		if err != nil {
+			return fmt.Errorf("failed to find native subscription: %w", err)
 		}
 
 		jobID, err := azure.Wrap(a.client).StartDisableNativeSubscriptionProtectionJob(ctx, nativeID, azure.VM, deleteSnapshots)
 		if err != nil {
 			return fmt.Errorf("failed to disable native subscription: %v", err)
 		}
-
+		state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
+		if err != nil {
+			return fmt.Errorf("failed to wait for task chain: %v", err)
+		}
+		if state != core.TaskChainSucceeded {
+			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
+		}
+	case account.Features[0].Status != core.StatusDisabled:
+		jobID, err := azure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, account.Features[0].Name)
+		if err != nil {
+			return fmt.Errorf("failed to disable subscription feature %q: %v", feature, err)
+		}
 		state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
 		if err != nil {
 			return fmt.Errorf("failed to wait for task chain: %v", err)
@@ -451,14 +456,26 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 
 	err = azure.Wrap(a.client).DeleteCloudAccountWithoutOAuth(ctx, account.ID, feature)
 	if err != nil {
-		return fmt.Errorf("failed to delete subscription: %v", err)
+		return fmt.Errorf("failed to delete subscription feature %q: %v", feature, err)
 	}
 
 	return nil
 }
 
-// UpdateSubscription updates the subscription with the specified id and
-// feature.
+// findNativeID returns the RSC native subscription id for the given cloud
+// account native subscription id. The cloud account subscription id is the
+// same as the Azure subscription id.
+func findNativeID(nativeSubscriptions []azure.NativeSubscription, nativeID uuid.UUID) (uuid.UUID, error) {
+	for _, subscription := range nativeSubscriptions {
+		if subscription.NativeID == nativeID {
+			return subscription.ID, nil
+		}
+	}
+
+	return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotFound)
+}
+
+// UpdateSubscription updates the subscription with the specified id and feature.
 func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature core.Feature, opts ...OptionFunc) error {
 	a.log.Print(log.Trace)
 
@@ -474,7 +491,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 
 	account, err := a.Subscription(ctx, id, feature)
 	if err != nil {
-		return fmt.Errorf("failed to get subscription: %v", err)
+		return fmt.Errorf("failed to get subscription: %w", err)
 	}
 	if options.name == "" {
 		options.name = account.Name
