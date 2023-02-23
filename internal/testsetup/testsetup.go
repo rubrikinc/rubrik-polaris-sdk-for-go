@@ -111,7 +111,8 @@ func GCPProject() (testGcpProject, error) {
 // testRSCConfig hold configuration information used in the integration tests.
 // Normally used to assert that the information read from Polaris is correct.
 type testRSCConfig struct {
-	UserEmail string `json:"userEmail"`
+	ExistingUserEmail string `json:"existingUserEmail"`
+	NewUserEmail      string `json:"newUserEmail"`
 }
 
 // RSCConfig loads test configuration information from the file pointed to by

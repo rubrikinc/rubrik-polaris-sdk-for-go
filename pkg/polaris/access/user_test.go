@@ -31,21 +31,21 @@ func TestUserManagement(t *testing.T) {
 	}
 
 	// Add user with administrator role.
-	err = accessClient.AddUser(ctx, testConfig.UserEmail, []uuid.UUID{adminRole.ID})
+	err = accessClient.AddUser(ctx, testConfig.NewUserEmail, []uuid.UUID{adminRole.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertUserHasRoles(t, testConfig.UserEmail, adminRole.ID)
+	assertUserHasRoles(t, testConfig.NewUserEmail, adminRole.ID)
 
 	// Get user by email address.
-	user, err := accessClient.User(ctx, testConfig.UserEmail)
+	user, err := accessClient.User(ctx, testConfig.NewUserEmail)
 	if err != nil {
 		t.Error(err)
 	}
 	if user.ID == "" {
 		t.Errorf("invalid user id: %v", user.ID)
 	}
-	if user.Email != testConfig.UserEmail {
+	if user.Email != testConfig.NewUserEmail {
 		t.Errorf("invalid user email: %v", user.Email)
 	}
 	if user.Status != "ACTIVE" {
@@ -59,20 +59,20 @@ func TestUserManagement(t *testing.T) {
 	if _, err := accessClient.User(ctx, "name@example.com"); err == nil || !errors.Is(err, graphql.ErrNotFound) {
 		t.Errorf("expected graphql.ErrNotFound: %v", err)
 	}
-	email := testConfig.UserEmail[:len(testConfig.UserEmail)-1]
+	email := testConfig.NewUserEmail[:len(testConfig.NewUserEmail)-1]
 	if _, err := accessClient.User(ctx, email); err == nil || !errors.Is(err, graphql.ErrNotFound) {
 		t.Errorf("expected graphql.ErrNotFound: %v", err)
 	}
 
 	// List users.
-	users, err := accessClient.Users(ctx, testConfig.UserEmail)
+	users, err := accessClient.Users(ctx, testConfig.NewUserEmail)
 	if err != nil {
 		t.Error(err)
 	}
 	if n := len(users); n != 1 {
 		t.Errorf("invalid number of users: %v", n)
 	}
-	assertUserHasRoles(t, testConfig.UserEmail, adminRole.ID)
+	assertUserHasRoles(t, testConfig.NewUserEmail, adminRole.ID)
 
 	// Add new role.
 	roleID, err := accessClient.AddRole(ctx, "Integration Test Role", "Test Role Description", []Permission{{
@@ -87,28 +87,28 @@ func TestUserManagement(t *testing.T) {
 	}
 
 	// Assign role to user.
-	if err := accessClient.AssignRole(ctx, testConfig.UserEmail, roleID); err != nil {
+	if err := accessClient.AssignRole(ctx, testConfig.NewUserEmail, roleID); err != nil {
 		t.Error(err)
 	}
-	assertUserHasRoles(t, testConfig.UserEmail, adminRole.ID, roleID)
+	assertUserHasRoles(t, testConfig.NewUserEmail, adminRole.ID, roleID)
 
 	// Unassign role from user.
-	if err := accessClient.UnassignRole(ctx, testConfig.UserEmail, roleID); err != nil {
+	if err := accessClient.UnassignRole(ctx, testConfig.NewUserEmail, roleID); err != nil {
 		t.Error(err)
 	}
-	assertUserHasRoles(t, testConfig.UserEmail, adminRole.ID)
+	assertUserHasRoles(t, testConfig.NewUserEmail, adminRole.ID)
 
 	// Replace roles for user.
-	if err := accessClient.ReplaceRoles(ctx, testConfig.UserEmail, []uuid.UUID{adminRole.ID, roleID}); err != nil {
+	if err := accessClient.ReplaceRoles(ctx, testConfig.NewUserEmail, []uuid.UUID{adminRole.ID, roleID}); err != nil {
 		t.Error(err)
 	}
-	assertUserHasRoles(t, testConfig.UserEmail, adminRole.ID, roleID)
+	assertUserHasRoles(t, testConfig.NewUserEmail, adminRole.ID, roleID)
 
 	// Unassign role from user.
-	if err := accessClient.UnassignRole(ctx, testConfig.UserEmail, roleID); err != nil {
+	if err := accessClient.UnassignRole(ctx, testConfig.NewUserEmail, roleID); err != nil {
 		t.Error(err)
 	}
-	assertUserHasRoles(t, testConfig.UserEmail, adminRole.ID)
+	assertUserHasRoles(t, testConfig.NewUserEmail, adminRole.ID)
 
 	// Remove role.
 	if err := accessClient.RemoveRole(ctx, roleID); err != nil {
@@ -116,12 +116,12 @@ func TestUserManagement(t *testing.T) {
 	}
 
 	// Remove user.
-	if err := accessClient.RemoveUser(ctx, testConfig.UserEmail); err != nil {
+	if err := accessClient.RemoveUser(ctx, testConfig.NewUserEmail); err != nil {
 		t.Fatal(err)
 	}
 
 	// Check that the user has been removed.
-	if _, err = accessClient.User(ctx, testConfig.UserEmail); err == nil || !errors.Is(err, graphql.ErrNotFound) {
+	if _, err = accessClient.User(ctx, testConfig.NewUserEmail); err == nil || !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal("user should have been removed")
 	}
 }
