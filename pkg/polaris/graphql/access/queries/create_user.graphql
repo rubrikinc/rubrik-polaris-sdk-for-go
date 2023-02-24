@@ -1,0 +1,3 @@
+mutation RubrikPolarisSDKRequest($email: String!, $roleIds: [String!]!) {
+  result: createUser(email: $email, roleIds: $roleIds)
+}

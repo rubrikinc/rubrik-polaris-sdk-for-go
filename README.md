@@ -1,9 +1,5 @@
 ![Go version](https://img.shields.io/github/go-mod/go-version/rubrikinc/rubrik-polaris-sdk-for-go) ![License MIT](https://img.shields.io/github/license/rubrikinc/rubrik-polaris-sdk-for-go) ![Latest tag](https://img.shields.io/github/v/tag/rubrikinc/rubrik-polaris-sdk-for-go)
 
-<p align="center">
-&#9888;&#65039; Code in this repository is in BETA and should NOT be used in a production system! &#9888;&#65039;
-</p>
-
 # Rubrik Polaris SDK for Go
 Documentation for the SDK can be found [here](https://pkg.go.dev/github.com/rubrikinc/rubrik-polaris-sdk-for-go@main).
 Please note that the repository has been repurposed so there exist older cached versions with a higher version number.
@@ -191,11 +187,11 @@ $ TEST_INTEGRATION=1 go test -timeout=60m ./...
 #### Access
 To run the access integration tests, an RSC test user must be created. It also requires that the environment variable
 `TEST_RSCCONFIG_FILE` points to a JSON file containing information used to assert that users and access operation were
-performed correctly: 
-
+performed correctly:
 ```json
 {
-    "userEmail": "<rsc-test-user-email-address>"
+    "existingUserEmail": "<existing-rsc-test-user-email-address>",
+    "newUserEmail": "<non-existing-rsc-test-user-email-address>"
 }
 ```
 

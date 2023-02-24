@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -47,7 +48,7 @@ func (a API) UsersInCurrentAndDescendantOrganization(ctx context.Context, emailF
 	for {
 		buf, err := a.GQL.Request(ctx, usersInCurrentAndDescendantOrganizationQuery, struct {
 			After       string `json:"after,omitempty"`
-			EmailFilter string `json:"filter,omitempty"`
+			EmailFilter string `json:"emailFilter,omitempty"`
 		}{After: cursor, EmailFilter: emailFilter})
 		if err != nil {
 			return nil, fmt.Errorf("failed to request UsersInCurrentAndDescendantOrganization: %w", err)
@@ -81,4 +82,53 @@ func (a API) UsersInCurrentAndDescendantOrganization(ctx context.Context, emailF
 	}
 
 	return users, nil
+}
+
+// CreateUser creates a new user with the specified email address and roles.
+func (a API) CreateUser(ctx context.Context, userEmail string, roleIDs []uuid.UUID) (string, error) {
+	a.GQL.Log().Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, createUserQuery, struct {
+		Email   string      `json:"email"`
+		RoleIDs []uuid.UUID `json:"roleIds"`
+	}{Email: userEmail, RoleIDs: roleIDs})
+	if err != nil {
+		return "", fmt.Errorf("failed to request CreateUser: %w", err)
+	}
+	a.GQL.Log().Printf(log.Debug, "createUser(%q, %v): %s", userEmail, roleIDs, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result string `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return "", fmt.Errorf("failed to unmarshal CreateUser response: %w", err)
+	}
+
+	return payload.Data.Result, nil
+}
+
+// DeleteUserFromAccount deletes the users with the specified email addresses.
+func (a API) DeleteUserFromAccount(ctx context.Context, ids []string) error {
+	a.GQL.Log().Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, deleteUserFromAccountQuery, struct {
+		IDs []string `json:"ids"`
+	}{IDs: ids})
+	if err != nil {
+		return fmt.Errorf("failed to request DeleteUserFromAccount: %w", err)
+	}
+	a.GQL.Log().Printf(log.Debug, "deleteUserFromAccount(%v): %s", ids, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result bool `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal DeleteUserFromAccount response: %w", err)
+	}
+
+	return nil
 }

@@ -214,14 +214,14 @@ func (a API) AddRoleAssignment(ctx context.Context, roleIDs []uuid.UUID, userIDs
 
 // UpdateRoleAssignment updates the role assignments for the users with the
 // specified ids.
-func (a API) UpdateRoleAssignment(ctx context.Context, roleIDs []uuid.UUID, userIDs, groupIDs []string) error {
+func (a API) UpdateRoleAssignment(ctx context.Context, userIDs, groupIDs []string, roleIDs []uuid.UUID) error {
 	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, updateRoleAssignmentsQuery, struct {
-		RoleIDs  []uuid.UUID `json:"roleIds"`
 		UserIDs  []string    `json:"userIds"`
 		GroupIDs []string    `json:"groupIds"`
-	}{RoleIDs: roleIDs, UserIDs: userIDs, GroupIDs: groupIDs})
+		RoleIDs  []uuid.UUID `json:"roleIds"`
+	}{UserIDs: userIDs, GroupIDs: groupIDs, RoleIDs: roleIDs})
 	if err != nil {
 		return fmt.Errorf("failed to request UpdateRoleAssignment: %w", err)
 	}
