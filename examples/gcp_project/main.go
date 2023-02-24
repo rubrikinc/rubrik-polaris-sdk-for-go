@@ -49,7 +49,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	gcpClient := gcp.NewAPI(client.GQL)
+	gcpClient := gcp.Wrap(client)
 
 	// Add the GCP default project to Polaris. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.

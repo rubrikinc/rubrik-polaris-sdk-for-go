@@ -60,9 +60,9 @@ type SnappableHierarchy struct {
 
 // Role returns the role with the specified id.
 func (a API) Role(ctx context.Context, id uuid.UUID) (Role, error) {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
-	roles, err := access.Wrap(a.client.GQL).RolesByIDs(ctx, []uuid.UUID{id})
+	roles, err := access.Wrap(a.client).RolesByIDs(ctx, []uuid.UUID{id})
 	if err != nil {
 		var gqlErr graphql.GQLError
 		if errors.As(err, &gqlErr) {
@@ -81,7 +81,7 @@ func (a API) Role(ctx context.Context, id uuid.UUID) (Role, error) {
 
 // RoleByName returns the role with a name exactly matching the specified name.
 func (a API) RoleByName(ctx context.Context, name string) (Role, error) {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
 	roles, err := a.Roles(ctx, name)
 	if err != nil {
@@ -112,9 +112,9 @@ func findRoleByName(roles []Role, name string) (Role, error) {
 // filter matches all roles that has the specified name filter as part of their
 // name.
 func (a API) Roles(ctx context.Context, nameFilter string) ([]Role, error) {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
-	roles, err := access.Wrap(a.client.GQL).AllRolesInOrg(ctx, nameFilter)
+	roles, err := access.Wrap(a.client).AllRolesInOrg(ctx, nameFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup roles by name filter: %w", err)
 	}
@@ -126,9 +126,9 @@ func (a API) Roles(ctx context.Context, nameFilter string) ([]Role, error) {
 // the NoProtectableCluster value to indicate that no protectable clusters are
 // specified.
 func (a API) AddRole(ctx context.Context, name, description string, permissions []Permission, protectableClusters []string) (uuid.UUID, error) {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
-	id, err := access.Wrap(a.client.GQL).MutateRole(ctx, "", name, description, fromPermissions(permissions), protectableClusters)
+	id, err := access.Wrap(a.client).MutateRole(ctx, "", name, description, fromPermissions(permissions), protectableClusters)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to add role: %w", err)
 	}
@@ -140,9 +140,9 @@ func (a API) AddRole(ctx context.Context, name, description string, permissions 
 // NoProtectableCluster value to indicate that no protectable clusters are
 // specified.
 func (a API) UpdateRole(ctx context.Context, id uuid.UUID, name, description string, permissions []Permission, protectableClusters []string) error {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
-	_, err := access.Wrap(a.client.GQL).MutateRole(ctx, id.String(), name, description, fromPermissions(permissions), protectableClusters)
+	_, err := access.Wrap(a.client).MutateRole(ctx, id.String(), name, description, fromPermissions(permissions), protectableClusters)
 	if err != nil {
 		return fmt.Errorf("failed to update role: %w", err)
 	}
@@ -152,7 +152,7 @@ func (a API) UpdateRole(ctx context.Context, id uuid.UUID, name, description str
 
 // RemoveRole removes the role with the specified id.
 func (a API) RemoveRole(ctx context.Context, id uuid.UUID) error {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
 	// DeleteRole doesn't return an error if the role doesn't exist, so we start
 	// by checking if the role exist.
@@ -160,7 +160,7 @@ func (a API) RemoveRole(ctx context.Context, id uuid.UUID) error {
 		return fmt.Errorf("failed to remove role %v: %w", id, graphql.ErrNotFound)
 	}
 
-	err := access.Wrap(a.client.GQL).DeleteRole(ctx, id)
+	err := access.Wrap(a.client).DeleteRole(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to remove role: %w", err)
 	}
@@ -210,9 +210,9 @@ func findRoleTemplateByName(roleTemplates []RoleTemplate, name string) (RoleTemp
 // name filter. The name filter matches all role templates that has the
 // specified name filter as part of their name.
 func (a API) RoleTemplates(ctx context.Context, nameFilter string) ([]RoleTemplate, error) {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
-	roleTemplates, err := access.Wrap(a.client.GQL).RoleTemplates(ctx, nameFilter)
+	roleTemplates, err := access.Wrap(a.client).RoleTemplates(ctx, nameFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get role templates: %w", err)
 	}

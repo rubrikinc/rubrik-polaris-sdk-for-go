@@ -51,7 +51,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	azureClient := azure.NewAPI(client.GQL)
+	azureClient := azure.Wrap(client)
 
 	// List Azure permissions needed for features.
 	features := []core.Feature{core.FeatureCloudNativeProtection}

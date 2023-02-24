@@ -50,7 +50,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	gcpClient := gcp.NewAPI(client.GQL)
+	gcpClient := gcp.Wrap(client)
 
 	// List GCP permissions needed for features.
 	features := []core.Feature{core.FeatureCloudNativeProtection}

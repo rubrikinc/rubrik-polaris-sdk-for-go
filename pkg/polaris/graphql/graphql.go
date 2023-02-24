@@ -18,9 +18,9 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package graphql provides direct access to the Polaris GraphQL API. Can be
-// used to execute both raw queries and prepared low level queries used by the
-// high level part of the SDK.
+// Package graphql provides direct access to the RSC GraphQL API. Can be used
+// to execute both raw queries and prepared low level queries used by the high
+// level part of the SDK.
 //
 // The graphql package tries to stay as close as possible to the GraphQL API:
 //

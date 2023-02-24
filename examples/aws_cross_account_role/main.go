@@ -50,7 +50,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	awsClient := aws.NewAPI(client.GQL)
+	awsClient := aws.Wrap(client)
 
 	// Use the default profile to add an AWS account to Polaris using a cross
 	// account role. The default profile can be configured using the environment

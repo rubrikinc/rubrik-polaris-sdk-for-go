@@ -53,7 +53,7 @@ func (u User) HasRole(roleID uuid.UUID) bool {
 
 // User returns the user with the specified email address.
 func (a API) User(ctx context.Context, userEmail string) (User, error) {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
 	users, err := a.Users(ctx, userEmail)
 	if err != nil {
@@ -82,9 +82,9 @@ func findUserByEmail(users []User, userEmail string) (User, error) {
 
 // Users returns the users matching the specified email address filter.
 func (a API) Users(ctx context.Context, emailFilter string) ([]User, error) {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
-	users, err := access.Wrap(a.client.GQL).UsersInCurrentAndDescendantOrganization(ctx, emailFilter)
+	users, err := access.Wrap(a.client).UsersInCurrentAndDescendantOrganization(ctx, emailFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup users by email: %w", err)
 	}
@@ -95,9 +95,9 @@ func (a API) Users(ctx context.Context, emailFilter string) ([]User, error) {
 // AddUser adds a new user with the specified email address and roles. Note that
 // a user needs at least one role assigned at all times.
 func (a API) AddUser(ctx context.Context, userEmail string, roleIDs []uuid.UUID) error {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
-	if _, err := access.Wrap(a.client.GQL).CreateUser(ctx, userEmail, roleIDs); err != nil {
+	if _, err := access.Wrap(a.client).CreateUser(ctx, userEmail, roleIDs); err != nil {
 		return fmt.Errorf("failed to add user: %w", err)
 	}
 
@@ -106,14 +106,14 @@ func (a API) AddUser(ctx context.Context, userEmail string, roleIDs []uuid.UUID)
 
 // RemoveUser removes the user with the specified email address.
 func (a API) RemoveUser(ctx context.Context, userEmail string) error {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
 	user, err := a.User(ctx, userEmail)
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
 
-	if err := access.Wrap(a.client.GQL).DeleteUserFromAccount(ctx, []string{user.ID}); err != nil {
+	if err := access.Wrap(a.client).DeleteUserFromAccount(ctx, []string{user.ID}); err != nil {
 		return fmt.Errorf("failed to remove user: %w", err)
 	}
 
@@ -123,9 +123,9 @@ func (a API) RemoveUser(ctx context.Context, userEmail string) error {
 // AssignRole assigns the role to the user with the specified user email
 // address.
 func (a API) AssignRole(ctx context.Context, userEmail string, roleID uuid.UUID) error {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
-	accessClient := access.Wrap(a.client.GQL)
+	accessClient := access.Wrap(a.client)
 
 	user, err := a.User(ctx, userEmail)
 	if err != nil {
@@ -142,9 +142,9 @@ func (a API) AssignRole(ctx context.Context, userEmail string, roleID uuid.UUID)
 // UnassignRole unassigns the role from the user with the specified user email
 // address.
 func (a API) UnassignRole(ctx context.Context, userEmail string, roleID uuid.UUID) error {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
-	accessClient := access.Wrap(a.client.GQL)
+	accessClient := access.Wrap(a.client)
 
 	user, err := a.User(ctx, userEmail)
 	if err != nil {
@@ -166,9 +166,9 @@ func (a API) UnassignRole(ctx context.Context, userEmail string, roleID uuid.UUI
 
 // ReplaceRoles replaces all the roles for the specified user.
 func (a API) ReplaceRoles(ctx context.Context, userEmail string, newRoleIDs []uuid.UUID) error {
-	a.client.Log.Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
-	accessClient := access.Wrap(a.client.GQL)
+	accessClient := access.Wrap(a.client)
 
 	user, err := a.User(ctx, userEmail)
 	if err != nil {

@@ -63,7 +63,7 @@ func check(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		awsAccount, err := aws.NewAPI(client.GQL).Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
+		awsAccount, err := aws.Wrap(client).Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
 		switch {
 		case err == nil:
 			return fmt.Errorf("found pre-existing AWS account: %s\n%v", awsAccount.ID, pretty.Sprint(awsAccount))
@@ -79,7 +79,7 @@ func check(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		awsAccount, err := aws.NewAPI(client.GQL).Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
+		awsAccount, err := aws.Wrap(client).Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
 		switch {
 		case err == nil:
 			return fmt.Errorf("found pre-existing AWS account: %s\n%v", awsAccount.ID, pretty.Sprint(awsAccount))
@@ -95,7 +95,7 @@ func check(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		azureAcc, err := azure.NewAPI(client.GQL).Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
+		azureAcc, err := azure.Wrap(client).Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
 		switch {
 		case err == nil:
 			return fmt.Errorf("found pre-existing Azure subscription: %s\n%v", azureAcc.ID, pretty.Sprint(azureAcc))
@@ -111,7 +111,7 @@ func check(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		proj, err := gcp.NewAPI(client.GQL).Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
+		proj, err := gcp.Wrap(client).Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
 		switch {
 		case err == nil:
 			return fmt.Errorf("found pre-existing GCP projects: %s\n%v", proj.ID, pretty.Sprint(proj))
@@ -134,7 +134,7 @@ func clean(ctx context.Context, client *polaris.Client) error {
 			return err
 		}
 
-		awsClient := aws.NewAPI(client.GQL)
+		awsClient := aws.Wrap(client)
 		awsAccount, err := awsClient.Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
 		switch {
 		case errors.Is(err, graphql.ErrNotFound):
@@ -159,7 +159,7 @@ func clean(ctx context.Context, client *polaris.Client) error {
 			return err
 		}
 
-		awsClient := aws.NewAPI(client.GQL)
+		awsClient := aws.Wrap(client)
 		awsAccount, err := awsClient.Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
 		switch {
 		case errors.Is(err, graphql.ErrNotFound):
@@ -184,7 +184,7 @@ func clean(ctx context.Context, client *polaris.Client) error {
 			return err
 		}
 
-		azureClient := azure.NewAPI(client.GQL)
+		azureClient := azure.Wrap(client)
 		azureAcc, err := azureClient.Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
 		switch {
 		case errors.Is(err, graphql.ErrNotFound):
@@ -226,7 +226,7 @@ func clean(ctx context.Context, client *polaris.Client) error {
 			return err
 		}
 
-		gcpClient := gcp.NewAPI(client.GQL)
+		gcpClient := gcp.Wrap(client)
 		proj, err := gcpClient.Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
 		switch {
 		case errors.Is(err, graphql.ErrNotFound):

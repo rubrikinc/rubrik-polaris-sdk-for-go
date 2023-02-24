@@ -18,21 +18,40 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package access provides a high level interface to the users, groups and roles
-// management part of the RSC platform.
-package access
+package gcp
 
 import (
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"context"
+	"testing"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// API for users, groups and roles management.
-type API struct {
-	client *graphql.Client
-}
+// TestGcpPermissions verifies that the SDK can read the required GCP
+// permissions from a real RSC instance.
+//
+// To run this test against an RSC instance the following environment variables
+// needs to be set:
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+func TestGcpPermissions(t *testing.T) {
+	ctx := context.Background()
 
-// Wrap the RSC client in the access API.
-func Wrap(client *polaris.Client) API {
-	return API{client: client.GQL}
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	gcpClient := Wrap(client)
+
+	perms, err := gcpClient.Permissions(ctx, []core.Feature{core.FeatureCloudNativeProtection})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Note that we don't verify the exact permissions returned since they will
+	// change over time.
+	if len(perms) == 0 {
+		t.Fatal("invalid number of permissions: 0")
+	}
 }

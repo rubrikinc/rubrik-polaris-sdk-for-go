@@ -44,7 +44,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	awsClient := aws.NewAPI(client.GQL)
+	awsClient := aws.Wrap(client)
 
 	// Add the AWS default account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and

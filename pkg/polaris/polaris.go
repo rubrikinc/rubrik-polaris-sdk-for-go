@@ -18,8 +18,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package polaris contains code to interact with the Polaris platform on a
-// high level. Relies on the graphql package for low level queries.
+// Package polaris contains code to interact with the RSC platform on a high
+// level. Relies on the graphql package for low level queries.
 package polaris
 
 import (
@@ -30,9 +30,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -50,21 +47,6 @@ const (
 type Client struct {
 	GQL *graphql.Client
 	Log log.Logger
-}
-
-// Deprecated: use aws.NewAPI(client.GQL) instead.
-func (c *Client) AWS() aws.API {
-	return aws.NewAPI(c.GQL)
-}
-
-// Deprecated: use azure.NewAPI(client.GQL) instead.
-func (c *Client) Azure() azure.API {
-	return azure.NewAPI(c.GQL)
-}
-
-// Deprecated: use gcp.NewAPI(client.GQL) instead.
-func (c *Client) GCP() gcp.API {
-	return gcp.NewAPI(c.GQL)
 }
 
 // Account represents a Polaris account. Implemented by UserAccount and
@@ -196,9 +178,4 @@ func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, l
 	}
 
 	return client, nil
-}
-
-// Deprecated: use Client.GQL instead.
-func (c *Client) GQLClient() *graphql.Client {
-	return c.GQL
 }

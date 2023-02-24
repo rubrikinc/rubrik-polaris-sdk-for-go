@@ -45,7 +45,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	azureClient := azure.NewAPI(client.GQL)
+	azureClient := azure.Wrap(client)
 
 	// Add default Azure service principal to Polaris. Usually resolved using
 	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.

@@ -57,14 +57,14 @@ func stringsDiff(lhs, rhs []string) []string {
 	return diff
 }
 
-// Permissions returns all Azure permissions required to use the specified
-// Polaris features.
+// Permissions returns all Azure permissions required to use the specified RSC
+// features.
 func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissions, error) {
-	a.gql.Log().Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
 	perms := Permissions{}
 	for _, feature := range features {
-		permConfig, err := azure.Wrap(a.gql).CloudAccountPermissionConfig(ctx, feature)
+		permConfig, err := azure.Wrap(a.client).CloudAccountPermissionConfig(ctx, feature)
 		if err != nil {
 			return Permissions{}, fmt.Errorf("failed to get permissions: %v", err)
 		}
@@ -80,15 +80,15 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 	return perms, nil
 }
 
-// PermissionsUpdated notifies Polaris that the permissions for the Azure
-// service principal for the Polaris cloud account with the specified id has
-// been updated. The permissions should be updated when a feature has the
-// status StatusMissingPermissions. Updating the permissions is done outside
-// of this SDK. The features parameter is allowed to be nil. When features is
-// nil all features are updated. Note that Polaris is only notified about
-// features with status StatusMissingPermissions.
+// PermissionsUpdated notifies RSC that the permissions for the Azure service
+// principal for the RSC cloud account with the specified id has been updated.
+// The permissions should be updated when a feature has the status
+// StatusMissingPermissions. Updating the permissions is done outside this SDK.
+// The features parameter is allowed to be nil. When features is nil all
+// features are updated. Note that RSC is only notified about features with
+// status StatusMissingPermissions.
 func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
 	featureSet := make(map[core.Feature]struct{})
 	for _, feature := range features {
@@ -111,7 +111,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 			continue
 		}
 
-		err := azure.Wrap(a.gql).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
+		err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
 		if err != nil {
 			return fmt.Errorf("failed to update permissions: %v", err)
 		}
@@ -120,15 +120,14 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 	return nil
 }
 
-// PermissionsUpdatedForTenantDomain notifies Polaris that the permissions
-// for the Azure service principal in a tenant domain has been updated. The
-// permissions should be updated when a feature has the status
-// StatusMissingPermissions. Updating the permissions is done outside of the
-// SDK. The features parameter is allowed to be nil. When features is nil all
-// features are updated. Note that Polaris is only notified about features
-// with status StatusMissingPermissions.
+// PermissionsUpdatedForTenantDomain notifies RSC that the permissions for the
+// Azure service principal in a tenant domain has been updated. The permissions
+// should be updated when a feature has the status StatusMissingPermissions.
+// Updating the permissions is done outside the SDK. The features parameter is
+// allowed to be nil. When features is nil all features are updated. Note that
+// RSC is only notified about features with status StatusMissingPermissions.
 func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain string, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
 	featureSet := make(map[core.Feature]struct{})
 	for _, feature := range features {
@@ -156,7 +155,7 @@ func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain
 				continue
 			}
 
-			err := azure.Wrap(a.gql).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
+			err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
 			if err != nil {
 				return fmt.Errorf("failed to update permissions: %v", err)
 			}

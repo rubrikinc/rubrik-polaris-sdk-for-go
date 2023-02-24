@@ -60,7 +60,7 @@ func stringsDiff(lhs, rhs []string) []string {
 // checkPermissions checks that the specified credentials have the correct GCP
 // permissions to use the project with the given Polaris features
 func (a API) gcpCheckPermissions(ctx context.Context, creds *google.Credentials, projectID string, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
 	perms, err := a.Permissions(ctx, features)
 	if err != nil {
@@ -88,11 +88,11 @@ func (a API) gcpCheckPermissions(ctx context.Context, creds *google.Credentials,
 // Permissions returns all GCP permissions required to use the specified
 // Polaris features.
 func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissions, error) {
-	a.gql.Log().Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
 	permSet := make(map[string]struct{})
 	for _, feature := range features {
-		perms, err := gcp.Wrap(a.gql).FeaturePermissionsForCloudAccount(ctx, feature)
+		perms, err := gcp.Wrap(a.client).FeaturePermissionsForCloudAccount(ctx, feature)
 		if err != nil {
 			return Permissions{}, fmt.Errorf("failed to get permissions: %v", err)
 		}
@@ -110,15 +110,15 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 	return perms, nil
 }
 
-// PermissionsUpdated notifies Polaris that the permissions for the GCP service
-// account for the Polaris cloud account with the specified id has been
-// updated. The permissions should be updated when a feature has the status
-// StatusMissingPermissions. Updating the permissions is done outside of this
-// SDK. The features parameter is allowed to be nil. When features is
-// nil all features are updated. Note that Polaris is only notified about
-// features with status StatusMissingPermissions.
+// PermissionsUpdated notifies RSC that the permissions for the GCP service
+// account for the RSC cloud account with the specified id has been updated.
+// The permissions should be updated when a feature has the status
+// StatusMissingPermissions. Updating the permissions is done outside this SDK.
+// The features parameter is allowed to be nil. When features is nil all
+// features are updated. Note that RSC is only notified about features with
+// status StatusMissingPermissions.
 func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
 	featureSet := make(map[core.Feature]struct{})
 	for _, feature := range features {
@@ -141,7 +141,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 			continue
 		}
 
-		err := gcp.Wrap(a.gql).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
+		err := gcp.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
 		if err != nil {
 			return fmt.Errorf("failed to update permissions: %v", err)
 		}
@@ -150,14 +150,14 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 	return nil
 }
 
-// PermissionsUpdatedForDefault notifies Polaris that the permissions for the
+// PermissionsUpdatedForDefault notifies RSC that the permissions for the
 // default GCP service account has been updated. The permissions should be
 // updated when a feature has the status StatusMissingPermissions. Updating the
-// permissions is done outside of the SDK. The features parameter is allowed to
-// be nil. When features is nil all features are updated. Note that Polaris is
-// only notified about features with status StatusMissingPermissions.
+// permissions is done outside the SDK. The features parameter is allowed to be
+// nil. When features is nil all features are updated. Note that RSC is only
+// notified about features with status StatusMissingPermissions.
 func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
 	featureSet := make(map[core.Feature]struct{})
 	for _, feature := range features {
@@ -185,7 +185,7 @@ func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.F
 				continue
 			}
 
-			err := gcp.Wrap(a.gql).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
+			err := gcp.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
 			if err != nil {
 				return fmt.Errorf("failed to update permissions: %v", err)
 			}

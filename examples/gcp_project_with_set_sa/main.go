@@ -50,7 +50,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	gcpClient := gcp.NewAPI(client.GQL)
+	gcpClient := gcp.Wrap(client)
 
 	// Add the service account to Polaris.
 	err = gcpClient.SetServiceAccount(ctx, gcp.Default(), gcp.Name("global"))
