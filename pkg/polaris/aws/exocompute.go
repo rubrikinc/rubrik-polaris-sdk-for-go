@@ -208,7 +208,7 @@ func toExocomputeConfig(config aws.ExocomputeConfig) ExocomputeConfig {
 // ExocomputeConfig returns the exocompute config with the specified exocompute
 // config id.
 func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConfig, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	configsForAccounts, err := aws.Wrap(a.client).ExocomputeConfigs(ctx, "")
 	if err != nil {
@@ -229,7 +229,7 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 // ExocomputeConfigs returns all exocompute configs for the account with the
 // specified id.
 func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]ExocomputeConfig, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	nativeID, err := a.toNativeID(ctx, id)
 	if err != nil {
@@ -254,7 +254,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]Exocompu
 // AddExocomputeConfig adds the exocompute config to the account with the
 // specified id. Returns the id of the added exocompute config.
 func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config ExoConfigFunc) (uuid.UUID, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	accountID, err := a.toCloudAccountID(ctx, id)
 	if err != nil {
@@ -277,7 +277,7 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 // RemoveExocomputeConfig removes the exocompute config with the specified
 // exocompute config id.
 func (a API) RemoveExocomputeConfig(ctx context.Context, id uuid.UUID) error {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	err := aws.Wrap(a.client).DeleteExocomputeConfig(ctx, id)
 	if err != nil {

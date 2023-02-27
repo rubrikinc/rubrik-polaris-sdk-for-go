@@ -60,12 +60,12 @@ type SnappableHierarchy struct {
 
 // Role returns the role with the specified id.
 func (a API) Role(ctx context.Context, id uuid.UUID) (Role, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	roles, err := access.Wrap(a.client).RolesByIDs(ctx, []uuid.UUID{id})
 	if err != nil {
 		var gqlErr graphql.GQLError
-		if errors.As(err, &gqlErr) {
+		if errors.As(err, &gqlErr) && len(gqlErr.Errors) > 0 {
 			if gqlErr.Errors[0].Extensions.Code == 404 {
 				err = fmt.Errorf("%s: %w", gqlErr.Error(), graphql.ErrNotFound)
 			}
@@ -81,11 +81,11 @@ func (a API) Role(ctx context.Context, id uuid.UUID) (Role, error) {
 
 // RoleByName returns the role with a name exactly matching the specified name.
 func (a API) RoleByName(ctx context.Context, name string) (Role, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	roles, err := a.Roles(ctx, name)
 	if err != nil {
-		return Role{}, fmt.Errorf("failed to get roles: %w", err)
+		return Role{}, fmt.Errorf("failed to get roles: %v", err)
 	}
 
 	role, err := findRoleByName(roles, name)
@@ -116,7 +116,7 @@ func (a API) Roles(ctx context.Context, nameFilter string) ([]Role, error) {
 
 	roles, err := access.Wrap(a.client).AllRolesInOrg(ctx, nameFilter)
 	if err != nil {
-		return nil, fmt.Errorf("failed to lookup roles by name filter: %w", err)
+		return nil, fmt.Errorf("failed to lookup roles by name filter: %v", err)
 	}
 
 	return toRoles(roles), nil
@@ -130,7 +130,7 @@ func (a API) AddRole(ctx context.Context, name, description string, permissions 
 
 	id, err := access.Wrap(a.client).MutateRole(ctx, "", name, description, fromPermissions(permissions), protectableClusters)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to add role: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to add role: %v", err)
 	}
 
 	return id, nil
@@ -144,7 +144,7 @@ func (a API) UpdateRole(ctx context.Context, id uuid.UUID, name, description str
 
 	_, err := access.Wrap(a.client).MutateRole(ctx, id.String(), name, description, fromPermissions(permissions), protectableClusters)
 	if err != nil {
-		return fmt.Errorf("failed to update role: %w", err)
+		return fmt.Errorf("failed to update role: %v", err)
 	}
 
 	return nil
@@ -162,7 +162,7 @@ func (a API) RemoveRole(ctx context.Context, id uuid.UUID) error {
 
 	err := access.Wrap(a.client).DeleteRole(ctx, id)
 	if err != nil {
-		return fmt.Errorf("failed to remove role: %w", err)
+		return fmt.Errorf("failed to remove role: %v", err)
 	}
 
 	return nil
@@ -183,12 +183,12 @@ type RoleTemplate struct {
 func (a API) RoleTemplateByName(ctx context.Context, name string) (RoleTemplate, error) {
 	roleTemplates, err := a.RoleTemplates(ctx, name)
 	if err != nil {
-		return RoleTemplate{}, fmt.Errorf("failed to get role templates: %w", err)
+		return RoleTemplate{}, fmt.Errorf("failed to get role templates: %v", err)
 	}
 
 	roleTemplate, err := findRoleTemplateByName(roleTemplates, name)
 	if err != nil {
-		return RoleTemplate{}, fmt.Errorf("failed to find role template: %w", err)
+		return RoleTemplate{}, fmt.Errorf("failed to find role template: %v", err)
 	}
 
 	return roleTemplate, nil
@@ -214,7 +214,7 @@ func (a API) RoleTemplates(ctx context.Context, nameFilter string) ([]RoleTempla
 
 	roleTemplates, err := access.Wrap(a.client).RoleTemplates(ctx, nameFilter)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get role templates: %w", err)
+		return nil, fmt.Errorf("failed to get role templates: %v", err)
 	}
 
 	return toRoleTemplates(roleTemplates), nil

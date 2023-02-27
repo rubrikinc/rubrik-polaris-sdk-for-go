@@ -28,7 +28,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -68,20 +67,15 @@ type ExocomputeConfigsForAccount struct {
 // ExocomputeConfigs returns all exocompute configs matching the specified
 // filter. The filter can be used to search for account name or account id.
 func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigsForAccount, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := allAwsExocomputeConfigsQuery
-	if graphql.VersionOlderThan(a.Version, "master-52101", "v20221116") {
-		query = allAwsExocomputeConfigsV0Query
-	}
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.Request(ctx, allAwsExocomputeConfigsQuery, struct {
 		Filter string `json:"awsNativeAccountIdOrNamePrefix"`
 	}{Filter: filter})
 	if err != nil {
-		return nil, fmt.Errorf("failed to request ExocomputeConfigs: %v", err)
+		return nil, fmt.Errorf("failed to request allAwsExocomputeConfigs: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "%s(%q): %s", graphql.QueryName(query), filter, string(buf))
+	a.log.Printf(log.Debug, "allAwsExocomputeConfigs(%q): %s", filter, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -89,7 +83,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal ExocomputeConfigs: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal allAwsExocomputeConfigs: %v", err)
 	}
 
 	return payload.Data.Result, nil
@@ -112,38 +106,18 @@ type ExocomputeConfigCreate struct {
 }
 
 // CreateExocomputeConfig creates a new exocompute config for the account with
-// the specified Polaris cloud account id. Returns the created exocompute config
+// the specified RSC cloud account id. Returns the created exocompute config
 func (a API) CreateExocomputeConfig(ctx context.Context, id uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := createAwsExocomputeConfigsQuery
-	var vars interface{} = struct {
+	buf, err := a.GQL.Request(ctx, createAwsExocomputeConfigsQuery, struct {
 		ID      uuid.UUID                `json:"cloudAccountId"`
 		Configs []ExocomputeConfigCreate `json:"configs"`
-	}{ID: id, Configs: []ExocomputeConfigCreate{config}}
-
-	if graphql.VersionOlderThan(a.Version, "master-52101", "v20221116") {
-		query = createAwsExocomputeConfigsV0Query
-		type legacyExocomputeConfigCreate struct {
-			Region                 Region   `json:"region"`
-			VPCID                  string   `json:"vpcId"`
-			Subnets                []Subnet `json:"subnets"`
-			IsManagedByRubrik      bool     `json:"isPolarisManaged"`
-			ClusterSecurityGroupId string   `json:"clusterSecurityGroupId"`
-			NodeSecurityGroupId    string   `json:"nodeSecurityGroupId"`
-		}
-		vars = struct {
-			ID      uuid.UUID                      `json:"cloudAccountId"`
-			Configs []legacyExocomputeConfigCreate `json:"configs"`
-		}{ID: id, Configs: []legacyExocomputeConfigCreate{(legacyExocomputeConfigCreate)(config)}}
-
-	}
-	buf, err := a.GQL.Request(ctx, query, vars)
+	}{ID: id, Configs: []ExocomputeConfigCreate{config}})
 	if err != nil {
-		return ExocomputeConfig{}, fmt.Errorf("failed to request CreateExocomputeConfig: %v", err)
+		return ExocomputeConfig{}, fmt.Errorf("failed to request createAwsExocomputeConfigs: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "createAwsExocomputeConfigs(%q, %v): %s", id, config, string(buf))
+	a.log.Printf(log.Debug, "createAwsExocomputeConfigs(%q, %v): %s", id, config, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -153,7 +127,7 @@ func (a API) CreateExocomputeConfig(ctx context.Context, id uuid.UUID, config Ex
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return ExocomputeConfig{}, fmt.Errorf("failed to unmarshal CreateExocomputeConfig: %v", err)
+		return ExocomputeConfig{}, fmt.Errorf("failed to unmarshal createAwsExocomputeConfigs: %v", err)
 	}
 	if len(payload.Data.Query.Configs) != 1 {
 		return ExocomputeConfig{}, errors.New("expected a single result")
@@ -165,19 +139,18 @@ func (a API) CreateExocomputeConfig(ctx context.Context, id uuid.UUID, config Ex
 	return payload.Data.Query.Configs[0], nil
 }
 
-// DeleteExocomputeConfig deletes the exocompute config with the specified
-// Polaris exocompute config id.
+// DeleteExocomputeConfig deletes the exocompute config with the specified RSC
+// exocompute config id.
 func (a API) DeleteExocomputeConfig(ctx context.Context, id uuid.UUID) error {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, deleteAwsExocomputeConfigsQuery, struct {
 		IDs []uuid.UUID `json:"configIdsToBeDeleted"`
 	}{IDs: []uuid.UUID{id}})
 	if err != nil {
-		return fmt.Errorf("failed to request DeleteExocomputeConfig: %v", err)
+		return fmt.Errorf("failed to request deleteAwsExocomputeConfigs: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "deleteAwsExocomputeConfigs(%q): %s", id, string(buf))
+	a.log.Printf(log.Debug, "deleteAwsExocomputeConfigs(%q): %s", id, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -190,7 +163,7 @@ func (a API) DeleteExocomputeConfig(ctx context.Context, id uuid.UUID) error {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal DeleteExocomputeConfig: %v", err)
+		return fmt.Errorf("failed to unmarshal deleteAwsExocomputeConfigs: %v", err)
 	}
 	if len(payload.Data.Query.Status) != 1 {
 		return errors.New("expected a single result")
@@ -202,20 +175,19 @@ func (a API) DeleteExocomputeConfig(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// StartExocomputeDisableJob starts a task chain job to disables the Exocompute
-// feature for the accout with the specified Polaris native account id. Returns
-// the Polaris task chain id.
+// StartExocomputeDisableJob starts a task chain job to disable the Exocompute
+// feature for the account with the specified RSC native account id. Returns the
+// RSC task chain id.
 func (a API) StartExocomputeDisableJob(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, startAwsExocomputeDisableJobQuery, struct {
 		ID uuid.UUID `json:"cloudAccountId"`
 	}{ID: id})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to request StartExocomputeDisableJob: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to request startAwsExocomputeDisableJob: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "startAwsExocomputeDisableJob(%q): %s", id, string(buf))
+	a.log.Printf(log.Debug, "startAwsExocomputeDisableJob(%q): %s", id, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -226,7 +198,7 @@ func (a API) StartExocomputeDisableJob(ctx context.Context, id uuid.UUID) (uuid.
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to unmarshal StartExocomputeDisableJob: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to unmarshal startAwsExocomputeDisableJob: %v", err)
 	}
 	if payload.Data.Result.Error != "" {
 		return uuid.Nil, errors.New(payload.Data.Result.Error)

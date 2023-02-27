@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 // Package gcp provides a low level interface to the GCP GraphQL queries
-// provided by the Polaris platform.
+// provided by the RSC platform.
 package gcp
 
 import (
@@ -34,28 +34,28 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// API wraps around GraphQL clients to give them the Polaris GCP API.
+// API wraps around GraphQL clients to give them the RSC GCP API.
 type API struct {
-	Version string
+	Version string // Deprecated: use GQL.DeploymentVersion
 	GQL     *graphql.Client
+	log     log.Logger
 }
 
 // Wrap the GraphQL client in the GCP API.
 func Wrap(gql *graphql.Client) API {
-	return API{Version: gql.Version, GQL: gql}
+	return API{GQL: gql, log: gql.Log()}
 }
 
 // DefaultCredentialsServiceAccount gets the default GCP service account name.
 // If no default GCP service account has been set an empty string is returned.
 func (a API) DefaultCredentialsServiceAccount(ctx context.Context) (name string, err error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, gcpGetDefaultCredentialsServiceAccountQuery, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to request DefaultCredentialsServiceAccount: %v", err)
+		return "", fmt.Errorf("failed to request gcpGetDefaultCredentialsServiceAccount: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "gcpGetDefaultCredentialsServiceAccount(): %s", string(buf))
+	a.log.Printf(log.Debug, "gcpGetDefaultCredentialsServiceAccount(): %s", string(buf))
 
 	var payload struct {
 		Data struct {
@@ -63,7 +63,7 @@ func (a API) DefaultCredentialsServiceAccount(ctx context.Context) (name string,
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", fmt.Errorf("failed to unmarshal DefaultCredentialsServiceAccount: %v", err)
+		return "", fmt.Errorf("failed to unmarshal gcpGetDefaultCredentialsServiceAccount: %v", err)
 	}
 
 	return payload.Data.Name, nil
@@ -73,21 +73,16 @@ func (a API) DefaultCredentialsServiceAccount(ctx context.Context) (name string,
 // service account will be used for GCP projects added without a service
 // account key file.
 func (a API) SetDefaultServiceAccount(ctx context.Context, name, jwtConfig string) error {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := gcpSetDefaultServiceAccountJwtConfigQuery
-	if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
-		query = gcpSetDefaultServiceAccountJwtConfigV0Query
-	}
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.Request(ctx, gcpSetDefaultServiceAccountJwtConfigQuery, struct {
 		Name      string `json:"serviceAccountName"`
 		JwtConfig string `json:"serviceAccountJwtConfig"`
 	}{Name: name, JwtConfig: jwtConfig})
 	if err != nil {
-		return fmt.Errorf("failed to request SetDefaultServiceAccount: %v", err)
+		return fmt.Errorf("failed to request gcpSetDefaultServiceAccountJwtConfig: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), name, "<JWT REDACTED>",
+	a.log.Printf(log.Debug, "gcpSetDefaultServiceAccountJwtConfig(%q, %q): %s", name, "<REDACTED>",
 		string(buf))
 
 	var payload struct {
@@ -96,7 +91,7 @@ func (a API) SetDefaultServiceAccount(ctx context.Context, name, jwtConfig strin
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal SetDefaultServiceAccount: %v", err)
+		return fmt.Errorf("failed to unmarshal gcpSetDefaultServiceAccountJwtConfig: %v", err)
 	}
 	if !payload.Data.Success {
 		return errors.New("set gcp service account failed")

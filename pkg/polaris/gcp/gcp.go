@@ -41,16 +41,17 @@ import (
 // API for GCP project management.
 type API struct {
 	client *graphql.Client
+	log    log.Logger
 }
 
 // Deprecated: use Wrap instead.
 func NewAPI(gql *graphql.Client) API {
-	return API{client: gql}
+	return API{client: gql, log: gql.Log()}
 }
 
 // Wrap the RSC client in the azure API.
 func Wrap(client *polaris.Client) API {
-	return API{client: client.GQL}
+	return API{client: client.GQL, log: client.GQL.Log()}
 }
 
 // CloudAccount for Google Cloud Platform projects. If DefaultServiceAccount is
@@ -93,7 +94,7 @@ var allFeatures = []core.Feature{
 // projects return all projects for the given feature and filter. Note that the
 // organization name of the cloud account is not set.
 func (a API) projects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	accountsWithFeature, err := gcp.Wrap(a.client).CloudAccountProjectsByFeature(ctx, feature, filter)
 	if err != nil {
@@ -121,7 +122,7 @@ func (a API) projects(ctx context.Context, feature core.Feature, filter string) 
 // projectsAllFeatures return all projects with all features for the given
 // filter. Note that the organization name of the cloud account is not set.
 func (a API) projectsAllFeatures(ctx context.Context, filter string) ([]CloudAccount, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	accountMap := make(map[uuid.UUID]*CloudAccount)
 	for _, feature := range allFeatures {
@@ -153,7 +154,7 @@ func (a API) projectsAllFeatures(ctx context.Context, filter string) ([]CloudAcc
 
 // Project returns the project with specified id.
 func (a API) Project(ctx context.Context, id IdentityFunc, feature core.Feature) (CloudAccount, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if id == nil {
 		return CloudAccount{}, errors.New("id is not allowed to be nil")
@@ -209,7 +210,7 @@ func (a API) Project(ctx context.Context, id IdentityFunc, feature core.Feature)
 // The filter can be used to search for project id, project name and project
 // number.
 func (a API) Projects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	var accounts []CloudAccount
 	var err error
@@ -250,7 +251,7 @@ func (a API) Projects(ctx context.Context, feature core.Feature, filter string) 
 // in the cloud. The result can vary slightly depending on permissions. Returns
 // the RSC cloud account id of the added project.
 func (a API) AddProject(ctx context.Context, project ProjectFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if feature != core.FeatureCloudNativeProtection {
 		return uuid.Nil, fmt.Errorf("feature not supported on gcp: %v", core.FormatFeature(feature))
@@ -309,7 +310,7 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, feature core.F
 // they are kept. Note that snapshots are only considered to be deleted when
 // removing the cloud native protection feature.
 func (a API) RemoveProject(ctx context.Context, id IdentityFunc, feature core.Feature, deleteSnapshots bool) error {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	account, err := a.Project(ctx, id, feature)
 	if err != nil {
@@ -364,7 +365,7 @@ func (a API) RemoveProject(ctx context.Context, id IdentityFunc, feature core.Fe
 // ServiceAccount returns the default service account name. If no default
 // service account has been set an empty string is returned.
 func (a API) ServiceAccount(ctx context.Context) (string, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	account, err := gcp.Wrap(a.client).DefaultCredentialsServiceAccount(ctx)
 	if err != nil {
@@ -381,7 +382,7 @@ func (a API) ServiceAccount(ctx context.Context) (string, error) {
 // option does nothing. Note that it's not possible to remove a service account
 // once it has been set.
 func (a API) SetServiceAccount(ctx context.Context, project ProjectFunc, opts ...OptionFunc) error {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if project == nil {
 		return errors.New("project is not allowed to be nil")

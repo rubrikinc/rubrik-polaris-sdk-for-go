@@ -53,7 +53,11 @@ func TestMain(m *testing.M) {
 		// RUBRIK_POLARIS_LOGLEVEL can be used to override this.
 		logger := polaris_log.NewStandardLogger()
 		logger.SetLogLevel(polaris_log.Info)
-		client, err = polaris.NewClient(context.Background(), polAccount, logger)
+		if err := polaris.LogLevelFromEnv(logger); err != nil {
+			fmt.Printf("failed to get log level from env: %v\n", err)
+		}
+
+		client, err = polaris.NewClientWithLogger(polAccount, logger)
 		if err != nil {
 			fmt.Printf("failed to create polaris client: %v\n", err)
 			os.Exit(1)
@@ -181,7 +185,7 @@ func TestAwsCrossAccountAddAndRemove(t *testing.T) {
 
 	awsClient := Wrap(client)
 
-	// Use the default profile to add an AWS account to Polaris using a cross
+	// Use the default profile to add an AWS account to RSC using a cross
 	// account role. Note that the profile needs to have a region.
 	id, err := awsClient.AddAccount(ctx,
 		ProfileWithRole(testAccount.Profile, testAccount.CrossAccountRole), core.FeatureCloudNativeProtection,

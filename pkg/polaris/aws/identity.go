@@ -24,8 +24,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"strconv"
+
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 
 	"github.com/google/uuid"
 )
@@ -52,7 +53,7 @@ func AccountID(awsAccountID string) IdentityFunc {
 }
 
 // CloudAccountID returns an IdentityFunc that initializes the identity with
-// the specified Polaris cloud account id.
+// the specified RSC cloud account id.
 func CloudAccountID(cloudAccountID uuid.UUID) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
 		return identity{id: cloudAccountID.String(), internal: true}, nil

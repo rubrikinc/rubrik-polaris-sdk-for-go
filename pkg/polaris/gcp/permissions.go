@@ -58,9 +58,9 @@ func stringsDiff(lhs, rhs []string) []string {
 }
 
 // checkPermissions checks that the specified credentials have the correct GCP
-// permissions to use the project with the given Polaris features
+// permissions to use the project with the given RSC features
 func (a API) gcpCheckPermissions(ctx context.Context, creds *google.Credentials, projectID string, features []core.Feature) error {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	perms, err := a.Permissions(ctx, features)
 	if err != nil {
@@ -86,9 +86,9 @@ func (a API) gcpCheckPermissions(ctx context.Context, creds *google.Credentials,
 }
 
 // Permissions returns all GCP permissions required to use the specified
-// Polaris features.
+// RSC features.
 func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissions, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	permSet := make(map[string]struct{})
 	for _, feature := range features {
@@ -118,7 +118,7 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 // features are updated. Note that RSC is only notified about features with
 // status StatusMissingPermissions.
 func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	featureSet := make(map[core.Feature]struct{})
 	for _, feature := range features {
@@ -157,7 +157,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 // nil. When features is nil all features are updated. Note that RSC is only
 // notified about features with status StatusMissingPermissions.
 func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.Feature) error {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	featureSet := make(map[core.Feature]struct{})
 	for _, feature := range features {

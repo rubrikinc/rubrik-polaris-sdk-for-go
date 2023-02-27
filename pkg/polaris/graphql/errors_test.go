@@ -1,4 +1,4 @@
-// Copyright 2022 Rubrik, Inc.
+// Copyright 2023 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -18,51 +18,45 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package main
+package graphql
 
 import (
-	"fmt"
-	"log"
+	"encoding/json"
 	"os"
-	"path/filepath"
-
-	"github.com/google/uuid"
-
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/appliance"
-	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"testing"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		printHelp()
-	}
+func TestErrorsWithNoError(t *testing.T) {
+	buf := []byte(`{
+	    "data": {
+	        "awsNativeAccountConnection": {}
+        }
+	}`)
 
-	applianceID, err := uuid.Parse(os.Args[1])
-	if err != nil {
-		printHelp()
+	var gqlErr GQLError
+	if err := json.Unmarshal(buf, &gqlErr); err != nil {
+		t.Fatal(err)
 	}
-
-	logger := polaris_log.NewStandardLogger()
-	logger.SetLogLevel(polaris_log.Error)
-	if err := polaris.LogLevelFromEnv(logger); err != nil {
-		log.Fatal(err)
+	if gqlErr.isError() {
+		t.Error("gqlErr should not represent an error")
 	}
-
-	serviceAccount, err := polaris.DefaultServiceAccount(true)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	token, err := appliance.TokenFromServiceAccount(serviceAccount, applianceID, logger)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println(token)
 }
 
-func printHelp() {
-	fmt.Printf("%s <appliance-uuid>\n", filepath.Base(os.Args[0]))
-	os.Exit(1)
+func TestGqlError(t *testing.T) {
+	buf, err := os.ReadFile("testdata/error_graphql.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var gqlErr GQLError
+	if err := json.Unmarshal(buf, &gqlErr); err != nil {
+		t.Fatal(err)
+	}
+	if !gqlErr.isError() {
+		t.Error("gqlErr should represent an error")
+	}
+	expected := "INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING"
+	if msg := gqlErr.Error(); msg != expected {
+		t.Fatalf("invalid error message: %v", msg)
+	}
 }

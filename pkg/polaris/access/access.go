@@ -25,14 +25,16 @@ package access
 import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // API for users, groups and roles management.
 type API struct {
 	client *graphql.Client
+	log    log.Logger
 }
 
 // Wrap the RSC client in the access API.
 func Wrap(client *polaris.Client) API {
-	return API{client: client.GQL}
+	return API{client: client.GQL, log: client.GQL.Log()}
 }

@@ -1,14 +1,13 @@
 package access
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
-	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // client is the common Polaris client used for tests. By reusing the same
@@ -28,9 +27,13 @@ func TestMain(m *testing.M) {
 
 		// The integration tests defaults the log level to INFO. Note that
 		// RUBRIK_POLARIS_LOGLEVEL can be used to override this.
-		logger := polaris_log.NewStandardLogger()
-		logger.SetLogLevel(polaris_log.Info)
-		client, err = polaris.NewClient(context.Background(), polAccount, logger)
+		logger := log.NewStandardLogger()
+		logger.SetLogLevel(log.Info)
+		if err := polaris.LogLevelFromEnv(logger); err != nil {
+			fmt.Printf("failed to get log level from env: %v\n", err)
+		}
+
+		client, err = polaris.NewClientWithLogger(polAccount, logger)
 		if err != nil {
 			fmt.Printf("failed to create polaris client: %v\n", err)
 			os.Exit(1)

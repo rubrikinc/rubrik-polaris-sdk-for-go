@@ -21,6 +21,7 @@
 package token
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,30 +30,44 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// LocalUserSource holds all the information needed to obtain a token for a
-// local user account.
-type LocalUserSource struct {
-	logger   log.Logger
+// UserSource holds all the information needed to obtain a token for a user
+// account.
+type UserSource struct {
+	log      log.Logger
 	client   *http.Client
 	tokenURL string
 	username string
 	password string
 }
 
-// NewLocalUserSource returns a new token source that uses the specified client
-// to obtain tokens.
-func NewLocalUserSource(client *http.Client, apiURL, username, password string, logger log.Logger) *LocalUserSource {
-	return &LocalUserSource{
-		logger:   logger,
+// Deprecated: use UserSource
+type LocalUserSource = UserSource
+
+// NewUserSource returns a new token source that uses the specified client to
+// obtain tokens.
+func NewUserSource(client *http.Client, apiURL, username, password string) *UserSource {
+	return NewUserSourceWithLogger(client, apiURL, username, password, &log.DiscardLogger{})
+}
+
+// NewUserSourceWithLogger returns a new token source that uses the specified
+// client to obtain tokens.
+func NewUserSourceWithLogger(client *http.Client, apiURL, username, password string, logger log.Logger) *UserSource {
+	return &UserSource{
+		log:      logger,
 		client:   client,
-		tokenURL: fmt.Sprintf("%s/session", apiURL),
+		tokenURL: apiURL + "/session",
 		username: username,
 		password: password,
 	}
 }
 
-// token returns a new token from the local user token source.
-func (src *LocalUserSource) token() (token, error) {
+// Deprecated: use NewUserSourceWithLogger.
+func NewLocalUserSource(client *http.Client, apiURL, username, password string, logger log.Logger) *LocalUserSource {
+	return NewUserSourceWithLogger(client, apiURL, username, password, logger)
+}
+
+// token returns a new token from the user token source.
+func (src *UserSource) token(ctx context.Context) (token, error) {
 	// Prepare the token request body.
 	body, err := json.Marshal(struct {
 		Username string `json:"username"`
@@ -62,7 +77,7 @@ func (src *LocalUserSource) token() (token, error) {
 		return token{}, fmt.Errorf("failed to marshal token request body: %v", err)
 	}
 
-	resp, err := Request(src.client, src.tokenURL, body, src.logger)
+	resp, err := RequestWithContext(ctx, src.client, src.tokenURL, body, src.log)
 	if err != nil {
 		return token{}, fmt.Errorf("failed to acquire local user access token: %v", err)
 	}

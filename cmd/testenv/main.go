@@ -30,8 +30,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx := context.Background()
-
 	// Load configuration and create client
 	polAccount, err := polaris.DefaultServiceAccount(true)
 	if err != nil {
@@ -39,10 +37,15 @@ func main() {
 	}
 	logger := polaris_log.NewStandardLogger()
 	logger.SetLogLevel(polaris_log.Info)
-	client, err := polaris.NewClient(ctx, polAccount, logger)
+	if err := polaris.LogLevelFromEnv(logger); err != nil {
+		log.Fatal(err)
+	}
+	client, err := polaris.NewClientWithLogger(polAccount, logger)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	ctx := context.Background()
 
 	if *precheck {
 		err = check(ctx, client)

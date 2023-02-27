@@ -42,16 +42,17 @@ import (
 // API for AWS account management.
 type API struct {
 	client *graphql.Client
+	log    log.Logger
 }
 
 // Deprecated: use Wrap instead.
 func NewAPI(gql *graphql.Client) API {
-	return API{client: gql}
+	return API{client: gql, log: gql.Log()}
 }
 
 // Wrap the RSC client in the aws API.
 func Wrap(client *polaris.Client) API {
-	return API{client: client.GQL}
+	return API{client: client.GQL, log: client.GQL.Log()}
 }
 
 // CloudAccount for Amazon Web Services accounts.
@@ -96,7 +97,7 @@ func (f Feature) HasRegion(region string) bool {
 // toCloudAccountID returns the RSC cloud account id for the specified identity.
 // If the identity is an RSC cloud account id no remote endpoint is called.
 func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if id == nil {
 		return uuid.Nil, errors.New("id is not allowed to be nil")
@@ -133,7 +134,7 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 // toNativeID returns the AWS account id for the specified identity. If the
 // identity is an AWS account id no remote endpoint is called.
 func (a API) toNativeID(ctx context.Context, id IdentityFunc) (string, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if id == nil {
 		return "", errors.New("id is not allowed to be nil")
@@ -184,7 +185,7 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 
 // Account returns the account with specified id and feature.
 func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature) (CloudAccount, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if id == nil {
 		return CloudAccount{}, errors.New("id is not allowed to be nil")
@@ -231,7 +232,7 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 // Accounts return all accounts with the specified feature matching the filter.
 // The filter can be used to search for account id, account name and role arn.
 func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, filter)
 	if err != nil {
@@ -255,7 +256,7 @@ func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) 
 // CloudFormation stack, it's safe to call AddAccount again with the same
 // parameters after the permission problems have been resolved.
 func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if account == nil {
 		return uuid.Nil, errors.New("account is not allowed to be nil")
@@ -301,8 +302,8 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 		return uuid.Nil, fmt.Errorf("failed to update CloudFormation stack: %v", err)
 	}
 
-	// If the RSC cloud account did not exist prior we retrieve the Polaris
-	// cloud account id.
+	// If the RSC cloud account did not exist prior we retrieve the RSC cloud
+	// account id.
 	if akkount.ID == uuid.Nil {
 		akkount, err = a.Account(ctx, AccountID(config.id), feature)
 		if err != nil {
@@ -319,7 +320,7 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 // Note that removing the Cloud Native Protection feature will also remove the
 // Exocompute feature.
 func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature core.Feature, deleteSnapshots bool) error {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if account == nil {
 		return errors.New("account is not allowed to be nil")
@@ -437,7 +438,7 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 // UpdateAccount updates the account with the specified id and feature. It's
 // currently not possible to update the account name.
 func (a API) UpdateAccount(ctx context.Context, id IdentityFunc, feature core.Feature, opts ...OptionFunc) error {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	var options options
 	for _, option := range opts {

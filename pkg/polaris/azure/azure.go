@@ -40,16 +40,17 @@ import (
 // API for Azure subscription management.
 type API struct {
 	client *graphql.Client
+	log    log.Logger
 }
 
 // Deprecated: use Wrap instead.
 func NewAPI(gql *graphql.Client) API {
-	return API{client: gql}
+	return API{client: gql, log: gql.Log()}
 }
 
 // Wrap the RSC client in the azure API.
 func Wrap(client *polaris.Client) API {
-	return API{client: client.GQL}
+	return API{client: client.GQL, log: client.GQL.Log()}
 }
 
 // CloudAccount for Microsoft Azure subscriptions.
@@ -90,8 +91,8 @@ func (f Feature) HasRegion(region string) bool {
 	return false
 }
 
-// Polaris does not support the AllFeatures for Azure cloud accounts. We work
-// around this by translating FeatureAll to the following list of features.
+// RSC does not support the AllFeatures for Azure cloud accounts. We work around
+// this by translating FeatureAll to the following list of features.
 var allFeatures = []core.Feature{
 	core.FeatureCloudNativeArchival,
 	core.FeatureCloudNativeArchivalEncryption,
@@ -102,7 +103,7 @@ var allFeatures = []core.Feature{
 // toCloudAccountID returns the RSC cloud account id for the specified identity.
 // If the identity is a RSC cloud account id no remote endpoint is called.
 func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if id == nil {
 		return uuid.Nil, errors.New("id is not allowed to be nil")
@@ -154,7 +155,7 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 // toNativeID returns the Azure subscription id for the specified identity.
 // If the identity is an Azure subscription id no remote endpoint is called.
 func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if id == nil {
 		return uuid.Nil, errors.New("id is not allowed to be nil")
@@ -204,7 +205,7 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error)
 
 // subscriptions return all subscriptions for the given feature and filter.
 func (a API) subscriptions(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	tenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, feature, false)
 	if err != nil {
@@ -240,7 +241,7 @@ func (a API) subscriptions(ctx context.Context, feature core.Feature, filter str
 // the given filter. Note that the organization name of the cloud account is
 // not set.
 func (a API) subscriptionsAllFeatures(ctx context.Context, filter string) ([]CloudAccount, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	accountMap := make(map[uuid.UUID]*CloudAccount)
 	for _, feature := range allFeatures {
@@ -272,7 +273,7 @@ func (a API) subscriptionsAllFeatures(ctx context.Context, filter string) ([]Clo
 
 // Subscription returns the subscription with specified id and feature.
 func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Feature) (CloudAccount, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if id == nil {
 		return CloudAccount{}, errors.New("id is not allowed to be nil")
@@ -320,7 +321,7 @@ func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Fea
 // the filter. The filter can be used to search for subscription name and
 // subscription id.
 func (a API) Subscriptions(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	var accounts []CloudAccount
 	var err error
@@ -337,10 +338,10 @@ func (a API) Subscriptions(ctx context.Context, feature core.Feature, filter str
 }
 
 // AddSubscription adds the specified subscription to RSC. If name isn't given
-// as an option it's derived from the tenant name. Returns the Polaris cloud
-// account id of the added subscription.
+// as an option it's derived from the tenant name. Returns the RSC cloud account
+// id of the added subscription.
 func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if subscription == nil {
 		return uuid.Nil, errors.New("subscription is not allowed to be nil")
@@ -407,7 +408,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 // RemoveSubscription removes the subscription with the specified id from RSC.
 // If deleteSnapshots is true the snapshots are deleted otherwise they are kept.
 func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature core.Feature, deleteSnapshots bool) error {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	account, err := a.Subscription(ctx, id, feature)
 	if err != nil {
@@ -459,7 +460,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 // UpdateSubscription updates the subscription with the specified id and
 // feature.
 func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature core.Feature, opts ...OptionFunc) error {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	var options options
 	for _, option := range opts {
@@ -532,7 +533,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 // Note that it's not possible to remove a service principal once it has been
 // set. Returns the application id of the service principal set.
 func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipalFunc, shouldReplace bool) (uuid.UUID, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	config, err := principal(ctx)
 	if err != nil {
@@ -553,7 +554,7 @@ func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipal
 // possible to remove a service principal once it has been set. Returns the
 // application id of the service principal set.
 func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipalFunc) (uuid.UUID, error) {
-	a.client.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	return a.AddServicePrincipal(ctx, principal, true)
 }

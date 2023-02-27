@@ -53,7 +53,11 @@ func TestMain(m *testing.M) {
 		// RUBRIK_POLARIS_LOGLEVEL can be used to override this.
 		logger := polaris_log.NewStandardLogger()
 		logger.SetLogLevel(polaris_log.Info)
-		client, err = polaris.NewClient(context.Background(), polAccount, logger)
+		if err := polaris.LogLevelFromEnv(logger); err != nil {
+			fmt.Printf("failed to get log level from env: %v\n", err)
+		}
+
+		client, err = polaris.NewClientWithLogger(polAccount, logger)
 		if err != nil {
 			fmt.Printf("failed to create polaris client: %v\n", err)
 			os.Exit(1)
@@ -89,7 +93,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Add the default GCP project to Polaris. Usually resolved using the
+	// Add the default GCP project to RSC. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
 	id, err := gcpClient.AddProject(ctx, Default(), core.FeatureCloudNativeProtection)
 	if err != nil {
@@ -131,7 +135,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 		t.Fatalf("invalid error: %v", err)
 	}
 
-	// Remove GCP project from Polaris keeping the snapshots.
+	// Remove GCP project from RSC keeping the snapshots.
 	err = gcpClient.RemoveProject(ctx, ID(Default()), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		t.Fatal(err)
@@ -171,13 +175,13 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 
 	gcpClient := Wrap(client)
 
-	// Add the service account to Polaris.
+	// Add the service account to RSC.
 	err = gcpClient.SetServiceAccount(ctx, Default())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Add the default GCP project to Polaris. Usually resolved using the
+	// Add the default GCP project to RSC. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
 	id, err := gcpClient.AddProject(ctx, Project(testProject.ProjectID, testProject.ProjectNumber),
 		core.FeatureCloudNativeProtection, Name(testProject.ProjectName), Organization(testProject.OrganizationName))
@@ -210,7 +214,7 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 		t.Errorf("invalid number of features: %v", n)
 	}
 
-	// Remove GCP project from Polaris keeping the snapshots.
+	// Remove GCP project from RSC keeping the snapshots.
 	err = gcpClient.RemoveProject(ctx, ProjectNumber(testProject.ProjectNumber), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		t.Fatal(err)

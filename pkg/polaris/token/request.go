@@ -47,8 +47,8 @@ var errRequestTimeout = fmt.Errorf("token request timeout after %v", requestTime
 
 // requestToken tries to acquire a token using provided parameters. It returns
 // errTokenRequestTimeout if the request exceeds tokenRequestTimeout.
-func requestToken(client *http.Client, tokenURL string, requestBody []byte) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+func requestToken(ctx context.Context, client *http.Client, tokenURL string, requestBody []byte) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 
 	// Request an access token from the remote token endpoint.
@@ -101,7 +101,7 @@ func requestToken(client *http.Client, tokenURL string, requestBody []byte) ([]b
 			res.StatusCode, err)
 	}
 	if jsonErr.IsError() {
-		return nil, fmt.Errorf("token response body is an error (status code %d): %v", res.StatusCode, jsonErr)
+		return nil, fmt.Errorf("token response body is an error (status code %d): %w", res.StatusCode, jsonErr)
 	}
 	if res.StatusCode != 200 {
 		return nil, fmt.Errorf("token response has status code: %s", res.Status)
@@ -112,12 +112,17 @@ func requestToken(client *http.Client, tokenURL string, requestBody []byte) ([]b
 
 // Request tries to acquire a token using the provided parameters.
 func Request(client *http.Client, tokenURL string, requestBody []byte, logger log.Logger) ([]byte, error) {
+	return RequestWithContext(context.Background(), client, tokenURL, requestBody, logger)
+}
+
+// RequestWithContext tries to acquire a token using the provided parameters.
+func RequestWithContext(ctx context.Context, client *http.Client, tokenURL string, requestBody []byte, logger log.Logger) ([]byte, error) {
 	var err error
 	for attempt := 0; attempt < requestAttempts; attempt++ {
 		logger.Printf(log.Debug, "Acquire access token (attempt: %d)", attempt+1)
 
 		var resp []byte
-		resp, err = requestToken(client, tokenURL, requestBody)
+		resp, err = requestToken(ctx, client, tokenURL, requestBody)
 		if err == nil {
 			return resp, nil
 		}
