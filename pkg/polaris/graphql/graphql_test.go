@@ -52,7 +52,7 @@ func TestRequestUnauthenticated(t *testing.T) {
 	if err == nil {
 		t.Fatal("graphql request should fail")
 	}
-	if !strings.HasSuffix(err.Error(), "JWT validation failed: Missing or invalid credentials (code 16)") {
+	if !strings.HasSuffix(err.Error(), "JWT validation failed: Missing or invalid credentials (code: 16)") {
 		t.Fatal(err)
 	}
 }
@@ -79,7 +79,7 @@ func TestRequestWithInternalServerErrorJSONBody(t *testing.T) {
 		t.Fatal("graphql request should fail")
 	}
 	if !strings.HasSuffix(err.Error(),
-		"INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING") {
+		"INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING (code: 500, traceId: 9D7LJciYbUSaTTaLQuJcMA==)") {
 		t.Fatal(err)
 	}
 }

@@ -25,9 +25,14 @@ import "fmt"
 // JSONError is returned by Polaris in the body of a response as a JSON
 // document when certain types of errors occur.
 type JSONError struct {
-	Code    int    `json:"code"`
-	URI     string `json:"uri"`
-	Message string `json:"message"`
+	Code      int    `json:"code"`
+	URI       string `json:"uri"`
+	Message   string `json:"message"`
+	TraceSpan struct {
+		Operation string `json:"operation"`
+		TraceID   string `json:"traceId"`
+		SpanID    string `json:"spanId"`
+	} `json:"traceSpan"`
 }
 
 // IsError determines if the JSONError unmarshalled from a JSON document
@@ -37,5 +42,9 @@ func (e JSONError) IsError() bool {
 }
 
 func (e JSONError) Error() string {
-	return fmt.Sprintf("%s (code %d)", e.Message, e.Code)
+	if e.TraceSpan.TraceID != "" {
+		return fmt.Sprintf("%s (code: %d, traceId: %s)", e.Message, e.Code, e.TraceSpan.TraceID)
+	}
+
+	return fmt.Sprintf("%s (code: %d)", e.Message, e.Code)
 }
