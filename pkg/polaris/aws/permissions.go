@@ -15,7 +15,7 @@ import (
 // UpdatePermissions updates the permissions of the CloudFormation stack in
 // AWS.
 func (a API) UpdatePermissions(ctx context.Context, account AccountFunc, features []core.Feature) error {
-	a.gql.Log().Print(log.Trace)
+	a.client.Log().Print(log.Trace)
 
 	if account == nil {
 		return errors.New("account is not allowed to be nil")
@@ -30,7 +30,7 @@ func (a API) UpdatePermissions(ctx context.Context, account AccountFunc, feature
 		return fmt.Errorf("failed to get account: %v", err)
 	}
 
-	cfmURL, tmplURL, err := aws.Wrap(a.gql).PrepareFeatureUpdateForAwsCloudAccount(ctx, akkount.ID, features)
+	cfmURL, tmplURL, err := aws.Wrap(a.client).PrepareFeatureUpdateForAwsCloudAccount(ctx, akkount.ID, features)
 	if err != nil {
 		return fmt.Errorf("failed to update account: %v", err)
 	}
@@ -47,7 +47,7 @@ func (a API) UpdatePermissions(ctx context.Context, account AccountFunc, feature
 	}
 	stackID := u.Query().Get("stackId")
 
-	err = awsUpdateStack(ctx, a.gql.Log(), config.config, stackID, tmplURL)
+	err = awsUpdateStack(ctx, a.client.Log(), config.config, stackID, tmplURL)
 	if err != nil {
 		return fmt.Errorf("failed to update CloudFormation stack: %v", err)
 	}

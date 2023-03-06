@@ -18,8 +18,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package azure provides a high level interface to the Azure part of the
-// Polaris platform.
+// Package azure provides a high level interface to the Azure part of the RSC
+// platform.
 package azure
 
 import (
@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
@@ -36,16 +37,20 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// API for Microsoft Azure.
+// API for Azure subscription management.
 type API struct {
-	Version string // Deprecated
-	gql     *graphql.Client
+	client *graphql.Client
+	log    log.Logger
 }
 
-// NewAPI returns a new API instance. Note that this is a very cheap call to
-// make.
+// Deprecated: use Wrap instead.
 func NewAPI(gql *graphql.Client) API {
-	return API{Version: gql.Version, gql: gql}
+	return API{client: gql, log: gql.Log()}
+}
+
+// Wrap the RSC client in the azure API.
+func Wrap(client *polaris.Client) API {
+	return API{client: client.GQL, log: client.GQL.Log()}
 }
 
 // CloudAccount for Microsoft Azure subscriptions.
@@ -86,8 +91,8 @@ func (f Feature) HasRegion(region string) bool {
 	return false
 }
 
-// Polaris does not support the AllFeatures for Azure cloud accounts. We work
-// around this by translating FeatureAll to the following list of features.
+// RSC does not support the AllFeatures for Azure cloud accounts. We work around
+// this by translating FeatureAll to the following list of features.
 var allFeatures = []core.Feature{
 	core.FeatureCloudNativeArchival,
 	core.FeatureCloudNativeArchivalEncryption,
@@ -95,11 +100,10 @@ var allFeatures = []core.Feature{
 	core.FeatureExocompute,
 }
 
-// toCloudAccountID returns the Polaris cloud account id for the specified
-// identity. If the identity is a Polaris cloud account id no remote endpoint
-// is called.
+// toCloudAccountID returns the RSC cloud account id for the specified identity.
+// If the identity is a RSC cloud account id no remote endpoint is called.
 func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if id == nil {
 		return uuid.Nil, errors.New("id is not allowed to be nil")
@@ -120,7 +124,7 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 	// Note that the same tenant can show up for multiple features.
 	tenantIDs := make(map[uuid.UUID]struct{})
 	for _, feature := range allFeatures {
-		tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, feature, false)
+		tenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, feature, false)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("failed to get tenants: %v", err)
 		}
@@ -131,7 +135,7 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 
 	for tenantID := range tenantIDs {
 		for _, feature := range allFeatures {
-			tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenantID, feature, identity.id)
+			tenantWithAccounts, err := azure.Wrap(a.client).CloudAccountTenant(ctx, tenantID, feature, identity.id)
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("failed to get tenant: %v", err)
 			}
@@ -151,7 +155,7 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 // toNativeID returns the Azure subscription id for the specified identity.
 // If the identity is an Azure subscription id no remote endpoint is called.
 func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if id == nil {
 		return uuid.Nil, errors.New("id is not allowed to be nil")
@@ -173,7 +177,7 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error)
 	// Note that the same tenant can show up for multiple features.
 	tenantIDs := make(map[uuid.UUID]struct{})
 	for _, feature := range allFeatures {
-		tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, feature, false)
+		tenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, feature, false)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("failed to get tenants: %v", err)
 		}
@@ -184,7 +188,7 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error)
 
 	for tenantID := range tenantIDs {
 		for _, feature := range allFeatures {
-			tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenantID, feature, "")
+			tenantWithAccounts, err := azure.Wrap(a.client).CloudAccountTenant(ctx, tenantID, feature, "")
 			if err != nil {
 				return uuid.Nil, fmt.Errorf("failed to get tenant: %v", err)
 			}
@@ -201,16 +205,16 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error)
 
 // subscriptions return all subscriptions for the given feature and filter.
 func (a API) subscriptions(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	tenants, err := azure.Wrap(a.gql).CloudAccountTenants(ctx, feature, false)
+	tenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, feature, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tenants: %v", err)
 	}
 
 	var accounts []CloudAccount
 	for _, tenant := range tenants {
-		tenantWithAccounts, err := azure.Wrap(a.gql).CloudAccountTenant(ctx, tenant.ID, feature, filter)
+		tenantWithAccounts, err := azure.Wrap(a.client).CloudAccountTenant(ctx, tenant.ID, feature, filter)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get tenant: %v", err)
 		}
@@ -237,7 +241,7 @@ func (a API) subscriptions(ctx context.Context, feature core.Feature, filter str
 // the given filter. Note that the organization name of the cloud account is
 // not set.
 func (a API) subscriptionsAllFeatures(ctx context.Context, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	accountMap := make(map[uuid.UUID]*CloudAccount)
 	for _, feature := range allFeatures {
@@ -269,7 +273,7 @@ func (a API) subscriptionsAllFeatures(ctx context.Context, filter string) ([]Clo
 
 // Subscription returns the subscription with specified id and feature.
 func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Feature) (CloudAccount, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if id == nil {
 		return CloudAccount{}, errors.New("id is not allowed to be nil")
@@ -317,7 +321,7 @@ func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Fea
 // the filter. The filter can be used to search for subscription name and
 // subscription id.
 func (a API) Subscriptions(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	var accounts []CloudAccount
 	var err error
@@ -333,11 +337,11 @@ func (a API) Subscriptions(ctx context.Context, feature core.Feature, filter str
 	return accounts, nil
 }
 
-// AddSubscription adds the specified subscription to Polaris. If name isn't
-// given as an option it's derived from the tenant name. Returns the Polaris
-// cloud account id of the added subscription.
+// AddSubscription adds the specified subscription to RSC. If name isn't given
+// as an option it's derived from the tenant name. Returns the RSC cloud account
+// id of the added subscription.
 func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if subscription == nil {
 		return uuid.Nil, errors.New("subscription is not allowed to be nil")
@@ -361,8 +365,8 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		config.name = options.name
 	}
 
-	// If there already is a Polaris cloud account for the given Azure
-	// subscription we use the same name when adding the new feature.
+	// If there already is an RSC cloud account for the given Azure subscription
+	// we use the same name when adding the new feature.
 	account, err := a.Subscription(ctx, SubscriptionID(config.id), core.FeatureAll)
 	if err == nil {
 		config.name = account.Name
@@ -371,7 +375,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		return uuid.Nil, fmt.Errorf("failed to get subscription: %v", err)
 	}
 
-	perms, err := azure.Wrap(a.gql).CloudAccountPermissionConfig(ctx, feature)
+	perms, err := azure.Wrap(a.client).CloudAccountPermissionConfig(ctx, feature)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to get permissions: %v", err)
 	}
@@ -383,61 +387,65 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		FeatureSpecificInfo: options.featureSpecificInfo,
 	}
 
-	_, err = azure.Wrap(a.gql).AddCloudAccountWithoutOAuth(ctx, azure.PublicCloud, config.id, cloudAccountFeature,
+	_, err = azure.Wrap(a.client).AddCloudAccountWithoutOAuth(ctx, azure.PublicCloud, config.id, cloudAccountFeature,
 		config.name, config.tenantDomain, options.regions)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to add subscription: %v", err)
 	}
 
-	// If the Polaris cloud account did not exist prior we retrieve the Polaris
-	// cloud account id.
+	// If the RSC cloud account did not exist prior we retrieve the RSC cloud
+	// account id.
 	if account.ID == uuid.Nil {
 		account, err = a.Subscription(ctx, SubscriptionID(config.id), feature)
 		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to get subscription: %v", err)
+			return uuid.Nil, fmt.Errorf("failed to get subscription: %w", err)
 		}
 	}
 
 	return account.ID, nil
 }
 
-// RemoveSubscription removes the subscription with the specified id from
-// Polaris. If deleteSnapshots is true the snapshots are deleted otherwise they
-// are kept.
+// RemoveSubscription removes the subscription with the specified id from RSC.
+// If deleteSnapshots is true the snapshots are deleted otherwise they are kept.
 func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature core.Feature, deleteSnapshots bool) error {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	account, err := a.Subscription(ctx, id, feature)
 	if err != nil {
-		return fmt.Errorf("failed to get subscription: %v", err)
+		return fmt.Errorf("failed to get subscription: %w", err)
 	}
 
-	if account.Features[0].Name == core.FeatureCloudNativeProtection && account.Features[0].Status != core.StatusDisabled {
-		// Lookup the Polaris native account id from the Polaris subscription name
-		// and the Azure subscription id. The Polaris native account id is needed
-		// to delete the Polaris native account subscription.
-		natives, err := azure.Wrap(a.gql).NativeSubscriptions(ctx, account.Name)
+	switch {
+	case account.Features[0].Name == core.FeatureCloudNativeProtection && account.Features[0].Status != core.StatusDisabled:
+		// Lookup the RSC native account id from the RSC subscription name and
+		// the Azure subscription id. The RSC native account id is needed to
+		// delete the RSC native account subscription.
+		nativeSubscriptions, err := azure.Wrap(a.client).NativeSubscriptions(ctx, account.Name)
 		if err != nil {
 			return fmt.Errorf("failed to get native subscriptions: %v", err)
 		}
-
-		var nativeID uuid.UUID
-		for _, native := range natives {
-			if native.NativeID == account.NativeID {
-				nativeID = native.ID
-				break
-			}
-		}
-		if nativeID == uuid.Nil {
-			return fmt.Errorf("subscription %w", graphql.ErrNotFound)
+		nativeID, err := findNativeID(nativeSubscriptions, account.NativeID)
+		if err != nil {
+			return fmt.Errorf("failed to find native subscription: %w", err)
 		}
 
-		jobID, err := azure.Wrap(a.gql).StartDisableNativeSubscriptionProtectionJob(ctx, nativeID, azure.VM, deleteSnapshots)
+		jobID, err := azure.Wrap(a.client).StartDisableNativeSubscriptionProtectionJob(ctx, nativeID, azure.VM, deleteSnapshots)
 		if err != nil {
 			return fmt.Errorf("failed to disable native subscription: %v", err)
 		}
-
-		state, err := core.Wrap(a.gql).WaitForTaskChain(ctx, jobID, 10*time.Second)
+		state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
+		if err != nil {
+			return fmt.Errorf("failed to wait for task chain: %v", err)
+		}
+		if state != core.TaskChainSucceeded {
+			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
+		}
+	case account.Features[0].Name == core.FeatureExocompute && account.Features[0].Status != core.StatusDisabled:
+		jobID, err := azure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, account.Features[0].Name)
+		if err != nil {
+			return fmt.Errorf("failed to disable subscription feature %q: %v", feature, err)
+		}
+		state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
 		if err != nil {
 			return fmt.Errorf("failed to wait for task chain: %v", err)
 		}
@@ -446,17 +454,30 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 		}
 	}
 
-	err = azure.Wrap(a.gql).DeleteCloudAccountWithoutOAuth(ctx, account.ID, feature)
+	err = azure.Wrap(a.client).DeleteCloudAccountWithoutOAuth(ctx, account.ID, feature)
 	if err != nil {
-		return fmt.Errorf("failed to delete subscription: %v", err)
+		return fmt.Errorf("failed to delete subscription feature %q: %v", feature, err)
 	}
 
 	return nil
 }
 
-// UpdateSubscription updates the subscription with the specied id and feature.
+// findNativeID returns the RSC native subscription id for the given cloud
+// account native subscription id. The cloud account subscription id is the
+// same as the Azure subscription id.
+func findNativeID(nativeSubscriptions []azure.NativeSubscription, nativeID uuid.UUID) (uuid.UUID, error) {
+	for _, subscription := range nativeSubscriptions {
+		if subscription.NativeID == nativeID {
+			return subscription.ID, nil
+		}
+	}
+
+	return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotFound)
+}
+
+// UpdateSubscription updates the subscription with the specified id and feature.
 func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature core.Feature, opts ...OptionFunc) error {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	var options options
 	for _, option := range opts {
@@ -470,7 +491,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 
 	account, err := a.Subscription(ctx, id, feature)
 	if err != nil {
-		return fmt.Errorf("failed to get subscription: %v", err)
+		return fmt.Errorf("failed to get subscription: %w", err)
 	}
 	if options.name == "" {
 		options.name = account.Name
@@ -482,7 +503,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 			return errors.New("invalid cloud account: no features")
 		}
 
-		err := azure.Wrap(a.gql).UpdateCloudAccount(ctx, account.ID, account.Features[0].Name, options.name,
+		err := azure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, account.Features[0].Name, options.name,
 			[]azure.Region{}, []azure.Region{})
 		if err != nil {
 			return fmt.Errorf("failed to update subscription: %v", err)
@@ -515,7 +536,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 			add = append(add, region)
 		}
 
-		err = azure.Wrap(a.gql).UpdateCloudAccount(ctx, account.ID, accountFeature.Name, options.name, add, remove)
+		err = azure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, accountFeature.Name, options.name, add, remove)
 		if err != nil {
 			return fmt.Errorf("failed to update subscription: %v", err)
 		}
@@ -529,14 +550,14 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 // Note that it's not possible to remove a service principal once it has been
 // set. Returns the application id of the service principal set.
 func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipalFunc, shouldReplace bool) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	config, err := principal(ctx)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to lookup principal: %v", err)
 	}
 
-	err = azure.Wrap(a.gql).SetCloudAccountCustomerAppCredentials(ctx, azure.PublicCloud, config.appID,
+	err = azure.Wrap(a.client).SetCloudAccountCustomerAppCredentials(ctx, azure.PublicCloud, config.appID,
 		config.tenantID, config.appName, config.tenantDomain, config.appSecret, shouldReplace)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to set customer app credentials: %v", err)
@@ -550,7 +571,7 @@ func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipal
 // possible to remove a service principal once it has been set. Returns the
 // application id of the service principal set.
 func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipalFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	return a.AddServicePrincipal(ctx, principal, true)
 }

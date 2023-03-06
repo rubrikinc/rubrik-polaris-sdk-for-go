@@ -21,6 +21,7 @@
 package token
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,21 +30,27 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// ServiceAccountSource holds all the information needed to obtain a token
-// for a service account.
+// ServiceAccountSource holds all the information needed to obtain a token for a
+// service account.
 type ServiceAccountSource struct {
-	logger       log.Logger
+	log          log.Logger
 	client       *http.Client
 	tokenURL     string
 	clientID     string
 	clientSecret string
 }
 
-// NewServiceAccountSource returns a new token source that uses the specified
-// client to obtain tokens.
+// Deprecated: The logger parameter will be dropped in the next release,
+// use NewServiceAccountSourceWithLogger.
 func NewServiceAccountSource(client *http.Client, accessTokenURL, clientID, clientSecret string, logger log.Logger) *ServiceAccountSource {
+	return NewServiceAccountSourceWithLogger(client, accessTokenURL, clientID, clientSecret, logger)
+}
+
+// NewServiceAccountSourceWithLogger returns a new token source that uses the
+// specified client to obtain tokens.
+func NewServiceAccountSourceWithLogger(client *http.Client, accessTokenURL, clientID, clientSecret string, logger log.Logger) *ServiceAccountSource {
 	return &ServiceAccountSource{
-		logger:       logger,
+		log:          logger,
 		client:       client,
 		tokenURL:     accessTokenURL,
 		clientID:     clientID,
@@ -52,7 +59,7 @@ func NewServiceAccountSource(client *http.Client, accessTokenURL, clientID, clie
 }
 
 // token returns a new token from the service account token source.
-func (src *ServiceAccountSource) token() (token, error) {
+func (src *ServiceAccountSource) token(ctx context.Context) (token, error) {
 	// Prepare the token request body.
 	body, err := json.Marshal(struct {
 		GrantType    string `json:"grant_type"`
@@ -63,7 +70,7 @@ func (src *ServiceAccountSource) token() (token, error) {
 		return token{}, fmt.Errorf("failed to marshal token request body: %v", err)
 	}
 
-	resp, err := Request(src.client, src.tokenURL, body, src.logger)
+	resp, err := RequestWithContext(ctx, src.client, src.tokenURL, body, src.log)
 	if err != nil {
 		return token{}, fmt.Errorf("failed to acquire service account access token: %v", err)
 	}

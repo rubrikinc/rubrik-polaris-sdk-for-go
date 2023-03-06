@@ -46,12 +46,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClient(ctx, polAccount, polaris_log.NewStandardLogger())
+	client, err := polaris.NewClientWithLogger(polAccount, polaris_log.NewStandardLogger())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	azureClient := azure.NewAPI(client.GQL)
+	azureClient := azure.Wrap(client)
 
 	// List Azure permissions needed for features.
 	features := []core.Feature{core.FeatureCloudNativeProtection}

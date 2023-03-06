@@ -61,22 +61,6 @@ func Managed(region, subnetID string) ExoConfigFunc {
 	}
 }
 
-// Deprecated: Use Managed.
-func Unmanaged(region, subnetID string) ExoConfigFunc {
-	return func(ctx context.Context) (azure.ExocomputeConfigCreate, error) {
-		r, err := azure.ParseRegion(region)
-		if err != nil {
-			return azure.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
-		}
-
-		return azure.ExocomputeConfigCreate{
-			Region:            r,
-			SubnetID:          subnetID,
-			IsManagedByRubrik: false,
-		}, nil
-	}
-}
-
 // toExocomputeConfig converts an polaris/graphql/azure exocompute config to an
 // polaris/azure exocompute config.
 func toExocomputeConfig(config azure.ExocomputeConfig) ExocomputeConfig {
@@ -91,9 +75,9 @@ func toExocomputeConfig(config azure.ExocomputeConfig) ExocomputeConfig {
 // ExocomputeConfig returns the exocompute config with the specified exocompute
 // config id.
 func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConfig, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	configsForAccounts, err := azure.Wrap(a.gql).ExocomputeConfigs(ctx, "")
+	configsForAccounts, err := azure.Wrap(a.client).ExocomputeConfigs(ctx, "")
 	if err != nil {
 		return ExocomputeConfig{}, fmt.Errorf("failed to get exocompute configs: %v", err)
 	}
@@ -112,14 +96,14 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 // ExocomputeConfigs returns all exocompute configs for the account with the
 // specified id.
 func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]ExocomputeConfig, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	nativeID, err := a.toNativeID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get native id: %v", err)
 	}
 
-	configsForAccounts, err := azure.Wrap(a.gql).ExocomputeConfigs(ctx, nativeID.String())
+	configsForAccounts, err := azure.Wrap(a.client).ExocomputeConfigs(ctx, nativeID.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get exocompute configs: %v", err)
 	}
@@ -137,7 +121,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]Exocompu
 // AddExocomputeConfig adds the exocompute config to the account with the
 // specified id. Returns the id of the added exocompute config.
 func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config ExoConfigFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	exoConfig, err := config(ctx)
 	if err != nil {
@@ -149,7 +133,7 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 		return uuid.Nil, fmt.Errorf("failed to get cloud account id: %v", err)
 	}
 
-	exo, err := azure.Wrap(a.gql).AddCloudAccountExocomputeConfigurations(ctx, accountID, exoConfig)
+	exo, err := azure.Wrap(a.client).AddCloudAccountExocomputeConfigurations(ctx, accountID, exoConfig)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create exocompute config: %v", err)
 	}
@@ -160,9 +144,9 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 // RemoveExocomputeConfig removes the exocompute config with the specified
 // exocompute config id.
 func (a API) RemoveExocomputeConfig(ctx context.Context, id uuid.UUID) error {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	err := azure.Wrap(a.gql).DeleteCloudAccountExocomputeConfigurations(ctx, id)
+	err := azure.Wrap(a.client).DeleteCloudAccountExocomputeConfigurations(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to remove exocompute config: %v", err)
 	}

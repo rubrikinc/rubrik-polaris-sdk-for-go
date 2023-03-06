@@ -18,24 +18,22 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package polaris contains code to interact with the Polaris platform on a
-// high level. Relies on the graphql package for low level queries.
+// Package polaris contains code to interact with the RSC platform on a high
+// level. Relies on the graphql package for low level queries.
 package polaris
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/token"
 )
 
 const (
@@ -46,25 +44,10 @@ const (
 	DefaultServiceAccountFile = "~/.rubrik/polaris-service-account.json"
 )
 
-// Client is used to make calls to the Polaris platform.
+// Client is used to make calls to the RSC platform.
 type Client struct {
 	GQL *graphql.Client
-	Log log.Logger
-}
-
-// Deprecated: use aws.NewAPI(client.GQL) instead.
-func (c *Client) AWS() aws.API {
-	return aws.NewAPI(c.GQL)
-}
-
-// Deprecated: use azure.NewAPI(client.GQL) instead.
-func (c *Client) Azure() azure.API {
-	return azure.NewAPI(c.GQL)
-}
-
-// Deprecated: use gcp.NewAPI(client.GQL) instead.
-func (c *Client) GCP() gcp.API {
-	return gcp.NewAPI(c.GQL)
+	Log log.Logger // Deprecated: use the logger passed in to NewClientWithLogger.
 }
 
 // Account represents a Polaris account. Implemented by UserAccount and
@@ -73,30 +56,63 @@ type Account interface {
 	isAccount()
 }
 
-// NewClient returns a new Client from the specified Account. The log level of
-// the given logger can be changed at runtime using the environment variable
-// RUBRIK_POLARIS_LOGLEVEL.
+// Deprecated: The context and the logger parameters will be dropped in the next
+// release, use NewClientWithLogger
 func NewClient(ctx context.Context, account Account, logger log.Logger) (*Client, error) {
-	if serviceAccount, ok := account.(*ServiceAccount); ok {
-		return newClientFromServiceAccount(ctx, serviceAccount, logger)
-	}
-
-	if userAccount, ok := account.(*UserAccount); ok {
-		return newClientFromUserAccount(ctx, userAccount, logger)
-	}
-
-	return nil, errors.New("invalid account type")
+	return NewClientWithLogger(account, logger)
 }
 
-// newClientFromUserAccount returns a new Client from the specified
-// UserAccount. The log level of the given logger can be changed at runtime
-// using the environment variable RUBRIK_POLARIS_LOGLEVEL.
-func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger log.Logger) (*Client, error) {
+// NewClientWithLogger returns a new Client for the specified Account.
+func NewClientWithLogger(account Account, logger log.Logger) (*Client, error) {
+	var client *Client
+
+	var err error
+	switch account := account.(type) {
+	case *UserAccount:
+		client, err = newClientFromUserAccount(account, logger)
+	case *ServiceAccount:
+		client, err = newClientFromServiceAccount(account, logger)
+	default:
+		err = errors.New("invalid account type")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to create client: %v", err)
+	}
+
+	return client, nil
+}
+
+// SetLogger sets the logger to use.
+func (c *Client) SetLogger(logger log.Logger) {
+	c.GQL.SetLogger(logger)
+}
+
+// SetLogLevelFromEnv sets the log level of the logger to the log level
+// specified in the RUBRIK_POLARIS_LOGLEVEL environment variable.
+func SetLogLevelFromEnv(logger log.Logger) error {
+	level := os.Getenv("RUBRIK_POLARIS_LOGLEVEL")
+	if level == "" {
+		return nil
+	}
+	if strings.ToLower(level) == "off" {
+		level = "fatal"
+	}
+
+	l, err := log.ParseLogLevel(level)
+	if err != nil {
+		return fmt.Errorf("failed to parse log level: %v", err)
+	}
+	logger.SetLogLevel(l)
+
+	return nil
+}
+
+// newClientFromUserAccount returns a new Client from the specified UserAccount.
+func newClientFromUserAccount(account *UserAccount, logger log.Logger) (*Client, error) {
 	apiURL := account.URL
 	if apiURL == "" {
 		apiURL = fmt.Sprintf("https://%s.my.rubrik.com/api", account.Name)
 	}
-
 	if _, err := url.ParseRequestURI(apiURL); err != nil {
 		return nil, fmt.Errorf("invalid url: %v", err)
 	}
@@ -107,33 +123,10 @@ func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger 
 		return nil, errors.New("invalid password")
 	}
 
-	if level := os.Getenv("RUBRIK_POLARIS_LOGLEVEL"); level != "" {
-		if strings.ToLower(level) != "off" {
-			l, err := log.ParseLogLevel(level)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse log level: %v", err)
-			}
-			logger.SetLogLevel(l)
-		} else {
-			logger = &log.DiscardLogger{}
-		}
-	}
-
-	logger.Printf(log.Info, "Polaris API URL: %s", apiURL)
-
-	// The gql client is initialized without a version. Query cluster to find
-	// out the current version.
-	gqlClient := graphql.NewClientFromLocalUser("custom", apiURL, account.Username, account.Password, logger)
-	version, err := core.Wrap(gqlClient).DeploymentVersion(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get deployment version: %v", err)
-	}
-	gqlClient.Version = version
-
-	logger.Printf(log.Info, "Polaris version: %s", version)
+	tokenSource := token.NewUserSourceWithLogger(http.DefaultClient, apiURL, account.Username, account.Password, logger)
 
 	client := &Client{
-		GQL: gqlClient,
+		GQL: graphql.NewClientWithLogger(apiURL, tokenSource, logger),
 		Log: logger,
 	}
 
@@ -141,9 +134,8 @@ func newClientFromUserAccount(ctx context.Context, account *UserAccount, logger 
 }
 
 // newClientFromServiceAccount returns a new Client from the specified
-// ServiceAccount. The log level of the given logger can be changed at runtime
-// using the environment variable RUBRIK_POLARIS_LOGLEVEL.
-func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, logger log.Logger) (*Client, error) {
+// ServiceAccount.
+func newClientFromServiceAccount(account *ServiceAccount, logger log.Logger) (*Client, error) {
 	if account.Name == "" {
 		return nil, errors.New("invalid name")
 	}
@@ -157,18 +149,6 @@ func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, l
 		return nil, fmt.Errorf("invalid access token uri: %v", err)
 	}
 
-	if level := os.Getenv("RUBRIK_POLARIS_LOGLEVEL"); level != "" {
-		if strings.ToLower(level) != "off" {
-			l, err := log.ParseLogLevel(level)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse log level: %v", err)
-			}
-			logger.SetLogLevel(l)
-		} else {
-			logger = &log.DiscardLogger{}
-		}
-	}
-
 	// Extract the API URL from the token access URI.
 	i := strings.LastIndex(account.AccessTokenURI, "/")
 	if i < 0 {
@@ -176,29 +156,13 @@ func newClientFromServiceAccount(ctx context.Context, account *ServiceAccount, l
 	}
 	apiURL := account.AccessTokenURI[:i]
 
-	logger.Printf(log.Info, "Polaris API URL: %s", apiURL)
-
-	// The gql client is initialized without a version. Query cluster to find
-	// out the current version.
-	gqlClient := graphql.NewClientFromServiceAccount("custom", apiURL, account.AccessTokenURI, account.ClientID,
-		account.ClientSecret, logger)
-	version, err := core.Wrap(gqlClient).DeploymentVersion(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get deployment version: %v", err)
-	}
-	gqlClient.Version = version
-
-	logger.Printf(log.Info, "Polaris version: %s", version)
+	tokenSource := token.NewServiceAccountSourceWithLogger(
+		http.DefaultClient, account.AccessTokenURI, account.ClientID, account.ClientSecret, logger)
 
 	client := &Client{
-		GQL: gqlClient,
+		GQL: graphql.NewClientWithLogger(apiURL, tokenSource, logger),
 		Log: logger,
 	}
 
 	return client, nil
-}
-
-// Deprecated: use Client.GQL instead.
-func (c *Client) GQLClient() *graphql.Client {
-	return c.GQL
 }
