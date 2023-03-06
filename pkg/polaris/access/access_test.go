@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 		// RUBRIK_POLARIS_LOGLEVEL can be used to override this.
 		logger := log.NewStandardLogger()
 		logger.SetLogLevel(log.Info)
-		if err := polaris.LogLevelFromEnv(logger); err != nil {
+		if err := polaris.SetLogLevelFromEnv(logger); err != nil {
 			fmt.Printf("failed to get log level from env: %v\n", err)
 		}
 

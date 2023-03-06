@@ -56,5 +56,9 @@ func (e GQLError) isError() bool {
 }
 
 func (e GQLError) Error() string {
-	return e.Errors[0].Message
+	if len(e.Errors) > 0 {
+		return e.Errors[0].Message
+	}
+
+	return "Unknown GraphQL error"
 }

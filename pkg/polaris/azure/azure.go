@@ -440,7 +440,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 		if state != core.TaskChainSucceeded {
 			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
 		}
-	case account.Features[0].Status != core.StatusDisabled:
+	case account.Features[0].Name == core.FeatureExocompute && account.Features[0].Status != core.StatusDisabled:
 		jobID, err := azure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, account.Features[0].Name)
 		if err != nil {
 			return fmt.Errorf("failed to disable subscription feature %q: %v", feature, err)

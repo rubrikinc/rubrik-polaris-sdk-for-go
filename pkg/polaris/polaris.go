@@ -87,9 +87,9 @@ func (c *Client) SetLogger(logger log.Logger) {
 	c.GQL.SetLogger(logger)
 }
 
-// LogLevelFromEnv sets the log level of the logger to the log level specified
-// in the RUBRIK_POLARIS_LOGLEVEL environment variable.
-func LogLevelFromEnv(logger log.Logger) error {
+// SetLogLevelFromEnv sets the log level of the logger to the log level
+// specified in the RUBRIK_POLARIS_LOGLEVEL environment variable.
+func SetLogLevelFromEnv(logger log.Logger) error {
 	level := os.Getenv("RUBRIK_POLARIS_LOGLEVEL")
 	if level == "" {
 		return nil
