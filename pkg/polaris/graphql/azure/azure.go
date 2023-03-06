@@ -212,15 +212,16 @@ func ParseRegions(regions []string) ([]Region, error) {
 	return regs, nil
 }
 
-// API wraps around GraphQL clients to give them the Polaris Azure API.
+// API wraps around GraphQL clients to give them the RSC Azure API.
 type API struct {
-	Version string
+	Version string // Deprecated: use GQL.DeploymentVersion
 	GQL     *graphql.Client
+	log     log.Logger
 }
 
 // Wrap the GraphQL client in the Azure API.
 func Wrap(gql *graphql.Client) API {
-	return API{Version: gql.Version, GQL: gql}
+	return API{GQL: gql, log: gql.Log()}
 }
 
 // SetCloudAccountCustomerAppCredentials sets the credentials for the customer
@@ -228,15 +229,9 @@ func Wrap(gql *graphql.Client) API {
 // app already has a service principal, it will be replaced. If the tenant
 // domain is empty, set it for all the tenants of the customer.
 func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cloud, appID, appTenantID uuid.UUID, appName, appTenantDomain, appSecretKey string, shouldReplace bool) error {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := setAzureCloudAccountCustomerAppCredentialsQuery
-	if graphql.VersionOlderThan(a.Version, "master-45693", "v20220301") {
-		query = setAzureCloudAccountCustomerAppCredentialsV0Query
-	} else if graphql.VersionOlderThan(a.Version, "master-51681", "v20221102") {
-		query = setAzureCloudAccountCustomerAppCredentialsV1Query
-	}
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.Request(ctx, setAzureCloudAccountCustomerAppCredentialsQuery, struct {
 		Cloud         Cloud     `json:"azureCloudType"`
 		ID            uuid.UUID `json:"appId"`
 		Name          string    `json:"appName"`
@@ -246,10 +241,9 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 		ShouldReplace bool      `json:"shouldReplace"`
 	}{Cloud: cloud, ID: appID, Name: appName, TenantID: appTenantID, TenantDomain: appTenantDomain, SecretKey: appSecretKey, ShouldReplace: shouldReplace})
 	if err != nil {
-		return fmt.Errorf("failed to request SetCloudAccountCustomerAppCredentials: %v", err)
+		return fmt.Errorf("failed to request setAzureCloudAccountCustomerAppCredentialsQuery: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "%s(%v, %v, %v, \"<REDACTED>\", %v, %v, %v): %s", graphql.QueryName(query), cloud,
+	a.log.Printf(log.Debug, "setAzureCloudAccountCustomerAppCredentialsQuery(%v, %v, %v, \"<REDACTED>\", %v, %v, %v): %s", cloud,
 		appID, appName, appTenantID, appTenantDomain, shouldReplace, string(buf))
 
 	var payload struct {
@@ -258,7 +252,7 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal SetCloudAccountCustomerAppCredentials: %v", err)
+		return fmt.Errorf("failed to unmarshal setAzureCloudAccountCustomerAppCredentialsQuery: %v", err)
 	}
 	if !payload.Data.Result {
 		return errors.New("set app credentials failed")

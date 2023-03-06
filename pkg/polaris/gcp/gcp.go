@@ -18,7 +18,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package gcp provides a high level interface to the GCP part of the Polaris
+// Package gcp provides a high level interface to the GCP part of the RSC
 // platform.
 package gcp
 
@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -37,16 +38,20 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// API for Google Cloud Platform.
+// API for GCP project management.
 type API struct {
-	Version string // Deprecated
-	gql     *graphql.Client
+	client *graphql.Client
+	log    log.Logger
 }
 
-// NewAPI returns a new API instance. Note that this is a very cheap call to
-// make.
+// Deprecated: use Wrap instead.
 func NewAPI(gql *graphql.Client) API {
-	return API{Version: gql.Version, gql: gql}
+	return API{client: gql, log: gql.Log()}
+}
+
+// Wrap the RSC client in the azure API.
+func Wrap(client *polaris.Client) API {
+	return API{client: client.GQL, log: client.GQL.Log()}
 }
 
 // CloudAccount for Google Cloud Platform projects. If DefaultServiceAccount is
@@ -78,8 +83,8 @@ type Feature struct {
 	Status core.Status
 }
 
-// Polaris does not support the AllFeatures for GCP cloud accounts. We work
-// around this by translating FeatureAll to the following list of features.
+// RSC does not support the AllFeatures for GCP cloud accounts. We work around
+// this by translating FeatureAll to the following list of features.
 var allFeatures = []core.Feature{
 	core.FeatureCloudAccounts,
 	core.FeatureCloudNativeProtection,
@@ -89,9 +94,9 @@ var allFeatures = []core.Feature{
 // projects return all projects for the given feature and filter. Note that the
 // organization name of the cloud account is not set.
 func (a API) projects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	accountsWithFeature, err := gcp.Wrap(a.gql).CloudAccountProjectsByFeature(ctx, feature, filter)
+	accountsWithFeature, err := gcp.Wrap(a.client).CloudAccountProjectsByFeature(ctx, feature, filter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get projects: %v", err)
 	}
@@ -117,7 +122,7 @@ func (a API) projects(ctx context.Context, feature core.Feature, filter string) 
 // projectsAllFeatures return all projects with all features for the given
 // filter. Note that the organization name of the cloud account is not set.
 func (a API) projectsAllFeatures(ctx context.Context, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	accountMap := make(map[uuid.UUID]*CloudAccount)
 	for _, feature := range allFeatures {
@@ -149,7 +154,7 @@ func (a API) projectsAllFeatures(ctx context.Context, filter string) ([]CloudAcc
 
 // Project returns the project with specified id.
 func (a API) Project(ctx context.Context, id IdentityFunc, feature core.Feature) (CloudAccount, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if id == nil {
 		return CloudAccount{}, errors.New("id is not allowed to be nil")
@@ -205,7 +210,7 @@ func (a API) Project(ctx context.Context, id IdentityFunc, feature core.Feature)
 // The filter can be used to search for project id, project name and project
 // number.
 func (a API) Projects(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	var accounts []CloudAccount
 	var err error
@@ -223,7 +228,7 @@ func (a API) Projects(ctx context.Context, feature core.Feature, filter string) 
 	// it blank. This can happen when RemoveProject times out and gets re-run
 	// with the native project already disabled.
 	for i := range accounts {
-		natives, err := gcp.Wrap(a.gql).NativeProjects(ctx, strconv.FormatInt(accounts[i].ProjectNumber, 10))
+		natives, err := gcp.Wrap(a.client).NativeProjects(ctx, strconv.FormatInt(accounts[i].ProjectNumber, 10))
 		if err != nil {
 			return nil, fmt.Errorf("failed to get native projects: %v", err)
 		}
@@ -241,12 +246,12 @@ func (a API) Projects(ctx context.Context, feature core.Feature, filter string) 
 	return accounts, nil
 }
 
-// AddProject adds the specified project to Polaris for the given feature.
-// If name or organization aren't given as a options they are derived from
-// information in the cloud. The result can vary slightly depending on
-// permissions. Returns the Polaris cloud account id of the added project.
+// AddProject adds the specified project to RSC for the given feature. If name
+// or organization aren't given as an options they are derived from information
+// in the cloud. The result can vary slightly depending on permissions. Returns
+// the RSC cloud account id of the added project.
 func (a API) AddProject(ctx context.Context, project ProjectFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if feature != core.FeatureCloudNativeProtection {
 		return uuid.Nil, fmt.Errorf("feature not supported on gcp: %v", core.FormatFeature(feature))
@@ -274,7 +279,7 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, feature core.F
 	}
 
 	// If we got a service account we check that it has all the permissions
-	// required by Polaris.
+	// required by RSC.
 	var jwtConfig string
 	if config.creds != nil {
 		err = a.gcpCheckPermissions(ctx, config.creds, config.id, []core.Feature{feature})
@@ -285,7 +290,7 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, feature core.F
 		jwtConfig = string(config.creds.JSON)
 	}
 
-	err = gcp.Wrap(a.gql).CloudAccountAddManualAuthProject(ctx, config.id, config.name, config.number,
+	err = gcp.Wrap(a.client).CloudAccountAddManualAuthProject(ctx, config.id, config.name, config.number,
 		config.orgName, jwtConfig, feature)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to add project: %v", err)
@@ -300,12 +305,12 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, feature core.F
 	return account.ID, nil
 }
 
-// RemoveProject removes the project with the specified id from Polaris for the
+// RemoveProject removes the project with the specified id from RSC for the
 // given feature. If deleteSnapshots is true the snapshots are deleted otherwise
 // they are kept. Note that snapshots are only considered to be deleted when
 // removing the cloud native protection feature.
 func (a API) RemoveProject(ctx context.Context, id IdentityFunc, feature core.Feature, deleteSnapshots bool) error {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	account, err := a.Project(ctx, id, feature)
 	if err != nil {
@@ -316,9 +321,9 @@ func (a API) RemoveProject(ctx context.Context, id IdentityFunc, feature core.Fe
 	}
 
 	if account.Features[0].Name == core.FeatureCloudNativeProtection && account.Features[0].Status != core.StatusDisabled {
-		// Lookup the Polaris Native ID from the GCP project number. The Polaris
-		// Native Account ID is needed to delete the Polaris Native Project.
-		natives, err := gcp.Wrap(a.gql).NativeProjects(ctx, strconv.FormatInt(account.ProjectNumber, 10))
+		// Lookup the RSC Native ID from the GCP project number. The RSC Native
+		// Account ID is needed to delete the RSC Native Project.
+		natives, err := gcp.Wrap(a.client).NativeProjects(ctx, strconv.FormatInt(account.ProjectNumber, 10))
 		if err != nil {
 			return fmt.Errorf("failed to get native projects: %v", err)
 		}
@@ -335,12 +340,12 @@ func (a API) RemoveProject(ctx context.Context, id IdentityFunc, feature core.Fe
 			return fmt.Errorf("native project %w", graphql.ErrNotFound)
 		}
 
-		jobID, err := gcp.Wrap(a.gql).NativeDisableProject(ctx, nativeID, deleteSnapshots)
+		jobID, err := gcp.Wrap(a.client).NativeDisableProject(ctx, nativeID, deleteSnapshots)
 		if err != nil {
 			return fmt.Errorf("failed to disable native project: %v", err)
 		}
 
-		state, err := core.Wrap(a.gql).WaitForTaskChain(ctx, jobID, 10*time.Second)
+		state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
 		if err != nil {
 			return fmt.Errorf("failed to wait for task chain: %v", err)
 		}
@@ -349,7 +354,7 @@ func (a API) RemoveProject(ctx context.Context, id IdentityFunc, feature core.Fe
 		}
 	}
 
-	err = gcp.Wrap(a.gql).CloudAccountDeleteProject(ctx, account.ID)
+	err = gcp.Wrap(a.client).CloudAccountDeleteProject(ctx, account.ID)
 	if err != nil {
 		return fmt.Errorf("failed to delete project: %v", err)
 	}
@@ -360,9 +365,9 @@ func (a API) RemoveProject(ctx context.Context, id IdentityFunc, feature core.Fe
 // ServiceAccount returns the default service account name. If no default
 // service account has been set an empty string is returned.
 func (a API) ServiceAccount(ctx context.Context) (string, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	account, err := gcp.Wrap(a.gql).DefaultCredentialsServiceAccount(ctx)
+	account, err := gcp.Wrap(a.client).DefaultCredentialsServiceAccount(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to get default service account: %v", err)
 	}
@@ -377,7 +382,7 @@ func (a API) ServiceAccount(ctx context.Context) (string, error) {
 // option does nothing. Note that it's not possible to remove a service account
 // once it has been set.
 func (a API) SetServiceAccount(ctx context.Context, project ProjectFunc, opts ...OptionFunc) error {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	if project == nil {
 		return errors.New("project is not allowed to be nil")
@@ -400,7 +405,7 @@ func (a API) SetServiceAccount(ctx context.Context, project ProjectFunc, opts ..
 		config.name = options.name
 	}
 
-	err = gcp.Wrap(a.gql).SetDefaultServiceAccount(ctx, config.name, string(config.creds.JSON))
+	err = gcp.Wrap(a.client).SetDefaultServiceAccount(ctx, config.name, string(config.creds.JSON))
 	if err != nil {
 		return fmt.Errorf("failed to set default service account: %v", err)
 	}

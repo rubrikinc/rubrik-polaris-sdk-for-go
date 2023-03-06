@@ -28,7 +28,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -55,21 +54,15 @@ type ExocomputeConfigsForAccount struct {
 // ExocomputeConfigs returns all exocompute configs matching the specified
 // filter. The filter can be used to search for account name or account id.
 func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigsForAccount, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := allAzureExocomputeConfigsInAccountQuery
-	if graphql.VersionOlderThan(a.Version, "master-52083", "v20221116") {
-		query = allAzureExocomputeConfigsInAccountV0Query
-	}
-
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.Request(ctx, allAzureExocomputeConfigsInAccountQuery, struct {
 		Filter string `json:"azureExocomputeSearchQuery"`
 	}{Filter: filter})
 	if err != nil {
-		return nil, fmt.Errorf("failed to request ExocomputeConfigs: %v", err)
+		return nil, fmt.Errorf("failed to request allAzureExocomputeConfigsInAccount: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "%s(%q): %s", graphql.QueryName(query), filter, string(buf))
+	a.log.Printf(log.Debug, "allAzureExocomputeConfigsInAccount(%q): %s", filter, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -77,13 +70,13 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal ExocomputeConfigs: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal allAzureExocomputeConfigsInAccount: %v", err)
 	}
+
 	return payload.Data.Result, nil
 }
 
-// ExocomputeConfigCreate represents an exocompute config to be created by
-// Polaris.
+// ExocomputeConfigCreate represents an exocompute config to be created by RSC.
 type ExocomputeConfigCreate struct {
 	Region   Region `json:"region"`
 	SubnetID string `json:"subnetNativeId"`
@@ -93,42 +86,19 @@ type ExocomputeConfigCreate struct {
 }
 
 // AddCloudAccountExocomputeConfigurations creates a new exocompute config for
-// the account with the specified Polaris cloud account id. Returns the created
+// the account with the specified RSC cloud account id. Returns the created
 // exocompute config
 func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := addAzureCloudAccountExocomputeConfigurationsQuery
-	var vars interface{} = struct {
+	buf, err := a.GQL.Request(ctx, addAzureCloudAccountExocomputeConfigurationsQuery, struct {
 		ID      uuid.UUID                `json:"cloudAccountId"`
 		Configs []ExocomputeConfigCreate `json:"azureExocomputeRegionConfigs"`
-	}{ID: id, Configs: []ExocomputeConfigCreate{config}}
-
-	if graphql.VersionOlderThan(a.Version, "master-52083", "v20221116") {
-		query = addAzureCloudAccountExocomputeConfigurationsV0Query
-		// IsManagedByRubrik was renamed in master-52083 so until that version
-		// is deployed we use a legacy vars struct with the old json tag.
-		type legacyConfig struct {
-			Region   Region `json:"region"`
-			SubnetID string `json:"subnetNativeId"`
-
-			// When true Rubrik will manage the security groups.
-			IsManagedByRubrik bool `json:"isPolarisManaged"`
-		}
-		vars = struct {
-			ID      uuid.UUID      `json:"cloudAccountId"`
-			Configs []legacyConfig `json:"azureExocomputeRegionConfigs"`
-		}{
-			ID:      id,
-			Configs: []legacyConfig{(legacyConfig)(config)},
-		}
-	}
-	buf, err := a.GQL.Request(ctx, query, vars)
+	}{ID: id, Configs: []ExocomputeConfigCreate{config}})
 	if err != nil {
-		return ExocomputeConfig{}, fmt.Errorf("failed to request AddCloudAccountExocomputeConfigurations: %v", err)
+		return ExocomputeConfig{}, fmt.Errorf("failed to request addAzureCloudAccountExocomputeConfigurations: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "%s(%q, %v): %s", graphql.QueryName(query), id, config, string(buf))
+	a.log.Printf(log.Debug, "addAzureCloudAccountExocomputeConfigurations(%q, %v): %s", id, config, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -138,7 +108,7 @@ func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uui
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return ExocomputeConfig{}, fmt.Errorf("failed to unmarshal AddCloudAccountExocomputeConfigurations: %v", err)
+		return ExocomputeConfig{}, fmt.Errorf("failed to unmarshal addAzureCloudAccountExocomputeConfigurations: %v", err)
 	}
 	if len(payload.Data.Result.Configs) != 1 {
 		return ExocomputeConfig{}, errors.New("expected a single result")
@@ -148,18 +118,17 @@ func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uui
 }
 
 // DeleteCloudAccountExocomputeConfigurations deletes the exocompute config
-// with the specified Polaris exocompute config id.
+// with the specified RSC exocompute config id.
 func (a API) DeleteCloudAccountExocomputeConfigurations(ctx context.Context, id uuid.UUID) error {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, deleteAzureCloudAccountExocomputeConfigurationsQuery, struct {
 		IDs []uuid.UUID `json:"cloudAccountIds"`
 	}{IDs: []uuid.UUID{id}})
 	if err != nil {
-		return fmt.Errorf("failed to request DeleteCloudAccountExocomputeConfigurations: %v", err)
+		return fmt.Errorf("failed to request deleteAzureCloudAccountExocomputeConfigurations: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "deleteAzureCloudAccountExocomputeConfigurations(%q): %s", id, string(buf))
+	a.log.Printf(log.Debug, "deleteAzureCloudAccountExocomputeConfigurations(%q): %s", id, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -170,7 +139,7 @@ func (a API) DeleteCloudAccountExocomputeConfigurations(ctx context.Context, id 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal DeleteCloudAccountExocomputeConfigurations: %v", err)
+		return fmt.Errorf("failed to unmarshal deleteAzureCloudAccountExocomputeConfigurations: %v", err)
 	}
 	if ids := payload.Data.Result.SuccessIDs; len(ids) == 1 && ids[0] == id {
 		return nil

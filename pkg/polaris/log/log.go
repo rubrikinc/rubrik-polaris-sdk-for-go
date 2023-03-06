@@ -128,7 +128,7 @@ func (l *StandardLogger) SetLogLevel(level LogLevel) {
 
 // Print writes to the standard logger. Arguments are handled in the manner of
 // fmt.Print.
-func (l StandardLogger) Print(level LogLevel, args ...interface{}) {
+func (l *StandardLogger) Print(level LogLevel, args ...interface{}) {
 	if level < l.level {
 		return
 	}
@@ -150,7 +150,7 @@ func (l StandardLogger) Print(level LogLevel, args ...interface{}) {
 
 // Printf writes to the standard logger. Arguments are handled in the manner of
 // fmt.Print.
-func (l StandardLogger) Printf(level LogLevel, format string, args ...interface{}) {
+func (l *StandardLogger) Printf(level LogLevel, format string, args ...interface{}) {
 	if level < l.level {
 		return
 	}

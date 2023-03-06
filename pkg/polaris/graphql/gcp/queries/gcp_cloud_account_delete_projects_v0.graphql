@@ -1,7 +1,0 @@
-mutation RubrikPolarisSDKRequest($nativeProtectionProjectUuids: [UUID!]!) {
-    gcpCloudAccountDeleteProjects(nativeProtectionProjectUuids: $nativeProtectionProjectUuids, sharedVpcHostProjectUuids: [], cloudAccountsProjectUuids: [], skipResourceDeletion: true) {
-        projectUuid
-        success
-        error
-    }
-}

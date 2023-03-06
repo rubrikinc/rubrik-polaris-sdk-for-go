@@ -18,11 +18,11 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package token contains functions to request a token from the Polaris
-// platform.
+// Package token contains functions to request a token from the RSC platform.
 package token
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -72,5 +72,5 @@ func fromJWT(text string) (token, error) {
 
 // Source is used to obtain access tokens from a remote source.
 type Source interface {
-	token() (token, error)
+	token(ctx context.Context) (token, error)
 }

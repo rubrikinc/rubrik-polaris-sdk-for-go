@@ -24,15 +24,19 @@
 // management GraphQL queries provided by the RSC platform.
 package access
 
-import "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+import (
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+)
 
 // API wraps around GraphQL clients to give them the RSC access API.
 type API struct {
-	Version string
+	Version string // Deprecated: use GQL.DeploymentVersion
 	GQL     *graphql.Client
+	log     log.Logger
 }
 
 // Wrap the GraphQL client in the access API.
 func Wrap(gql *graphql.Client) API {
-	return API{Version: gql.Version, GQL: gql}
+	return API{GQL: gql, log: gql.Log()}
 }

@@ -1,6 +1,0 @@
-mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $features: [CloudAccountFeatureEnum!]!) {
-    result: prepareFeatureUpdateForAwsCloudAccount(input: {cloudAccountId: $cloudAccountId, features: $features}) {
-        cloudFormationUrl
-        templateUrl
-    }
-}

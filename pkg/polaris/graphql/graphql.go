@@ -18,9 +18,9 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package graphql provides direct access to the Polaris GraphQL API. Can be
-// used to execute both raw queries and prepared low level queries used by the
-// high level part of the SDK.
+// Package graphql provides direct access to the RSC GraphQL API. Can be used
+// to execute both raw queries and prepared low level queries used by the high
+// level part of the SDK.
 //
 // The graphql package tries to stay as close as possible to the GraphQL API:
 //
@@ -49,80 +49,53 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/token"
 )
 
-// GQLError is returned by RSC in the body of a response as a JSON document when
-// certain types of GraphQL errors occur.
-type GQLError struct {
-	Data   interface{} `json:"data"`
-	Errors []struct {
-		Message   string        `json:"message"`
-		Path      []interface{} `json:"path"`
-		Locations []struct {
-			Line   int `json:"line"`
-			Column int `json:"column"`
-		} `json:"locations"`
-		Extensions struct {
-			Code  int `json:"code"`
-			Trace struct {
-				Operation string `json:"operation"`
-				TraceID   string `json:"traceId"`
-				SpanID    string `json:"spanId"`
-			} `json:"trace"`
-		} `json:"extensions"`
-	} `json:"errors"`
-}
-
-// isError determines if the gqlError unmarshalled from a JSON document
-// represents an error or not.
-func (e GQLError) isError() bool {
-	return len(e.Errors) > 0
-}
-
-func (e GQLError) Error() string {
-	return e.Errors[0].Message
-}
-
 // Client is used to make GraphQL calls to the Polaris platform.
 type Client struct {
-	Version string
-	app     string
+	Version string // Deprecated: use DeploymentVersion.
 	gqlURL  string
 	client  *http.Client
 	log     log.Logger
 }
 
-// NewClientFromLocalUser returns a new Client with the specified configuration.
-func NewClientFromLocalUser(app, apiURL, username, password string, logger log.Logger) *Client {
-	tokenSource := token.NewLocalUserSource(http.DefaultClient, apiURL, username, password, logger)
-
-	return &Client{
-		app:    app,
-		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
-		client: &http.Client{
-			Transport: token.NewRoundTripper(http.DefaultTransport, tokenSource),
-		},
-		log: logger,
-	}
+// NewClient returns a new Client for the specified API URL.
+func NewClient(apiURL string, tokenSource token.Source) *Client {
+	return NewClientWithLogger(apiURL, tokenSource, &log.DiscardLogger{})
 }
 
-// NewClientFromServiceAccount returns a new Client with the specified
-// configuration.
-func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSecret string, logger log.Logger) *Client {
-	tokenSource := token.NewServiceAccountSource(http.DefaultClient, accessTokenURI, clientID, clientSecret, logger)
+// NewClientWithLogger returns a new Client for the specified API URL, logging
+// to the given logger.
+func NewClientWithLogger(apiURL string, tokenSource token.Source, logger log.Logger) *Client {
+	logger.Printf(log.Info, "Polaris API URL: %s", apiURL)
 
-	return &Client{
-		app:    app,
-		gqlURL: fmt.Sprintf("%s/graphql", apiURL),
+	client := &Client{
+		gqlURL: apiURL + "/graphql",
 		client: &http.Client{
 			Transport: token.NewRoundTripper(http.DefaultTransport, tokenSource),
 		},
 		log: logger,
 	}
+
+	return client
+}
+
+// Deprecated: use NewClientWithLogger.
+func NewClientFromLocalUser(app, apiURL, username, password string, logger log.Logger) *Client {
+	tokenSource := token.NewUserSourceWithLogger(http.DefaultClient, apiURL, username, password, logger)
+
+	return NewClient(apiURL, tokenSource)
+}
+
+// Deprecated: use NewClientWithLogger.
+func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSecret string, logger log.Logger) *Client {
+	tokenSource := token.NewServiceAccountSourceWithLogger(http.DefaultClient, accessTokenURI, clientID, clientSecret, logger)
+
+	return NewClient(apiURL, tokenSource)
 }
 
 // NewTestClient returns a new Client intended to be used by unit tests.
 func NewTestClient(username, password string, logger log.Logger) (*Client, *testnet.TestListener) {
 	testClient, listener := testnet.NewPipeNet()
-	tokenSource := token.NewLocalUserSource(testClient, "http://test/api", username, password, logger)
+	tokenSource := token.NewUserSourceWithLogger(testClient, "http://test/api", username, password, logger)
 
 	client := &Client{
 		gqlURL: "http://test/api/graphql",
@@ -133,6 +106,38 @@ func NewTestClient(username, password string, logger log.Logger) (*Client, *test
 	}
 
 	return client, listener
+}
+
+// DeploymentVersion returns the deployed version of RSC.
+func (c *Client) DeploymentVersion(ctx context.Context) (Version, error) {
+	c.log.Print(log.Trace)
+
+	buf, err := c.Request(ctx, "query SdkGolangDeploymentVersion { deploymentVersion }", struct{}{})
+	if err != nil {
+		return "", fmt.Errorf("failed to request deploymentVersion: %w", err)
+	}
+	c.log.Printf(log.Debug, "deploymentVersion(): %s", string(buf))
+
+	var payload struct {
+		Data struct {
+			DeploymentVersion string `json:"deploymentVersion"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return "", fmt.Errorf("failed to unmarshal deploymentVersion: %v", err)
+	}
+
+	return Version(payload.Data.DeploymentVersion), nil
+}
+
+// Log returns the logger.
+func (c *Client) Log() log.Logger {
+	return c.log
+}
+
+// SetLogger sets the logger to use.
+func (c *Client) SetLogger(logger log.Logger) {
+	c.log = logger
 }
 
 // operationName tries to extract the operation name from a query
@@ -229,7 +234,7 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 	// error message formats.
 	var jsonErr errors.JSONError
 	if err := json.Unmarshal(buf, &jsonErr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %w",
+		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
 			res.StatusCode, err)
 	}
 	if jsonErr.IsError() {
@@ -238,7 +243,7 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 
 	var gqlErr GQLError
 	if err := json.Unmarshal(buf, &gqlErr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %w",
+		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
 			res.StatusCode, err)
 	}
 	if gqlErr.isError() {
@@ -250,9 +255,4 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 	}
 
 	return buf, nil
-}
-
-// Log returns the logger used by the client.
-func (c *Client) Log() log.Logger {
-	return c.log
 }

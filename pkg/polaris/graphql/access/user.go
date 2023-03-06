@@ -41,7 +41,7 @@ type User struct {
 // UsersInCurrentAndDescendantOrganization returns the users matching the
 // specified email address filter.
 func (a API) UsersInCurrentAndDescendantOrganization(ctx context.Context, emailFilter string) ([]User, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	var users []User
 	var cursor string
@@ -51,9 +51,9 @@ func (a API) UsersInCurrentAndDescendantOrganization(ctx context.Context, emailF
 			EmailFilter string `json:"emailFilter,omitempty"`
 		}{After: cursor, EmailFilter: emailFilter})
 		if err != nil {
-			return nil, fmt.Errorf("failed to request UsersInCurrentAndDescendantOrganization: %w", err)
+			return nil, fmt.Errorf("failed to request usersInCurrentAndDescendantOrganization: %w", err)
 		}
-		a.GQL.Log().Printf(log.Debug, "usersInCurrentAndDescendantOrganizationQuery(%q): %s", emailFilter, string(buf))
+		a.log.Printf(log.Debug, "usersInCurrentAndDescendantOrganization(%q): %s", emailFilter, string(buf))
 
 		var payload struct {
 			Data struct {
@@ -69,7 +69,7 @@ func (a API) UsersInCurrentAndDescendantOrganization(ctx context.Context, emailF
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal UsersInCurrentAndDescendantOrganization response: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal usersInCurrentAndDescendantOrganization response: %v", err)
 		}
 		for _, account := range payload.Data.Result.Edges {
 			users = append(users, account.Node)
@@ -86,16 +86,16 @@ func (a API) UsersInCurrentAndDescendantOrganization(ctx context.Context, emailF
 
 // CreateUser creates a new user with the specified email address and roles.
 func (a API) CreateUser(ctx context.Context, userEmail string, roleIDs []uuid.UUID) (string, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, createUserQuery, struct {
 		Email   string      `json:"email"`
 		RoleIDs []uuid.UUID `json:"roleIds"`
 	}{Email: userEmail, RoleIDs: roleIDs})
 	if err != nil {
-		return "", fmt.Errorf("failed to request CreateUser: %w", err)
+		return "", fmt.Errorf("failed to request createUser: %w", err)
 	}
-	a.GQL.Log().Printf(log.Debug, "createUser(%q, %v): %s", userEmail, roleIDs, string(buf))
+	a.log.Printf(log.Debug, "createUser(%q, %v): %s", userEmail, roleIDs, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -103,7 +103,7 @@ func (a API) CreateUser(ctx context.Context, userEmail string, roleIDs []uuid.UU
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", fmt.Errorf("failed to unmarshal CreateUser response: %w", err)
+		return "", fmt.Errorf("failed to unmarshal createUser response: %v", err)
 	}
 
 	return payload.Data.Result, nil
@@ -111,15 +111,15 @@ func (a API) CreateUser(ctx context.Context, userEmail string, roleIDs []uuid.UU
 
 // DeleteUserFromAccount deletes the users with the specified email addresses.
 func (a API) DeleteUserFromAccount(ctx context.Context, ids []string) error {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, deleteUserFromAccountQuery, struct {
 		IDs []string `json:"ids"`
 	}{IDs: ids})
 	if err != nil {
-		return fmt.Errorf("failed to request DeleteUserFromAccount: %w", err)
+		return fmt.Errorf("failed to request deleteUserFromAccount: %w", err)
 	}
-	a.GQL.Log().Printf(log.Debug, "deleteUserFromAccount(%v): %s", ids, string(buf))
+	a.log.Printf(log.Debug, "deleteUserFromAccount(%v): %s", ids, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -127,7 +127,7 @@ func (a API) DeleteUserFromAccount(ctx context.Context, ids []string) error {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal DeleteUserFromAccount response: %w", err)
+		return fmt.Errorf("failed to unmarshal deleteUserFromAccount response: %v", err)
 	}
 
 	return nil

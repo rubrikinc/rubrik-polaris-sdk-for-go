@@ -9,7 +9,7 @@ mutation RubrikPolarisSDKRequest($tenantDomainName: String!, $azureCloudType: Az
             }
             features: [$feature]
         },
-        regions:          $regions,
+        regions: $regions,
     }) {
         tenantId
         status {

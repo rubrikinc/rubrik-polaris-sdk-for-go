@@ -37,7 +37,7 @@ type identity struct {
 type IdentityFunc func(ctx context.Context) (identity, error)
 
 // CloudAccountID returns an IdentityFunc that initializes the identity with
-// the specified Polaris cloud account id.
+// the specified RSC cloud account id.
 func CloudAccountID(cloudAccountID uuid.UUID) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
 		return identity{cloudAccountID.String(), true}, nil
