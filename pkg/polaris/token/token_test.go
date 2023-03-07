@@ -139,7 +139,7 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 	if err == nil {
 		t.Fatal("token request should fail")
 	}
-	if !strings.HasSuffix(err.Error(), "UNAUTHENTICATED: wrong username or password (code 401)") {
+	if !strings.HasSuffix(err.Error(), "UNAUTHENTICATED: wrong username or password (code: 401, traceId: n2jJpBU8qkEy3k09s9JNkg==)") {
 		t.Fatal(err)
 	}
 }

@@ -20,7 +20,10 @@
 
 package graphql
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 var (
 	// ErrNotFound signals that the specified entity could not be found.
@@ -57,7 +60,9 @@ func (e GQLError) isError() bool {
 
 func (e GQLError) Error() string {
 	if len(e.Errors) > 0 {
-		return e.Errors[0].Message
+		err := e.Errors[0]
+		return fmt.Sprintf("%s (code: %d, traceId: %s)",
+			err.Message, err.Extensions.Code, err.Extensions.Trace.TraceID)
 	}
 
 	return "Unknown GraphQL error"

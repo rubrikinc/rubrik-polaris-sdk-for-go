@@ -55,7 +55,8 @@ func TestGqlError(t *testing.T) {
 	if !gqlErr.isError() {
 		t.Error("gqlErr should represent an error")
 	}
-	expected := "INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING"
+	expected := "INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING " +
+		"(code: 500, traceId: 9D7LJciYbUSaTTaLQuJcMA==)"
 	if msg := gqlErr.Error(); msg != expected {
 		t.Fatalf("invalid error message: %v", msg)
 	}
