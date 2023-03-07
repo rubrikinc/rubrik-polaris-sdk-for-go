@@ -37,6 +37,10 @@ pipeline {
             name: 'RUN_INTEGRATION_APPLIANCE_TEST',
             defaultValue: false,
             description: 'Run appliance integration tests as part of the integration test suite. Note that this requires RUN_INTEGRATION_TEST to be selected.')
+        choice(
+            name: 'LOG_LEVEL'
+            choices: ['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'],
+            description: 'The log level to use when running the integration test suite.'),
     }
     environment {
         // Polaris credentials.
@@ -68,7 +72,7 @@ pipeline {
         TEST_INTEGRATION_APPLIANCE = "${currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0 ? 'false' : params.RUN_INTEGRATION_APPLIANCE_TEST}"
 
         // Enable trace logging.
-        RUBRIK_POLARIS_LOGLEVEL = 'TRACE'
+        RUBRIK_POLARIS_LOGLEVEL = '${param.LOG_LEVEL}'
     }
     stages {
         stage('Lint') {
