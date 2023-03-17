@@ -23,7 +23,7 @@
 package log
 
 import (
-	"errors"
+	"fmt"
 	"log"
 	"strings"
 )
@@ -76,7 +76,7 @@ func ParseLogLevel(level string) (LogLevel, error) {
 	case "fatal":
 		return Fatal, nil
 	default:
-		return Trace, errors.New("invalid log level")
+		return Trace, fmt.Errorf("invalid log level: %q", level)
 	}
 }
 

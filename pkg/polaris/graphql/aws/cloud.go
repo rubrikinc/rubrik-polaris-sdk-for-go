@@ -124,7 +124,7 @@ func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature
 // the account being added. It also holds feature version information.
 type CloudAccountInitiate struct {
 	CloudFormationURL string           `json:"cloudFormationUrl"`
-	ExternalID        uuid.UUID        `json:"externalId"`
+	ExternalID        string           `json:"externalId"` // Deprecated: no replacement.
 	FeatureVersions   []FeatureVersion `json:"featureVersions"`
 	StackName         string           `json:"stackName"`
 	TemplateURL       string           `json:"templateUrl"`
@@ -190,7 +190,7 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string
 		ID             string           `json:"nativeId"`
 		Name           string           `json:"accountName"`
 		Regions        []Region         `json:"awsRegions,omitempty"`
-		ExternalID     uuid.UUID        `json:"externalId"`
+		ExternalID     string           `json:"externalId"`
 		FeatureVersion []FeatureVersion `json:"featureVersion"`
 		Feature        core.Feature     `json:"feature"`
 		StackName      string           `json:"stackName"`
