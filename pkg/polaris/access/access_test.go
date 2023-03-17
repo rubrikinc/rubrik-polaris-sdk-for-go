@@ -1,6 +1,7 @@
 package access
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -31,6 +32,7 @@ func TestMain(m *testing.M) {
 		logger.SetLogLevel(log.Info)
 		if err := polaris.SetLogLevelFromEnv(logger); err != nil {
 			fmt.Printf("failed to get log level from env: %v\n", err)
+			os.Exit(1)
 		}
 
 		client, err = polaris.NewClientWithLogger(polAccount, logger)
@@ -38,6 +40,13 @@ func TestMain(m *testing.M) {
 			fmt.Printf("failed to create polaris client: %v\n", err)
 			os.Exit(1)
 		}
+
+		version, err := client.GQL.DeploymentVersion(context.Background())
+		if err != nil {
+			fmt.Printf("failed to get deployment version: %v\n", err)
+			os.Exit(1)
+		}
+		logger.Printf(log.Info, "Polaris version: %s", version)
 	}
 
 	os.Exit(m.Run())

@@ -32,7 +32,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
-	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // client is the common RSC client used for tests. By reusing the same client
@@ -51,10 +51,11 @@ func TestMain(m *testing.M) {
 
 		// The integration tests defaults the log level to INFO. Note that
 		// RUBRIK_POLARIS_LOGLEVEL can be used to override this.
-		logger := polaris_log.NewStandardLogger()
-		logger.SetLogLevel(polaris_log.Info)
+		logger := log.NewStandardLogger()
+		logger.SetLogLevel(log.Info)
 		if err := polaris.SetLogLevelFromEnv(logger); err != nil {
 			fmt.Printf("failed to get log level from env: %v\n", err)
+			os.Exit(1)
 		}
 
 		client, err = polaris.NewClientWithLogger(polAccount, logger)
@@ -62,6 +63,13 @@ func TestMain(m *testing.M) {
 			fmt.Printf("failed to create polaris client: %v\n", err)
 			os.Exit(1)
 		}
+
+		version, err := client.GQL.DeploymentVersion(context.Background())
+		if err != nil {
+			fmt.Printf("failed to get deployment version: %v\n", err)
+			os.Exit(1)
+		}
+		logger.Printf(log.Info, "Polaris version: %s", version)
 	}
 
 	os.Exit(m.Run())
