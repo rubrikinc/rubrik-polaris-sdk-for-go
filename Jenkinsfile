@@ -72,7 +72,7 @@ pipeline {
         TEST_INTEGRATION_APPLIANCE = "${currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').size() > 0 ? 'false' : params.RUN_INTEGRATION_APPLIANCE_TEST}"
 
         // Enable trace logging.
-        RUBRIK_POLARIS_LOGLEVEL = '${param.LOG_LEVEL}'
+        RUBRIK_POLARIS_LOGLEVEL = '${params.LOG_LEVEL}'
     }
     stages {
         stage('Lint') {
