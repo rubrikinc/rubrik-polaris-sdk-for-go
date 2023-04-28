@@ -30,8 +30,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx := context.Background()
-
 	// Load configuration and create client
 	polAccount, err := polaris.DefaultServiceAccount(true)
 	if err != nil {
@@ -39,10 +37,15 @@ func main() {
 	}
 	logger := polaris_log.NewStandardLogger()
 	logger.SetLogLevel(polaris_log.Info)
-	client, err := polaris.NewClient(ctx, polAccount, logger)
+	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
+		log.Fatal(err)
+	}
+	client, err := polaris.NewClientWithLogger(polAccount, logger)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	ctx := context.Background()
 
 	if *precheck {
 		err = check(ctx, client)
@@ -57,16 +60,32 @@ func main() {
 func check(ctx context.Context, client *polaris.Client) error {
 	var g errgroup.Group
 
-	// AWS
+	// AWS with profile
 	g.Go(func() error {
 		testAcc, err := testsetup.AWSAccount()
 		if err != nil {
 			return err
 		}
-		awsAccount, err := client.AWS().Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
+		awsAccount, err := aws.Wrap(client).Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
 		switch {
 		case err == nil:
-			return fmt.Errorf("found pre-existing AWS account: %v", pretty.Sprint(awsAccount))
+			return fmt.Errorf("found pre-existing AWS account: %s\n%v", awsAccount.ID, pretty.Sprint(awsAccount))
+		case !errors.Is(err, graphql.ErrNotFound):
+			return fmt.Errorf("failed to check AWS account: %v", err)
+		}
+		return nil
+	})
+
+	// AWS with cross account role
+	g.Go(func() error {
+		testAcc, err := testsetup.AWSAccount()
+		if err != nil {
+			return err
+		}
+		awsAccount, err := aws.Wrap(client).Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
+		switch {
+		case err == nil:
+			return fmt.Errorf("found pre-existing AWS account: %s\n%v", awsAccount.ID, pretty.Sprint(awsAccount))
 		case !errors.Is(err, graphql.ErrNotFound):
 			return fmt.Errorf("failed to check AWS account: %v", err)
 		}
@@ -79,10 +98,10 @@ func check(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		azureAcc, err := client.Azure().Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
+		azureAcc, err := azure.Wrap(client).Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
 		switch {
 		case err == nil:
-			return fmt.Errorf("found pre-existing Azure subscription: %v", pretty.Sprint(azureAcc))
+			return fmt.Errorf("found pre-existing Azure subscription: %s\n%v", azureAcc.ID, pretty.Sprint(azureAcc))
 		case !errors.Is(err, graphql.ErrNotFound):
 			return fmt.Errorf("failed to check Azure account: %v", err)
 		}
@@ -95,10 +114,10 @@ func check(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		proj, err := client.GCP().Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
+		proj, err := gcp.Wrap(client).Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
 		switch {
 		case err == nil:
-			return fmt.Errorf("found pre-existing GCP projects: %v", pretty.Sprint(proj))
+			return fmt.Errorf("found pre-existing GCP projects: %s\n%v", proj.ID, pretty.Sprint(proj))
 		case !errors.Is(err, graphql.ErrNotFound):
 			return fmt.Errorf("failed to check GCP project: %v", err)
 		}
@@ -111,13 +130,15 @@ func check(ctx context.Context, client *polaris.Client) error {
 func clean(ctx context.Context, client *polaris.Client) error {
 	var g errgroup.Group
 
-	// AWS
+	// AWS with profile
 	g.Go(func() error {
 		testAcc, err := testsetup.AWSAccount()
 		if err != nil {
 			return err
 		}
-		awsAccount, err := client.AWS().Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
+
+		awsClient := aws.Wrap(client)
+		awsAccount, err := awsClient.Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
 		switch {
 		case errors.Is(err, graphql.ErrNotFound):
 			return nil
@@ -128,9 +149,35 @@ func clean(ctx context.Context, client *polaris.Client) error {
 			return fmt.Errorf("existing AWS account %q isn't expected test account %q, won't remove",
 				awsAccount.NativeID, testAcc.AccountID)
 		}
+
 		// TODO: we might need to iterate over awsAccount.Features to remove
 		// all of them in the future
-		return client.AWS().RemoveAccount(ctx, aws.Profile(testAcc.Profile), core.FeatureCloudNativeProtection, false)
+		return awsClient.RemoveAccount(ctx, aws.Profile(testAcc.Profile), core.FeatureCloudNativeProtection, false)
+	})
+
+	// AWS with cross account role
+	g.Go(func() error {
+		testAcc, err := testsetup.AWSAccount()
+		if err != nil {
+			return err
+		}
+
+		awsClient := aws.Wrap(client)
+		awsAccount, err := awsClient.Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
+		switch {
+		case errors.Is(err, graphql.ErrNotFound):
+			return nil
+		case err != nil:
+			return fmt.Errorf("failed to check AWS account: %v", err)
+		}
+		if awsAccount.NativeID != testAcc.CrossAccountID {
+			return fmt.Errorf("existing AWS account %q isn't expected test account %q, won't remove",
+				awsAccount.NativeID, testAcc.CrossAccountID)
+		}
+
+		// TODO: we might need to iterate over awsAccount.Features to remove
+		// all of them in the future
+		return awsClient.RemoveAccount(ctx, aws.DefaultWithRole(testAcc.CrossAccountRole), core.FeatureCloudNativeProtection, false)
 	})
 
 	// Azure
@@ -140,7 +187,8 @@ func clean(ctx context.Context, client *polaris.Client) error {
 			return err
 		}
 
-		azureAcc, err := client.Azure().Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
+		azureClient := azure.Wrap(client)
+		azureAcc, err := azureClient.Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
 		switch {
 		case errors.Is(err, graphql.ErrNotFound):
 			return nil
@@ -154,19 +202,19 @@ func clean(ctx context.Context, client *polaris.Client) error {
 
 		// Polaris doesn't automatically remove exocompute configs when removing
 		// the subscription, so we need to do it manually here.
-		exoCfgs, err := client.Azure().ExocomputeConfigs(ctx, azure.CloudAccountID(azureAcc.ID))
+		exoCfgs, err := azureClient.ExocomputeConfigs(ctx, azure.CloudAccountID(azureAcc.ID))
 		if err != nil {
 			return err
 		}
 		for i := range exoCfgs {
-			if err := client.Azure().RemoveExocomputeConfig(ctx, exoCfgs[i].ID); err != nil {
+			if err := azureClient.RemoveExocomputeConfig(ctx, exoCfgs[i].ID); err != nil {
 				return fmt.Errorf("failed to remove Azure ExocomputeConfig: %v", pretty.Sprint(exoCfgs[i]))
 			}
 		}
 
 		// Remove all features for the subscription.
 		for _, feature := range azureAcc.Features {
-			if err := client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(azureAcc.ID), feature.Name, false); err != nil {
+			if err := azureClient.RemoveSubscription(ctx, azure.CloudAccountID(azureAcc.ID), feature.Name, false); err != nil {
 				return fmt.Errorf("failed to remove Azure cloud account fetaure: %v", pretty.Sprint(feature))
 			}
 		}
@@ -180,7 +228,9 @@ func clean(ctx context.Context, client *polaris.Client) error {
 		if err != nil {
 			return err
 		}
-		proj, err := client.GCP().Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
+
+		gcpClient := gcp.Wrap(client)
+		proj, err := gcpClient.Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
 		switch {
 		case errors.Is(err, graphql.ErrNotFound):
 			return nil
@@ -191,7 +241,8 @@ func clean(ctx context.Context, client *polaris.Client) error {
 			return fmt.Errorf("existing GCP project %q isn't expected test project %q, won't remove",
 				pn, testProj.ProjectNumber)
 		}
-		return client.GCP().RemoveProject(ctx, gcp.ProjectNumber(testProj.ProjectNumber), core.FeatureCloudNativeProtection, false)
+
+		return gcpClient.RemoveProject(ctx, gcp.ProjectNumber(testProj.ProjectNumber), core.FeatureCloudNativeProtection, false)
 	})
 
 	return g.Wait()

@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // Cloud represents the AWS cloud type.
@@ -154,13 +155,14 @@ func ParseRegions(regions []string) ([]Region, error) {
 	return regs, nil
 }
 
-// API wraps around GraphQL clients to give them the Polaris AWS API.
+// API wraps around GraphQL clients to give them the RCS AWS API.
 type API struct {
-	Version string
+	Version string // Deprecated: use GQL.DeploymentVersion
 	GQL     *graphql.Client
+	log     log.Logger
 }
 
 // Wrap the GraphQL client in the AWS API.
 func Wrap(gql *graphql.Client) API {
-	return API{Version: gql.Version, GQL: gql}
+	return API{GQL: gql, log: gql.Log()}
 }

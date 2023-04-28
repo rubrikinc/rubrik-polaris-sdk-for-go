@@ -40,12 +40,12 @@ type SubscriptionFunc func(ctx context.Context) (subscription, error)
 
 // Subscription returns a SubscriptionFunc that initializes the subscription
 // with the specified values.
-func Subscription(id uuid.UUID, tenantDomain string) SubscriptionFunc {
+func Subscription(subscriptionID uuid.UUID, tenantDomain string) SubscriptionFunc {
 	return func(ctx context.Context) (subscription, error) {
-		name := fmt.Sprintf("%s : %s", strings.Split(tenantDomain, ".")[0], id)
+		name := fmt.Sprintf("%s : %s", strings.Split(tenantDomain, ".")[0], subscriptionID)
 
 		subscription := subscription{
-			id:           id,
+			id:           subscriptionID,
 			name:         name,
 			tenantDomain: tenantDomain,
 		}

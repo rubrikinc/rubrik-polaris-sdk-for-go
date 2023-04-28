@@ -44,21 +44,23 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClient(ctx, polAccount, polaris_log.NewStandardLogger())
+	client, err := polaris.NewClientWithLogger(polAccount, polaris_log.NewStandardLogger())
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	awsClient := aws.Wrap(client)
+
 	// Add the AWS default account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	id, err := client.AWS().AddAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, aws.Regions("us-east-2"))
+	id, err := awsClient.AddAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// List the AWS accounts added to Polaris.
-	account, err := client.AWS().Account(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection)
+	account, err := awsClient.Account(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -69,7 +71,7 @@ func main() {
 	}
 
 	// Remove the AWS account from Polaris.
-	err = client.AWS().RemoveAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, false)
+	err = awsClient.RemoveAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		log.Fatal(err)
 	}

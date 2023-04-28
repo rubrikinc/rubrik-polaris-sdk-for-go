@@ -95,7 +95,7 @@ func findSubnet(vpc aws.VPC, subnetID string) (aws.Subnet, error) {
 }
 
 // Managed returns an ExoConfigFunc that initializes an exocompute config with
-// security groups managed by Polaris using the specified values.
+// security groups managed by RSC using the specified values.
 func Managed(region, vpcID string, subnetIDs []string) ExoConfigFunc {
 	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
 		reg, err := aws.ParseRegion(region)
@@ -208,9 +208,9 @@ func toExocomputeConfig(config aws.ExocomputeConfig) ExocomputeConfig {
 // ExocomputeConfig returns the exocompute config with the specified exocompute
 // config id.
 func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConfig, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	configsForAccounts, err := aws.Wrap(a.gql).ExocomputeConfigs(ctx, "")
+	configsForAccounts, err := aws.Wrap(a.client).ExocomputeConfigs(ctx, "")
 	if err != nil {
 		return ExocomputeConfig{}, fmt.Errorf("failed to get exocompute configs: %v", err)
 	}
@@ -229,14 +229,14 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 // ExocomputeConfigs returns all exocompute configs for the account with the
 // specified id.
 func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]ExocomputeConfig, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	nativeID, err := a.toNativeID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get native id: %v", err)
 	}
 
-	configsForAccounts, err := aws.Wrap(a.gql).ExocomputeConfigs(ctx, nativeID)
+	configsForAccounts, err := aws.Wrap(a.client).ExocomputeConfigs(ctx, nativeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get exocompute configs: %v", err)
 	}
@@ -254,19 +254,19 @@ func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]Exocompu
 // AddExocomputeConfig adds the exocompute config to the account with the
 // specified id. Returns the id of the added exocompute config.
 func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config ExoConfigFunc) (uuid.UUID, error) {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	accountID, err := a.toCloudAccountID(ctx, id)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to get cloud account id: %v", err)
 	}
 
-	exoConfig, err := config(ctx, a.gql, accountID)
+	exoConfig, err := config(ctx, a.client, accountID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to lookup exocompute config: %v", err)
 	}
 
-	exo, err := aws.Wrap(a.gql).CreateExocomputeConfig(ctx, accountID, exoConfig)
+	exo, err := aws.Wrap(a.client).CreateExocomputeConfig(ctx, accountID, exoConfig)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create exocompute config: %v", err)
 	}
@@ -277,9 +277,9 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 // RemoveExocomputeConfig removes the exocompute config with the specified
 // exocompute config id.
 func (a API) RemoveExocomputeConfig(ctx context.Context, id uuid.UUID) error {
-	a.gql.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	err := aws.Wrap(a.gql).DeleteExocomputeConfig(ctx, id)
+	err := aws.Wrap(a.client).DeleteExocomputeConfig(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to remove exocompute config: %v", err)
 	}

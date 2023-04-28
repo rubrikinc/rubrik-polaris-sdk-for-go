@@ -157,7 +157,7 @@ func TestWaitForTaskChain(t *testing.T) {
 		if reqCount == 0 {
 			chainState = "SUCCEEDED"
 		}
-		tmpl.Execute(w, struct {
+		err = tmpl.Execute(w, struct {
 			ChainState string
 			ChainUUID  string
 		}{ChainState: chainState, ChainUUID: payload.Variables.TaskChainID})

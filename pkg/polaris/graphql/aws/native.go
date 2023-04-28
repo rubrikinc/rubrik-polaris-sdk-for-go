@@ -28,12 +28,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// NativeAccount represents a Polaris native account.
+// NativeAccount represents an RSC native account.
 type NativeAccount struct {
 	ID      uuid.UUID `json:"id"`
 	Name    string    `json:"name"`
@@ -47,24 +46,19 @@ type NativeAccount struct {
 	Effective  core.SLADomain     `json:"effectiveSlaDomain"`
 }
 
-// NativeAccount returns the native account with the specified Polaris native
+// NativeAccount returns the native account with the specified RSC native
 // account id.
 func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature ProtectionFeature) (NativeAccount, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := awsNativeAccountQuery
-	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
-		query = awsNativeAccountV0Query
-	}
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.Request(ctx, awsNativeAccountQuery, struct {
 		ID      uuid.UUID         `json:"awsNativeAccountRubrikId"`
 		Feature ProtectionFeature `json:"awsNativeProtectionFeature"`
 	}{ID: id, Feature: feature})
 	if err != nil {
-		return NativeAccount{}, fmt.Errorf("failed to request NativeAccount: %v", err)
+		return NativeAccount{}, fmt.Errorf("failed to request awsNativeAccount: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), id, feature, string(buf))
+	a.log.Printf(log.Debug, "awsNativeAccount(%q, %q): %s", id, feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -72,7 +66,7 @@ func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature Protection
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return NativeAccount{}, fmt.Errorf("failed to unmarshal NativeAccount: %v", err)
+		return NativeAccount{}, fmt.Errorf("failed to unmarshal awsNativeAccount: %v", err)
 	}
 
 	return payload.Data.Account, nil
@@ -81,25 +75,20 @@ func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature Protection
 // NativeAccounts returns the native accounts matching the specified filter.
 // The filter can be used to search for a substring in account name.
 func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filter string) ([]NativeAccount, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := awsNativeAccountsQuery
-	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
-		query = awsNativeAccountsV0Query
-	}
 	var accounts []NativeAccount
 	var cursor string
 	for {
-		buf, err := a.GQL.Request(ctx, query, struct {
+		buf, err := a.GQL.Request(ctx, awsNativeAccountsQuery, struct {
 			After   string            `json:"after,omitempty"`
 			Feature ProtectionFeature `json:"awsNativeProtectionFeature"`
 			Filter  string            `json:"filter"`
 		}{After: cursor, Feature: feature, Filter: filter})
 		if err != nil {
-			return nil, fmt.Errorf("failed to request NativeAccounts: %v", err)
+			return nil, fmt.Errorf("failed to request awsNativeAccounts: %w", err)
 		}
-
-		a.GQL.Log().Printf(log.Debug, "%s(%q, %q, %q): %s", graphql.QueryName(query), cursor, feature,
+		a.log.Printf(log.Debug, "awsNativeAccounts(%q, %q, %q): %s", cursor, feature,
 			filter, string(buf))
 
 		var payload struct {
@@ -117,7 +106,7 @@ func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filt
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal NativeAccounts: %v", err)
+			return nil, fmt.Errorf("failed to unmarshal awsNativeAccounts: %v", err)
 		}
 		for _, account := range payload.Data.Query.Edges {
 			accounts = append(accounts, account.Node)
@@ -133,25 +122,20 @@ func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filt
 }
 
 // StartNativeAccountDisableJob starts a task chain job to disable the native
-// account with the specified Polaris cloud account id. Returns the Polaris
-// task chain id.
+// account with the specified RSC cloud account id. Returns the RSC task chain
+// id.
 func (a API) StartNativeAccountDisableJob(ctx context.Context, id uuid.UUID, feature ProtectionFeature, deleteSnapshots bool) (uuid.UUID, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := startAwsNativeAccountDisableJobQuery
-	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
-		query = startAwsNativeAccountDisableJobV0Query
-	}
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.Request(ctx, startAwsNativeAccountDisableJobQuery, struct {
 		ID              uuid.UUID         `json:"awsAccountRubrikId"`
 		Feature         ProtectionFeature `json:"awsNativeProtectionFeature"`
 		DeleteSnapshots bool              `json:"shouldDeleteNativeSnapshots"`
 	}{ID: id, Feature: feature, DeleteSnapshots: deleteSnapshots})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to request StartNativeAccountDisableJob: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to request startAwsNativeAccountDisableJob: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "%s(%q, %q, %t): %s", graphql.QueryName(query), id, feature,
+	a.log.Printf(log.Debug, "startAwsNativeAccountDisableJob(%q, %q, %t): %s", id, feature,
 		deleteSnapshots, string(buf))
 
 	var payload struct {
@@ -163,7 +147,7 @@ func (a API) StartNativeAccountDisableJob(ctx context.Context, id uuid.UUID, fea
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to unmarshal StartNativeAccountDisableJob: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to unmarshal startAwsNativeAccountDisableJob: %v", err)
 	}
 	if payload.Data.Query.Error != "" {
 		return uuid.Nil, errors.New(payload.Data.Query.Error)

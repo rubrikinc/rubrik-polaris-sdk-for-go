@@ -22,9 +22,7 @@ package graphql
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 	"text/template"
@@ -32,41 +30,6 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testnet"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
-
-func TestErrorsWithNoError(t *testing.T) {
-	buf := []byte(`{
-	    "data": {
-	        "awsNativeAccountConnection": {}
-        }
-	}`)
-
-	var gqlErr gqlError
-	if err := json.Unmarshal(buf, &gqlErr); err != nil {
-		t.Fatal(err)
-	}
-	if gqlErr.isError() {
-		t.Error("gqlErr should not represent an error")
-	}
-}
-
-func TestGqlError(t *testing.T) {
-	buf, err := os.ReadFile("testdata/error_graphql.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var gqlErr gqlError
-	if err := json.Unmarshal(buf, &gqlErr); err != nil {
-		t.Fatal(err)
-	}
-	if !gqlErr.isError() {
-		t.Error("gqlErr should represent an error")
-	}
-	expected := "INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING"
-	if msg := gqlErr.Error(); msg != expected {
-		t.Fatalf("invalid error message: %v", msg)
-	}
-}
 
 func TestRequestUnauthenticated(t *testing.T) {
 	tmpl, err := template.ParseFiles("testdata/error_json_from_auth.json")
@@ -89,7 +52,7 @@ func TestRequestUnauthenticated(t *testing.T) {
 	if err == nil {
 		t.Fatal("graphql request should fail")
 	}
-	if !strings.HasSuffix(err.Error(), "JWT validation failed: Missing or invalid credentials (code 16)") {
+	if !strings.HasSuffix(err.Error(), "JWT validation failed: Missing or invalid credentials (code: 16)") {
 		t.Fatal(err)
 	}
 }
@@ -116,7 +79,7 @@ func TestRequestWithInternalServerErrorJSONBody(t *testing.T) {
 		t.Fatal("graphql request should fail")
 	}
 	if !strings.HasSuffix(err.Error(),
-		"INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING") {
+		"INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING (code: 500, traceId: 9D7LJciYbUSaTTaLQuJcMA==)") {
 		t.Fatal(err)
 	}
 }

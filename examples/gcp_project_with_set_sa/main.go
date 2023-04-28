@@ -45,19 +45,21 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClient(ctx, polAccount, polaris_log.NewStandardLogger())
+	client, err := polaris.NewClientWithLogger(polAccount, polaris_log.NewStandardLogger())
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	gcpClient := gcp.Wrap(client)
+
 	// Add the service account to Polaris.
-	err = client.GCP().SetServiceAccount(ctx, gcp.Default(), gcp.Name("global"))
+	err = gcpClient.SetServiceAccount(ctx, gcp.Default(), gcp.Name("global"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Retrieve service account name.
-	name, err := client.GCP().ServiceAccount(ctx)
+	name, err := gcpClient.ServiceAccount(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -65,14 +67,14 @@ func main() {
 	fmt.Printf("Service Account Name: %v\n", name)
 
 	// Add the GCP project to Polaris without any GCP credentials.
-	id, err := client.GCP().AddProject(ctx, gcp.Project("my-project", 123456789012),
+	id, err := gcpClient.AddProject(ctx, gcp.Project("my-project", 123456789012),
 		core.FeatureCloudNativeProtection, gcp.Name("My Project"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Lookup the newly added project.
-	account, err := client.GCP().Project(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection)
+	account, err := gcpClient.Project(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -84,7 +86,7 @@ func main() {
 	}
 
 	// Remove the GCP account from Polaris.
-	err = client.GCP().RemoveProject(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection, false)
+	err = gcpClient.RemoveProject(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		log.Fatal(err)
 	}

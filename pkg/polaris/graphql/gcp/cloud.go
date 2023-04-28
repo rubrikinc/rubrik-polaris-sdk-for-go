@@ -28,12 +28,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// CloudAccount represents a Polaris Cloud Account for GCP. If UseGlobalConfig
+// CloudAccount represents an RSC Cloud Account for GCP. If UseGlobalConfig
 // is true the cloud account depends on the default service account.
 type CloudAccount struct {
 	ID               uuid.UUID `json:"id"`
@@ -44,7 +43,7 @@ type CloudAccount struct {
 	UsesGlobalConfig bool      `json:"usesGlobalConfig"`
 }
 
-// Feature represents a Polaris Cloud Account feature for GCP, e.g. Cloud Native
+// Feature represents an RSC Cloud Account feature for GCP, e.g. Cloud Native
 // Protection.
 type Feature struct {
 	Name   core.Feature `json:"feature"`
@@ -62,23 +61,16 @@ type CloudAccountWithFeature struct {
 // specified filter. The filter can be used to search for project id, project
 // name and project number.
 func (a API) CloudAccountProjectsByFeature(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountWithFeature, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := allGcpCloudAccountProjectsByFeatureQuery
-	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
-		query = gcpCloudAccountListProjectsV0Query
-	} else if graphql.VersionOlderThan(a.Version, "master-46713", "v20220412") {
-		query = gcpCloudAccountListProjectsQuery
-	}
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.Request(ctx, allGcpCloudAccountProjectsByFeatureQuery, struct {
 		Feature core.Feature `json:"feature"`
 		Filter  string       `json:"projectSearchText"`
 	}{Feature: feature, Filter: filter})
 	if err != nil {
-		return nil, fmt.Errorf("failed to request CloudAccountListProjects: %v", err)
+		return nil, fmt.Errorf("failed to request allGcpCloudAccountProjectsByFeature: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), feature, filter, string(buf))
+	a.log.Printf(log.Debug, "allGcpCloudAccountProjectsByFeature(%q, %q): %s", feature, filter, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -86,23 +78,17 @@ func (a API) CloudAccountProjectsByFeature(ctx context.Context, feature core.Fea
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal CloudAccountListProjects: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal allGcpCloudAccountProjectsByFeature: %v", err)
 	}
 
 	return payload.Data.Accounts, nil
 }
 
-// CloudAccountAddManualAuthProject adds the GCP project to Polaris.
+// CloudAccountAddManualAuthProject adds the GCP project to RSC.
 func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, projectName string, projectNumber int64, orgName, jwtConfig string, feature core.Feature) error {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := gcpCloudAccountAddManualAuthProjectQuery
-	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
-		query = gcpCloudAccountAddManualAuthProjectV0Query
-	} else if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
-		query = gcpCloudAccountAddManualAuthProjectV1Query
-	}
-	_, err := a.GQL.Request(ctx, query, struct {
+	_, err := a.GQL.Request(ctx, gcpCloudAccountAddManualAuthProjectQuery, struct {
 		ID           string       `json:"gcpNativeProjectId"`
 		Name         string       `json:"gcpProjectName"`
 		Number       int64        `json:"gcpProjectNumber"`
@@ -112,43 +98,28 @@ func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, pr
 		Feature      core.Feature `json:"feature"`
 	}{ID: projectID, Name: projectName, Number: projectNumber, OrgName: orgName, JwtConfig: jwtConfig, JwtConfigOpt: jwtConfig, Feature: feature})
 	if err != nil {
-		return fmt.Errorf("failed to request CloudAccountAddManualAuthProject: %v", err)
+		return fmt.Errorf("failed to request gcpCloudAccountAddManualAuthProject: %w", err)
 	}
 
 	return nil
 }
 
-// CloudAccountDeleteProject delete cloud account for the given Polaris cloud
+// CloudAccountDeleteProject delete cloud account for the given RSC cloud
 // account id.
 func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := gcpCloudAccountDeleteProjectsQuery
-	if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
-		query = gcpCloudAccountDeleteProjectsV0Query
-	} else if graphql.VersionOlderThan(a.Version, "master-47412", "v20220509") {
-		query = gcpCloudAccountDeleteProjectsV1Query
-	}
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.Request(ctx, gcpCloudAccountDeleteProjectsQuery, struct {
 		ID  uuid.UUID   `json:"nativeProtectionProjectId"`
 		IDs []uuid.UUID `json:"nativeProtectionProjectUuids"`
 	}{ID: id, IDs: []uuid.UUID{id}})
 	if err != nil {
-		return fmt.Errorf("failed to request CloudAccountDeleteProject: %v", err)
+		return fmt.Errorf("failed to request gcpCloudAccountDeleteProjects: %w", err)
 	}
+	a.log.Printf(log.Debug, "gcpCloudAccountDeleteProjects(%q): %s", id, string(buf))
 
-	a.GQL.Log().Printf(log.Debug, "%s(%q): %s", graphql.QueryName(query), id, string(buf))
-
-	// An additional level has been introduced to the GraphQL result structure.
-	// The Projects part is the old structure and the Result part is the new
-	// structure.
 	var payload struct {
 		Data struct {
-			Projects []struct {
-				ProjectUUID string `json:"projectUuid"`
-				Success     bool   `json:"success"`
-				Error       string `json:"error"`
-			} `json:"gcpCloudAccountDeleteProjects"`
 			Result struct {
 				Status []struct {
 					ProjectUUID string `json:"projectUuid"`
@@ -159,26 +130,11 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal CloudAccountDeleteProject: %v", err)
+		return fmt.Errorf("failed to unmarshal gcpCloudAccountDeleteProjects: %v", err)
 	}
-
-	// Look at the old GraphQL result structure.
-	if len(payload.Data.Projects) > 1 {
-		return errors.New("expected a single result")
-	}
-
-	if len(payload.Data.Projects) == 1 {
-		if !payload.Data.Projects[0].Success {
-			return errors.New(payload.Data.Projects[0].Error)
-		}
-		return nil
-	}
-
-	// Look at the new GraphQL result structure.
 	if len(payload.Data.Result.Status) != 1 {
 		return errors.New("expected a single result")
 	}
-
 	if !payload.Data.Result.Status[0].Success {
 		return errors.New(payload.Data.Result.Status[0].Error)
 	}
@@ -187,24 +143,17 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 }
 
 // FeaturePermissionsForCloudAccount list the permissions needed to enable the
-// given Polaris cloud account feature.
+// given RSC cloud account feature.
 func (a API) FeaturePermissionsForCloudAccount(ctx context.Context, feature core.Feature) (permissions []string, err error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := allFeaturePermissionsForGcpCloudAccountQuery
-	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
-		query = gcpCloudAccountListPermissionsV0Query
-	} else if graphql.VersionOlderThan(a.Version, "master-46713", "v20220412") {
-		query = gcpCloudAccountListPermissionsQuery
-	}
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.Request(ctx, allFeaturePermissionsForGcpCloudAccountQuery, struct {
 		Feature core.Feature `json:"feature"`
 	}{Feature: feature})
 	if err != nil {
-		return nil, fmt.Errorf("failed to request CloudAccountListPermissions: %v", err)
+		return nil, fmt.Errorf("failed to request allFeaturePermissionsForGcpCloudAccount: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "%s(%q): %s", graphql.QueryName(query), feature, string(buf))
+	a.log.Printf(log.Debug, "allFeaturePermissionsForGcpCloudAccount(%q): %s", feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -214,7 +163,7 @@ func (a API) FeaturePermissionsForCloudAccount(ctx context.Context, feature core
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal CloudAccountListPermissions: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal allFeaturePermissionsForGcpCloudAccount: %v", err)
 	}
 
 	permissions = make([]string, 0, len(payload.Data.Permissions))
@@ -225,25 +174,20 @@ func (a API) FeaturePermissionsForCloudAccount(ctx context.Context, feature core
 	return permissions, nil
 }
 
-// UpgradeCloudAccountPermissionsWithoutOAuth notifies Polaris that the
-// permissions for the GCP service account has been updated for the
-// specified Polaris cloud account id and feature.
+// UpgradeCloudAccountPermissionsWithoutOAuth notifies RSC that the permissions
+// for the GCP service account has been updated for the specified RSC cloud
+// account id and feature.
 func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := upgradeGcpCloudAccountPermissionsWithoutOauthQuery
-	if graphql.VersionOlderThan(a.Version, "master-46133", "v20220315") {
-		query = upgradeGcpCloudAccountPermissionsWithoutOauthV0Query
-	}
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.Request(ctx, upgradeGcpCloudAccountPermissionsWithoutOauthQuery, struct {
 		ID      uuid.UUID    `json:"cloudAccountId"`
 		Feature core.Feature `json:"feature"`
 	}{ID: id, Feature: feature})
 	if err != nil {
-		return fmt.Errorf("failed to request UpgradeCloudAccountPermissionsWithoutOAuth: %v", err)
+		return fmt.Errorf("failed to request upgradeGcpCloudAccountPermissionsWithoutOauth: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "%s(%q, %q): %s", graphql.QueryName(query), id, feature, string(buf))
+	a.log.Printf(log.Debug, "upgradeGcpCloudAccountPermissionsWithoutOauth(%q, %q): %s", id, feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -257,7 +201,7 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal UpgradeCloudAccountPermissionsWithoutOAuth: %v", err)
+		return fmt.Errorf("failed to unmarshal upgradeGcpCloudAccountPermissionsWithoutOauth: %v", err)
 	}
 	if !payload.Data.Result.Status.Success {
 		return errors.New(payload.Data.Result.Status.Error)

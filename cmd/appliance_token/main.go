@@ -25,7 +25,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/google/uuid"
 
@@ -44,19 +43,10 @@ func main() {
 		printHelp()
 	}
 
-	var logger polaris_log.Logger
-	logger = polaris_log.NewStandardLogger()
+	logger := polaris_log.NewStandardLogger()
 	logger.SetLogLevel(polaris_log.Error)
-	if level := os.Getenv("RUBRIK_POLARIS_LOGLEVEL"); level != "" {
-		if strings.ToLower(level) != "off" {
-			l, err := polaris_log.ParseLogLevel(level)
-			if err != nil {
-				log.Fatalf("failed to parse log level: %v", err)
-			}
-			logger.SetLogLevel(l)
-		} else {
-			logger = &polaris_log.DiscardLogger{}
-		}
+	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
+		log.Fatal(err)
 	}
 
 	serviceAccount, err := polaris.DefaultServiceAccount(true)

@@ -48,6 +48,64 @@ type project struct {
 // function creating the ProjectFunc.
 type ProjectFunc func(ctx context.Context) (project, error)
 
+// Credentials returns a ProjectFunc that initializes the project with values
+// from the specified credentials and the cloud using the credentials project
+// id.
+func Credentials(credentials *google.Credentials) ProjectFunc {
+	return func(ctx context.Context) (project, error) {
+		return gcpProject(ctx, credentials, credentials.ProjectID)
+	}
+}
+
+// Default returns a ProjectFunc that initializes the project with values from
+// the default credentials and the cloud using the default credentials project
+// id.
+func Default() ProjectFunc {
+	return func(ctx context.Context) (project, error) {
+		creds, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/cloud-platform")
+		if err != nil {
+			return project{}, fmt.Errorf("failed to find the default GCP credentials: %v", err)
+		}
+
+		return gcpProject(ctx, creds, creds.ProjectID)
+	}
+}
+
+// KeyFile returns a ProjectFunc that initializes the project with values from
+// the specified key file and the cloud using the key file project id.
+func KeyFile(keyFile string) ProjectFunc {
+	return func(ctx context.Context) (project, error) {
+		creds, err := readCredentials(ctx, keyFile)
+		if err != nil {
+			return project{}, fmt.Errorf("failed to read credentials: %v", err)
+		}
+
+		return gcpProject(ctx, creds, creds.ProjectID)
+	}
+}
+
+// KeyFileWithProject returns a ProjectFunc that initializes the project with
+// values from the specified key file and the cloud using the given project id.
+func KeyFileWithProject(keyFile, projectID string) ProjectFunc {
+	return func(ctx context.Context) (project, error) {
+		creds, err := readCredentials(ctx, keyFile)
+		if err != nil {
+			return project{}, fmt.Errorf("failed to read credentials: %v", err)
+		}
+
+		return gcpProject(ctx, creds, projectID)
+	}
+}
+
+// Project returns a ProjectFunc that initializes the project with the
+// specified values.
+func Project(projectID string, projectNumber int64) ProjectFunc {
+	return func(ctx context.Context) (project, error) {
+		name := cases.Title(language.Und).String(strings.ReplaceAll(projectID, "-", " "))
+		return project{id: projectID, number: projectNumber, name: name, orgName: name + " Org"}, nil
+	}
+}
+
 // readCredentials reads the credentials from the specified key file.
 func readCredentials(ctx context.Context, keyFile string) (*google.Credentials, error) {
 	if strings.HasPrefix(keyFile, "~/") {
@@ -115,62 +173,4 @@ func gcpProject(ctx context.Context, creds *google.Credentials, id string) (proj
 	}
 
 	return project, nil
-}
-
-// Credentials returns a ProjectFunc that initializes the project with values
-// from the specified credentials and the cloud using the credentials project
-// id.
-func Credentials(credentials *google.Credentials) ProjectFunc {
-	return func(ctx context.Context) (project, error) {
-		return gcpProject(ctx, credentials, credentials.ProjectID)
-	}
-}
-
-// Default returns a ProjectFunc that initializes the project with values from
-// the default credentials and the cloud using the default credentials project
-// id.
-func Default() ProjectFunc {
-	return func(ctx context.Context) (project, error) {
-		creds, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/cloud-platform")
-		if err != nil {
-			return project{}, fmt.Errorf("failed to find the default GCP credentials: %v", err)
-		}
-
-		return gcpProject(ctx, creds, creds.ProjectID)
-	}
-}
-
-// KeyFile returns a ProjectFunc that initializes the project with values from
-// the specified key file and the cloud using the key file project id.
-func KeyFile(keyFile string) ProjectFunc {
-	return func(ctx context.Context) (project, error) {
-		creds, err := readCredentials(ctx, keyFile)
-		if err != nil {
-			return project{}, fmt.Errorf("failed to read credentials: %v", err)
-		}
-
-		return gcpProject(ctx, creds, creds.ProjectID)
-	}
-}
-
-// KeyFileAndProject returns a ProjectFunc that initializes the project with
-// values from the specified key file and the cloud using the given project id.
-func KeyFileAndProject(keyFile, projectID string) ProjectFunc {
-	return func(ctx context.Context) (project, error) {
-		creds, err := readCredentials(ctx, keyFile)
-		if err != nil {
-			return project{}, fmt.Errorf("failed to read credentials: %v", err)
-		}
-
-		return gcpProject(ctx, creds, projectID)
-	}
-}
-
-// Project returns a ProjectFunc that initializes the project with the
-// specified values.
-func Project(id string, number int64) ProjectFunc {
-	return func(ctx context.Context) (project, error) {
-		name := cases.Title(language.Und).String(strings.ReplaceAll(id, "-", " "))
-		return project{id: id, number: number, name: name, orgName: name + " Org"}, nil
-	}
 }

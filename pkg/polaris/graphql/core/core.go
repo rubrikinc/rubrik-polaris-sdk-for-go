@@ -27,6 +27,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -83,7 +84,7 @@ func FormatFeature(feature Feature) string {
 	return strings.ReplaceAll(strings.ToLower(string(feature)), "_", "-")
 }
 
-// ParseFeature returns the Feature matching the given feature name. Case
+// ParseFeature returns the Feature matching the given feature name. Case-
 // insensitive.
 func ParseFeature(feature string) (Feature, error) {
 	feature = strings.ReplaceAll(feature, "-", "_")
@@ -95,6 +96,12 @@ func ParseFeature(feature string) (Feature, error) {
 
 	return FeatureInvalid, fmt.Errorf("invalid feature: %s", feature)
 }
+
+const (
+	// Number of attempts before failing to wait for the Korg job when the error
+	// returned is a 403, objects not authorized.
+	waitAttempts = 15
+)
 
 // Status represents a Polaris cloud account status.
 type Status string
@@ -144,13 +151,14 @@ type SLADomain struct {
 
 // API wraps around GraphQL clients to give them the Polaris Core API.
 type API struct {
-	Version string
+	Version string // Deprecated: use GQL.DeploymentVersion
 	GQL     *graphql.Client
+	log     log.Logger
 }
 
 // Wrap the GraphQL client in the Core API.
 func Wrap(gql *graphql.Client) API {
-	return API{Version: gql.Version, GQL: gql}
+	return API{GQL: gql, log: gql.Log()}
 }
 
 // TaskChain is a collection of sequential tasks that all must complete for the
@@ -162,20 +170,19 @@ type TaskChain struct {
 }
 
 // KorgTaskChainStatus returns the task chain for the specified task chain id.
-// If the task chain id refers to a task chain that was just created it's state
+// If the task chain id refers to a task chain that was just created its state
 // might not have reached ready yet. This can be detected by state being
 // TaskChainInvalid and error is nil.
 func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, getKorgTaskchainStatusQuery, struct {
 		TaskChainID uuid.UUID `json:"taskchainId,omitempty"`
 	}{TaskChainID: id})
 	if err != nil {
-		return TaskChain{}, fmt.Errorf("failed to request KorgTaskChainStatus: %v", err)
+		return TaskChain{}, fmt.Errorf("failed to request getKorgTaskchainStatus: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "getKorgTaskchainStatus(%q): %s", id, string(buf))
+	a.log.Printf(log.Debug, "getKorgTaskchainStatus(%q): %s", id, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -185,7 +192,7 @@ func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return TaskChain{}, fmt.Errorf("failed to unmarshal KorgTaskChainStatus: %v", err)
+		return TaskChain{}, fmt.Errorf("failed to unmarshal getKorgTaskchainStatus: %v", err)
 	}
 
 	return payload.Data.Query.TaskChain, nil
@@ -196,19 +203,27 @@ func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, 
 // task chain is returned. The wait parameter specifies the amount of time to
 // wait before requesting another task status update.
 func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Duration) (TaskChainState, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
+	attempt := 0
 	for {
 		taskChain, err := a.KorgTaskChainStatus(ctx, id)
 		if err != nil {
-			return TaskChainInvalid, err
+			var gqlErr graphql.GQLError
+			if !errors.As(err, &gqlErr) || len(gqlErr.Errors) < 1 || gqlErr.Errors[0].Extensions.Code != 403 {
+				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %q: %v", id, err)
+			}
+			if attempt++; attempt > waitAttempts {
+				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %q after %d attempts: %v", id, attempt, err)
+			}
+			a.log.Printf(log.Debug, "RBAC not ready (attempt: %d)", attempt)
 		}
 
 		if taskChain.State == TaskChainSucceeded || taskChain.State == TaskChainCanceled || taskChain.State == TaskChainFailed {
 			return taskChain.State, nil
 		}
 
-		a.GQL.Log().Printf(log.Debug, "Waiting for Polaris task chain: %v", id)
+		a.log.Printf(log.Debug, "Waiting for Polaris task chain: %v", id)
 
 		select {
 		case <-time.After(wait):
@@ -218,16 +233,15 @@ func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Durat
 	}
 }
 
-// DeploymentVersion returns the deployed version of Polaris.
+// Deprecated: use GQL.DeploymentVersion.
 func (a API) DeploymentVersion(ctx context.Context) (string, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, deploymentVersionQuery, struct{}{})
 	if err != nil {
-		return "", fmt.Errorf("failed to request DeploymentVersion: %v", err)
+		return "", fmt.Errorf("failed to request deploymentVersion: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "deploymentVersion(): %s", string(buf))
+	a.log.Printf(log.Debug, "deploymentVersion(): %s", string(buf))
 
 	var payload struct {
 		Data struct {
@@ -235,7 +249,7 @@ func (a API) DeploymentVersion(ctx context.Context) (string, error) {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", fmt.Errorf("failed to unmarshal DeploymentVersion: %v", err)
+		return "", fmt.Errorf("failed to unmarshal deploymentVersion: %v", err)
 	}
 
 	return payload.Data.DeploymentVersion, nil

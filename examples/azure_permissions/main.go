@@ -46,14 +46,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClient(ctx, polAccount, polaris_log.NewStandardLogger())
+	client, err := polaris.NewClientWithLogger(polAccount, polaris_log.NewStandardLogger())
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	azureClient := azure.Wrap(client)
+
 	// List Azure permissions needed for features.
 	features := []core.Feature{core.FeatureCloudNativeProtection}
-	perms, err := client.Azure().Permissions(ctx, features)
+	perms, err := azureClient.Permissions(ctx, features)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -74,12 +76,12 @@ func main() {
 
 	// Notify Polaris about updated permissions for the Cloud Native Protection
 	// feature of the already added subscription.
-	account, err := client.Azure().Subscription(ctx,
+	account, err := azureClient.Subscription(ctx,
 		azure.SubscriptionID(uuid.MustParse("27dce22c-1b84-11ec-9992-a3d4a0eb7b90")), core.FeatureCloudNativeProtection)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = client.Azure().PermissionsUpdated(ctx, azure.CloudAccountID(account.ID), features)
+	err = azureClient.PermissionsUpdated(ctx, azure.CloudAccountID(account.ID), features)
 	if err != nil {
 		log.Fatal(err)
 	}

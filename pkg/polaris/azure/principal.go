@@ -37,8 +37,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// ServicePrincipal Azure service principal used by Polaris to access one or
-// more Azure subscriptions.
+// ServicePrincipal Azure service principal used by RSC to access one or more
+// Azure subscriptions.
 type servicePrincipal struct {
 	appID        uuid.UUID
 	appName      string
@@ -203,7 +203,7 @@ func (e principalAzureError) Unwrap() error {
 	return e.err
 }
 
-// principalV0 format is used by v0.1.x versions of the Polaris SDK.
+// principalV0 format is used by v0.1.x versions of the RSC SDK.
 type principalV0 struct {
 	AppID        string `json:"app_id"`
 	AppName      string `json:"app_name"`
@@ -275,7 +275,7 @@ func decodePrincipalV0(ctx context.Context, data, tenantDomain string) (serviceP
 	return principal, nil
 }
 
-// principalV1 format is used by v0.2.x versions of the Polaris SDK.
+// principalV1 format is used by v0.2.x versions of the RSC SDK.
 type principalV1 struct {
 	AppID        string `json:"appId"`
 	AppName      string `json:"appName"`
@@ -348,7 +348,7 @@ func decodePrincipalV1(ctx context.Context, data, tenantDomain string) (serviceP
 	return principal, nil
 }
 
-// principalV2 format is used by v0.3.x versions of the Polaris SDK.
+// principalV2 format is used by v0.3.x and later versions of the RSC SDK.
 type principalV2 struct {
 	AppID     string `json:"appId"`
 	AppName   string `json:"appName"`

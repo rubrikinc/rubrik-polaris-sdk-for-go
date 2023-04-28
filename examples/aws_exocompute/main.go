@@ -39,15 +39,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClient(ctx, polAccount, polaris_log.NewStandardLogger())
+	client, err := polaris.NewClientWithLogger(polAccount, polaris_log.NewStandardLogger())
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	awsClient := aws.Wrap(client)
+
 	// Add the AWS default account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	accountID, err := client.AWS().AddAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, aws.Regions("us-east-2", "us-west-2"))
+	accountID, err := awsClient.AddAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, aws.Regions("us-east-2", "us-west-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,14 +59,14 @@ func main() {
 	// Enable the exocompute feature for the account. Note that the
 	// cnpAccountID and exoAccountID should be the same, they refer to the same
 	// Polaris cloud account.
-	exoAccountID, err := client.AWS().AddAccount(ctx, aws.Default(), core.FeatureExocompute, aws.Regions("us-east-2"))
+	exoAccountID, err := awsClient.AddAccount(ctx, aws.Default(), core.FeatureExocompute, aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Printf("Exocompute Account ID: %v\n", exoAccountID)
 
-	account, err := client.AWS().Account(ctx, aws.CloudAccountID(accountID), core.FeatureAll)
+	account, err := awsClient.Account(ctx, aws.CloudAccountID(accountID), core.FeatureAll)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -75,7 +77,7 @@ func main() {
 	}
 
 	// Add exocompute config for the account.
-	exoID, err := client.AWS().AddExocomputeConfig(ctx, aws.ID(aws.Default()),
+	exoID, err := awsClient.AddExocomputeConfig(ctx, aws.ID(aws.Default()),
 		aws.Managed("us-east-2", "vpc-4859acb9", []string{"subnet-ea67b67b", "subnet-ea43ec78"}))
 	if err != nil {
 		log.Fatal(err)
@@ -84,7 +86,7 @@ func main() {
 	fmt.Printf("Exocompute config ID: %v\n", exoID)
 
 	// Retrieve the exocompute config added.
-	exoConfig, err := client.AWS().ExocomputeConfig(ctx, exoID)
+	exoConfig, err := awsClient.ExocomputeConfig(ctx, exoID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -92,19 +94,19 @@ func main() {
 	fmt.Printf("Exocompute Config: %v\n", exoConfig)
 
 	// Remove the exocompute config.
-	err = client.AWS().RemoveExocomputeConfig(ctx, exoID)
+	err = awsClient.RemoveExocomputeConfig(ctx, exoID)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Disable the exocompute feature for the account.
-	err = client.AWS().RemoveAccount(ctx, aws.Default(), core.FeatureExocompute, false)
+	err = awsClient.RemoveAccount(ctx, aws.Default(), core.FeatureExocompute, false)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Remove the AWS account from Polaris.
-	err = client.AWS().RemoveAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, false)
+	err = awsClient.RemoveAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -26,6 +26,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
+
 	"github.com/google/uuid"
 )
 
@@ -39,22 +41,22 @@ type identity struct {
 type IdentityFunc func(ctx context.Context) (identity, error)
 
 // AccountID returns an IdentityFunc that initializes the identity with the
-// specified account id.
-func AccountID(id string) IdentityFunc {
+// specified AWS account id.
+func AccountID(awsAccountID string) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
-		if _, err := strconv.ParseInt(id, 10, 64); len(id) != 12 || err != nil {
-			return identity{}, errors.New("invalid aws id")
+		if !verifyAccountID(awsAccountID) {
+			return identity{}, errors.New("invalid AWS id")
 		}
 
-		return identity{id: id, internal: false}, nil
+		return identity{id: awsAccountID, internal: false}, nil
 	}
 }
 
 // CloudAccountID returns an IdentityFunc that initializes the identity with
-// the specified Polaris cloud account id.
-func CloudAccountID(id uuid.UUID) IdentityFunc {
+// the specified RSC cloud account id.
+func CloudAccountID(cloudAccountID uuid.UUID) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
-		return identity{id: id.String(), internal: true}, nil
+		return identity{id: cloudAccountID.String(), internal: true}, nil
 	}
 }
 
@@ -64,9 +66,37 @@ func ID(account AccountFunc) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
 		config, err := account(ctx)
 		if err != nil {
-			return identity{}, fmt.Errorf("failed to lookup account: %v", err)
+			return identity{}, fmt.Errorf("failed to lookup account id: %v", err)
 		}
 
 		return identity{id: config.id, internal: false}, nil
 	}
+}
+
+// Role returns an IdentityFunc that initializes the identity with the specified
+// AWS account id.
+func Role(roleARN string) IdentityFunc {
+	return func(ctx context.Context) (identity, error) {
+		arn, err := arn.Parse(roleARN)
+		if err != nil {
+			return identity{}, fmt.Errorf("failed to parse role ARN: %v", err)
+		}
+		if !verifyAccountID(arn.AccountID) {
+			return identity{}, errors.New("invalid AWS id")
+		}
+
+		return identity{id: arn.AccountID, internal: false}, nil
+	}
+}
+
+// verifyAccountID returns true if the AWS account id is valid.
+func verifyAccountID(awsAccountID string) bool {
+	if len(awsAccountID) != 12 {
+		return false
+	}
+	if _, err := strconv.ParseInt(awsAccountID, 10, 64); err != nil {
+		return false
+	}
+
+	return true
 }

@@ -1,0 +1,13 @@
+mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $feature: CloudAccountFeature!) {
+  result: startDisableAzureCloudAccountJob(input: {
+    feature:         $feature,
+    cloudAccountIds: [$cloudAccountId],
+  }) {
+    jobIds {
+      jobId
+    }
+    errors {
+      error
+    }
+  }
+}

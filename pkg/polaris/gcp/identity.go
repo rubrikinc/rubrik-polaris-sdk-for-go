@@ -47,10 +47,10 @@ type identity struct {
 type IdentityFunc func(ctx context.Context) (identity, error)
 
 // CloudAccountID returns an IdentityFunc that initializes the identity with
-// the specified Polaris cloud account id.
-func CloudAccountID(id uuid.UUID) IdentityFunc {
+// the specified RSC cloud account id.
+func CloudAccountID(cloudAccountID uuid.UUID) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
-		return identity{id: id.String(), kind: internalID}, nil
+		return identity{id: cloudAccountID.String(), kind: internalID}, nil
 	}
 }
 
@@ -69,13 +69,13 @@ func ID(project ProjectFunc) IdentityFunc {
 
 // ProjectID returns an IdentityFunc that initializes the identity with the
 // specified project id.
-func ProjectID(id string) IdentityFunc {
+func ProjectID(projectID string) IdentityFunc {
 	return func(ctx context.Context) (identity, error) {
-		if len(id) < 6 || len(id) > 30 {
+		if len(projectID) < 6 || len(projectID) > 30 {
 			return identity{}, errors.New("invalid GCP project id")
 		}
 
-		return identity{id: id, kind: externalID}, nil
+		return identity{id: projectID, kind: externalID}, nil
 	}
 }
 

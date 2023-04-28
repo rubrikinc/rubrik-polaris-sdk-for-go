@@ -68,7 +68,7 @@ func (t *RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	t.mutex.Lock()
 	if t.token.expired() {
 		var err error
-		t.token, err = t.src.token()
+		t.token, err = t.src.token(req.Context())
 		if err != nil {
 			t.mutex.Unlock()
 			return nil, fmt.Errorf("failed to refresh access token: %v", err)

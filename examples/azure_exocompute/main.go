@@ -40,14 +40,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClient(ctx, polAccount, polaris_log.NewStandardLogger())
+	client, err := polaris.NewClientWithLogger(polAccount, polaris_log.NewStandardLogger())
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	azureClient := azure.Wrap(client)
+
 	// Add default Azure service principal to Polaris. Usually resolved using
 	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
-	_, err = client.Azure().SetServicePrincipal(ctx, azure.Default("my-domain.onmicrosoft.com"))
+	_, err = azureClient.SetServicePrincipal(ctx, azure.Default("my-domain.onmicrosoft.com"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,7 +57,7 @@ func main() {
 	// Add Azure subscription to Polaris.
 	subscription := azure.Subscription(uuid.MustParse("9318aeec-d357-11eb-9b37-5f4e9f79db5d"),
 		"my-domain.onmicrosoft.com")
-	accountID, err := client.Azure().AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection, azure.Regions("eastus2", "westus2"))
+	accountID, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection, azure.Regions("eastus2", "westus2"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,14 +65,14 @@ func main() {
 	fmt.Printf("Account ID: %v\n", accountID)
 
 	// Enable the exocompute feature for the account.
-	exoAccountID, err := client.Azure().AddSubscription(ctx, subscription, core.FeatureExocompute, azure.Regions("eastus2"))
+	exoAccountID, err := azureClient.AddSubscription(ctx, subscription, core.FeatureExocompute, azure.Regions("eastus2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Printf("Exocompute Account ID: %v\n", exoAccountID)
 
-	account, err := client.Azure().Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureAll)
+	account, err := azureClient.Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureAll)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,7 +83,7 @@ func main() {
 	}
 
 	// Add exocompute config for the account.
-	exoID, err := client.Azure().AddExocomputeConfig(ctx, azure.CloudAccountID(accountID),
+	exoID, err := azureClient.AddExocomputeConfig(ctx, azure.CloudAccountID(accountID),
 		azure.Managed("eastus2", "/subscriptions/9318aeec-d357-11eb-9b37-5f4e9f79db5d/resourceGroups/terraform-test/providers/Microsoft.Network/virtualNetworks/terraform-test/subnets/default"))
 	if err != nil {
 		log.Fatal(err)
@@ -90,7 +92,7 @@ func main() {
 	fmt.Printf("Exocompute config ID: %v\n", exoID)
 
 	// Retrieve the exocompute config added.
-	exoConfig, err := client.Azure().ExocomputeConfig(ctx, exoID)
+	exoConfig, err := azureClient.ExocomputeConfig(ctx, exoID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -98,19 +100,19 @@ func main() {
 	fmt.Printf("Exocompute Config: %v\n", exoConfig)
 
 	// Remove the exocompute config.
-	err = client.Azure().RemoveExocomputeConfig(ctx, exoID)
+	err = azureClient.RemoveExocomputeConfig(ctx, exoID)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Disable the exocompute feature for the account.
-	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute, false)
+	err = azureClient.RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute, false)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Remove subscription.
-	err = client.Azure().RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureCloudNativeProtection, false)
+	err = azureClient.RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		log.Fatal(err)
 	}

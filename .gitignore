@@ -1,4 +1,5 @@
 /aws_account
+/aws_cross_account_role
 /aws_exocompute
 /azure_exocompute
 /azure_permissions
@@ -6,6 +7,7 @@
 /gcp_permissions
 /gcp_project
 /gcp_project_with_set_sa
+/roles
 /examples/aws_account/aws_account
 /examples/aws_exocompute/aws_exocompute
 /examples/azure_exocompute/azure_exocompute
@@ -14,3 +16,4 @@
 /examples/gcp_project/gcp_permissions
 /examples/gcp_project/gcp_project
 /examples/gcp_project/gcp_project_with_set_sa
+/examples/roles/roles

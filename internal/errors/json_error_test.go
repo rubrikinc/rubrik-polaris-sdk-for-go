@@ -39,7 +39,7 @@ func TestJSONError(t *testing.T) {
 	if !jsonErr1.IsError() {
 		t.Error("jsonErr1 should represent an error")
 	}
-	expected := "JWT validation failed: Missing or invalid credentials (code 16)"
+	expected := "JWT validation failed: Missing or invalid credentials (code: 16)"
 	if msg := jsonErr1.Error(); msg != expected {
 		t.Errorf("invalid error message: %v", msg)
 	}
@@ -56,7 +56,7 @@ func TestJSONError(t *testing.T) {
 	if !jsonErr2.IsError() {
 		t.Error("jsonErr2 should represent an error")
 	}
-	expected = "UNAUTHENTICATED: wrong username or password (code 401)"
+	expected = "UNAUTHENTICATED: wrong username or password (code: 401, traceId: n2jJpBU8qkEy3k09s9JNkg==)"
 	if msg := jsonErr2.Error(); msg != expected {
 		t.Errorf("invalid error message: %v", msg)
 	}

@@ -28,13 +28,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// NativeProject represents a Polaris native project. NativeProjects are
-// connected to CloudAccounts through the NativeID field.
+// NativeProject represents an RSC native project. NativeProjects are connected
+// to CloudAccounts through the NativeID field.
 type NativeProject struct {
 	ID               uuid.UUID          `json:"id"`
 	Name             string             `json:"name"`
@@ -47,19 +46,18 @@ type NativeProject struct {
 	Effective        core.SLADomain     `json:"effectiveSlaDomain"`
 }
 
-// NativeProject returns the native project with the specified Polaris native
+// NativeProject returns the native project with the specified RSC native
 // project id.
 func (a API) NativeProject(ctx context.Context, id uuid.UUID) (NativeProject, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, gcpNativeProjectQuery, struct {
 		ID uuid.UUID `json:"fid"`
 	}{ID: id})
 	if err != nil {
-		return NativeProject{}, fmt.Errorf("failed to request NativeProject: %v", err)
+		return NativeProject{}, fmt.Errorf("failed to request gcpNativeProject: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "gcpNativeProject(%q): %s", id, string(buf))
+	a.log.Printf(log.Debug, "gcpNativeProject(%q): %s", id, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -67,7 +65,7 @@ func (a API) NativeProject(ctx context.Context, id uuid.UUID) (NativeProject, er
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return NativeProject{}, fmt.Errorf("failed to unmarshal NativeProject: %v", err)
+		return NativeProject{}, fmt.Errorf("failed to unmarshal gcpNativeProject: %v", err)
 	}
 
 	return payload.Data.Account, nil
@@ -76,24 +74,19 @@ func (a API) NativeProject(ctx context.Context, id uuid.UUID) (NativeProject, er
 // NativeProjects returns the native projects matching the specified filter.
 // The filter can be used to search for a substring in project name or number.
 func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	var accounts []NativeProject
 	var cursor string
 	for {
-		query := gcpNativeProjectsQuery
-		if graphql.VersionOlderThan(a.Version, "master-46700", "v20220412") {
-			query = gcpNativeProjectConnectionQuery
-		}
-		buf, err := a.GQL.Request(ctx, query, struct {
+		buf, err := a.GQL.Request(ctx, gcpNativeProjectsQuery, struct {
 			After  string `json:"after,omitempty"`
 			Filter string `json:"filter"`
 		}{After: cursor, Filter: filter})
 		if err != nil {
-			return nil, fmt.Errorf("failed to request NativeProjects: %v", err)
+			return nil, fmt.Errorf("failed to request gcpNativeProjects: %w", err)
 		}
-
-		a.GQL.Log().Printf(log.Debug, "%s(%q): %s", graphql.QueryName(query), filter, string(buf))
+		a.log.Printf(log.Debug, "gcpNativeProjects(%q): %s", filter, string(buf))
 
 		var payload struct {
 			Data struct {
@@ -110,7 +103,7 @@ func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal NativeProjects: %v", err)
+			return nil, fmt.Errorf("failed to unmarshal gcpNativeProjects: %v", err)
 		}
 		for _, account := range payload.Data.Result.Edges {
 			accounts = append(accounts, account.Node)
@@ -126,45 +119,30 @@ func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject
 }
 
 // NativeDisableProject starts a task chain job to disable the native project
-// with the specified Polaris native project id. If deleteSnapshots is true the
-// snapshots are deleted. Returns the Polaris task chain id.
+// with the specified RSC native project id. If deleteSnapshots is true the
+// snapshots are deleted. Returns the RSC task chain id.
 func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnapshots bool) (uuid.UUID, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
-	query := gcpNativeDisableProjectQuery
-	if graphql.VersionOlderThan(a.Version, "master-46700", "v20220412") {
-		query = gcpNativeDisableProjectV0Query
-	} else if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
-		query = gcpNativeDisableProjectV1Query
-	}
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.Request(ctx, gcpNativeDisableProjectQuery, struct {
 		ID              uuid.UUID `json:"projectId"`
 		DeleteSnapshots bool      `json:"shouldDeleteNativeSnapshots"`
 	}{ID: id, DeleteSnapshots: deleteSnapshots})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to request NativeDisableProject: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to request gcpNativeDisableProject: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "%s(%q, %t): %s", graphql.QueryName(query), id, deleteSnapshots, string(buf))
+	a.log.Printf(log.Debug, "gcpNativeDisableProject(%q, %t): %s", id, deleteSnapshots, string(buf))
 
 	var payload struct {
 		Data struct {
 			Query struct {
-				JobID       uuid.UUID `json:"jobId"`
-				TaskChainID uuid.UUID `json:"taskchainUuid"`
-				Error       string    `json:"error"`
+				JobID uuid.UUID `json:"jobId"`
+				Error string    `json:"error"`
 			} `json:"gcpNativeDisableProject"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to unmarshal NativeDisableProject: %v", err)
-	}
-
-	if graphql.VersionOlderThan(a.Version, "master-46700", "v20220412") {
-		return payload.Data.Query.TaskChainID, nil
-	}
-	if graphql.VersionOlderThan(a.Version, "master-47076", "v20220426") {
-		return payload.Data.Query.JobID, nil
+		return uuid.Nil, fmt.Errorf("failed to unmarshal gcpNativeDisableProject: %v", err)
 	}
 	if payload.Data.Query.Error != "" {
 		return uuid.Nil, errors.New(payload.Data.Query.Error)

@@ -31,9 +31,8 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// NativeSubscription represents a Polaris native subscription.
-// NativeSubscriptions are connected to CloudAccounts through the NativeID
-// field.
+// NativeSubscription represents an RSC native subscription. NativeSubscriptions
+// are connected to CloudAccounts through the NativeID field.
 type NativeSubscription struct {
 	ID            uuid.UUID          `json:"id"`
 	Name          string             `json:"name"`
@@ -48,7 +47,7 @@ type NativeSubscription struct {
 // filter. The filter can be used to search for a substring in the subscription
 // name.
 func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSubscription, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	var subscriptions []NativeSubscription
 	var cursor string
@@ -58,10 +57,9 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 			Filter string `json:"filter"`
 		}{After: cursor, Filter: filter})
 		if err != nil {
-			return nil, fmt.Errorf("failed to request NativeSubscriptions: %v", err)
+			return nil, fmt.Errorf("failed to request azureNativeSubscriptions: %w", err)
 		}
-
-		a.GQL.Log().Printf(log.Debug, "azureNativeSubscriptions(%q): %s", filter, string(buf))
+		a.log.Printf(log.Debug, "azureNativeSubscriptions(%q): %s", filter, string(buf))
 
 		var payload struct {
 			Data struct {
@@ -78,7 +76,7 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal NativeSubscriptions: %v", err)
+			return nil, fmt.Errorf("failed to unmarshal azureNativeSubscriptions: %v", err)
 		}
 		for _, subscription := range payload.Data.Result.Edges {
 			subscriptions = append(subscriptions, subscription.Node)
@@ -94,11 +92,11 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 }
 
 // StartDisableNativeSubscriptionProtectionJob starts a task chain job to
-// disable the native subscription with the specified Polaris native
-// subscription id. If deleteSnapshots is true the snapshots are deleted.
-// Returns the Polaris task chain id.
+// disable the native subscription with the specified RSC native subscription
+// id. If deleteSnapshots is true the snapshots are deleted. Returns the RSC
+// task chain id.
 func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id uuid.UUID, feature ProtectionFeature, deleteSnapshots bool) (uuid.UUID, error) {
-	a.GQL.Log().Print(log.Trace)
+	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, startDisableAzureNativeSubscriptionProtectionJobQuery, struct {
 		ID              uuid.UUID         `json:"azureSubscriptionRubrikId"`
@@ -106,10 +104,9 @@ func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id
 		Feature         ProtectionFeature `json:"azureNativeProtectionFeature"`
 	}{ID: id, DeleteSnapshots: deleteSnapshots, Feature: feature})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to request StartDisableNativeSubscriptionProtectionJob: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to request startDisableAzureNativeSubscriptionProtectionJob: %w", err)
 	}
-
-	a.GQL.Log().Printf(log.Debug, "startDisableAzureNativeSubscriptionProtectionJob(%q, %q, %t): %s",
+	a.log.Printf(log.Debug, "startDisableAzureNativeSubscriptionProtectionJob(%q, %q, %t): %s",
 		id, feature, deleteSnapshots, string(buf))
 
 	var payload struct {
@@ -120,7 +117,7 @@ func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to unmarshal StartDisableNativeSubscriptionProtectionJob: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to unmarshal startDisableAzureNativeSubscriptionProtectionJob: %v", err)
 	}
 
 	return payload.Data.Result.JobID, nil
