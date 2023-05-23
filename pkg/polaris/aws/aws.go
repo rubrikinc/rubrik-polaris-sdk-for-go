@@ -342,7 +342,7 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 
 	// Disable the native (inventory) account before removing the feature.
 	switch {
-	case rmFeature.Name == core.FeatureCloudNativeProtection && rmFeature.Status != core.StatusDisabled:
+	case rmFeature.Name == core.FeatureCloudNativeProtection && rmFeature.Status != core.StatusDisabled && rmFeature.Status != core.StatusConnecting:
 		jobID, err := aws.Wrap(a.client).StartNativeAccountDisableJob(ctx, akkount.ID, aws.EC2, deleteSnapshots)
 		if err != nil {
 			return fmt.Errorf("failed to disable native account: %v", err)
@@ -355,7 +355,7 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 		if state != core.TaskChainSucceeded {
 			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
 		}
-	case rmFeature.Name == core.FeatureExocompute && rmFeature.Status != core.StatusDisabled:
+	case rmFeature.Name == core.FeatureExocompute && rmFeature.Status != core.StatusDisabled && rmFeature.Status != core.StatusConnecting:
 		jobID, err := aws.Wrap(a.client).StartExocomputeDisableJob(ctx, akkount.ID)
 		if err != nil {
 			return fmt.Errorf("failed to disable native account: %v", err)
@@ -392,38 +392,40 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 		}
 	}
 
-	if features > 0 {
-		i := strings.LastIndex(cfmURL, "#/stack/update") + 1
-		if i == 0 {
-			return errors.New("CloudFormation url does not contain #/stack/update")
-		}
+	if cfmURL != "" {
+		if features > 0 {
+			i := strings.LastIndex(cfmURL, "#/stack/update") + 1
+			if i == 0 {
+				return errors.New("CloudFormation url does not contain #/stack/update")
+			}
 
-		u, err := url.Parse(cfmURL[i:])
-		if err != nil {
-			return fmt.Errorf("failed to parse CloudFormation url: %v", err)
-		}
-		stackID := u.Query().Get("stackId")
-		tmplURL := u.Query().Get("templateURL")
+			u, err := url.Parse(cfmURL[i:])
+			if err != nil {
+				return fmt.Errorf("failed to parse CloudFormation url: %v", err)
+			}
+			stackID := u.Query().Get("stackId")
+			tmplURL := u.Query().Get("templateURL")
 
-		err = awsUpdateStack(ctx, a.client.Log(), config.config, stackID, tmplURL)
-		if err != nil {
-			return fmt.Errorf("failed to update CloudFormation stack: %v", err)
-		}
-	} else {
-		i := strings.LastIndex(cfmURL, "#/stack/detail") + 1
-		if i == 0 {
-			return errors.New("CloudFormation url does not contain #/stack/detail")
-		}
+			err = awsUpdateStack(ctx, a.client.Log(), config.config, stackID, tmplURL)
+			if err != nil {
+				return fmt.Errorf("failed to update CloudFormation stack: %v", err)
+			}
+		} else {
+			i := strings.LastIndex(cfmURL, "#/stack/detail") + 1
+			if i == 0 {
+				return errors.New("CloudFormation url does not contain #/stack/detail")
+			}
 
-		u, err := url.Parse(cfmURL[i:])
-		if err != nil {
-			return fmt.Errorf("failed to parse CloudFormation url: %v", err)
-		}
-		stackID := u.Query().Get("stackId")
+			u, err := url.Parse(cfmURL[i:])
+			if err != nil {
+				return fmt.Errorf("failed to parse CloudFormation url: %v", err)
+			}
+			stackID := u.Query().Get("stackId")
 
-		err = awsDeleteStack(ctx, a.client.Log(), config.config, stackID)
-		if err != nil {
-			return fmt.Errorf("failed to delete CloudFormation stack: %v", err)
+			err = awsDeleteStack(ctx, a.client.Log(), config.config, stackID)
+			if err != nil {
+				return fmt.Errorf("failed to delete CloudFormation stack: %v", err)
+			}
 		}
 	}
 

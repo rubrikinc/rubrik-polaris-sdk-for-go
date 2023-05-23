@@ -250,9 +250,6 @@ func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feat
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return "", fmt.Errorf("failed to unmarshal prepareAwsCloudAccountDeletion: %v", err)
 	}
-	if payload.Data.Query.URL == "" {
-		return "", errors.New("CloudFormation url is empty")
-	}
 
 	return payload.Data.Query.URL, nil
 }
