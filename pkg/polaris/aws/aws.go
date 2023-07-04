@@ -322,6 +322,11 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature core.Feature, deleteSnapshots bool) error {
 	a.log.Print(log.Trace)
 
+	version, err := a.client.DeploymentVersion(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get deployment version: %v", err)
+	}
+
 	if account == nil {
 		return errors.New("account is not allowed to be nil")
 	}
@@ -378,6 +383,14 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 
 	// Determine the number of features remaining after removing one feature.
 	features := len(akkount.Features) - 1
+
+	if version.Before("v20230705", "master-57488") {
+		// Having Cloud Native Protection or Exocompute implies the Cloud Accounts
+		// feature.
+		if rmFeature.Name != core.FeatureCloudAccounts {
+			features--
+		}
+	}
 
 	// Removing the Cloud Native Protection feature implies removing the
 	// Exocompute feature.
