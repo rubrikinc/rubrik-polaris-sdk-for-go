@@ -355,6 +355,7 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 		if state != core.TaskChainSucceeded {
 			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
 		}
+
 	case rmFeature.Name == core.FeatureExocompute && rmFeature.Status != core.StatusDisabled && rmFeature.Status != core.StatusConnecting:
 		jobID, err := aws.Wrap(a.client).StartExocomputeDisableJob(ctx, akkount.ID)
 		if err != nil {
@@ -377,12 +378,6 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 
 	// Determine the number of features remaining after removing one feature.
 	features := len(akkount.Features) - 1
-
-	// Having Cloud Native Protection or Exocompute implies the Cloud Accounts
-	// feature.
-	if rmFeature.Name != core.FeatureCloudAccounts {
-		features--
-	}
 
 	// Removing the Cloud Native Protection feature implies removing the
 	// Exocompute feature.
