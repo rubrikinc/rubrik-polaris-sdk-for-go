@@ -384,7 +384,7 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 	// Determine the number of features remaining after removing one feature.
 	features := len(akkount.Features) - 1
 
-	if version.Before("v20230705", "master-57488") {
+	if version.Before("v20230628", "master-57488") {
 		// Having Cloud Native Protection or Exocompute implies the Cloud Accounts
 		// feature.
 		if rmFeature.Name != core.FeatureCloudAccounts {
