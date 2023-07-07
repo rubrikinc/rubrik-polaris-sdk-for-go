@@ -38,7 +38,7 @@ func (a API) UpdatePermissions(ctx context.Context, account AccountFunc, feature
 	// Extract stack id/name from returned CloudFormationURL.
 	i := strings.LastIndex(cfmURL, "#/stack/update") + 1
 	if i == 0 {
-		return errors.New("CloudFormation url does not contain #/stack/detail")
+		return errors.New("CloudFormation url does not contain #/stack/update")
 	}
 
 	u, err := url.Parse(cfmURL[i:])
