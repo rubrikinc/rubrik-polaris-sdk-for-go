@@ -1,4 +1,4 @@
-//go:generate go run ../queries_gen.go cdmk8s
+//go:generate go run ../queries_gen.go infinityk8s
 
 // Copyright 2021 Rubrik, Inc.
 //
@@ -20,9 +20,9 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package cdmk8s provides a low level interface to the CDM K8s GraphQL queries
+// Package infinityk8s provides a low level interface to the Infinity K8s GraphQL queries
 // provided by the Polaris platform.
-package cdmk8s
+package infinityk8s
 
 import (
 	"context"
@@ -34,13 +34,13 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// API wraps around GraphQL clients to give them the RSC CDM K8s API.
+// API wraps around GraphQL clients to give them the RSC Infinity K8s API.
 type API struct {
 	GQL *graphql.Client
 	log log.Logger
 }
 
-// Wrap the RSC client in the CDM K8s API.
+// Wrap the RSC client in the Infinity K8s API.
 func Wrap(client *polaris.Client) API {
 	return API{GQL: client.GQL, log: client.GQL.Log()}
 }

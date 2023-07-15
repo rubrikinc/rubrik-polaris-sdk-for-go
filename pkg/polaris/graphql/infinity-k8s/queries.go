@@ -22,7 +22,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package cdmk8s
+package infinityk8s
 
 // deleteK8sResourceset GraphQL query
 var deleteK8sResourcesetQuery = `mutation SdkGolangDeleteK8sResourceset($id:String!, $preserveSnapshots: Boolean) {

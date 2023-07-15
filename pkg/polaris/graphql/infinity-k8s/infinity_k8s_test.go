@@ -1,4 +1,4 @@
-package cdmk8s_test
+package infinityk8s_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
-	cdmk8s "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cdm-k8s"
+	infinityk8s "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/infinity-k8s"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -85,11 +85,11 @@ func TestDeleteK8sResourceSet(t *testing.T) {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
-	cdmK8sClient := cdmk8s.Wrap(client)
+	infinityK8sClient := infinityk8s.Wrap(client)
 
 	// TODO: replace validFid with real fid value.
 	validFid := uuid.New().String()
-	resp, err := cdmK8sClient.DeleteK8sResourceSet(ctx, validFid, false)
+	resp, err := infinityK8sClient.DeleteK8sResourceSet(ctx, validFid, false)
 	if err != nil {
 		t.Error(err)
 	}
