@@ -97,3 +97,30 @@ func TestDeleteK8sResourceSet(t *testing.T) {
 		t.Errorf("delete failed, %v", resp)
 	}
 }
+
+// TestGetJobInstance verifies that the SDK can perfrom the get job instance operation
+// on a real RSC instance
+//
+// To run this test against an RSC instance, a valid CDM cluster UUID and a CDM job ID
+// TODO: after adding the other graphql endpoints, modify this test to do the following
+// - start an ondemand job
+// - get the job instance details for the newly created job
+func TestGetJobInstance(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	infinityK8sClient := infinityk8s.Wrap(client)
+	logger := infinityK8sClient.GQL.Log()
+
+	//TODO: replace with valid jobId and CDM id.
+	validJobId := "CREATE_K8S_SNAPSHOT_e3325e10-bdaf-473d-abfb-70984fbe6d01_c014fc7c-ca27-47c4-a4f0-35ad563dc466:::0"
+	validCDMId := "d5ead8ab-1129-4e23-87db-70b2317f534a"
+	resp, err := infinityK8sClient.GetJobInstance(ctx, validJobId, validCDMId)
+	if err != nil {
+		t.Error(err)
+	}
+	logger.Printf(log.Info, "response: %+v", resp)
+}

@@ -30,3 +30,22 @@ var deleteK8sResourcesetQuery = `mutation SdkGolangDeleteK8sResourceset($id:Stri
     success
   }
 }`
+
+// jobInstance GraphQL query
+var jobInstanceQuery = `query SdkGolangJobInstance($id:String!, $clusterUuid: String!) {
+  jobInstance(input: {id:$id, clusterUuid: $clusterUuid}) {
+    archived
+    endTime
+    errorInfo
+    id
+    isDisabled
+    jobProgress
+    jobType
+    nodeId
+    result
+    startTime
+    status
+    childJobDebugInfo
+    opentracingContext
+  }
+}`
