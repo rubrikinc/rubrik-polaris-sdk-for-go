@@ -29,6 +29,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -107,6 +108,79 @@ func (a API) AddK8sResourceSet(ctx context.Context, config AddK8sResourceSetConf
 	}
 
 	return payload.Data.Config, nil
+}
+
+type SlaDomain struct {
+	Id      string `json:"id"`
+	Name    string `json:"name"`
+	Version string `json:"version,omitempty"`
+}
+
+type PathNode struct {
+	Fid  uuid.UUID `json:"fid"`
+	Name string    `json:"name"`
+	// ObjectType corresponds to HierarchyObjectTypeEnum.
+	ObjectType string `json:"objectType"`
+}
+
+type DataLocation struct {
+	ClusterUuid uuid.UUID `json:"clusterUuid"`
+	CreateDate  string    `json:"createDate"`
+	Id          string    `json:"id"`
+	IsActive    bool      `json:"isActive"`
+	IsArchived  bool      `json:"isArchived"`
+	Name        string    `json:"name"`
+	// Type corresponds to the DataLocationName enum.
+	Type string `json:"type"`
+}
+
+type KubernetesResourceSet struct {
+	CdmId                       string    `json:"cdmId"`
+	ClusterUuid                 string    `json:"clusterUuid"`
+	ConfiguredSlaDomain         SlaDomain `json:"configuredSlaDomain"`
+	EffectiveRetentionSlaDomain SlaDomain `json:"effectiveRetentionSlaDomain,omitempty"`
+	EffectiveSlaDomain          SlaDomain `json:"effectiveSlaDomain"`
+	EffectiveSlaSourceObject    PathNode  `json:"effectiveSlaSourceObject"`
+	Id                          uuid.UUID `json:"id"`
+	IsRelic                     bool      `json:"isRelic"`
+	K8sClusterUuid              uuid.UUID `json:"k8sClusterUuid"`
+	Name                        string    `json:"Name"`
+	Namespace                   string    `json:"namespace,omitempty"`
+	// ObjectType corresponds to HierarchyObjectTypeEnum.
+	ObjectType             string       `json:"objectType"`
+	PendingSla             SlaDomain    `json:"pendingSla,omitempty"`
+	PrimaryClusterLocation DataLocation `json:"primaryClusterLocation"`
+	PrimaryClusterUuid     uuid.UUID    `json:"primaryClusterUuid"`
+	ReplicatedObjectCount  int          `json:"replicatedObjectCount"`
+	RsName                 string       `json:"rsName"`
+	RsType                 string       `json:"rsType"`
+	// SlaAssignment corresponds to the SlaAssignmentTypeEnum.
+	SlaAssignment  string `json:"slaAssignment"`
+	SlaPauseStatus bool   `json:"slaPauseStatus"`
+}
+
+// AddK8sResourceSet adds the K8s resource set for the given config.
+func (a API) GetK8sResourceSet(ctx context.Context, fid uuid.UUID) (KubernetesResourceSet, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, k8sResourcesetQuery, struct {
+		Fid uuid.UUID `json:"fid"`
+	}{Fid: fid})
+	if err != nil {
+		return KubernetesResourceSet{}, fmt.Errorf("failed to request kubernetesResourceSet: %w", err)
+	}
+	a.log.Printf(log.Debug, "kubernetesResourceSet(%v): %s", fid, string(buf))
+
+	var payload struct {
+		Data struct {
+			KubernetesResourceSet KubernetesResourceSet `json:"kubernetesResourceSet"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return KubernetesResourceSet{}, fmt.Errorf("failed to unmarshal kubernetesResourceSet: %v", err)
+	}
+
+	return payload.Data.KubernetesResourceSet, nil
 }
 
 // DeleteK8sResourceSet deletes the K8s resource set corresponding to the provided fid.

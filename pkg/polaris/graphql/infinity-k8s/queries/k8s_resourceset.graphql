@@ -1,0 +1,52 @@
+query KubernetesResourceSet($fid: UUID!) {
+  kubernetesResourceSet(fid: $fid) {
+    cdmId
+    clusterUuid
+    configuredSlaDomain {
+      id
+      name
+      version
+    }
+    effectiveRetentionSlaDomain {
+      id
+      name
+      version
+    }
+    effectiveSlaDomain {
+      id
+      name
+      version
+    }
+    effectiveSlaSourceObject {
+      fid
+      name
+      objectType
+    }
+    id
+    isRelic
+    k8sClusterUuid
+    name
+    namespace
+    objectType
+    pendingSla {
+      id
+      name
+      version
+    }
+    primaryClusterLocation {
+      clusterUuid
+      createDate
+      id
+      isActive
+      isArchived
+      name
+      type
+    }
+    primaryClusterUuid
+    replicatedObjectCount
+    rsName
+    rsType
+    slaAssignment
+    slaPauseStatus
+  }
+}
