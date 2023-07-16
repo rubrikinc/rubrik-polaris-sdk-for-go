@@ -1,0 +1,17 @@
+query RubrikPolarisSDKRequest($id:String!, $clusterUuid: String!) {
+  jobInstance(input: {id:$id, clusterUuid: $clusterUuid}) {
+    archived
+    endTime
+    errorInfo
+    id
+    isDisabled
+    jobProgress
+    jobType
+    nodeId
+    result
+    startTime
+    status
+    childJobDebugInfo
+    opentracingContext
+  }
+}

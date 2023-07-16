@@ -34,6 +34,23 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+// JobInstanceDetail represents a CDM job instance details.
+type JobInstanceDetail struct {
+	Status             string  `json:"status"`
+	StartTime          string  `json:"startTime,omitempty"`
+	Result             string  `json:"result,omitempty"`
+	OpentracingContext string  `json:"opentracingContext,omitempty"`
+	NodeId             string  `json:"nodeId"`
+	JobType            string  `json:"jobType"`
+	JobProgress        float64 `json:"jobProgress,omitempty"`
+	IsDisabled         bool    `json:"isDisabled"`
+	Id                 string  `json:"id"`
+	ErrorInfo          string  `json:"errorInfo,omitempty"`
+	EndTime            string  `json:"endTime,omitempty"`
+	ChildJobDebugInfo  string  `json:"childJobDebugInfo,omitempty"`
+	Archived           bool    `json:"archived"`
+}
+
 // API wraps around GraphQL clients to give them the RSC Infinity K8s API.
 type API struct {
 	GQL *graphql.Client
@@ -82,4 +99,39 @@ func (a API) DeleteK8sResourceSet(ctx context.Context, fid string, preserveSnaps
 	}
 
 	return true, nil
+}
+
+// GetJobInsance fetches information about the CDM job corresponding to the given
+// jobId and cdmClusterId
+func (a API) GetJobInstance(ctx context.Context, jobId string, cdmClusterId string) (JobInstanceDetail, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		jobInstanceQuery,
+		struct {
+			JobId        string `json:"id"`
+			CDMClusterId string `json:"clusterUuid"`
+		}{
+			JobId:        jobId,
+			CDMClusterId: cdmClusterId,
+		},
+	)
+
+	if err != nil {
+		return JobInstanceDetail{}, fmt.Errorf("failed to request jobInstance: %w", err)
+	}
+	a.log.Printf(log.Debug, "jobInstance(%q, %q): %s", jobId, cdmClusterId, string(buf))
+
+	var payload struct {
+		Data struct {
+			JobInfo JobInstanceDetail `json:"jobInstance"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return JobInstanceDetail{}, fmt.Errorf("failed to unmarshal jobInstance response: %v", err)
+	}
+
+	return payload.Data.JobInfo, nil
 }
