@@ -62,6 +62,53 @@ func Wrap(client *polaris.Client) API {
 	return API{GQL: client.GQL, log: client.GQL.Log()}
 }
 
+type AddK8sResourceSetConfig struct {
+	Definition            string   `json:"definition"`
+	HookConfigs           []string `json:"hookConfigs,omitempty"`
+	K8sClusterUuid        string   `json:"k8SClusterUuid,omitempty"`
+	K8sNamespace          string   `json:"k8SNamespace,omitempty"`
+	KubernetesClusterUuid string   `json:"kubernetesClusterUuid,omitempty"`
+	KubernetesNamespace   string   `json:"kubernetesNamespace,omitempty"`
+	Name                  string   `json:"name"`
+	RSType                string   `json:"rsType"`
+}
+
+type AddK8sResourceSetResponse struct {
+	Id                    string   `json:"id"`
+	Definition            string   `json:"definition"`
+	HookConfigs           []string `json:"hookConfigs,omitempty"`
+	K8sClusterUuid        string   `json:"k8SClusterUuid,omitempty"`
+	K8sNamespace          string   `json:"k8SNamespace,omitempty"`
+	KubernetesClusterUuid string   `json:"kubernetesClusterUuid,omitempty"`
+	KubernetesNamespace   string   `json:"kubernetesNamespace,omitempty"`
+	Name                  string   `json:"name"`
+	RSType                string   `json:"rsType"`
+}
+
+// AddK8sResourceSet adds the K8s resource set for the given config.
+func (a API) AddK8sResourceSet(ctx context.Context, config AddK8sResourceSetConfig) (AddK8sResourceSetResponse, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, addK8sResourcesetQuery, struct {
+		Config AddK8sResourceSetConfig `json:"config"`
+	}{Config: config})
+	if err != nil {
+		return AddK8sResourceSetResponse{}, fmt.Errorf("failed to request addK8sResourceSet: %w", err)
+	}
+	a.log.Printf(log.Debug, "addK8sResourceSet(%v): %s", config, string(buf))
+
+	var payload struct {
+		Data struct {
+			Config AddK8sResourceSetResponse `json:"addK8sResourceSet"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return AddK8sResourceSetResponse{}, fmt.Errorf("failed to unmarshal addK8sResourceSet: %v", err)
+	}
+
+	return payload.Data.Config, nil
+}
+
 // DeleteK8sResourceSet deletes the K8s resource set corresponding to the provided fid.
 func (a API) DeleteK8sResourceSet(ctx context.Context, fid string, preserveSnapshots bool) (bool, error) {
 	a.log.Print(log.Trace)
