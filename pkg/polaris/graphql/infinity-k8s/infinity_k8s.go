@@ -28,6 +28,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
@@ -35,7 +36,6 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// JobInstanceDetail represents a CDM job instance details.
 type JobInstanceDetail struct {
 	Status             string  `json:"status"`
 	StartTime          string  `json:"startTime,omitempty"`
@@ -50,17 +50,6 @@ type JobInstanceDetail struct {
 	EndTime            string  `json:"endTime,omitempty"`
 	ChildJobDebugInfo  string  `json:"childJobDebugInfo,omitempty"`
 	Archived           bool    `json:"archived"`
-}
-
-// API wraps around GraphQL clients to give them the RSC Infinity K8s API.
-type API struct {
-	GQL *graphql.Client
-	log log.Logger
-}
-
-// Wrap the RSC client in the Infinity K8s API.
-func Wrap(client *polaris.Client) API {
-	return API{GQL: client.GQL, log: client.GQL.Log()}
 }
 
 type AddK8sResourceSetConfig struct {
@@ -86,28 +75,31 @@ type AddK8sResourceSetResponse struct {
 	RSType                string   `json:"rsType"`
 }
 
-// AddK8sResourceSet adds the K8s resource set for the given config.
-func (a API) AddK8sResourceSet(ctx context.Context, config AddK8sResourceSetConfig) (AddK8sResourceSetResponse, error) {
-	a.log.Print(log.Trace)
+type ExportK8sResourceSetSnapshotJobConfig struct {
+	TargetNamespaceName string `json:"targetNamespaceName"`
+	TargetClusterFid    string `json:"targetClusterId"`
+	IgnoreErrors        bool   `json:"ignoreErrors,omitempty"`
+	Filter              string `json:"filter,omitempty"`
+}
 
-	buf, err := a.GQL.Request(ctx, addK8sResourcesetQuery, struct {
-		Config AddK8sResourceSetConfig `json:"config"`
-	}{Config: config})
-	if err != nil {
-		return AddK8sResourceSetResponse{}, fmt.Errorf("failed to request addK8sResourceSet: %w", err)
-	}
-	a.log.Printf(log.Debug, "addK8sResourceSet(%v): %s", config, string(buf))
+type Link struct {
+	Rel  string `json:"rel"`
+	Href string `json:"href"`
+}
 
-	var payload struct {
-		Data struct {
-			Config AddK8sResourceSetResponse `json:"addK8sResourceSet"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return AddK8sResourceSetResponse{}, fmt.Errorf("failed to unmarshal addK8sResourceSet: %v", err)
-	}
+type RequestErrorInfo struct {
+	Message string `json:"message"`
+}
 
-	return payload.Data.Config, nil
+type AsyncRequestStatus struct {
+	Status    string           `json:"status"`
+	StartTime time.Time        `json:"startTime,omitempty"`
+	Progress  float64          `json:"progress,omitempty"`
+	NodeId    string           `json:"nodeId,omitempty"`
+	Links     []Link           `json:"links"`
+	Id        string           `json:"id"`
+	Error     RequestErrorInfo `json:"error,omitempty"`
+	EndTime   time.Time        `json:"endTime,omitempty"`
 }
 
 type SlaDomain struct {
@@ -159,8 +151,49 @@ type KubernetesResourceSet struct {
 	SlaPauseStatus bool   `json:"slaPauseStatus"`
 }
 
+// API wraps around GraphQL clients to give them the RSC Infinity K8s API.
+type API struct {
+	GQL *graphql.Client
+	log log.Logger
+}
+
+// Wrap the RSC client in the Infinity K8s API.
+func Wrap(client *polaris.Client) API {
+	return API{GQL: client.GQL, log: client.GQL.Log()}
+}
+
 // AddK8sResourceSet adds the K8s resource set for the given config.
-func (a API) GetK8sResourceSet(ctx context.Context, fid uuid.UUID) (KubernetesResourceSet, error) {
+func (a API) AddK8sResourceSet(
+	ctx context.Context,
+	config AddK8sResourceSetConfig,
+) (AddK8sResourceSetResponse, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, addK8sResourcesetQuery, struct {
+		Config AddK8sResourceSetConfig `json:"config"`
+	}{Config: config})
+	if err != nil {
+		return AddK8sResourceSetResponse{}, fmt.Errorf("failed to request addK8sResourceSet: %w", err)
+	}
+	a.log.Printf(log.Debug, "addK8sResourceSet(%v): %s", config, string(buf))
+
+	var payload struct {
+		Data struct {
+			Config AddK8sResourceSetResponse `json:"addK8sResourceSet"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return AddK8sResourceSetResponse{}, fmt.Errorf("failed to unmarshal addK8sResourceSet: %v", err)
+	}
+
+	return payload.Data.Config, nil
+}
+
+// GetK8sResourceSet get the K8s resource set corresponding to the given fid.
+func (a API) GetK8sResourceSet(
+	ctx context.Context,
+	fid uuid.UUID,
+) (KubernetesResourceSet, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, k8sResourcesetQuery, struct {
@@ -184,7 +217,11 @@ func (a API) GetK8sResourceSet(ctx context.Context, fid uuid.UUID) (KubernetesRe
 }
 
 // DeleteK8sResourceSet deletes the K8s resource set corresponding to the provided fid.
-func (a API) DeleteK8sResourceSet(ctx context.Context, fid string, preserveSnapshots bool) (bool, error) {
+func (a API) DeleteK8sResourceSet(
+	ctx context.Context,
+	fid string,
+	preserveSnapshots bool,
+) (bool, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(
@@ -224,7 +261,11 @@ func (a API) DeleteK8sResourceSet(ctx context.Context, fid string, preserveSnaps
 
 // GetJobInsance fetches information about the CDM job corresponding to the given
 // jobId and cdmClusterId
-func (a API) GetJobInstance(ctx context.Context, jobId string, cdmClusterId string) (JobInstanceDetail, error) {
+func (a API) GetJobInstance(
+	ctx context.Context,
+	jobId string,
+	cdmClusterId string,
+) (JobInstanceDetail, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(
@@ -246,7 +287,7 @@ func (a API) GetJobInstance(ctx context.Context, jobId string, cdmClusterId stri
 
 	var payload struct {
 		Data struct {
-			JobInfo JobInstanceDetail `json:"jobInstance"`
+			Response JobInstanceDetail `json:"jobInstance"`
 		} `json:"data"`
 	}
 
@@ -254,5 +295,44 @@ func (a API) GetJobInstance(ctx context.Context, jobId string, cdmClusterId stri
 		return JobInstanceDetail{}, fmt.Errorf("failed to unmarshal jobInstance response: %v", err)
 	}
 
-	return payload.Data.JobInfo, nil
+	return payload.Data.Response, nil
+}
+
+// ExportK8sResourceSetSnapshot takes a snapshot FID, the export job config and starts
+// an on-demand export job in CDM.
+func (a API) ExportK8sResourceSetSnapshot(
+	ctx context.Context,
+	snapshotFid string,
+	jobConfig ExportK8sResourceSetSnapshotJobConfig,
+) (AsyncRequestStatus, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		exportK8sResourcesetSnapshotQuery,
+		struct {
+			SnapshotFid string                                `json:"id"`
+			JobConfig   ExportK8sResourceSetSnapshotJobConfig `json:"jobConfig"`
+		}{
+			SnapshotFid: snapshotFid,
+			JobConfig:   jobConfig,
+		},
+	)
+
+	if err != nil {
+		return AsyncRequestStatus{}, fmt.Errorf("failed to request exportK8sResourceSetSnapshot: %w", err)
+	}
+	a.log.Printf(log.Debug, "exportK8sResourceSetSnapshot(%q, %q): %s", snapshotFid, jobConfig, string(buf))
+
+	var payload struct {
+		Data struct {
+			Response AsyncRequestStatus `json:"exportK8sResourceSetSnapshot"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return AsyncRequestStatus{}, fmt.Errorf("failed to unmarshal exportK8sResourceSetSnapshot response: %v", err)
+	}
+
+	return payload.Data.Response, nil
 }

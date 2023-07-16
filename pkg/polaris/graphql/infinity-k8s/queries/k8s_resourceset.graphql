@@ -1,4 +1,4 @@
-query KubernetesResourceSet($fid: UUID!) {
+query RubrikPolarisSDKRequest($fid: UUID!) {
   kubernetesResourceSet(fid: $fid) {
     cdmId
     clusterUuid

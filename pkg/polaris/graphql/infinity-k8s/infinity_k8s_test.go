@@ -121,14 +121,15 @@ func TestAddGetDelK8sResourceSet(t *testing.T) {
 	logger.Printf(log.Info, "del succeeded, %+v", delResp)
 }
 
-// TestGetJobInstance verifies that the SDK can perfrom the get job instance operation
-// on a real RSC instance
+// TestExportK8sResourceSetSnapshot verifies that the SDK can perfrom the get
+// on demand export k8s resource set snapshot job operation and then
+// get the job instance details for the job on a real RSC instance
 //
-// To run this test against an RSC instance, a valid CDM cluster UUID and a CDM job ID
-// TODO: after adding the other graphql endpoints, modify this test to do the following
-// - start an ondemand job
-// - get the job instance details for the newly created job
-func TestGetJobInstance(t *testing.T) {
+// To run this test against an RSC instance, the following are required
+// - a CDM cluster UUID
+// - a target K8s cluster fid on the CDM
+// - a k8s resource set snapshot fid on the CDM
+func TestExportK8sResourceSetSnapshot(t *testing.T) {
 	ctx := context.Background()
 
 	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
@@ -138,12 +139,32 @@ func TestGetJobInstance(t *testing.T) {
 	infinityK8sClient := infinityk8s.Wrap(client)
 	logger := infinityK8sClient.GQL.Log()
 
-	//TODO: replace with valid jobId and CDM id.
-	validJobId := "CREATE_K8S_SNAPSHOT_e3325e10-bdaf-473d-abfb-70984fbe6d01_c014fc7c-ca27-47c4-a4f0-35ad563dc466:::0"
+	// TODO: Replace with valid snapshot fid and cdm cluster UUID
+	validSnapshotFid := "dc058c1e-5753-57c7-a31b-4b6c48f885dd"
 	validCDMId := "d5ead8ab-1129-4e23-87db-70b2317f534a"
-	resp, err := infinityK8sClient.GetJobInstance(ctx, validJobId, validCDMId)
+	validTargetK8sClusterFid := "7991fb33-2731-4356-af01-d2e3c4237f66"
+
+	// 1. Start the on demand export k8s resource set snapshot job
+	exportJobResp, err := infinityK8sClient.ExportK8sResourceSetSnapshot(
+		ctx,
+		validSnapshotFid,
+		infinityk8s.ExportK8sResourceSetSnapshotJobConfig{
+			TargetNamespaceName: "sdk-export-ns",
+			TargetClusterFid:    validTargetK8sClusterFid,
+			IgnoreErrors:        false,
+			Filter:              "{}",
+		},
+	)
 	if err != nil {
 		t.Error(err)
 	}
-	logger.Printf(log.Info, "response: %+v", resp)
+	logger.Printf(log.Info, "export job response: %+v", exportJobResp)
+
+	// 2. Use the job id of the new job and call the get job instance operation
+	// exportJobResp.Id would have a valid job instance id
+	getJobResp, err := infinityK8sClient.GetJobInstance(ctx, exportJobResp.Id, validCDMId)
+	if err != nil {
+		t.Error(err)
+	}
+	logger.Printf(log.Info, "get job response: %+v", getJobResp)
 }

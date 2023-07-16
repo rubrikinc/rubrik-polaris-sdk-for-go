@@ -46,6 +46,25 @@ var deleteK8sResourcesetQuery = `mutation SdkGolangDeleteK8sResourceset($id:Stri
   }
 }`
 
+// exportK8sResourcesetSnapshot GraphQL query
+var exportK8sResourcesetSnapshotQuery = `mutation SdkGolangExportK8sResourcesetSnapshot($id: String!, $jobConfig: K8sExportParametersInput!) {
+  exportK8sResourceSetSnapshot(input: {id: $id, jobConfig: $jobConfig}) {
+    endTime
+    error {
+      message
+    }
+    id
+    links {
+      rel
+      href
+    }
+    nodeId
+    progress
+    startTime
+    status
+  }
+}`
+
 // jobInstance GraphQL query
 var jobInstanceQuery = `query SdkGolangJobInstance($id:String!, $clusterUuid: String!) {
   jobInstance(input: {id:$id, clusterUuid: $clusterUuid}) {
@@ -66,7 +85,7 @@ var jobInstanceQuery = `query SdkGolangJobInstance($id:String!, $clusterUuid: St
 }`
 
 // k8sResourceset GraphQL query
-var k8sResourcesetQuery = `query KubernetesResourceSet($fid: UUID!) {
+var k8sResourcesetQuery = `query SdkGolangK8sResourceset($fid: UUID!) {
   kubernetesResourceSet(fid: $fid) {
     cdmId
     clusterUuid
