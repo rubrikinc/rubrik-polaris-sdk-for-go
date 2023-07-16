@@ -24,6 +24,21 @@
 
 package infinityk8s
 
+// addK8sResourceset GraphQL query
+var addK8sResourcesetQuery = `mutation SdkGolangAddK8sResourceset($config: K8sResourceSetAddInput!) {
+  addK8sResourceSet(input: {config: $config}) {
+    id
+    name
+    k8SClusterUuid
+    k8SNamespace
+    rsType
+    definition
+    kubernetesNamespace
+    kubernetesClusterUuid
+    hookConfigs
+  }
+}`
+
 // deleteK8sResourceset GraphQL query
 var deleteK8sResourcesetQuery = `mutation SdkGolangDeleteK8sResourceset($id:String!, $preserveSnapshots: Boolean) {
   deleteK8sResourceSet(input: {id: $id, preserveSnapshots: $preserveSnapshots}) {
