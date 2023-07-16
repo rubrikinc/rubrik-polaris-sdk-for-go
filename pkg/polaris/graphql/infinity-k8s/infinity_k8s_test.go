@@ -18,25 +18,18 @@ import (
 var client *polaris.Client
 
 func TestMain(m *testing.M) {
-	if testsetup.BoolEnvSet("TEST_INTEGRATION") {
-		// Load configuration and create client. Usually resolved using the
-		// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-		polAccount, err := polaris.DefaultServiceAccount(true)
-		if err != nil {
-			fmt.Printf("failed to get default service account: %v\n", err)
-			os.Exit(1)
-		}
-
-		// For local testing, get the service account credentials from RSC and uncommnet
-		// the below section.
-		//
-		// polAccount = &polaris.ServiceAccount{
-		// 	Name:           "<service_account_name>",
-		// 	ClientID:       "<client_id>",
-		// 	ClientSecret:   "<client_secret>",
-		// 	AccessTokenURI: "<access_token_uri>",
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		// When enabling integration tests, uncomment the below section.
+		// // Load configuration and create client. Usually resolved using the
+		// // environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+		// polAccount, err := polaris.DefaultServiceAccount(true)
+		// if err != nil {
+		// 	fmt.Printf("failed to get default service account: %v\n", err)
+		// 	os.Exit(1)
 		// }
-		polAccount = &polaris.ServiceAccount{
+
+		// For local testing, get the service account credentials from RSC.
+		polAccount := &polaris.ServiceAccount{
 			Name:           "sdk-test",
 			ClientID:       "client|cd908574-7eb6-44eb-a390-302b3604d1be",
 			ClientSecret:   "ArqMlH7mN50BVs5FWsVWXx7YbJtO7r1cVEZItC-lItsl5tPk30ygy-5g65IElGVE",
@@ -51,6 +44,7 @@ func TestMain(m *testing.M) {
 			fmt.Printf("failed to get log level from env: %v\n", err)
 			os.Exit(1)
 		}
+		var err error
 
 		client, err = polaris.NewClientWithLogger(polAccount, logger)
 		if err != nil {
@@ -67,6 +61,42 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(m.Run())
+}
+
+// TestAddK8sResourceSet verifies that the SDK can perform the add K8s
+// resource set operation on a real RSC instance.
+//
+// To run this test against an RSC instance, a valid k8s cluster fid should be
+// used.
+// TODO: after adding other graphql endpoints, modify this test do the following
+// - create a new resource set
+// - get the resource set info and verify the response
+// - delete the resource set and verify success
+func TestAddK8sResourceSet(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	infinityK8sClient := infinityk8s.Wrap(client)
+
+	// TODO: replace k8s cluster fid with real fid.
+	k8sClusterFID := uuid.New().String()
+	config := infinityk8s.AddK8sResourceSetConfig{
+		KubernetesClusterUuid: k8sClusterFID,
+		KubernetesNamespace:   "fake-ns",
+		Definition:            "{}",
+		Name:                  "fake-ns",
+		RSType:                "namespace",
+	}
+	resp, err := infinityK8sClient.AddK8sResourceSet(ctx, config)
+	if err != nil {
+		t.Error(err)
+	}
+	if resp.Id == "" {
+		t.Errorf("add failed, %v", resp)
+	}
 }
 
 // TestDeleteK8sResourceSet verifies that the SDK can perform the delete K8s
