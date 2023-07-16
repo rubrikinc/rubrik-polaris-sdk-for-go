@@ -63,16 +63,12 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// TestAddK8sResourceSet verifies that the SDK can perform the add K8s
-// resource set operation on a real RSC instance.
+// TestAddGetDelK8sResourceSet verifies that the SDK can perform the add, get,
+// and delete K8s resource set operation on a real RSC instance.
 //
 // To run this test against an RSC instance, a valid k8s cluster fid should be
 // used.
-// TODO: after adding other graphql endpoints, modify this test do the following
-// - create a new resource set
-// - get the resource set info and verify the response
-// - delete the resource set and verify success
-func TestAddK8sResourceSet(t *testing.T) {
+func TestAddGetDelK8sResourceSet(t *testing.T) {
 	ctx := context.Background()
 
 	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
@@ -91,46 +87,38 @@ func TestAddK8sResourceSet(t *testing.T) {
 		Name:                "fake-ns",
 		RSType:              "namespace",
 	}
-	resp, err := infinityK8sClient.AddK8sResourceSet(ctx, config)
+
+	// 1. Add resourceset.
+	addResp, err := infinityK8sClient.AddK8sResourceSet(ctx, config)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if resp.Id == "" {
-		t.Errorf("add failed, %+v", resp)
+	if addResp.Id == "" {
+		t.Errorf("add failed, %+v", addResp)
 	}
 
 	logger := infinityK8sClient.GQL.Log()
-	logger.Printf(log.Info, "add succeeded, %+v", resp)
-}
+	logger.Printf(log.Info, "add succeeded, %+v", addResp)
 
-// TestDeleteK8sResourceSet verifies that the SDK can perform the delete K8s
-// resource set operation on a real RSC instance.
-//
-// To run this test against an RSC instance, a valid resource set fid should be
-// used in the test.
-// TODO: after adding other graphql endpoints, modify this test do the following
-// - create a new resource set
-// - get the resource set info and verify the response
-// - delete the resource set and verify success
-func TestDeleteK8sResourceSet(t *testing.T) {
-	ctx := context.Background()
-
-	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
-		t.Skipf("skipping due to env TEST_INTEGRATION not set")
-	}
-
-	infinityK8sClient := infinityk8s.Wrap(client)
-
-	// TODO: replace validFid with real fid value.
-	validFid := uuid.New().String()
-	resp, err := infinityK8sClient.DeleteK8sResourceSet(ctx, validFid, false)
+	// 2. Get resourceset.
+	// If we get to this point, addResp.Id should be a valid uuid.
+	fid := uuid.Must(uuid.Parse(addResp.Id))
+	getResp, err := infinityK8sClient.GetK8sResourceSet(ctx, fid)
 	if err != nil {
 		t.Error(err)
 	}
-	if resp != true {
-		t.Errorf("delete failed, %v", resp)
+	logger.Printf(log.Info, "get succeeded, %+v", getResp)
+
+	// 3. Delete resourceset.
+	delResp, err := infinityK8sClient.DeleteK8sResourceSet(ctx, addResp.Id, false)
+	if err != nil {
+		t.Error(err)
 	}
+	if delResp != true {
+		t.Errorf("delete failed, %v", delResp)
+	}
+	logger.Printf(log.Info, "del succeeded, %+v", delResp)
 }
 
 // TestGetJobInstance verifies that the SDK can perfrom the get job instance operation
