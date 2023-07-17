@@ -84,6 +84,16 @@ var jobInstanceQuery = `query SdkGolangJobInstance($id:String!, $clusterUuid: St
   }
 }`
 
+// k8sObjectFid GraphQL query
+var k8sObjectFidQuery = `query SdkGolangK8sObjectFid($k8SObjectInternalIdArg: UUID!, $clusterUuid: UUID!) {
+  k8sObjectFid(K8sObjectInternalIDArg: $k8SObjectInternalIdArg, clusterUuid: $clusterUuid)
+}`
+
+// k8sObjectInternalId GraphQL query
+var k8sObjectInternalIdQuery = `query SdkGolangK8sObjectInternalId($fid: UUID!) {
+  k8sObjectInternalId(fid: $fid)
+}`
+
 // k8sResourceset GraphQL query
 var k8sResourcesetQuery = `query SdkGolangK8sResourceset($fid: UUID!) {
   kubernetesResourceSet(fid: $fid) {
