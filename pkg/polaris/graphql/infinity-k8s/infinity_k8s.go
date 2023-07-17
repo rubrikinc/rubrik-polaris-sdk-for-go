@@ -259,7 +259,7 @@ func (a API) DeleteK8sResourceSet(
 	return true, nil
 }
 
-// GetJobInsance fetches information about the CDM job corresponding to the given
+// GetJobInstance fetches information about the CDM job corresponding to the given
 // jobId and cdmClusterId
 func (a API) GetJobInstance(
 	ctx context.Context,
