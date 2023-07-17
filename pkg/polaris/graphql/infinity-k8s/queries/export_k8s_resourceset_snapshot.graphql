@@ -1,0 +1,17 @@
+mutation RubrikPolarisSDKRequest($id: String!, $jobConfig: K8sExportParametersInput!) {
+  exportK8sResourceSetSnapshot(input: {id: $id, jobConfig: $jobConfig}) {
+    endTime
+    error {
+      message
+    }
+    id
+    links {
+      rel
+      href
+    }
+    nodeId
+    progress
+    startTime
+    status
+  }
+}
