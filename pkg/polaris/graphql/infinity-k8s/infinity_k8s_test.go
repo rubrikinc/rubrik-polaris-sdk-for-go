@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	infinityk8s "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/infinity-k8s"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -184,8 +185,8 @@ func TestObjectIdTranslation(t *testing.T) {
 	infinityK8sClient := infinityk8s.Wrap(client)
 	logger := infinityK8sClient.GQL.Log()
 
-	validCDMId, _ := uuid.Parse("d5ead8ab-1129-4e23-87db-70b2317f534a")
-	validObjectInternalId, _ := uuid.Parse("7991fb33-2731-4356-af01-d2e3c4237f66")
+	validCDMId := uuid.MustParse("d5ead8ab-1129-4e23-87db-70b2317f534a")
+	validObjectInternalId := uuid.MustParse("7991fb33-2731-4356-af01-d2e3c4237f66")
 
 	// 1. Get the object FID from RSC
 	fid, err := infinityK8sClient.GetK8sObjectFid(ctx, validObjectInternalId, validCDMId)
@@ -204,4 +205,55 @@ func TestObjectIdTranslation(t *testing.T) {
 		t.Errorf("internal id %v doesn't match expectation %v", interalId, validObjectInternalId)
 	}
 	logger.Print(log.Info, "got valid internalId in response")
+}
+
+// TestAssignSLAForK8sResourceSet verifies that the SDK can perform the assign SLA
+// operation for a K8s resource set on a real RSC instance
+// To run this test against an RSC instance, the following are required
+// - a K8s resource set fid
+// - a SLA id with the correct object type
+func TestAssignSLAForK8sResourceSet(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	slaClient := core.Wrap(client.GQL)
+	logger := slaClient.GQL.Log()
+
+	// 1. Assign SLA to resource set
+	validResourceSetFid := uuid.MustParse("d825b9a0-9abc-53e8-a421-9c0f38ba2122")
+	validSlaId := uuid.MustParse("089f4548-d268-501a-a1a6-3d6fdcf2a606")
+	assignResp, err := slaClient.AssignSlaForSnappableHierarchies(
+		ctx,
+		&validSlaId,
+		core.ProtectWithSLAID,
+		[]uuid.UUID{validResourceSetFid},
+		nil,
+		true,  // shouldApplyToExistingSnapshots
+		false, // shouldApplyToNonPolicySnapshots
+		core.RetainSnapshots,
+		"", // userNote
+	)
+	if err != nil {
+		t.Error(err)
+	}
+	logger.Printf(log.Info, "%v\n", assignResp)
+
+	// 2. Get resourceset and check the sla
+	infinityK8sClient := infinityk8s.Wrap(client)
+	getResp, err := infinityK8sClient.GetK8sResourceSet(ctx, validResourceSetFid)
+	if err != nil {
+		t.Error(err)
+	}
+	logger.Printf(log.Info, "get succeeded, %+v", getResp)
+
+	if getResp.EffectiveSlaDomain.ID != validSlaId.String() {
+		t.Errorf(
+			"sla domain id %v in the resource set object doesn't match expected value %v",
+			getResp.ConfiguredSlaDomain.ID,
+			validSlaId.String(),
+		)
+	}
 }
