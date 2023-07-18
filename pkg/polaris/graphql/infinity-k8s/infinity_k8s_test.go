@@ -168,3 +168,40 @@ func TestExportK8sResourceSetSnapshot(t *testing.T) {
 	}
 	logger.Printf(log.Info, "get job response: %+v", getJobResp)
 }
+
+// TestObjectIdTranslation verifies that the SDK can perform the translation from
+// Internal ID to FID and then FID back to Internal ID on a real RSC instance
+// To run this test against an RSC instance, the following are required
+// - a CDM cluster UUID
+// - a valid object internal ID on the CDM
+func TestObjectIdTranslation(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	infinityK8sClient := infinityk8s.Wrap(client)
+	logger := infinityK8sClient.GQL.Log()
+
+	validCDMId, _ := uuid.Parse("d5ead8ab-1129-4e23-87db-70b2317f534a")
+	validObjectInternalId, _ := uuid.Parse("7991fb33-2731-4356-af01-d2e3c4237f66")
+
+	// 1. Get the object FID from RSC
+	fid, err := infinityK8sClient.GetK8sObjectFid(ctx, validObjectInternalId, validCDMId)
+	if err != nil {
+		t.Error(err)
+	}
+	logger.Printf(log.Info, "get fid response: %v", fid)
+
+	// 2. Get back the object internal ID from the FID
+	interalId, err := infinityK8sClient.GetK8sObjectInternalId(ctx, fid)
+	if err != nil {
+		t.Error(err)
+	}
+	logger.Printf(log.Info, "get internal id response: %v", interalId)
+	if interalId != validObjectInternalId {
+		t.Errorf("internal id %v doesn't match expectation %v", interalId, validObjectInternalId)
+	}
+	logger.Print(log.Info, "got valid internalId in response")
+}

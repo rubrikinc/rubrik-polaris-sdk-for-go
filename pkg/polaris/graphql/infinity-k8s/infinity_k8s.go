@@ -336,3 +336,74 @@ func (a API) ExportK8sResourceSetSnapshot(
 
 	return payload.Data.Response, nil
 }
+
+// GetK8sObjectFid fetches the RSC Fid for the object corresponding to the
+// provided internal id and CDM cluster id.
+func (a API) GetK8sObjectFid(
+	ctx context.Context,
+	internalId uuid.UUID,
+	cdmClusterId uuid.UUID,
+) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		k8sObjectFidQuery,
+		struct {
+			InternalId  uuid.UUID `json:"k8SObjectInternalIdArg"`
+			ClusterUuid uuid.UUID `json:"clusterUuid"`
+		}{
+			InternalId:  internalId,
+			ClusterUuid: cdmClusterId,
+		},
+	)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to request k8sObjectFid: %w", err)
+	}
+	a.log.Printf(log.Debug, "k8sObjectFid(%v, %v): %s", internalId, cdmClusterId, string(buf))
+
+	var payload struct {
+		Data struct {
+			ObjectFid uuid.UUID `json:"k8sObjectFid"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, fmt.Errorf("failed to unmarshal k8sObjectFid: %v", err)
+	}
+
+	return payload.Data.ObjectFid, nil
+}
+
+// GetK8sObjectInternalId fetches the object Internal ID on CDM for the
+// given RSC Fid.
+func (a API) GetK8sObjectInternalId(
+	ctx context.Context,
+	fid uuid.UUID,
+) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		k8sObjectInternalIdQuery,
+		struct {
+			Fid uuid.UUID `json:"fid"`
+		}{
+			Fid: fid,
+		},
+	)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to request k8sObjectInternalId: %w", err)
+	}
+	a.log.Printf(log.Debug, "k8sObjectInternalId(%v): %s", fid, string(buf))
+
+	var payload struct {
+		Data struct {
+			ObjectInternalId uuid.UUID `json:"k8sObjectInternalId"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, fmt.Errorf("failed to unmarshal k8sObjectInternalId: %v", err)
+	}
+
+	return payload.Data.ObjectInternalId, nil
+}
