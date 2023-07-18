@@ -33,6 +33,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -102,12 +103,6 @@ type AsyncRequestStatus struct {
 	EndTime   time.Time        `json:"endTime,omitempty"`
 }
 
-type SlaDomain struct {
-	Id      string `json:"id"`
-	Name    string `json:"name"`
-	Version string `json:"version,omitempty"`
-}
-
 type PathNode struct {
 	Fid  uuid.UUID `json:"fid"`
 	Name string    `json:"name"`
@@ -127,28 +122,27 @@ type DataLocation struct {
 }
 
 type KubernetesResourceSet struct {
-	CdmId                       string    `json:"cdmId"`
-	ClusterUuid                 string    `json:"clusterUuid"`
-	ConfiguredSlaDomain         SlaDomain `json:"configuredSlaDomain"`
-	EffectiveRetentionSlaDomain SlaDomain `json:"effectiveRetentionSlaDomain,omitempty"`
-	EffectiveSlaDomain          SlaDomain `json:"effectiveSlaDomain"`
-	EffectiveSlaSourceObject    PathNode  `json:"effectiveSlaSourceObject"`
-	Id                          uuid.UUID `json:"id"`
-	IsRelic                     bool      `json:"isRelic"`
-	K8sClusterUuid              uuid.UUID `json:"k8sClusterUuid"`
-	Name                        string    `json:"Name"`
-	Namespace                   string    `json:"namespace,omitempty"`
+	CdmId                       string         `json:"cdmId"`
+	ClusterUuid                 string         `json:"clusterUuid"`
+	ConfiguredSlaDomain         core.SLADomain `json:"configuredSlaDomain"`
+	EffectiveRetentionSlaDomain core.SLADomain `json:"effectiveRetentionSlaDomain,omitempty"`
+	EffectiveSlaDomain          core.SLADomain `json:"effectiveSlaDomain"`
+	EffectiveSlaSourceObject    PathNode       `json:"effectiveSlaSourceObject"`
+	Id                          uuid.UUID      `json:"id"`
+	IsRelic                     bool           `json:"isRelic"`
+	K8sClusterUuid              uuid.UUID      `json:"k8sClusterUuid"`
+	Name                        string         `json:"Name"`
+	Namespace                   string         `json:"namespace,omitempty"`
 	// ObjectType corresponds to HierarchyObjectTypeEnum.
-	ObjectType             string       `json:"objectType"`
-	PendingSla             SlaDomain    `json:"pendingSla,omitempty"`
-	PrimaryClusterLocation DataLocation `json:"primaryClusterLocation"`
-	PrimaryClusterUuid     uuid.UUID    `json:"primaryClusterUuid"`
-	ReplicatedObjectCount  int          `json:"replicatedObjectCount"`
-	RsName                 string       `json:"rsName"`
-	RsType                 string       `json:"rsType"`
-	// SlaAssignment corresponds to the SlaAssignmentTypeEnum.
-	SlaAssignment  string `json:"slaAssignment"`
-	SlaPauseStatus bool   `json:"slaPauseStatus"`
+	ObjectType             string             `json:"objectType"`
+	PendingSla             core.SLADomain     `json:"pendingSla,omitempty"`
+	PrimaryClusterLocation DataLocation       `json:"primaryClusterLocation"`
+	PrimaryClusterUuid     uuid.UUID          `json:"primaryClusterUuid"`
+	ReplicatedObjectCount  int                `json:"replicatedObjectCount"`
+	RsName                 string             `json:"rsName"`
+	RsType                 string             `json:"rsType"`
+	SlaAssignment          core.SLAAssignment `json:"slaAssignment"`
+	SlaPauseStatus         bool               `json:"slaPauseStatus"`
 }
 
 // API wraps around GraphQL clients to give them the RSC Infinity K8s API.
