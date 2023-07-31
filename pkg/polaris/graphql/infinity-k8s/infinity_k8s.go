@@ -83,6 +83,10 @@ type ExportK8sResourceSetSnapshotJobConfig struct {
 	Filter              string `json:"filter,omitempty"`
 }
 
+type BaseOnDemandSnapshotConfigInput struct {
+	SLAID string `json:"slaId"`
+}
+
 type Link struct {
 	Rel  string `json:"rel"`
 	Href string `json:"href"`
@@ -326,6 +330,45 @@ func (a API) ExportK8sResourceSetSnapshot(
 
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return AsyncRequestStatus{}, fmt.Errorf("failed to unmarshal exportK8sResourceSetSnapshot response: %v", err)
+	}
+
+	return payload.Data.Response, nil
+}
+
+// CreateK8sResourceSnapshot takes a ResourceSetFID, the snapshot job config and
+// starts an on-demand snapshot job in CDM.
+func (a API) CreateK8sResourceSnapshot(
+	ctx context.Context,
+	resourceSetFID string,
+	jobConfig BaseOnDemandSnapshotConfigInput,
+) (AsyncRequestStatus, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		createK8sResourceSnapshotQuery,
+		struct {
+			ResourceSetId string                          `json:"resourceSetId"`
+			JobConfig     BaseOnDemandSnapshotConfigInput `json:"jobConfig"`
+		}{
+			ResourceSetId: resourceSetFID,
+			JobConfig:     jobConfig,
+		},
+	)
+
+	if err != nil {
+		return AsyncRequestStatus{}, fmt.Errorf("failed to request createK8sResourceSetSnapshot: %w", err)
+	}
+	a.log.Printf(log.Debug, "createK8sResourceSetSnapshot(%q, %q): %s", resourceSetFID, jobConfig, string(buf))
+
+	var payload struct {
+		Data struct {
+			Response AsyncRequestStatus `json:"createK8sResourceSetSnapshot"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return AsyncRequestStatus{}, fmt.Errorf("failed to unmarshal createK8sResourceSetSnapshot response: %v", err)
 	}
 
 	return payload.Data.Response, nil

@@ -257,3 +257,31 @@ func TestAssignSLAForK8sResourceSet(t *testing.T) {
 		)
 	}
 }
+
+// TestCreateK8sResourceSetSnapshot verifies that the SDK can perform the
+// creation of on demand snapshot.
+// To run this test against an RSC instance, the following are required
+// - a K8s resource set fid
+// - a SLA id with the correct object type
+func TestCreateK8sResourceSetSnapshot(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	infinityK8sClient := infinityk8s.Wrap(client)
+	logger := infinityK8sClient.GQL.Log()
+
+	resourceSetFID := "f200529a-edd8-5fa0-bd3b-de869758bb68"
+	slaFID := "f42158b6-0c1f-5240-afc6-fbca6fc6e856"
+	ret, err := infinityK8sClient.CreateK8sResourceSnapshot(
+		ctx,
+		resourceSetFID,
+		infinityk8s.BaseOnDemandSnapshotConfigInput{SLAID: slaFID},
+	)
+	if err != nil {
+		t.Error(err)
+	}
+	logger.Printf(log.Info, "response: %+v", ret)
+}
