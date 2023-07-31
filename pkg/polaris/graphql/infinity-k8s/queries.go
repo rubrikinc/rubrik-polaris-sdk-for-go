@@ -39,6 +39,25 @@ var addK8sResourcesetQuery = `mutation SdkGolangAddK8sResourceset($config: K8sRe
   }
 }`
 
+// createK8sResourceSnapshot GraphQL query
+var createK8sResourceSnapshotQuery = `mutation SdkGolangCreateK8sResourceSnapshot($resourceSetId: String!, $jobConfig: BaseOnDemandSnapshotConfigInput!) {
+    createK8sResourceSetSnapshot(input: {id: $resourceSetId, config: $jobConfig}) {
+        endTime
+        error {
+            message
+        }
+        id
+        nodeId
+        progress
+        startTime
+        status
+        links {
+            href
+            rel
+        }
+    }
+}`
+
 // deleteK8sResourceset GraphQL query
 var deleteK8sResourcesetQuery = `mutation SdkGolangDeleteK8sResourceset($id:String!, $preserveSnapshots: Boolean) {
   deleteK8sResourceSet(input: {id: $id, preserveSnapshots: $preserveSnapshots}) {

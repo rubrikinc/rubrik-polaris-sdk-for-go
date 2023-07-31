@@ -1,0 +1,17 @@
+mutation RubrikPolarisSDKRequest($resourceSetId: String!, $jobConfig: BaseOnDemandSnapshotConfigInput!) {
+    createK8sResourceSetSnapshot(input: {id: $resourceSetId, config: $jobConfig}) {
+        endTime
+        error {
+            message
+        }
+        id
+        nodeId
+        progress
+        startTime
+        status
+        links {
+            href
+            rel
+        }
+    }
+}
