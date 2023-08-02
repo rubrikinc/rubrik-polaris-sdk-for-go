@@ -84,6 +84,18 @@ var exportK8sResourcesetSnapshotQuery = `mutation SdkGolangExportK8sResourcesetS
   }
 }`
 
+// getResourcesetSnapshot GraphQL query
+var getResourcesetSnapshotQuery = `query SdkGolangK8sResourceSnapshots($fid: String!) {
+    k8sResourceSetSnapshots(input: {id: $fid}) {
+        data {
+            baseSnapshotSummary {
+                id
+                slaId
+            }
+        }
+    }
+}`
+
 // jobInstance GraphQL query
 var jobInstanceQuery = `query SdkGolangJobInstance($id:String!, $clusterUuid: String!) {
   jobInstance(input: {id:$id, clusterUuid: $clusterUuid}) {
