@@ -2,9 +2,11 @@ package infinityk8s_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
@@ -16,25 +18,23 @@ import (
 
 // client is the common RSC client used for tests. By reusing the same client
 // we reduce the risk of hitting rate limits when access tokens are created.
-var client *polaris.Client
+var (
+	cdmID      = uuid.MustParse("8c02fa3d-e452-4d40-82f2-ff94812e994a")
+	k8sFID     = uuid.MustParse("71cb046b-f588-5c22-8599-57caab3fd44b")
+	goldSLAFID = uuid.MustParse("351d014c-f601-5e7d-981e-16607e69d7a4")
+	client     *polaris.Client
+)
 
 func TestMain(m *testing.M) {
+
 	if testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		// When enabling integration tests, uncomment the below section.
-		// // Load configuration and create client. Usually resolved using the
-		// // environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-		// polAccount, err := polaris.DefaultServiceAccount(true)
-		// if err != nil {
-		// 	fmt.Printf("failed to get default service account: %v\n", err)
-		// 	os.Exit(1)
-		// }
-
-		// For local testing, get the service account credentials from RSC.
-		polAccount := &polaris.ServiceAccount{
-			Name:           "sdk-test",
-			ClientID:       "client|cd908574-7eb6-44eb-a390-302b3604d1be",
-			ClientSecret:   "ArqMlH7mN50BVs5FWsVWXx7YbJtO7r1cVEZItC-lItsl5tPk30ygy-5g65IElGVE",
-			AccessTokenURI: "https://gqi.dev-142.my.rubrik-lab.com/api/client_token",
+		// Load configuration and create client. Usually resolved using the
+		// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+		polAccount, err := polaris.DefaultServiceAccount(false)
+		if err != nil {
+			fmt.Printf("failed to get default service account: %v\n", err)
+			os.Exit(1)
 		}
 
 		// The integration tests defaults the log level to INFO. Note that
@@ -45,7 +45,6 @@ func TestMain(m *testing.M) {
 			fmt.Printf("failed to get log level from env: %v\n", err)
 			os.Exit(1)
 		}
-		var err error
 
 		client, err = polaris.NewClientWithLogger(polAccount, logger)
 		if err != nil {
@@ -64,12 +63,13 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// TestAddGetDelK8sResourceSet verifies that the SDK can perform the add, get,
-// and delete K8s resource set operation on a real RSC instance.
-//
-// To run this test against an RSC instance, a valid k8s cluster fid should be
-// used.
-func TestAddGetDelK8sResourceSet(t *testing.T) {
+// TestIntegration tests the flow from creation of a ResourceSet to export.
+// Needs
+// - RSC service account setup in ~/.rubrik/polaris-service-account.json
+// - CDM onboarded onto above account and its ID.
+// - Onboarded K8s Cluster and its FID.
+// - Gold SLA fid from RSC cluster. The SLA should be owned by CDM.
+func TestIntegration(t *testing.T) {
 	ctx := context.Background()
 
 	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
@@ -77,159 +77,64 @@ func TestAddGetDelK8sResourceSet(t *testing.T) {
 	}
 
 	infinityK8sClient := infinityk8s.Wrap(client)
+	logger := infinityK8sClient.GQL.Log()
+	logger.SetLogLevel(log.Debug)
 
-	// TODO: replace k8s cluster fid with real fid.
-	k8sClusterFID := uuid.New().String()
+	// 1. Add ResourceSet.
 	config := infinityk8s.AddK8sResourceSetConfig{
-		KubernetesClusterUuid: k8sClusterFID,
-		// KubernetesClusterUuid: "bc21d877-df10-5a58-928f-c4a8cae46e62",
-		KubernetesNamespace: "fake-ns",
-		Definition:          "{}",
-		Name:                "fake-ns",
-		RSType:              "namespace",
+		KubernetesClusterUUID: k8sFID.String(),
+		KubernetesNamespace:   "default",
+		Definition:            "{}",
+		Name:                  "default-rs",
+		RSType:                "namespace",
 	}
 
-	// 1. Add resourceset.
 	addResp, err := infinityK8sClient.AddK8sResourceSet(ctx, config)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 
-	if addResp.Id == "" {
+	if addResp.ID == "" {
 		t.Errorf("add failed, %+v", addResp)
 	}
 
-	logger := infinityK8sClient.GQL.Log()
 	logger.Printf(log.Info, "add succeeded, %+v", addResp)
 
 	// 2. Get resourceset.
-	// If we get to this point, addResp.Id should be a valid uuid.
-	fid := uuid.Must(uuid.Parse(addResp.Id))
-	getResp, err := infinityK8sClient.GetK8sResourceSet(ctx, fid)
+	// If we get to this point, addResp.ID should be a valid uuid.
+	rsFID := uuid.Must(uuid.Parse(addResp.ID))
+	getResp, err := infinityK8sClient.GetK8sResourceSet(ctx, rsFID)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	logger.Printf(log.Info, "get succeeded, %+v", getResp)
 
-	// 3. Delete resourceset.
-	delResp, err := infinityK8sClient.DeleteK8sResourceSet(ctx, addResp.Id, false)
-	if err != nil {
-		t.Error(err)
-	}
-	if delResp != true {
-		t.Errorf("delete failed, %v", delResp)
-	}
-	logger.Printf(log.Info, "del succeeded, %+v", delResp)
-}
+	defer func() {
+		// N + 1. Delete resourceset.
+		delResp, err := infinityK8sClient.DeleteK8sResourceSet(
+			ctx,
+			rsFID.String(),
+			false,
+		)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		if delResp != true {
+			t.Errorf("delete failed, %v", delResp)
+		}
+		logger.Printf(log.Info, "del succeeded, %+v", delResp)
+	}()
 
-// TestExportK8sResourceSetSnapshot verifies that the SDK can perfrom the get
-// on demand export k8s resource set snapshot job operation and then
-// get the job instance details for the job on a real RSC instance
-//
-// To run this test against an RSC instance, the following are required
-// - a CDM cluster UUID
-// - a target K8s cluster fid on the CDM
-// - a k8s resource set snapshot fid on the CDM
-func TestExportK8sResourceSetSnapshot(t *testing.T) {
-	ctx := context.Background()
-
-	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
-		t.Skipf("skipping due to env TEST_INTEGRATION not set")
-	}
-
-	infinityK8sClient := infinityk8s.Wrap(client)
-	logger := infinityK8sClient.GQL.Log()
-
-	// TODO: Replace with valid snapshot fid and cdm cluster UUID
-	validSnapshotFid := "dc058c1e-5753-57c7-a31b-4b6c48f885dd"
-	validCDMId := "d5ead8ab-1129-4e23-87db-70b2317f534a"
-	validTargetK8sClusterFid := "7991fb33-2731-4356-af01-d2e3c4237f66"
-
-	// 1. Start the on demand export k8s resource set snapshot job
-	exportJobResp, err := infinityK8sClient.ExportK8sResourceSetSnapshot(
-		ctx,
-		validSnapshotFid,
-		infinityk8s.ExportK8sResourceSetSnapshotJobConfig{
-			TargetNamespaceName: "sdk-export-ns",
-			TargetClusterFid:    validTargetK8sClusterFid,
-			IgnoreErrors:        false,
-			Filter:              "{}",
-		},
-	)
-	if err != nil {
-		t.Error(err)
-	}
-	logger.Printf(log.Info, "export job response: %+v", exportJobResp)
-
-	// 2. Use the job id of the new job and call the get job instance operation
-	// exportJobResp.Id would have a valid job instance id
-	getJobResp, err := infinityK8sClient.GetJobInstance(ctx, exportJobResp.Id, validCDMId)
-	if err != nil {
-		t.Error(err)
-	}
-	logger.Printf(log.Info, "get job response: %+v", getJobResp)
-}
-
-// TestObjectIdTranslation verifies that the SDK can perform the translation from
-// Internal ID to FID and then FID back to Internal ID on a real RSC instance
-// To run this test against an RSC instance, the following are required
-// - a CDM cluster UUID
-// - a valid object internal ID on the CDM
-func TestObjectIdTranslation(t *testing.T) {
-	ctx := context.Background()
-
-	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
-		t.Skipf("skipping due to env TEST_INTEGRATION not set")
-	}
-
-	infinityK8sClient := infinityk8s.Wrap(client)
-	logger := infinityK8sClient.GQL.Log()
-
-	validCDMId := uuid.MustParse("d5ead8ab-1129-4e23-87db-70b2317f534a")
-	validObjectInternalId := uuid.MustParse("7991fb33-2731-4356-af01-d2e3c4237f66")
-
-	// 1. Get the object FID from RSC
-	fid, err := infinityK8sClient.GetK8sObjectFid(ctx, validObjectInternalId, validCDMId)
-	if err != nil {
-		t.Error(err)
-	}
-	logger.Printf(log.Info, "get fid response: %v", fid)
-
-	// 2. Get back the object internal ID from the FID
-	interalId, err := infinityK8sClient.GetK8sObjectInternalId(ctx, fid)
-	if err != nil {
-		t.Error(err)
-	}
-	logger.Printf(log.Info, "get internal id response: %v", interalId)
-	if interalId != validObjectInternalId {
-		t.Errorf("internal id %v doesn't match expectation %v", interalId, validObjectInternalId)
-	}
-	logger.Print(log.Info, "got valid internalId in response")
-}
-
-// TestAssignSLAForK8sResourceSet verifies that the SDK can perform the assign SLA
-// operation for a K8s resource set on a real RSC instance
-// To run this test against an RSC instance, the following are required
-// - a K8s resource set fid
-// - a SLA id with the correct object type
-func TestAssignSLAForK8sResourceSet(t *testing.T) {
-	ctx := context.Background()
-
-	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
-		t.Skipf("skipping due to env TEST_INTEGRATION not set")
-	}
-
+	// 3. Assign SLA to resource set
 	slaClient := core.Wrap(client.GQL)
-	logger := slaClient.GQL.Log()
-
-	// 1. Assign SLA to resource set
-	validResourceSetFid := uuid.MustParse("d825b9a0-9abc-53e8-a421-9c0f38ba2122")
-	validSlaId := uuid.MustParse("089f4548-d268-501a-a1a6-3d6fdcf2a606")
 	assignResp, err := slaClient.AssignSlaForSnappableHierarchies(
 		ctx,
-		&validSlaId,
+		&goldSLAFID,
 		core.ProtectWithSLAID,
-		[]uuid.UUID{validResourceSetFid},
+		[]uuid.UUID{rsFID},
 		nil,
 		true,  // shouldApplyToExistingSnapshots
 		false, // shouldApplyToNonPolicySnapshots
@@ -238,50 +143,139 @@ func TestAssignSLAForK8sResourceSet(t *testing.T) {
 	)
 	if err != nil {
 		t.Error(err)
+		return
 	}
-	logger.Printf(log.Info, "%v\n", assignResp)
+	logger.Printf(log.Info, "Assign SLA response %v\n", assignResp)
 
-	// 2. Get resourceset and check the sla
-	infinityK8sClient := infinityk8s.Wrap(client)
-	getResp, err := infinityK8sClient.GetK8sResourceSet(ctx, validResourceSetFid)
+	// 4. Get resourceset and check the sla.
+	time.Sleep(1 * time.Minute)
+	getResp, err = infinityK8sClient.GetK8sResourceSet(ctx, rsFID)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	logger.Printf(log.Info, "get succeeded, %+v", getResp)
 
-	if getResp.EffectiveSlaDomain.ID != validSlaId.String() {
-		t.Errorf(
+	if getResp.EffectiveSLADomain.ID != goldSLAFID.String() {
+		logger.Printf(
+			log.Warn,
 			"sla domain id %v in the resource set object doesn't match expected value %v",
-			getResp.ConfiguredSlaDomain.ID,
-			validSlaId.String(),
+			getResp.ConfiguredSLADomain.ID,
+			goldSLAFID.String(),
 		)
 	}
-}
 
-// TestCreateK8sResourceSetSnapshot verifies that the SDK can perform the
-// creation of on demand snapshot.
-// To run this test against an RSC instance, the following are required
-// - a K8s resource set fid
-// - a SLA id with the correct object type
-func TestCreateK8sResourceSetSnapshot(t *testing.T) {
-	ctx := context.Background()
-
-	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
-		t.Skipf("skipping due to env TEST_INTEGRATION not set")
-	}
-
-	infinityK8sClient := infinityk8s.Wrap(client)
-	logger := infinityK8sClient.GQL.Log()
-
-	resourceSetFID := "f200529a-edd8-5fa0-bd3b-de869758bb68"
-	slaFID := "f42158b6-0c1f-5240-afc6-fbca6fc6e856"
-	ret, err := infinityK8sClient.CreateK8sResourceSnapshot(
+	// 5. Create an on-demand snapshot.
+	snapshotRet, err := infinityK8sClient.CreateK8sResourceSnapshot(
 		ctx,
-		resourceSetFID,
-		infinityk8s.BaseOnDemandSnapshotConfigInput{SLAID: slaFID},
+		rsFID.String(),
+		infinityk8s.BaseOnDemandSnapshotConfigInput{SLAID: goldSLAFID.String()},
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	logger.Printf(log.Info, "response: %+v", snapshotRet)
+
+	// 6. Get the status of the job.
+	getJobResp, err := infinityK8sClient.GetJobInstance(
+		ctx,
+		snapshotRet.ID,
+		cdmID.String(),
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	logger.Printf(log.Info, "get snapshot job response: %+v", getJobResp)
+
+	// 7. Wait for a snapshot.
+	snaps, err := func() ([]string, error) {
+		timeoutCTX, cancel := context.WithDeadline(
+			ctx,
+			time.Now().Add(5*time.Minute),
+		)
+		defer cancel()
+		for {
+			select {
+			case <-ctx.Done():
+				return nil, errors.New("timeout")
+			default:
+				snapshots, err := infinityK8sClient.GetResourceSetSnapshots(
+					timeoutCTX,
+					rsFID.String(),
+				)
+				if err != nil {
+					return nil, err
+				}
+				if len(snapshots) >= 1 {
+					return snapshots, nil
+				}
+				time.Sleep(30 * time.Second)
+			}
+		}
+	}()
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	logger.Printf(log.Info, "Get snapshot response: %+v", snaps)
+
+	// 8. Start the on demand export k8s resource set snapshot job
+	exportJobResp, err := infinityK8sClient.ExportK8sResourceSetSnapshot(
+		ctx,
+		snaps[0],
+		infinityk8s.ExportK8sResourceSetSnapshotJobConfig{
+			TargetNamespaceName: "default-export-ns",
+			TargetClusterFid:    k8sFID.String(),
+			IgnoreErrors:        false,
+			Filter:              "{}",
+		},
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	logger.Printf(log.Info, "export job response: %+v", exportJobResp)
+
+	// 9. Use the job id of the new job and call the get job instance operation
+	// exportJobResp.ID would have a valid job instance id
+	getJobResp, err = infinityK8sClient.GetJobInstance(
+		ctx,
+		exportJobResp.ID,
+		cdmID.String(),
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	logger.Printf(log.Info, "get job response: %+v", getJobResp)
+
+	// 11. Translate FID to internal_id and back.
+	interalID, err := infinityK8sClient.GetK8sObjectInternalID(ctx, rsFID)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	logger.Printf(log.Info, "get internal id response: %v", interalID)
+
+	// Get the object FID from RSC
+	fid, err := infinityK8sClient.GetK8sObjectFid(
+		ctx,
+		interalID,
+		cdmID,
 	)
 	if err != nil {
 		t.Error(err)
 	}
-	logger.Printf(log.Info, "response: %+v", ret)
+	logger.Printf(log.Info, "get fid response: %v", fid)
+
+	if fid != rsFID {
+		t.Errorf(
+			"internal id %s doesn't match expectation %s",
+			fid.String(),
+			rsFID.String(),
+		)
+	}
 }

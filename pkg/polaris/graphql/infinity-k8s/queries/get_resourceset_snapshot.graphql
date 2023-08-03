@@ -1,0 +1,10 @@
+query SdkGolangK8sResourceSnapshots($fid: String!) {
+    k8sResourceSetSnapshots(input: {id: $fid}) {
+        data {
+            baseSnapshotSummary {
+                id
+                slaId
+            }
+        }
+    }
+}
