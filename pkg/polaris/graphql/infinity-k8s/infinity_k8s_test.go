@@ -130,7 +130,7 @@ func TestIntegration(t *testing.T) {
 
 	// 3. Assign SLA to resource set
 	slaClient := core.Wrap(client.GQL)
-	assignResp, err := slaClient.AssignSlaForSnappableHierarchies(
+	assignResp, err := slaClient.AssignSLAForSnappableHierarchies(
 		ctx,
 		&goldSLAFID,
 		core.ProtectWithSLAID,

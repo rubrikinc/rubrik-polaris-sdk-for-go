@@ -9,12 +9,15 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// SLAAssignment represents the type of a SLA assignment in Polaris.
+// SLAAssignment represents the type of SLA assignment in Polaris.
 type SLAAssignment string
 
 const (
-	Derived    SLAAssignment = "Derived"
-	Direct     SLAAssignment = "Direct"
+	// Derived denotes derived SLA Assignment.
+	Derived SLAAssignment = "Derived"
+	// Direct denotes direct SLA Assignment.
+	Direct SLAAssignment = "Direct"
+	// Unassigned denotes no SLA Assignment.
 	Unassigned SLAAssignment = "Unassigned"
 )
 
@@ -28,6 +31,7 @@ type SLADomain struct {
 // SLAAssignType represents how an SLA is assigned in Polaris.
 type SLAAssignType string
 
+// SLA Assignment types.
 const (
 	NoAssignment     SLAAssignType = "noAssignment"
 	DoNotProtect     SLAAssignType = "doNotProtect"
@@ -37,23 +41,24 @@ const (
 // SnappableLevelHierarchyType represents snappable types.
 type SnappableLevelHierarchyType string
 
+// Snappable Hierarchy Types.
 const (
 	KuprNamespace             SnappableLevelHierarchyType = "KuprNamespace"
 	O365Teams                 SnappableLevelHierarchyType = "O365Teams"
 	O365Onedrive              SnappableLevelHierarchyType = "O365Onedrive"
-	AwsNativeS3Bucket         SnappableLevelHierarchyType = "AWS_NATIVE_S3_BUCKET"
-	AwsNativeRdsInstance      SnappableLevelHierarchyType = "AwsNativeRdsInstance"
+	AWSNativeS3Bucket         SnappableLevelHierarchyType = "AWS_NATIVE_S3_BUCKET"
+	AWSNativeRDSInstance      SnappableLevelHierarchyType = "AwsNativeRdsInstance"
 	O365SharePointList        SnappableLevelHierarchyType = "O365SharePointList"
 	AllSubHierarchyType       SnappableLevelHierarchyType = "AllSubHierarchyType"
-	AzureSqlManagedInstanceDb SnappableLevelHierarchyType = "AzureSqlManagedInstanceDb"
+	AzureSQLManagedInstanceDB SnappableLevelHierarchyType = "AzureSqlManagedInstanceDb"
 	O365SharePointDrive       SnappableLevelHierarchyType = "O365SharePointDrive"
-	AwsNativeEc2Instance      SnappableLevelHierarchyType = "AwsNativeEc2Instance"
+	AWSNativeEC2Instance      SnappableLevelHierarchyType = "AwsNativeEc2Instance"
 	O365Mailbox               SnappableLevelHierarchyType = "O365Mailbox"
 	AzureStorageAccount       SnappableLevelHierarchyType = "AZURE_STORAGE_ACCOUNT"
-	GcpNativeGCEInstance      SnappableLevelHierarchyType = "GcpNativeGCEInstance"
+	GCPNativeGCEInstance      SnappableLevelHierarchyType = "GcpNativeGCEInstance"
 	AzureADDirectory          SnappableLevelHierarchyType = "AZURE_AD_DIRECTORY"
-	AwsNativeEbsVolume        SnappableLevelHierarchyType = "AwsNativeEbsVolume"
-	AzureSqlDatabaseDb        SnappableLevelHierarchyType = "AzureSqlDatabaseDb"
+	AwsNativeEBSVolume        SnappableLevelHierarchyType = "AwsNativeEbsVolume"
+	AzureSQLDatabaseDB        SnappableLevelHierarchyType = "AzureSqlDatabaseDb"
 	AzureNativeManagedDisk    SnappableLevelHierarchyType = "AzureNativeManagedDisk"
 	O365Site                  SnappableLevelHierarchyType = "O365Site"
 	AzureNativeVirtualMachine SnappableLevelHierarchyType = "AzureNativeVirtualMachine"
@@ -62,6 +67,7 @@ const (
 // GlobalExistingSnapshotRetention represents list of predefined retention types.
 type GlobalExistingSnapshotRetention string
 
+// Retention types.
 const (
 	ExpireImmediately GlobalExistingSnapshotRetention = "EXPIRE_IMMEDIATELY"
 	KeepForever       GlobalExistingSnapshotRetention = "KEEP_FOREVER"
@@ -69,11 +75,11 @@ const (
 	RetainSnapshots   GlobalExistingSnapshotRetention = "RETAIN_SNAPSHOTS"
 )
 
-// AssignSlaForSnappableHierarchies assigns SLA defined by globalSLAOptionalFid
+// AssignSLAForSnappableHierarchies assigns SLA defined by globalSLAOptionalFid
 // to ObjectsIDs.
-func (a API) AssignSlaForSnappableHierarchies(
+func (a API) AssignSLAForSnappableHierarchies(
 	ctx context.Context,
-	globalSLAOptionalFid *uuid.UUID,
+	globalSLAOptionalFID *uuid.UUID,
 	globalSLAAssignType SLAAssignType,
 	ObjectIDs []uuid.UUID,
 	applicableSnappableTypes []SnappableLevelHierarchyType,
@@ -88,7 +94,7 @@ func (a API) AssignSlaForSnappableHierarchies(
 		ctx,
 		assignSlaForSnappableHierarchiesQuery,
 		struct {
-			GlobalSLAOptionalFid            *uuid.UUID                      `json:"globalSlaOptionalFid"`
+			GlobalSLAOptionalFID            *uuid.UUID                      `json:"globalSlaOptionalFid"`
 			GlobalSLAAssignType             SLAAssignType                   `json:"globalSlaAssignType"`
 			ObjectIDs                       []uuid.UUID                     `json:"objectIds"`
 			ApplicableSnappableTypes        []SnappableLevelHierarchyType   `json:"applicableSnappableTypes"`
@@ -97,7 +103,7 @@ func (a API) AssignSlaForSnappableHierarchies(
 			GlobalExistingSnapshotRetention GlobalExistingSnapshotRetention `json:"globalExistingSnapshotRetention"`
 			UserNote                        string                          `json:"userNote"`
 		}{
-			GlobalSLAOptionalFid:            globalSLAOptionalFid,
+			GlobalSLAOptionalFID:            globalSLAOptionalFID,
 			GlobalSLAAssignType:             globalSLAAssignType,
 			ObjectIDs:                       ObjectIDs,
 			ApplicableSnappableTypes:        applicableSnappableTypes,
@@ -105,26 +111,33 @@ func (a API) AssignSlaForSnappableHierarchies(
 			ShouldApplyToNonPolicySnapshots: shouldApplyToNonPolicySnapshots,
 			GlobalExistingSnapshotRetention: globalExistingSnapshotRetention,
 			UserNote:                        userNote,
-		})
+		},
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to request assignSlaForSnappableHierarchies: %v", err)
+		return nil, fmt.Errorf(
+			"failed to request assignSlaForSnappableHierarchies: %v",
+			err,
+		)
 	}
 
 	a.log.Printf(log.Debug, "assignSlaForSnappableHierarchies(): %s", string(buf))
 
 	var payload struct {
 		Data struct {
-			AssignSlaForSnappableHierarchies []struct {
+			AssignSLAForSnappableHierarchies []struct {
 				Success bool `json:"success"`
 			} `json:"assignSlasForSnappableHierarchies"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal assignSlaForSnappableHierarchies: %v", err)
+		return nil, fmt.Errorf(
+			"failed to unmarshal assignSlaForSnappableHierarchies: %v",
+			err,
+		)
 	}
 
-	ret := make([]bool, len(payload.Data.AssignSlaForSnappableHierarchies))
-	for i, res := range payload.Data.AssignSlaForSnappableHierarchies {
+	ret := make([]bool, len(payload.Data.AssignSLAForSnappableHierarchies))
+	for i, res := range payload.Data.AssignSLAForSnappableHierarchies {
 		ret[i] = res.Success
 	}
 	return ret, nil
