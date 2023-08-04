@@ -228,7 +228,7 @@ func TestIntegration(t *testing.T) {
 		snaps[0],
 		infinityk8s.ExportK8sResourceSetSnapshotJobConfig{
 			TargetNamespaceName: "default-export-ns",
-			TargetClusterFid:    k8sFID.String(),
+			TargetClusterFID:    k8sFID.String(),
 			IgnoreErrors:        false,
 			Filter:              "{}",
 		},
@@ -261,7 +261,7 @@ func TestIntegration(t *testing.T) {
 	logger.Printf(log.Info, "get internal id response: %v", interalID)
 
 	// Get the object FID from RSC
-	fid, err := infinityK8sClient.GetK8sObjectFid(
+	fid, err := infinityK8sClient.GetK8sObjectFID(
 		ctx,
 		interalID,
 		cdmID,
