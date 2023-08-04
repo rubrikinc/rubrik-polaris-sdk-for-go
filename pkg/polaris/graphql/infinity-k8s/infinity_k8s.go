@@ -84,7 +84,7 @@ type AddK8sResourceSetResponse struct {
 // export a snapshot.
 type ExportK8sResourceSetSnapshotJobConfig struct {
 	TargetNamespaceName string `json:"targetNamespaceName"`
-	TargetClusterFid    string `json:"targetClusterId"`
+	TargetClusterFID    string `json:"targetClusterId"`
 	IgnoreErrors        bool   `json:"ignoreErrors,omitempty"`
 	Filter              string `json:"filter,omitempty"`
 }
@@ -120,7 +120,7 @@ type AsyncRequestStatus struct {
 
 // PathNode is the path description of the Snappable.
 type PathNode struct {
-	Fid  uuid.UUID `json:"fid"`
+	FID  uuid.UUID `json:"fid"`
 	Name string    `json:"name"`
 	// ObjectType corresponds to HierarchyObjectTypeEnum.
 	ObjectType string `json:"objectType"`
@@ -224,8 +224,8 @@ func (a API) GetK8sResourceSet(
 
 	buf, err := a.GQL.Request(
 		ctx, k8sResourcesetQuery, struct {
-			Fid uuid.UUID `json:"fid"`
-		}{Fid: fid},
+			FID uuid.UUID `json:"fid"`
+		}{FID: fid},
 	)
 	if err != nil {
 		return KubernetesResourceSet{}, fmt.Errorf(
@@ -361,7 +361,7 @@ func (a API) GetJobInstance(
 // starts an on-demand export job in CDM.
 func (a API) ExportK8sResourceSetSnapshot(
 	ctx context.Context,
-	snapshotFid string,
+	snapshotFID string,
 	jobConfig ExportK8sResourceSetSnapshotJobConfig,
 ) (AsyncRequestStatus, error) {
 	a.log.Print(log.Trace)
@@ -370,10 +370,10 @@ func (a API) ExportK8sResourceSetSnapshot(
 		ctx,
 		exportK8sResourcesetSnapshotQuery,
 		struct {
-			SnapshotFid string                                `json:"id"`
+			SnapshotFID string                                `json:"id"`
 			JobConfig   ExportK8sResourceSetSnapshotJobConfig `json:"jobConfig"`
 		}{
-			SnapshotFid: snapshotFid,
+			SnapshotFID: snapshotFID,
 			JobConfig:   jobConfig,
 		},
 	)
@@ -387,7 +387,7 @@ func (a API) ExportK8sResourceSetSnapshot(
 	a.log.Printf(
 		log.Debug,
 		"exportK8sResourceSetSnapshot(%q, %q): %s",
-		snapshotFid,
+		snapshotFID,
 		jobConfig,
 		string(buf),
 	)
@@ -459,9 +459,9 @@ func (a API) CreateK8sResourceSnapshot(
 	return payload.Data.Response, nil
 }
 
-// GetK8sObjectFid fetches the RSC FID for the object corresponding to the
+// GetK8sObjectFID fetches the RSC FID for the object corresponding to the
 // provided internal id and CDM cluster id.
-func (a API) GetK8sObjectFid(
+func (a API) GetK8sObjectFID(
 	ctx context.Context,
 	internalID uuid.UUID,
 	cdmClusterID uuid.UUID,
