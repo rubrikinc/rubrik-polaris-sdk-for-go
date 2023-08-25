@@ -182,7 +182,7 @@ func newClientFromServiceAccount(account *ServiceAccount, logger log.Logger, cac
 	if cacheToken {
 		var err error
 		tokenSource, err = token.NewCache(tokenSource,
-			account.Name+account.AccessTokenURI+account.ClientID+account.ClientSecret, account.Name, account.allowEnvOverride())
+			account.Name+account.AccessTokenURI+account.ClientID+account.ClientSecret, account.Name+account.ClientID, account.allowEnvOverride())
 		if err != nil {
 			return nil, fmt.Errorf("failed to create token cache: %s", err)
 		}

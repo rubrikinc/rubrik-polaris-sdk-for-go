@@ -102,7 +102,7 @@ func (c *cache) token(ctx context.Context) (token, error) {
 
 	cachedToken, err := readCache(c.file, c.block)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return token{}, fmt.Errorf("failed read token from cache: %s", err)
+		return token{}, fmt.Errorf("failed to read token from cache: %s", err)
 	}
 	if err == nil && !cachedToken.expired() {
 		return cachedToken, nil
