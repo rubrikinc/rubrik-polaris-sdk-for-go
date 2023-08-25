@@ -26,6 +26,13 @@ $ go generate ./...
 The following environmental variables can be used to override the default behaviour of the SDK:
 * RUBRIK_POLARIS_LOGLEVEL — Overrides the log level of the SDK. Valid log levels are: `FATAL`, `ERROR`, `WARN`, `INFO`,
 `DEBUG`, `TRACE` and `OFF`. The default log level is `WARN`.
+* RUBRIK_POLARIS_TOKEN_CACHE — Overrides whether the token cache should be used or not.
+* RUBRIK_POLARIS_TOKEN_CACHE_DIR — Overrides the directory where cached authentication tokens are be stored.
+* RUBRIK_POLARIS_TOKEN_CACHE_KEY — Overrides the encryption key used to encrypt authentication tokens. The encryption
+key needs to be exactly 32 bytes long and base64 encoded.
+
+Note that it's possible to prevent the above environment variables, except for `RUBRIK_POLARIS_LOGLEVEL`, from overriding
+the default behavior by setting `allowEnvOverride` to `false`.
 
 ### Polaris Credentials
 The SDK supports both local user accounts and service accounts. For documentation on how to create either using Polaris
@@ -87,7 +94,7 @@ account behaviour:
 * RUBRIK_POLARIS_ACCOUNT_PASSWORD — Overrides the password of the local user account.
 * RUBRIK_POLARIS_ACCOUNT_URL — Overrides the Polaris API URL.
 
-Note that it's possible to prevent the above environment variable from overriding the default behavior by setting
+Note that it's possible to prevent the above environment variables from overriding the default behavior by setting
 `allowEnvOverride` to `false`.
 
 #### Service Account
@@ -121,7 +128,7 @@ behavior:
 * RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI — Overrides the service account access token URI. When using a service 
 account the Polaris API URL is derived from this URI.
 
-Note that it's possible to prevent the above environment variable from overriding the default behavior by setting
+Note that it's possible to prevent the above environment variables from overriding the default behavior by setting
 `allowEnvOverride` to `false`.
 
 ### AWS Credentials

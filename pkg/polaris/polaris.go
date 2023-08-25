@@ -52,14 +52,14 @@ type Client struct {
 // Account represents a Polaris account. Implemented by UserAccount and
 // ServiceAccount.
 type Account interface {
-	isAccount()
+	allowEnvOverride() bool
 }
 
 // NewClient returns a new Client for the specified Account.
 //
 // The client will cache authentication tokens by default, this behavior can be
 // overriden by setting the environment variable RUBRIK_POLARIS_TOKEN_CACHE to
-// false.
+// false, given that the account specified allows environment overrides.
 func NewClient(account Account) (*Client, error) {
 	return NewClientWithLogger(account, log.DiscardLogger{})
 }
@@ -68,12 +68,14 @@ func NewClient(account Account) (*Client, error) {
 //
 // The client will cache authentication tokens by default, this behavior can be
 // overriden by setting the environment variable RUBRIK_POLARIS_TOKEN_CACHE to
-// false.
+// false, given that the account specified allows environment overrides.
 func NewClientWithLogger(account Account, logger log.Logger) (*Client, error) {
 	cacheToken := true
-	if tcUse := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE"); tcUse != "" {
-		if b, err := strconv.ParseBool(tcUse); err != nil {
-			cacheToken = b
+	if account.allowEnvOverride() {
+		if tcUse := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE"); tcUse != "" {
+			if b, err := strconv.ParseBool(tcUse); err != nil {
+				cacheToken = b
+			}
 		}
 	}
 
@@ -138,8 +140,8 @@ func newClientFromUserAccount(account *UserAccount, logger log.Logger, cacheToke
 	var tokenSource token.Source = token.NewUserSourceWithLogger(http.DefaultClient, apiURL, account.Username, account.Password, logger)
 	if cacheToken {
 		var err error
-		tokenSource, err = token.NewCache(
-			tokenSource, account.Name+account.URL+account.Username+account.Password, account.Name)
+		tokenSource, err = token.NewCache(tokenSource,
+			account.Name+account.URL+account.Username+account.Password, account.Name+account.Username, account.allowEnvOverride())
 		if err != nil {
 			return nil, fmt.Errorf("failed to create token cache: %s", err)
 		}
@@ -179,8 +181,8 @@ func newClientFromServiceAccount(account *ServiceAccount, logger log.Logger, cac
 		http.DefaultClient, account.AccessTokenURI, account.ClientID, account.ClientSecret, logger)
 	if cacheToken {
 		var err error
-		tokenSource, err = token.NewCache(
-			tokenSource, account.Name+account.AccessTokenURI+account.ClientID+account.ClientSecret, account.Name)
+		tokenSource, err = token.NewCache(tokenSource,
+			account.Name+account.AccessTokenURI+account.ClientID+account.ClientSecret, account.Name, account.allowEnvOverride())
 		if err != nil {
 			return nil, fmt.Errorf("failed to create token cache: %s", err)
 		}

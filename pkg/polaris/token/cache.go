@@ -57,19 +57,21 @@ type cache struct {
 // environment variable RUBRIK_POLARIS_TOKEN_CACHE_KEY to the encryption key to
 // use. The key must be exactly 32 bytes in size and be base64 encoded. Multiple
 // processes using the same service account will use the same cached token.
-func NewCache(source Source, keyMaterial, suffixMaterial string) (*cache, error) {
+func NewCache(source Source, keyMaterial, suffixMaterial string, allowEnvOverride bool) (*cache, error) {
 	key := sha256.Sum256([]byte(keyMaterial))
 	suffix := fmt.Sprintf("%x", sha256.Sum256([]byte(suffixMaterial)))
-	if tcKey := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE_KEY"); tcKey != "" {
-		tcKeyBuf, err := base64.StdEncoding.DecodeString(tcKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode provided cache key: %s", err)
+	if allowEnvOverride {
+		if tcKey := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE_KEY"); tcKey != "" {
+			tcKeyBuf, err := base64.StdEncoding.DecodeString(tcKey)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode provided cache key: %s", err)
+			}
+			if n := len(tcKeyBuf); n != len(key) {
+				return nil, fmt.Errorf("invalid provided cache key size: %d", n)
+			}
+			copy(key[:], tcKeyBuf)
+			suffix += "-env"
 		}
-		if len(tcKeyBuf) != len(key) {
-			return nil, errors.New("invalid provided cache key size")
-		}
-		copy(key[:], tcKeyBuf)
-		suffix += "-env"
 	}
 	block, err := aes.NewCipher(key[:])
 	if err != nil {
@@ -77,8 +79,10 @@ func NewCache(source Source, keyMaterial, suffixMaterial string) (*cache, error)
 	}
 
 	path := os.TempDir()
-	if tcDir := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE_DIR"); tcDir != "" {
-		path = tcDir
+	if allowEnvOverride {
+		if tcDir := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE_DIR"); tcDir != "" {
+			path = tcDir
+		}
 	}
 	path = filepath.Join(path, fmt.Sprintf("token-%s", suffix))
 
@@ -118,7 +122,7 @@ func (c *cache) token(ctx context.Context) (token, error) {
 
 type cacheEntry struct {
 	Token string `json:"token"`
-	Salt  string `json:"salt"`
+	IV    string `json:"iv"`
 }
 
 // readCache reads a token from the cache.
@@ -133,32 +137,35 @@ func readCache(file string, block cipher.Block) (token, error) {
 		return token{}, fmt.Errorf("failed to unmarshal cache entry: %s", err)
 	}
 
-	salt, err := base64.StdEncoding.DecodeString(entry.Salt)
+	iv, err := base64.StdEncoding.DecodeString(entry.IV)
 	if err != nil {
 		return token{}, fmt.Errorf("failed to decode cache entry salt: %s", err)
+	}
+	if n := len(iv); n != aes.BlockSize {
+		return token{}, fmt.Errorf("invalid iv size: %d", n)
 	}
 	tokenText, err := base64.StdEncoding.DecodeString(entry.Token)
 	if err != nil {
 		return token{}, fmt.Errorf("failed to decode cache entry token: %s", err)
 	}
-	cipher.NewCFBDecrypter(block, salt).XORKeyStream(tokenText, tokenText)
+	cipher.NewCFBDecrypter(block, iv).XORKeyStream(tokenText, tokenText)
 
 	return fromJWT(string(tokenText))
 }
 
 // writeCache writes the specified token to the cache.
 func writeCache(file string, token token, block cipher.Block) error {
-	salt := make([]byte, aes.BlockSize)
-	if _, err := rand.Read(salt); err != nil {
+	iv := make([]byte, aes.BlockSize)
+	if _, err := rand.Read(iv); err != nil {
 		return fmt.Errorf("failed to generate random data for cache entry: %s", err)
 	}
 
 	buf := make([]byte, len(token.jwtToken.Raw))
-	cipher.NewCFBEncrypter(block, salt).XORKeyStream(buf, []byte(token.jwtToken.Raw))
+	cipher.NewCFBEncrypter(block, iv).XORKeyStream(buf, []byte(token.jwtToken.Raw))
 
 	entry, err := json.Marshal(cacheEntry{
 		Token: base64.StdEncoding.EncodeToString(buf),
-		Salt:  base64.StdEncoding.EncodeToString(salt),
+		IV:    base64.StdEncoding.EncodeToString(iv),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to marshal cache entry: %s", err)

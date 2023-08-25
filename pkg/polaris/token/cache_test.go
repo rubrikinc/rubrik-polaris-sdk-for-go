@@ -43,7 +43,7 @@ var (
 func TestCacheTokenSource(t *testing.T) {
 	t.Setenv("RUBRIK_POLARIS_TOKEN_CACHE_DIR", t.TempDir())
 
-	cache, err := NewCache(&mockSource{}, "key", "suffix")
+	cache, err := NewCache(&mockSource{}, "key", "suffix", true)
 	if err != nil {
 		t.Fatal(err)
 	}
