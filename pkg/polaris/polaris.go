@@ -23,12 +23,12 @@
 package polaris
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -47,7 +47,6 @@ const (
 // Client is used to make calls to the RSC platform.
 type Client struct {
 	GQL *graphql.Client
-	Log log.Logger // Deprecated: use the logger passed in to NewClientWithLogger.
 }
 
 // Account represents a Polaris account. Implemented by UserAccount and
@@ -56,27 +55,40 @@ type Account interface {
 	isAccount()
 }
 
-// Deprecated: The context and the logger parameters will be dropped in the next
-// release, use NewClientWithLogger
-func NewClient(ctx context.Context, account Account, logger log.Logger) (*Client, error) {
-	return NewClientWithLogger(account, logger)
+// NewClient returns a new Client for the specified Account.
+//
+// The client will cache authentication tokens by default, this behavior can be
+// overriden by setting the environment variable RUBRIK_POLARIS_TOKEN_CACHE to
+// false.
+func NewClient(account Account) (*Client, error) {
+	return NewClientWithLogger(account, log.DiscardLogger{})
 }
 
 // NewClientWithLogger returns a new Client for the specified Account.
+//
+// The client will cache authentication tokens by default, this behavior can be
+// overriden by setting the environment variable RUBRIK_POLARIS_TOKEN_CACHE to
+// false.
 func NewClientWithLogger(account Account, logger log.Logger) (*Client, error) {
-	var client *Client
+	cacheToken := true
+	if tcUse := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE"); tcUse != "" {
+		if b, err := strconv.ParseBool(tcUse); err != nil {
+			cacheToken = b
+		}
+	}
 
+	var client *Client
 	var err error
 	switch account := account.(type) {
 	case *UserAccount:
-		client, err = newClientFromUserAccount(account, logger)
+		client, err = newClientFromUserAccount(account, logger, cacheToken)
 	case *ServiceAccount:
-		client, err = newClientFromServiceAccount(account, logger)
+		client, err = newClientFromServiceAccount(account, logger, cacheToken)
 	default:
 		err = errors.New("invalid account type")
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to create client: %v", err)
+		return nil, fmt.Errorf("failed to create client: %s", err)
 	}
 
 	return client, nil
@@ -100,7 +112,7 @@ func SetLogLevelFromEnv(logger log.Logger) error {
 
 	l, err := log.ParseLogLevel(level)
 	if err != nil {
-		return fmt.Errorf("failed to parse log level: %v", err)
+		return fmt.Errorf("failed to parse log level: %s", err)
 	}
 	logger.SetLogLevel(l)
 
@@ -108,13 +120,13 @@ func SetLogLevelFromEnv(logger log.Logger) error {
 }
 
 // newClientFromUserAccount returns a new Client from the specified UserAccount.
-func newClientFromUserAccount(account *UserAccount, logger log.Logger) (*Client, error) {
+func newClientFromUserAccount(account *UserAccount, logger log.Logger, cacheToken bool) (*Client, error) {
 	apiURL := account.URL
 	if apiURL == "" {
 		apiURL = fmt.Sprintf("https://%s.my.rubrik.com/api", account.Name)
 	}
 	if _, err := url.ParseRequestURI(apiURL); err != nil {
-		return nil, fmt.Errorf("invalid url: %v", err)
+		return nil, fmt.Errorf("invalid url: %s", err)
 	}
 	if account.Username == "" {
 		return nil, errors.New("invalid username")
@@ -123,11 +135,18 @@ func newClientFromUserAccount(account *UserAccount, logger log.Logger) (*Client,
 		return nil, errors.New("invalid password")
 	}
 
-	tokenSource := token.NewUserSourceWithLogger(http.DefaultClient, apiURL, account.Username, account.Password, logger)
+	var tokenSource token.Source = token.NewUserSourceWithLogger(http.DefaultClient, apiURL, account.Username, account.Password, logger)
+	if cacheToken {
+		var err error
+		tokenSource, err = token.NewCache(
+			tokenSource, account.Name+account.URL+account.Username+account.Password, account.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create token cache: %s", err)
+		}
+	}
 
 	client := &Client{
 		GQL: graphql.NewClientWithLogger(apiURL, tokenSource, logger),
-		Log: logger,
 	}
 
 	return client, nil
@@ -135,7 +154,7 @@ func newClientFromUserAccount(account *UserAccount, logger log.Logger) (*Client,
 
 // newClientFromServiceAccount returns a new Client from the specified
 // ServiceAccount.
-func newClientFromServiceAccount(account *ServiceAccount, logger log.Logger) (*Client, error) {
+func newClientFromServiceAccount(account *ServiceAccount, logger log.Logger, cacheToken bool) (*Client, error) {
 	if account.Name == "" {
 		return nil, errors.New("invalid name")
 	}
@@ -146,7 +165,7 @@ func newClientFromServiceAccount(account *ServiceAccount, logger log.Logger) (*C
 		return nil, errors.New("invalid client secret")
 	}
 	if _, err := url.ParseRequestURI(account.AccessTokenURI); err != nil {
-		return nil, fmt.Errorf("invalid access token uri: %v", err)
+		return nil, fmt.Errorf("invalid access token uri: %s", err)
 	}
 
 	// Extract the API URL from the token access URI.
@@ -156,12 +175,19 @@ func newClientFromServiceAccount(account *ServiceAccount, logger log.Logger) (*C
 	}
 	apiURL := account.AccessTokenURI[:i]
 
-	tokenSource := token.NewServiceAccountSourceWithLogger(
+	var tokenSource token.Source = token.NewServiceAccountSourceWithLogger(
 		http.DefaultClient, account.AccessTokenURI, account.ClientID, account.ClientSecret, logger)
+	if cacheToken {
+		var err error
+		tokenSource, err = token.NewCache(
+			tokenSource, account.Name+account.AccessTokenURI+account.ClientID+account.ClientSecret, account.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create token cache: %s", err)
+		}
+	}
 
 	client := &Client{
 		GQL: graphql.NewClientWithLogger(apiURL, tokenSource, logger),
-		Log: logger,
 	}
 
 	return client, nil

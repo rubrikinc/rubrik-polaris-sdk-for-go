@@ -59,7 +59,7 @@ func userAccountFromEnv() UserAccount {
 	}
 }
 
-// UserAccountFromEnv returns a new UserAccoount from the user's environment
+// UserAccountFromEnv returns a new UserAccount from the user's environment
 // variables. Environment variables must have the same name as the UserAccount
 // fields but be all upper case and prepended with RUBRIK_POLARIS_ACCOUNT, e.g.
 // RUBRIK_POLARIS_ACCOUNT_USERNAME.
@@ -128,7 +128,7 @@ func userAccountFromFile(file, name string) (UserAccount, error) {
 //	}
 //
 // If allowEnvOverride is true environment variables can be used to override
-// user information in the file. See AccountFromEnv for details. In addition
+// user information in the file. See AccountFromEnv for details. In addition,
 // the environment variable RUBRIK_POLARIS_ACCOUNT_FILE can be used to override
 // the file that the user information is read from.
 func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount, error) {
