@@ -26,7 +26,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,6 +39,10 @@ const (
 	lockTimeout = requestAttempts*requestTimeout + 3*time.Second
 )
 
+var (
+	errInvalidToken = errors.New("invalid jwt token")
+)
+
 type cache struct {
 	block  cipher.Block
 	file   string
@@ -50,29 +53,24 @@ type cache struct {
 //
 // The cache will store authentication tokens in the OS default directory for
 // temporary files, this behavior can be overriden by setting the environment
-// variable RUBRIK_POLARIS_TOKEN_CACHE_DIR to false.
+// variable RUBRIK_POLARIS_TOKEN_CACHE_DIR to the directory to use, given that
+// the account passed in when creating the client allows environment variable
+// overrides.
 //
 // The cache will also generate a key to encrypt the content of the token cache
-// from the RSC account used, this behavior can be overriden by setting the
-// environment variable RUBRIK_POLARIS_TOKEN_CACHE_KEY to the encryption key to
-// use. The key must be exactly 32 bytes in size and be base64 encoded. Multiple
-// processes using the same service account will use the same cached token.
+// from the RSC account, this behavior can be overriden by setting the
+// environment variable RUBRIK_POLARIS_TOKEN_CACHE_SECRET to the secret used
+// when generating the encryption key, given that the account passed in when
+// creating the client allows environment variable overrides.
 func NewCache(source Source, keyMaterial, suffixMaterial string, allowEnvOverride bool) (*cache, error) {
-	key := sha256.Sum256([]byte(keyMaterial))
 	suffix := fmt.Sprintf("%x", sha256.Sum256([]byte(suffixMaterial)))
 	if allowEnvOverride {
-		if tcKey := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE_KEY"); tcKey != "" {
-			tcKeyBuf, err := base64.StdEncoding.DecodeString(tcKey)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decode provided cache key: %s", err)
-			}
-			if n := len(tcKeyBuf); n != len(key) {
-				return nil, fmt.Errorf("invalid provided cache key size: %d", n)
-			}
-			copy(key[:], tcKeyBuf)
+		if tcSecret := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE_SECRET"); tcSecret != "" {
+			keyMaterial = tcSecret
 			suffix += "-env"
 		}
 	}
+	key := sha256.Sum256([]byte(keyMaterial))
 	block, err := aes.NewCipher(key[:])
 	if err != nil {
 		return nil, err
@@ -101,7 +99,7 @@ func (c *cache) token(ctx context.Context) (token, error) {
 	defer unlock()
 
 	cachedToken, err := readCache(c.file, c.block)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, errInvalidToken) {
 		return token{}, fmt.Errorf("failed to read token from cache: %s", err)
 	}
 	if err == nil && !cachedToken.expired() {
@@ -121,8 +119,8 @@ func (c *cache) token(ctx context.Context) (token, error) {
 }
 
 type cacheEntry struct {
-	Token string `json:"token"`
-	IV    string `json:"iv"`
+	Token []byte `json:"token"`
+	IV    []byte `json:"iv"`
 }
 
 // readCache reads a token from the cache.
@@ -136,21 +134,17 @@ func readCache(file string, block cipher.Block) (token, error) {
 	if err := json.Unmarshal(buf, &entry); err != nil {
 		return token{}, fmt.Errorf("failed to unmarshal cache entry: %s", err)
 	}
-
-	iv, err := base64.StdEncoding.DecodeString(entry.IV)
-	if err != nil {
-		return token{}, fmt.Errorf("failed to decode cache entry salt: %s", err)
-	}
-	if n := len(iv); n != aes.BlockSize {
+	if n := len(entry.IV); n != aes.BlockSize {
 		return token{}, fmt.Errorf("invalid iv size: %d", n)
 	}
-	tokenText, err := base64.StdEncoding.DecodeString(entry.Token)
-	if err != nil {
-		return token{}, fmt.Errorf("failed to decode cache entry token: %s", err)
-	}
-	cipher.NewCFBDecrypter(block, iv).XORKeyStream(tokenText, tokenText)
+	cipher.NewCFBDecrypter(block, entry.IV).XORKeyStream(entry.Token, entry.Token)
 
-	return fromJWT(string(tokenText))
+	tok, err := fromJWT(string(entry.Token))
+	if err != nil {
+		return token{}, errInvalidToken
+	}
+
+	return tok, nil
 }
 
 // writeCache writes the specified token to the cache.
@@ -163,10 +157,7 @@ func writeCache(file string, token token, block cipher.Block) error {
 	buf := make([]byte, len(token.jwtToken.Raw))
 	cipher.NewCFBEncrypter(block, iv).XORKeyStream(buf, []byte(token.jwtToken.Raw))
 
-	entry, err := json.Marshal(cacheEntry{
-		Token: base64.StdEncoding.EncodeToString(buf),
-		IV:    base64.StdEncoding.EncodeToString(iv),
-	})
+	entry, err := json.Marshal(cacheEntry{Token: buf, IV: iv})
 	if err != nil {
 		return fmt.Errorf("failed to marshal cache entry: %s", err)
 	}

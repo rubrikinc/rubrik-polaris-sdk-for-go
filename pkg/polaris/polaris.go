@@ -68,7 +68,8 @@ func NewClient(account Account) (*Client, error) {
 //
 // The client will cache authentication tokens by default, this behavior can be
 // overriden by setting the environment variable RUBRIK_POLARIS_TOKEN_CACHE to
-// false, given that the account specified allows environment overrides.
+// false, given that the account specified allows environment variable
+// overrides.
 func NewClientWithLogger(account Account, logger log.Logger) (*Client, error) {
 	cacheToken := true
 	if account.allowEnvOverride() {

@@ -28,8 +28,8 @@ The following environmental variables can be used to override the default behavi
   *INFO*, *DEBUG*, *TRACE* and *OFF*. The default log level is *WARN*.
 * *RUBRIK_POLARIS_TOKEN_CACHE* — Overrides whether the token cache should be used or not.
 * *RUBRIK_POLARIS_TOKEN_CACHE_DIR* — Overrides the directory where cached authentication tokens are be stored.
-* *RUBRIK_POLARIS_TOKEN_CACHE_KEY* — Overrides the encryption key used to encrypt authentication tokens. The encryption
-  key needs to be exactly 32 bytes long and base64 encoded.
+* *RUBRIK_POLARIS_TOKEN_CACHE_SECRET* — Overrides the secret used as input when generating an encryption key for the
+  authentication token.
 
 Note that it's possible to prevent the above environment variables, except for *RUBRIK_POLARIS_LOGLEVEL*, from
 overriding the default behavior by setting `allowEnvOverride` to `false`.
