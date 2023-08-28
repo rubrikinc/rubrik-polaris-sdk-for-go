@@ -24,8 +24,16 @@ $ go generate ./...
 
 ### Environment Variables
 The following environmental variables can be used to override the default behaviour of the SDK:
-* RUBRIK_POLARIS_LOGLEVEL — Overrides the log level of the SDK. Valid log levels are: `FATAL`, `ERROR`, `WARN`, `INFO`,
-`DEBUG`, `TRACE` and `OFF`. The default log level is `WARN`.
+* *RUBRIK_POLARIS_LOGLEVEL* — Overrides the log level of the SDK. Valid log levels are: *FATAL*, *ERROR*, *WARN*,
+  *INFO*, *DEBUG*, *TRACE* and *OFF*. The default log level is *WARN*.
+* *RUBRIK_POLARIS_TOKEN_CACHE* — Overrides whether the token cache should be used or not.
+* *RUBRIK_POLARIS_TOKEN_CACHE_DIR* — Overrides the directory where cached authentication tokens are stored.
+* *RUBRIK_POLARIS_TOKEN_CACHE_SECRET* — Overrides the secret used as input when generating an encryption key for the
+  authentication token.
+
+Note that it's possible to prevent the above environment variables, except for *RUBRIK_POLARIS_LOGLEVEL*, from
+overriding the default behavior by setting `allowEnvOverride` to `false` for the account passed in when creating the
+client.
 
 ### Polaris Credentials
 The SDK supports both local user accounts and service accounts. For documentation on how to create either using Polaris
@@ -81,13 +89,13 @@ details on how to use them.
 #### Local User Account Environment Variables
 When using a local user account the following environmental variables can be used to override the default local user
 account behaviour:
-* RUBRIK_POLARIS_ACCOUNT_FILE — Overrides the name and path of the file to read local user accounts from.
-* RUBRIK_POLARIS_ACCOUNT_NAME — Overrides the name of the local user account given to the SDK during initialization.
-* RUBRIK_POLARIS_ACCOUNT_USERNAME — Overrides the username of the local user account.
-* RUBRIK_POLARIS_ACCOUNT_PASSWORD — Overrides the password of the local user account.
-* RUBRIK_POLARIS_ACCOUNT_URL — Overrides the Polaris API URL.
+* *RUBRIK_POLARIS_ACCOUNT_FILE* — Overrides the name and path of the file to read local user accounts from.
+* *RUBRIK_POLARIS_ACCOUNT_NAME* — Overrides the name of the local user account given to the SDK during initialization.
+* *RUBRIK_POLARIS_ACCOUNT_USERNAME* — Overrides the username of the local user account.
+* *RUBRIK_POLARIS_ACCOUNT_PASSWORD* — Overrides the password of the local user account.
+* *RUBRIK_POLARIS_ACCOUNT_URL* — Overrides the Polaris API URL.
 
-Note that it's possible to prevent the above environment variable from overriding the default behavior by setting
+Note that it's possible to prevent the above environment variables from overriding the default behavior by setting
 `allowEnvOverride` to `false`.
 
 #### Service Account
@@ -114,14 +122,14 @@ for details on how to use them.
 #### Service Account Environment Variables
 When using a service account the following environmental variables can be used to override the default service account
 behavior:
-* RUBRIK_POLARIS_SERVICEACCOUNT_FILE — Overrides the name and path of the service account credentials file.
-* RUBRIK_POLARIS_SERVICEACCOUNT_NAME — Overrides the name of the service account.
-* RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID — Overrides the client id of the service account.
-* RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET — Overrides the client secret of the service account.
-* RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI — Overrides the service account access token URI. When using a service 
+* *RUBRIK_POLARIS_SERVICEACCOUNT_FILE* — Overrides the name and path of the service account credentials file.
+* *RUBRIK_POLARIS_SERVICEACCOUNT_NAME* — Overrides the name of the service account.
+* *RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID* — Overrides the client id of the service account.
+* *RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET* — Overrides the client secret of the service account.
+* *RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI* — Overrides the service account access token URI. When using a service 
 account the Polaris API URL is derived from this URI.
 
-Note that it's possible to prevent the above environment variable from overriding the default behavior by setting
+Note that it's possible to prevent the above environment variables from overriding the default behavior by setting
 `allowEnvOverride` to `false`.
 
 ### AWS Credentials

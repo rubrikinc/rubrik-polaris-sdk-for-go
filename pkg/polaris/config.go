@@ -45,21 +45,26 @@ type UserAccount struct {
 	// Optional Polaris API endpoint. Useful for running the SDK against a test
 	// service. Defaults to https://{Account}.my.rubrik.com/api.
 	URL string
+
+	envOverride bool
 }
 
-func (a *UserAccount) isAccount() {}
+func (a *UserAccount) allowEnvOverride() bool {
+	return a.envOverride
+}
 
 // userAccountFromEnv returns a UserAccount from the current environment.
 func userAccountFromEnv() UserAccount {
 	return UserAccount{
-		Name:     strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_ACCOUNT_NAME")),
-		Username: strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_ACCOUNT_USERNAME")),
-		Password: strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_ACCOUNT_PASSWORD")),
-		URL:      strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_ACCOUNT_URL")),
+		Name:        strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_ACCOUNT_NAME")),
+		Username:    strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_ACCOUNT_USERNAME")),
+		Password:    strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_ACCOUNT_PASSWORD")),
+		URL:         strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_ACCOUNT_URL")),
+		envOverride: true,
 	}
 }
 
-// UserAccountFromEnv returns a new UserAccoount from the user's environment
+// UserAccountFromEnv returns a new UserAccount from the user's environment
 // variables. Environment variables must have the same name as the UserAccount
 // fields but be all upper case and prepended with RUBRIK_POLARIS_ACCOUNT, e.g.
 // RUBRIK_POLARIS_ACCOUNT_USERNAME.
@@ -128,7 +133,7 @@ func userAccountFromFile(file, name string) (UserAccount, error) {
 //	}
 //
 // If allowEnvOverride is true environment variables can be used to override
-// user information in the file. See AccountFromEnv for details. In addition
+// user information in the file. See AccountFromEnv for details. In addition,
 // the environment variable RUBRIK_POLARIS_ACCOUNT_FILE can be used to override
 // the file that the user information is read from.
 func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount, error) {
@@ -138,7 +143,6 @@ func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount
 		if envAccount.Name != "" {
 			name = envAccount.Name
 		}
-
 		if envFile := os.Getenv("RUBRIK_POLARIS_ACCOUNT_FILE"); envFile != "" {
 			file = envFile
 		}
@@ -162,6 +166,7 @@ func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount
 		if envAccount.URL != "" {
 			account.URL = envAccount.URL
 		}
+		account.envOverride = true
 	}
 
 	// Validate, note that URL is optional.
@@ -188,10 +193,12 @@ func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount
 }
 
 // DefaultUserAccount returns a new UserAccount read from the default account
-// file. If allowEnvOverride is true environment variables can be used to
-// override user information in the file. See AccountFromEnv for details. In
-// addition, the environment variable RUBRIK_POLARIS_ACCOUNT_FILE can be used to
-// override the file that the user information is read from.
+// file.
+//
+// If allowEnvOverride is true environment variables can be used to override
+// user information in the file. See AccountFromEnv for details. In addition,
+// the environment variable RUBRIK_POLARIS_ACCOUNT_FILE can be used to override
+// the file that the user information is read from.
 func DefaultUserAccount(name string, allowEnvOverride bool) (*UserAccount, error) {
 	return UserAccountFromFile(DefaultLocalUserFile, name, allowEnvOverride)
 }
@@ -202,9 +209,13 @@ type ServiceAccount struct {
 	ClientSecret   string `json:"client_secret"`
 	Name           string `json:"name"`
 	AccessTokenURI string `json:"access_token_uri"`
+
+	envOverride bool
 }
 
-func (a *ServiceAccount) isAccount() {}
+func (a *ServiceAccount) allowEnvOverride() bool {
+	return a.envOverride
+}
 
 // serviceAccountFromEnv returns a ServiceAccount from the current environment.
 func serviceAccountFromEnv() ServiceAccount {
@@ -213,6 +224,7 @@ func serviceAccountFromEnv() ServiceAccount {
 		ClientID:       strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID")),
 		ClientSecret:   strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET")),
 		AccessTokenURI: strings.TrimSpace(os.Getenv("RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI")),
+		envOverride:    true,
 	}
 }
 
@@ -267,6 +279,7 @@ func serviceAccountFromFile(file string) (ServiceAccount, error) {
 // file. Files must be in JSON format and the attributes must have the same
 // name as the ServiceAccount fields but be all lower case and have words
 // separated by underscores.
+//
 // If allowEnvOverride is true environment variables can be used to override
 // account information in the file. See ServiceAccountFromEnv for details. In
 // addition, the environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE can be
@@ -298,6 +311,7 @@ func ServiceAccountFromFile(file string, allowEnvOverride bool) (*ServiceAccount
 		if envAccount.AccessTokenURI != "" {
 			account.AccessTokenURI = envAccount.AccessTokenURI
 		}
+		account.envOverride = true
 	}
 
 	// Validate.
@@ -331,6 +345,7 @@ func ServiceAccountFromFile(file string, allowEnvOverride bool) (*ServiceAccount
 
 // DefaultServiceAccount returns a new ServiceAccount read from the default
 // service account file.
+//
 // If allowEnvOverride is true environment variables can be used to override
 // account information in the file. See ServiceAccountFromEnv for details. In
 // addition, the environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE can be
