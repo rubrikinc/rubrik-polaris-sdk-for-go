@@ -23,6 +23,7 @@ package token
 import (
 	"context"
 	"crypto/aes"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
@@ -99,6 +100,31 @@ func TestReadWriteCache(t *testing.T) {
 	}
 	if testToken.jwtToken.Raw != dummyToken {
 		t.Fatal("wrong token")
+	}
+}
+
+func TestReadInvalidTokenFromCache(t *testing.T) {
+	testFile := filepath.Join(t.TempDir(), "test-file")
+	assertFileNotExist(t, testFile)
+
+	buf, err := json.Marshal(cacheEntry{
+		Token: []byte("an invalid jwt token"),
+		IV:    make([]byte, aes.BlockSize),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(testFile, buf, 0666); err != nil {
+		t.Fatal(err)
+	}
+	assertFileExist(t, testFile)
+
+	block, err := aes.NewCipher(make([]byte, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = readCache(testFile, block); !errors.Is(err, errInvalidToken) {
+		t.Fatalf("invalid error: %s", err)
 	}
 }
 
