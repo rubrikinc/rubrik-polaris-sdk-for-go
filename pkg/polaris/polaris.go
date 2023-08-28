@@ -59,7 +59,8 @@ type Account interface {
 //
 // The client will cache authentication tokens by default, this behavior can be
 // overriden by setting the environment variable RUBRIK_POLARIS_TOKEN_CACHE to
-// false, given that the account specified allows environment overrides.
+// false, given that the account specified allows environment variable
+// overrides.
 func NewClient(account Account) (*Client, error) {
 	return NewClientWithLogger(account, log.DiscardLogger{})
 }
