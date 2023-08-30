@@ -86,14 +86,17 @@ type Management struct {
 	SubnetMask string
 }
 
+// NTPSymmetricKey holds the NTP servers symmetric key.
+type NTPSymmetricKey struct {
+	KeyID   int    `json:"keyId"`
+	Key     string `json:"key"`
+	KeyType string `json:"keyType"`
+}
+
 // NTPServerConfig holds NTP server configuration for the bootstrapped cluster.
 type NTPServerConfig struct {
-	Server       string `json:"server"`
-	SymmetricKey *struct {
-		KeyID   string `json:"keyID"`
-		Key     string `json:"key"`
-		KeyType string `json:"keyType"`
-	} `json:"symmetricKey,omitempty"`
+	Server       string           `json:"server"`
+	SymmetricKey *NTPSymmetricKey `json:"symmetricKey,omitempty"`
 }
 
 // NodeConfig holds node configuration for the cluster.
@@ -121,9 +124,9 @@ type CloudStorageLocation interface {
 // AzureStorageConfig is used to bootstrap a Rubrik Cloud Cluster Elastic
 // Storage (CCES) on Azure.
 type AzureStorageConfig struct {
-	ConnectionString                    string `json:"connectionString"`
-	ContainerName                       string `json:"containerName"`
-	IsVersionLevelImmutabilitySupported bool   `json:"isVersionLevelImmutabilitySupported"`
+	ConnectionString   string `json:"connectionString"`
+	ContainerName      string `json:"containerName"`
+	EnableImmutability bool   `json:"isVersionLevelImmutabilitySupported"`
 }
 
 func (c AzureStorageConfig) isCloudStorageConfig() {}
@@ -131,8 +134,8 @@ func (c AzureStorageConfig) isCloudStorageConfig() {}
 // AWSStorageConfig is used to bootstrap a Rubrik Cloud Cluster Elastic Storage
 // (CCES) on AWS.
 type AWSStorageConfig struct {
-	BucketName             string `json:"bucketName"`
-	IsObjectLockingEnabled bool   `json:"isObjectLockingEnabled"`
+	BucketName         string `json:"bucketName"`
+	EnableImmutability bool   `json:"isObjectLockingEnabled"`
 }
 
 func (c AWSStorageConfig) isCloudStorageConfig() {}
@@ -150,7 +153,7 @@ func (c AWSStorageConfig) isCloudStorageConfig() {}
 //
 // Bootstrapping a Rubrik cluster requires a single node to have its management
 // interface configured.
-func (c *Client) Bootstrap(ctx context.Context, name string, adm Admin, dns DNS, mgmt Management, nodes []NodeConfig, ntpServers []NTPServerConfig, storageConfig CloudStorageLocation) (int, error) {
+func (c *Client) Bootstrap(ctx context.Context, name string, enableEncryption bool, adm Admin, dns DNS, mgmt Management, nodes []NodeConfig, ntpServers []NTPServerConfig, storageConfig CloudStorageLocation) (int, error) {
 	if ok, err := c.IsBootstrapped(ctx); ok || err != nil {
 		return 0, err
 	}
@@ -167,7 +170,7 @@ func (c *Client) Bootstrap(ctx context.Context, name string, adm Admin, dns DNS,
 		Nodes         map[string]nodeConfig `json:"nodeConfigs"`
 	}{
 		Name:          name,
-		Encryption:    false,
+		Encryption:    enableEncryption,
 		Admin:         admin{ID: "admin", Admin: adm},
 		NameServers:   dns.NameServers,
 		SearchDomains: dns.SearchDomains,
