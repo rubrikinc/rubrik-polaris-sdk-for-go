@@ -60,14 +60,14 @@ func TestAwsExocompute(t *testing.T) {
 
 	// Adds the AWS account identified by the specified profile to RSC. Note
 	// that the profile needs to have a default region.
-	accountID, err := awsClient.AddAccount(ctx, Profile(testAccount.Profile), core.FeatureCloudNativeProtection,
+	accountID, err := awsClient.AddAccount(ctx, Profile(testAccount.Profile), []core.Feature{core.FeatureCloudNativeProtection},
 		Name(testAccount.AccountName), Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Enable the exocompute feature for the account.
-	exoAccountID, err := awsClient.AddAccount(ctx, Profile(testAccount.Profile), core.FeatureExocompute,
+	exoAccountID, err := awsClient.AddAccount(ctx, Profile(testAccount.Profile), []core.Feature{core.FeatureExocompute},
 		Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
@@ -154,7 +154,7 @@ func TestAwsExocompute(t *testing.T) {
 	}
 
 	// Disable the exocompute feature for the account.
-	err = awsClient.RemoveAccount(ctx, Profile(testAccount.Profile), core.FeatureExocompute, false)
+	err = awsClient.RemoveAccount(ctx, Profile(testAccount.Profile), []core.Feature{core.FeatureExocompute}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestAwsExocompute(t *testing.T) {
 	}
 
 	// Remove the AWS account from RSC.
-	err = awsClient.RemoveAccount(ctx, Profile(testAccount.Profile), core.FeatureCloudNativeProtection, false)
+	err = awsClient.RemoveAccount(ctx, Profile(testAccount.Profile), []core.Feature{core.FeatureCloudNativeProtection}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

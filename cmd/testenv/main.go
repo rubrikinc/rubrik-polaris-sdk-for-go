@@ -152,7 +152,7 @@ func clean(ctx context.Context, client *polaris.Client) error {
 
 		// TODO: we might need to iterate over awsAccount.Features to remove
 		// all of them in the future
-		return awsClient.RemoveAccount(ctx, aws.Profile(testAcc.Profile), core.FeatureCloudNativeProtection, false)
+		return awsClient.RemoveAccount(ctx, aws.Profile(testAcc.Profile), []core.Feature{core.FeatureCloudNativeProtection}, false)
 	})
 
 	// AWS with cross account role
@@ -177,7 +177,7 @@ func clean(ctx context.Context, client *polaris.Client) error {
 
 		// TODO: we might need to iterate over awsAccount.Features to remove
 		// all of them in the future
-		return awsClient.RemoveAccount(ctx, aws.DefaultWithRole(testAcc.CrossAccountRole), core.FeatureCloudNativeProtection, false)
+		return awsClient.RemoveAccount(ctx, aws.DefaultWithRole(testAcc.CrossAccountRole), []core.Feature{core.FeatureCloudNativeProtection}, false)
 	})
 
 	// Azure

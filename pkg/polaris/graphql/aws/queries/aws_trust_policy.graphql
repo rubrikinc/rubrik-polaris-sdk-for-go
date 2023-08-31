@@ -1,0 +1,12 @@
+query RubrikPolarisSDKRequest($cloudType: AwsCloudType!, $features: [CloudAccountFeature!]!, $awsNativeAccounts: [AwsNativeAccountInput!]!) {
+    result: awsTrustPolicy(input: {cloudType: $cloudType, features: $features, awsNativeAccounts: $awsNativeAccounts}) {
+        result {
+            artifacts {
+                externalArtifactKey
+                trustPolicyDoc
+                errorMessage
+            }
+            awsNativeId
+        }
+    }
+}

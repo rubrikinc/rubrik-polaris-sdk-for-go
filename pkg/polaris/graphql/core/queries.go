@@ -24,6 +24,13 @@
 
 package core
 
+// allEnabledFeaturesForAccount GraphQL query
+var allEnabledFeaturesForAccountQuery = `query SdkGolangAllEnabledFeaturesForAccount {
+    result: allEnabledFeaturesForAccount {
+        features
+    }
+}`
+
 // deploymentVersion GraphQL query
 var deploymentVersionQuery = `query SdkGolangDeploymentVersion {
     deploymentVersion

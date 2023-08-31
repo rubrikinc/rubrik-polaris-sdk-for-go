@@ -104,7 +104,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 
 	// Adds the AWS account identified by the specified profile to RSC. Note
 	// that the profile needs to have a default region.
-	id, err := awsClient.AddAccount(ctx, Profile(testAccount.Profile), core.FeatureCloudNativeProtection,
+	id, err := awsClient.AddAccount(ctx, Profile(testAccount.Profile), []core.Feature{core.FeatureCloudNativeProtection},
 		Name(testAccount.AccountName), Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
@@ -154,7 +154,7 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 	}
 
 	// Remove AWS account from RSC.
-	err = awsClient.RemoveAccount(ctx, Profile(testAccount.Profile), core.FeatureCloudNativeProtection, false)
+	err = awsClient.RemoveAccount(ctx, Profile(testAccount.Profile), []core.Feature{core.FeatureCloudNativeProtection}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +196,7 @@ func TestAwsCrossAccountAddAndRemove(t *testing.T) {
 	// Use the default profile to add an AWS account to RSC using a cross
 	// account role. Note that the profile needs to have a region.
 	id, err := awsClient.AddAccount(ctx,
-		ProfileWithRole(testAccount.Profile, testAccount.CrossAccountRole), core.FeatureCloudNativeProtection,
+		ProfileWithRole(testAccount.Profile, testAccount.CrossAccountRole), []core.Feature{core.FeatureCloudNativeProtection},
 		Name(testAccount.CrossAccountName), Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
@@ -238,7 +238,7 @@ func TestAwsCrossAccountAddAndRemove(t *testing.T) {
 
 	// Remove AWS account from RSC using a cross account role.
 	err = awsClient.RemoveAccount(ctx, ProfileWithRole(testAccount.Profile, testAccount.CrossAccountRole),
-		core.FeatureCloudNativeProtection, false)
+		[]core.Feature{core.FeatureCloudNativeProtection}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

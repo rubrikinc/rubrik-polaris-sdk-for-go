@@ -82,6 +82,25 @@ var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsN
     }
 }`
 
+// allAwsPermissionPolicies GraphQL query
+var allAwsPermissionPoliciesQuery = `query SdkGolangAllAwsPermissionPolicies($cloudType: AwsCloudType!, $features: [CloudAccountFeature!]!, $ec2RecoveryRolePath: String) {
+    result: allAwsPermissionPolicies(input: {
+        cloudType: $cloudType,
+        features: $features,
+        featureSpecificDetails: {
+            ec2RecoveryRolePath: $ec2RecoveryRolePath
+        }
+    }) {
+        externalArtifactKey
+        awsManagedPolicies
+        customerManagedPolicies {
+            feature
+            policyName
+            policyDocumentJson
+        }
+    }
+}`
+
 // allVpcsByRegionFromAws GraphQL query
 var allVpcsByRegionFromAwsQuery = `query SdkGolangAllVpcsByRegionFromAws($awsAccountRubrikId: UUID!, $region: AwsNativeRegion!) {
     allVpcsByRegionFromAws(awsAccountRubrikId: $awsAccountRubrikId, region: $region) {
@@ -172,6 +191,30 @@ var awsNativeAccountsQuery = `query SdkGolangAwsNativeAccounts($after: String, $
 	}
 }`
 
+// awsTrustPolicy GraphQL query
+var awsTrustPolicyQuery = `query SdkGolangAwsTrustPolicy($cloudType: AwsCloudType!, $features: [CloudAccountFeature!]!, $awsNativeAccounts: [AwsNativeAccountInput!]!) {
+    result: awsTrustPolicy(input: {cloudType: $cloudType, features: $features, awsNativeAccounts: $awsNativeAccounts}) {
+        result {
+            artifacts {
+                externalArtifactKey
+                trustPolicyDoc
+                errorMessage
+            }
+            awsNativeId
+        }
+    }
+}`
+
+// bulkDeleteAwsCloudAccountWithoutCft GraphQL query
+var bulkDeleteAwsCloudAccountWithoutCftQuery = `mutation SdkGolangBulkDeleteAwsCloudAccountWithoutCft($awsNativeId: String!, $features: [CloudAccountFeature!]) {
+    result: bulkDeleteAwsCloudAccountWithoutCft(input: {awsNativeId: $awsNativeId, features: $features}) {
+        deleteAwsCloudAccountWithoutCftResp {
+            feature
+            success
+        }
+    }
+}`
+
 // createAwsExocomputeConfigs GraphQL query
 var createAwsExocomputeConfigsQuery = `mutation SdkGolangCreateAwsExocomputeConfigs($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
     createAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
@@ -213,7 +256,7 @@ var finalizeAwsCloudAccountDeletionQuery = `mutation SdkGolangFinalizeAwsCloudAc
 }`
 
 // finalizeAwsCloudAccountProtection GraphQL query
-var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloudAccountProtection($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegion!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $feature: CloudAccountFeature!, $stackName: String!) {
+var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloudAccountProtection($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegion!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $features: [CloudAccountFeature!]!, $stackName: String!) {
     finalizeAwsCloudAccountProtection(input: {
         action: CREATE,
         awsChildAccounts: [{
@@ -223,7 +266,7 @@ var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloud
         awsRegions: $awsRegions,
         externalId: $externalId,
         featureVersion: $featureVersion,
-        features: [$feature],
+        features: $features,
         stackName: $stackName,
     }) {
        awsChildAccounts {
@@ -247,6 +290,17 @@ var prepareFeatureUpdateForAwsCloudAccountQuery = `mutation SdkGolangPrepareFeat
     result: prepareFeatureUpdateForAwsCloudAccount(input: {cloudAccountId: $cloudAccountId, features: $features}) {
         cloudFormationUrl
         templateUrl
+    }
+}`
+
+// registerAwsFeatureArtifacts GraphQL query
+var registerAwsFeatureArtifactsQuery = `mutation SdkGolangRegisterAwsFeatureArtifacts($cloudType: AwsCloudType, $awsArtifacts: [AwsAccountFeatureArtifact!]!) {
+    result: registerAwsFeatureArtifacts(input: {cloudType: $cloudType, awsArtifacts: $awsArtifacts}) {
+        allAwsNativeIdtoRscIdMappings {
+            awsCloudAccountId
+            awsNativeId
+            message
+        }
     }
 }`
 
