@@ -718,9 +718,7 @@ func (a API) TrustPolicies(ctx context.Context, id IdentityFunc, features []core
 		if msg := artifact.ErrorMessage; msg != "" {
 			return nil, fmt.Errorf("failed to get trust policies: %s", msg)
 		}
-		if strings.HasSuffix(artifact.ExternalArtifactKey, roleArnSuffix) {
-			artifact.ExternalArtifactKey = strings.TrimSuffix(artifact.ExternalArtifactKey, roleArnSuffix)
-		}
+		artifact.ExternalArtifactKey = strings.TrimSuffix(artifact.ExternalArtifactKey, roleArnSuffix)
 		trustPolicies[artifact.ExternalArtifactKey] = artifact.TrustPolicyDoc
 	}
 
