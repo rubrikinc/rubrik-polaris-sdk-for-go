@@ -547,19 +547,16 @@ func (a API) disableNativeAccount(ctx context.Context, id uuid.UUID, protectionF
 	return nil
 }
 
-// UpdateAccount updates the account with the specified id and feature. It's
-// currently not possible to update the account name.
+// UpdateAccount updates the account with the specified id and feature. Note
+// that account name is not tied to a specific feature.
 func (a API) UpdateAccount(ctx context.Context, id IdentityFunc, feature core.Feature, opts ...OptionFunc) error {
 	a.log.Print(log.Trace)
 
 	var options options
 	for _, option := range opts {
 		if err := option(ctx, &options); err != nil {
-			return fmt.Errorf("failed to lookup option: %v", err)
+			return fmt.Errorf("failed to lookup option: %s", err)
 		}
-	}
-	if len(options.regions) == 0 {
-		return errors.New("nothing to update")
 	}
 
 	account, err := a.Account(ctx, id, feature)
@@ -567,12 +564,19 @@ func (a API) UpdateAccount(ctx context.Context, id IdentityFunc, feature core.Fe
 		return fmt.Errorf("failed to get account: %w", err)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get account: %v", err)
+		return fmt.Errorf("failed to get account: %s", err)
 	}
 
-	err = aws.Wrap(a.client).UpdateCloudAccountFeature(ctx, core.UpdateRegions, account.ID, feature, options.regions)
-	if err != nil {
-		return fmt.Errorf("failed to update account: %v", err)
+	if options.name != "" {
+		if err := aws.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, options.name); err != nil {
+			return fmt.Errorf("failed to update account: %s", err)
+		}
+	}
+
+	if len(options.regions) > 0 {
+		if err := aws.Wrap(a.client).UpdateCloudAccountFeature(ctx, core.UpdateRegions, account.ID, feature, options.regions); err != nil {
+			return fmt.Errorf("failed to update account: %s", err)
+		}
 	}
 
 	return nil

@@ -118,6 +118,19 @@ var allVpcsByRegionFromAwsQuery = `query SdkGolangAllVpcsByRegionFromAws($awsAcc
     }
 }`
 
+// awsArtifactsToDelete GraphQL query
+var awsArtifactsToDeleteQuery = `query SdkGolangAwsArtifactsToDelete($awsNativeId: String!, $features: [CloudAccountFeature!]!) {
+  result: awsArtifactsToDelete(input: {awsNativeId: $awsNativeId, features: $features}) {
+    artifactsToDelete {
+      feature
+      artifactsToDelete {
+        externalArtifactKey
+        externalArtifactValue
+      }
+    }
+  }
+}`
+
 // awsCloudAccountWithFeatures GraphQL query
 var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatures($cloudAccountId: UUID!, $features: [CloudAccountFeature!]!) {
     result: awsCloudAccountWithFeatures(cloudAccountId: $cloudAccountId, awsCloudAccountArg: {features: $features}) {
@@ -325,7 +338,12 @@ var startAwsNativeAccountDisableJobQuery = `mutation SdkGolangStartAwsNativeAcco
 }`
 
 // updateAwsCloudAccount GraphQL query
-var updateAwsCloudAccountQuery = `mutation SdkGolangUpdateAwsCloudAccount($action: CloudAccountAction!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegion!]!, $feature: CloudAccountFeature!) {
+var updateAwsCloudAccountQuery = `mutation SdkGolangUpdateAwsCloudAccount($cloudAccountId: UUID!, $awsAccountName: String) {
+  result: updateAwsCloudAccount(input: {cloudAccountId: $cloudAccountId, awsAccountName: $awsAccountName})
+}`
+
+// updateAwsCloudAccountFeature GraphQL query
+var updateAwsCloudAccountFeatureQuery = `mutation SdkGolangUpdateAwsCloudAccountFeature($action: CloudAccountAction!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegion!]!, $feature: CloudAccountFeature!) {
     result: updateAwsCloudAccountFeature(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
         message
     }

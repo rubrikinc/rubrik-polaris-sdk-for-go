@@ -54,6 +54,7 @@ func (a API) AllPermissionPolicies(ctx context.Context, cloud Cloud, features []
 	if err != nil {
 		return nil, fmt.Errorf("failed to request allAwsPermissionPolicies: %w", err)
 	}
+	a.log.Printf(log.Debug, "allAwsPermissionPolicies(%q, %v, %q): %s", cloud, features, ec2RecoveryRolePath, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -100,6 +101,7 @@ func (a API) TrustPolicy(ctx context.Context, cloud Cloud, features []core.Featu
 	if err != nil {
 		return nil, fmt.Errorf("failed to request awsTrustPolicy: %w", err)
 	}
+	a.log.Printf(log.Debug, "awsTrustPolicy(%q, %v, %v): %s", cloud, features, trustPolicyAccounts, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -149,6 +151,7 @@ func (a API) RegisterFeatureArtifacts(ctx context.Context, cloud Cloud, artifact
 	if err != nil {
 		return nil, fmt.Errorf("failed to request registerAwsFeatureArtifacts: %w", err)
 	}
+	a.log.Printf(log.Debug, "registerAwsFeatureArtifacts(%q, %v): %s", cloud, artifacts, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -183,6 +186,7 @@ func (a API) DeleteCloudAccountWithoutCft(ctx context.Context, nativeID string, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to request bulkDeleteAwsCloudAccountWithoutCft: %w", err)
 	}
+	a.log.Printf(log.Debug, "bulkDeleteAwsCloudAccountWithoutCft(%q, %v): %s", nativeID, features, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -196,4 +200,37 @@ func (a API) DeleteCloudAccountWithoutCft(ctx context.Context, nativeID string, 
 	}
 
 	return payload.Data.Result.FeatureResult, nil
+}
+
+// ArtifactsToDelete holds the feature and the artifacts to delete.
+type ArtifactsToDelete struct {
+	Feature           string             `json:"feature"`
+	ArtifactsToDelete []ExternalArtifact `json:"artifactsToDelete"`
+}
+
+// ArtifactsToDelete returns the artifacts to delete.
+func (a API) ArtifactsToDelete(ctx context.Context, nativeID string, features []core.Feature) ([]ArtifactsToDelete, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, awsArtifactsToDeleteQuery, struct {
+		NativeID string         `json:"awsNativeId"`
+		Features []core.Feature `json:"features"`
+	}{NativeID: nativeID, Features: features})
+	if err != nil {
+		return nil, fmt.Errorf("failed to request awsArtifactsToDelete: %w", err)
+	}
+	a.log.Printf(log.Debug, "awsArtifactsToDelete(%q, %v): %s", nativeID, features, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				ArtifactsToDelete []ArtifactsToDelete `json:"artifactsToDelete"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal awsArtifactsToDelete: %v", err)
+	}
+
+	return payload.Data.Result.ArtifactsToDelete, nil
 }

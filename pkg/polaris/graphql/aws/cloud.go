@@ -292,22 +292,47 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 	return nil
 }
 
+// UpdateCloudAccount updates the name of the cloud account.
+func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, accountName string) error {
+	a.GQL.Log().Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, updateAwsCloudAccountQuery, struct {
+		ID          uuid.UUID `json:"cloudAccountId"`
+		AccountName string    `json:"awsAccountName"`
+	}{ID: id, AccountName: accountName})
+	if err != nil {
+		return fmt.Errorf("failed to request updateAwsCloudAccount: %w", err)
+	}
+	a.log.Printf(log.Debug, "updateAwsCloudAccount(%q, %q): %s", id, accountName, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result struct{} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal updateAwsCloudAccount: %v", err)
+	}
+
+	return nil
+}
+
 // UpdateCloudAccountFeature updates the settings of the cloud account. The
 // message returned by the GraphQL API call is converted into a Go error. At
 // this time only the regions can be updated.
 func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAccountAction, id uuid.UUID, feature core.Feature, regions []Region) error {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, updateAwsCloudAccountQuery, struct {
+	buf, err := a.GQL.Request(ctx, updateAwsCloudAccountFeatureQuery, struct {
 		Action  core.CloudAccountAction `json:"action"`
 		ID      uuid.UUID               `json:"cloudAccountId"`
 		Regions []Region                `json:"awsRegions"`
 		Feature core.Feature            `json:"feature"`
 	}{Action: action, ID: id, Regions: regions, Feature: feature})
 	if err != nil {
-		return fmt.Errorf("failed to request updateAwsCloudAccount: %w", err)
+		return fmt.Errorf("failed to request updateAwsCloudAccountFeature: %w", err)
 	}
-	a.log.Printf(log.Debug, "updateAwsCloudAccount(%q, %q, %q, %q): %s", action, id, regions, feature, string(buf))
+	a.log.Printf(log.Debug, "updateAwsCloudAccountFeature(%q, %q, %q, %q): %s", action, id, regions, feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -317,7 +342,7 @@ func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAcc
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal updateAwsCloudAccount: %v", err)
+		return fmt.Errorf("failed to unmarshal updateAwsCloudAccountFeature: %v", err)
 	}
 
 	// On success the message starts with "successfully".
