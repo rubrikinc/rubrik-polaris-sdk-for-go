@@ -208,18 +208,19 @@ type ArtifactsToDelete struct {
 	ArtifactsToDelete []ExternalArtifact `json:"artifactsToDelete"`
 }
 
-// ArtifactsToDelete returns the artifacts to delete.
-func (a API) ArtifactsToDelete(ctx context.Context, nativeID string, features []core.Feature) ([]ArtifactsToDelete, error) {
+// ArtifactsToDelete returns all feature artifacts registered with the cloud
+// account.
+func (a API) ArtifactsToDelete(ctx context.Context, nativeID string) ([]ArtifactsToDelete, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, awsArtifactsToDeleteQuery, struct {
 		NativeID string         `json:"awsNativeId"`
 		Features []core.Feature `json:"features"`
-	}{NativeID: nativeID, Features: features})
+	}{NativeID: nativeID, Features: []core.Feature{}})
 	if err != nil {
 		return nil, fmt.Errorf("failed to request awsArtifactsToDelete: %w", err)
 	}
-	a.log.Printf(log.Debug, "awsArtifactsToDelete(%q, %v): %s", nativeID, features, string(buf))
+	a.log.Printf(log.Debug, "awsArtifactsToDelete(%q): %s", nativeID, string(buf))
 
 	var payload struct {
 		Data struct {

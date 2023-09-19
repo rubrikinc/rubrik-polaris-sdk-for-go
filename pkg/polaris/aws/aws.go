@@ -559,22 +559,19 @@ func (a API) UpdateAccount(ctx context.Context, id IdentityFunc, feature core.Fe
 		}
 	}
 
-	account, err := a.Account(ctx, id, feature)
-	if errors.Is(err, graphql.ErrNotFound) {
-		return fmt.Errorf("failed to get account: %w", err)
-	}
+	accountID, err := a.toCloudAccountID(ctx, id)
 	if err != nil {
-		return fmt.Errorf("failed to get account: %s", err)
+		return err
 	}
 
 	if options.name != "" {
-		if err := aws.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, options.name); err != nil {
+		if err := aws.Wrap(a.client).UpdateCloudAccount(ctx, accountID, options.name); err != nil {
 			return fmt.Errorf("failed to update account: %s", err)
 		}
 	}
 
 	if len(options.regions) > 0 {
-		if err := aws.Wrap(a.client).UpdateCloudAccountFeature(ctx, core.UpdateRegions, account.ID, feature, options.regions); err != nil {
+		if err := aws.Wrap(a.client).UpdateCloudAccountFeature(ctx, core.UpdateRegions, accountID, feature, options.regions); err != nil {
 			return fmt.Errorf("failed to update account: %s", err)
 		}
 	}
@@ -623,20 +620,50 @@ func (a API) Artifacts(ctx context.Context, cloud string, features []core.Featur
 	return profiles, roles, nil
 }
 
+// AccountArtifacts returns the artifacts added to the cloud account.
+func (a API) AccountArtifacts(ctx context.Context, id IdentityFunc) (map[string]string, map[string]string, error) {
+	a.log.Print(log.Trace)
+
+	nativeID, err := a.toNativeID(ctx, id)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	artifacts, err := aws.Wrap(a.client).ArtifactsToDelete(ctx, nativeID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s", err)
+	}
+
+	instanceProfiles := make(map[string]string)
+	roles := make(map[string]string)
+	var skipped []string
+	for _, artifact := range artifacts {
+		for _, artifact := range artifact.ArtifactsToDelete {
+			switch {
+			case strings.HasSuffix(artifact.ExternalArtifactKey, instanceProfileSuffix):
+				key := strings.TrimSuffix(artifact.ExternalArtifactKey, instanceProfileSuffix)
+				instanceProfiles[key] = artifact.ExternalArtifactValue
+			case strings.HasSuffix(artifact.ExternalArtifactKey, roleArnSuffix):
+				key := strings.TrimSuffix(artifact.ExternalArtifactKey, roleArnSuffix)
+				roles[key] = artifact.ExternalArtifactValue
+			default:
+				skipped = append(skipped, artifact.ExternalArtifactKey)
+			}
+		}
+	}
+	a.log.Printf(log.Debug, "Skipped the following artifacts: %v", skipped)
+
+	return instanceProfiles, roles, nil
+}
+
 // AddAccountArtifacts adds the specified artifacts, instance profiles and
 // roles, to the cloud account.
 func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features []core.Feature, instanceProfiles map[string]string, roles map[string]string) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	if id == nil {
-		return uuid.Nil, errors.New("id is not allowed to be nil")
-	}
 	account, err := a.Account(ctx, id, core.FeatureAll)
-	if errors.Is(err, graphql.ErrNotFound) {
-		return uuid.Nil, fmt.Errorf("failed to get account: %w", err)
-	}
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
+		return uuid.Nil, err
 	}
 
 	externalArtifacts := make([]aws.ExternalArtifact, 0, len(instanceProfiles)+len(roles))
@@ -695,15 +722,9 @@ func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features 
 func (a API) TrustPolicies(ctx context.Context, id IdentityFunc, features []core.Feature, externalID string) (map[string]string, error) {
 	a.log.Print(log.Trace)
 
-	if id == nil {
-		return nil, errors.New("id is not allowed to be nil")
-	}
 	account, err := a.Account(ctx, id, core.FeatureAll)
-	if errors.Is(err, graphql.ErrNotFound) {
-		return nil, fmt.Errorf("failed to get account: %w", err)
-	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get account: %s", err)
+		return nil, err
 	}
 
 	policies, err := aws.Wrap(a.client).TrustPolicy(ctx, aws.Cloud(account.Cloud), features, []aws.TrustPolicyAccount{{
