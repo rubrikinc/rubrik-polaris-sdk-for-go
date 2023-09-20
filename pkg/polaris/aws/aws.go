@@ -683,12 +683,14 @@ func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features 
 	}
 
 	// RegisterFeatureArtifacts fails with an error referring to RBK30300003
-	// if a role passed in as an artifact is not yet available. This can happen
-	// if the call to register the artifacts is performed right after the call
-	// to create the role returns. When this happens we wait 5 seconds before
-	// trying again. After 30 seconds we abort.
+	// if an instance profile or a role passed in as an artifact is not yet
+	// available. This can happen if the call to register the artifacts is
+	// performed right after the call to create the instance profile or the role
+	// returns. When this happens we wait 5 seconds before trying again. After
+	// 30 seconds we abort.
+	now := time.Now()
 	var mappings []aws.NativeIDToRSCIDMapping
-	for i := 0; true; i++ {
+	for {
 		mappings, err = aws.Wrap(a.client).RegisterFeatureArtifacts(ctx, aws.Cloud(account.Cloud), []aws.AccountFeatureArtifact{{
 			NativeID:  account.NativeID,
 			Features:  features,
@@ -703,7 +705,7 @@ func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features 
 		if msg := mappings[0].Message; msg == "" || !strings.Contains(msg, "RBK30300003") {
 			break
 		}
-		if i > 5 {
+		if time.Since(now) > 30*time.Second {
 			break
 		}
 		time.Sleep(5 * time.Second)
