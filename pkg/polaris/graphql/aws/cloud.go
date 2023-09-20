@@ -134,18 +134,18 @@ type CloudAccountInitiate struct {
 // account to RSC. The returned CloudAccountInitiate value must be passed on to
 // FinalizeCloudAccountProtection which is the next step in the process of
 // adding an AWS account to RSC.
-func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string, feature core.Feature) (CloudAccountInitiate, error) {
+func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string, features []core.Feature) (CloudAccountInitiate, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, validateAndCreateAwsCloudAccountQuery, struct {
 		ID       string         `json:"nativeId"`
 		Name     string         `json:"accountName"`
 		Features []core.Feature `json:"features"`
-	}{ID: id, Name: name, Features: []core.Feature{feature}})
+	}{ID: id, Name: name, Features: features})
 	if err != nil {
 		return CloudAccountInitiate{}, fmt.Errorf("failed to request validateAndCreateAwsCloudAccount: %w", err)
 	}
-	a.log.Printf(log.Debug, "validateAndCreateAwsCloudAccount(%q, %q, %q): %s", id, name, feature, string(buf))
+	a.log.Printf(log.Debug, "validateAndCreateAwsCloudAccount(%q, %q, %v): %s", id, name, features, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -183,23 +183,24 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 // specified AWS account to RSC. The message returned by the GraphQL API is
 // converted into a Go error. After this function a CloudFormation stack must
 // be created using the information returned by ValidateAndCreateCloudAccount.
-func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string, feature core.Feature, regions []Region, init CloudAccountInitiate) error {
+func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id, name string, features []core.Feature, regions []Region, init CloudAccountInitiate) error {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountProtectionQuery, struct {
+		Cloud          Cloud            `json:"cloudType"`
 		ID             string           `json:"nativeId"`
 		Name           string           `json:"accountName"`
 		Regions        []Region         `json:"awsRegions,omitempty"`
 		ExternalID     string           `json:"externalId"`
 		FeatureVersion []FeatureVersion `json:"featureVersion"`
-		Feature        core.Feature     `json:"feature"`
+		Features       []core.Feature   `json:"features"`
 		StackName      string           `json:"stackName"`
-	}{ID: id, Name: name, Regions: regions, ExternalID: init.ExternalID, FeatureVersion: init.FeatureVersions, Feature: feature, StackName: init.StackName})
+	}{Cloud: cloud, ID: id, Name: name, Regions: regions, ExternalID: init.ExternalID, FeatureVersion: init.FeatureVersions, Features: features, StackName: init.StackName})
 	if err != nil {
 		return fmt.Errorf("failed to request finalizeAwsCloudAccountProtection: %w", err)
 	}
-	a.log.Printf(log.Debug, "finalizeAwsCloudAccountProtection(%q, %q, %q, %q, %v, %q, %q): %s", id, name, regions, init.ExternalID,
-		init.FeatureVersions, feature, init.StackName, string(buf))
+	a.log.Printf(log.Debug, "finalizeAwsCloudAccountProtection(%q, %q, %q, %q, %v, %v, %q): %s", id, name, regions, init.ExternalID,
+		init.FeatureVersions, features, init.StackName, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -220,6 +221,9 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, id, name string
 	// On success the message starts with "successfully".
 	if !strings.HasPrefix(strings.ToLower(payload.Data.Query.Message), "successfully") {
 		return errors.New(payload.Data.Query.Message)
+	}
+	if len(payload.Data.Query.AwsChildAccounts) != 1 {
+		return errors.New("expected a single aws child account")
 	}
 
 	return nil
@@ -288,22 +292,47 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 	return nil
 }
 
+// UpdateCloudAccount updates the name of the cloud account.
+func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, accountName string) error {
+	a.GQL.Log().Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, updateAwsCloudAccountQuery, struct {
+		ID          uuid.UUID `json:"cloudAccountId"`
+		AccountName string    `json:"awsAccountName"`
+	}{ID: id, AccountName: accountName})
+	if err != nil {
+		return fmt.Errorf("failed to request updateAwsCloudAccount: %w", err)
+	}
+	a.log.Printf(log.Debug, "updateAwsCloudAccount(%q, %q): %s", id, accountName, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result struct{} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal updateAwsCloudAccount: %v", err)
+	}
+
+	return nil
+}
+
 // UpdateCloudAccountFeature updates the settings of the cloud account. The
 // message returned by the GraphQL API call is converted into a Go error. At
 // this time only the regions can be updated.
 func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAccountAction, id uuid.UUID, feature core.Feature, regions []Region) error {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, updateAwsCloudAccountQuery, struct {
+	buf, err := a.GQL.Request(ctx, updateAwsCloudAccountFeatureQuery, struct {
 		Action  core.CloudAccountAction `json:"action"`
 		ID      uuid.UUID               `json:"cloudAccountId"`
 		Regions []Region                `json:"awsRegions"`
 		Feature core.Feature            `json:"feature"`
 	}{Action: action, ID: id, Regions: regions, Feature: feature})
 	if err != nil {
-		return fmt.Errorf("failed to request updateAwsCloudAccount: %w", err)
+		return fmt.Errorf("failed to request updateAwsCloudAccountFeature: %w", err)
 	}
-	a.log.Printf(log.Debug, "updateAwsCloudAccount(%q, %q, %q, %q): %s", action, id, regions, feature, string(buf))
+	a.log.Printf(log.Debug, "updateAwsCloudAccountFeature(%q, %q, %q, %q): %s", action, id, regions, feature, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -313,7 +342,7 @@ func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAcc
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal updateAwsCloudAccount: %v", err)
+		return fmt.Errorf("failed to unmarshal updateAwsCloudAccountFeature: %v", err)
 	}
 
 	// On success the message starts with "successfully".

@@ -33,7 +33,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -57,25 +56,49 @@ const (
 	FeatureAll                           Feature = "ALL"
 	FeatureAppFlows                      Feature = "APP_FLOWS"
 	FeatureArchival                      Feature = "ARCHIVAL"
-	FeatureCloudAccounts                 Feature = "CLOUDACCOUNTS"
+	FeatureAzureSQLDBProtection          Feature = "AZURE_SQL_DB_PROTECTION"
+	FeatureAzureSQLMIProtection          Feature = "AZURE_SQL_MI_PROTECTION"
+	FeatureCloudAccounts                 Feature = "CLOUDACCOUNTS" // Deprecated, no replacement.
 	FeatureCloudNativeArchival           Feature = "CLOUD_NATIVE_ARCHIVAL"
 	FeatureCloudNativeArchivalEncryption Feature = "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"
+	FeatureCloudNativeBLOBProtection     Feature = "CLOUD_NATIVE_BLOB_PROTECTION"
 	FeatureCloudNativeProtection         Feature = "CLOUD_NATIVE_PROTECTION"
+	FeatureCloudNativeS3Protection       Feature = "CLOUD_NATIVE_S3_PROTECTION"
 	FeatureExocompute                    Feature = "EXOCOMPUTE"
 	FeatureGCPSharedVPCHost              Feature = "GCP_SHARED_VPC_HOST"
+	FeatureServerAndApps                 Feature = "SERVERS_AND_APPS"
 	FeatureRDSProtection                 Feature = "RDS_PROTECTION"
+	FeatureKubernetesProtection          Feature = "KUBERNETES_PROTECTION"
 )
 
 var validFeatures = map[Feature]struct{}{
-	FeatureAll:                   {},
-	FeatureAppFlows:              {},
-	FeatureArchival:              {},
-	FeatureCloudAccounts:         {},
-	FeatureCloudNativeArchival:   {},
-	FeatureCloudNativeProtection: {},
-	FeatureExocompute:            {},
-	FeatureGCPSharedVPCHost:      {},
-	FeatureRDSProtection:         {},
+	FeatureAll:                       {},
+	FeatureAppFlows:                  {},
+	FeatureArchival:                  {},
+	FeatureAzureSQLDBProtection:      {},
+	FeatureAzureSQLMIProtection:      {},
+	FeatureCloudAccounts:             {},
+	FeatureCloudNativeArchival:       {},
+	FeatureCloudNativeBLOBProtection: {},
+	FeatureCloudNativeProtection:     {},
+	FeatureCloudNativeS3Protection:   {},
+	FeatureExocompute:                {},
+	FeatureGCPSharedVPCHost:          {},
+	FeatureKubernetesProtection:      {},
+	FeatureRDSProtection:             {},
+	FeatureServerAndApps:             {},
+}
+
+// ContainsFeature returns true if the features slice contains the specified
+// feature.
+func ContainsFeature(features []Feature, feature Feature) bool {
+	for _, f := range features {
+		if f == feature {
+			return true
+		}
+	}
+
+	return false
 }
 
 // FormatFeature returns the Feature as a string using lower case and with
@@ -253,4 +276,27 @@ func (a API) DeploymentVersion(ctx context.Context) (string, error) {
 	}
 
 	return payload.Data.DeploymentVersion, nil
+}
+
+// AllEnabledFeaturesForAccount returns all features enable for the RSC account.
+func (a API) AllEnabledFeaturesForAccount(ctx context.Context) ([]Feature, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, allEnabledFeaturesForAccountQuery, struct{}{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to request allEnabledFeaturesForAccount: %w", err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Features []Feature `json:"features"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal allEnabledFeaturesForAccount: %v", err)
+	}
+
+	return payload.Data.Result.Features, nil
 }
