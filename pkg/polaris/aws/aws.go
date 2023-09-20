@@ -40,10 +40,6 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-const (
-	requestTimeout = 5 * time.Second
-)
-
 // API for AWS account management.
 type API struct {
 	client *graphql.Client
@@ -686,8 +682,13 @@ func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features 
 		})
 	}
 
+	// RegisterFeatureArtifacts fails with an error referring to RBK30300003
+	// if a role passed in as an artifact is not yet available. This can happen
+	// if the call to register the artifacts is performed right after the call
+	// to create the role returns. When this happens we wait 5 seconds before
+	// trying again. After 30 seconds we abort.
 	var mappings []aws.NativeIDToRSCIDMapping
-	for i := 0; i < 7; i++ {
+	for i := 0; true; i++ {
 		mappings, err = aws.Wrap(a.client).RegisterFeatureArtifacts(ctx, aws.Cloud(account.Cloud), []aws.AccountFeatureArtifact{{
 			NativeID:  account.NativeID,
 			Features:  features,
@@ -702,8 +703,10 @@ func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features 
 		if msg := mappings[0].Message; msg == "" || !strings.Contains(msg, "RBK30300003") {
 			break
 		}
-
-		time.Sleep(requestTimeout)
+		if i > 5 {
+			break
+		}
+		time.Sleep(5 * time.Second)
 	}
 	if msg := mappings[0].Message; msg != "" {
 		return uuid.Nil, fmt.Errorf("failed to register feature artifacts: %s", msg)
