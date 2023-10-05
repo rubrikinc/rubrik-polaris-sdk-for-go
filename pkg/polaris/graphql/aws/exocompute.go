@@ -39,12 +39,12 @@ type Subnet struct {
 
 // ExocomputeConfig represents a single exocompute config.
 type ExocomputeConfig struct {
-	ID      uuid.UUID `json:"configUuid"`
-	Region  Region    `json:"region"`
-	VPCID   string    `json:"vpcId"`
-	Subnet1 Subnet    `json:"subnet1"`
-	Subnet2 Subnet    `json:"subnet2"`
-	Message string    `json:"message"`
+	ID      string `json:"configUuid"`
+	Region  Region `json:"region"`
+	VPCID   string `json:"vpcId"`
+	Subnet1 Subnet `json:"subnet1"`
+	Subnet2 Subnet `json:"subnet2"`
+	Message string `json:"message"`
 
 	// When true Polaris manages the security groups.
 	IsManagedByRubrik bool `json:"areSecurityGroupsRscManaged"`
