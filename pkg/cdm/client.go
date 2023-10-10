@@ -26,12 +26,15 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // Client is used to make API calls to the CDM platform.
 type Client struct {
 	*client
 	nodeIP string
+	Log    log.Logger
 }
 
 // NewClientFromCredentials creates a new client from the provided Rubrik
@@ -49,6 +52,7 @@ func NewClientFromCredentials(nodeIP, username, password string, allowInsecureTL
 	return &Client{
 		client: client,
 		nodeIP: nodeIP,
+		Log:    log.DiscardLogger{},
 	}, nil
 }
 
@@ -67,6 +71,7 @@ func NewClientFromToken(nodeIP, token string, allowInsecureTLS bool) (*Client, e
 	return &Client{
 		client: client,
 		nodeIP: nodeIP,
+		Log:    log.DiscardLogger{},
 	}, nil
 }
 
@@ -109,6 +114,8 @@ func fromEnv(name string) string {
 // Get sends a GET request to the provided Rubrik API endpoint and returns the
 // response and status code.
 func (c *Client) Get(ctx context.Context, version APIVersion, endpoint string) ([]byte, int, error) {
+	c.Log.Print(log.Trace)
+
 	req, err := c.request(ctx, http.MethodGet, c.nodeIP, version, endpoint, nil)
 	if err != nil {
 		return nil, 0, err
@@ -120,6 +127,8 @@ func (c *Client) Get(ctx context.Context, version APIVersion, endpoint string) (
 // Post sends a POST request to the provided Rubrik API endpoint and returns the
 // response and status code.
 func (c *Client) Post(ctx context.Context, version APIVersion, endpoint string, payload any) ([]byte, int, error) {
+	c.Log.Print(log.Trace)
+
 	req, err := c.request(ctx, http.MethodPost, c.nodeIP, version, endpoint, payload)
 	if err != nil {
 		return nil, 0, err
@@ -131,6 +140,8 @@ func (c *Client) Post(ctx context.Context, version APIVersion, endpoint string, 
 // Patch sends a PATCH request to the provided Rubrik API endpoint and returns
 // the response and status code.
 func (c *Client) Patch(ctx context.Context, version APIVersion, endpoint string, payload any) ([]byte, int, error) {
+	c.Log.Print(log.Trace)
+
 	req, err := c.request(ctx, http.MethodPatch, c.nodeIP, version, endpoint, payload)
 	if err != nil {
 		return nil, 0, err
@@ -142,6 +153,8 @@ func (c *Client) Patch(ctx context.Context, version APIVersion, endpoint string,
 // Delete sends a DELETE request to the provided Rubrik API endpoint and returns
 // the response and status code.
 func (c *Client) Delete(ctx context.Context, version APIVersion, endpoint string) ([]byte, int, error) {
+	c.Log.Print(log.Trace)
+
 	req, err := c.request(ctx, http.MethodDelete, c.nodeIP, version, endpoint, nil)
 	if err != nil {
 		return nil, 0, err

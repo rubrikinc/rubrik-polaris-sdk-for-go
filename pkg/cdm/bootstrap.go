@@ -27,10 +27,12 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 const (
-	defaultWaitTime = 10 * time.Second
+	defaultWait = 30 * time.Second
 )
 
 // NodeConfig holds node configuration for the cluster.
@@ -52,11 +54,18 @@ type NTPServerConfig struct {
 	SymmetricKey *NTPSymmetricKey `json:"symmetricKey,omitempty"`
 }
 
-// CloudStorageLocation holds information about the kind of Rubrik cluster to
+// StorageConfig holds information about the kind of Rubrik cluster to
 // bootstrap.
-type CloudStorageLocation interface {
+type StorageConfig interface {
 	isCloudStorageConfig()
 }
+
+// CDMStorageConfig is used to boostrap a physical Rubrik cluster.
+type CDMStorageConfig struct {
+	EnableEncryption bool
+}
+
+func (c CDMStorageConfig) isCloudStorageConfig() {}
 
 // AzureStorageConfig is used to bootstrap a Rubrik Cloud Cluster Elastic
 // Storage (CCES) on Azure.
@@ -77,13 +86,14 @@ type AWSStorageConfig struct {
 
 func (c AWSStorageConfig) isCloudStorageConfig() {}
 
-// ClusterConfig
+// ClusterConfig holds the configuration for the cluster.
+//
 // The kind of cluster to bootstrap is determined by the storageConfig
-// parameter. Setting storageConfig to nil starts the bootstrap process for a
-// Rubrik Cluster, setting it to AzureStorageConfig starts the process for a
-// Rubrik Cloud Cluster Elastic Storage (CCES) on Azure and setting it to
-// AWSStorageConfig starts the process for a Rubrik Cloud Cluster Elastic
-// Storage (CCES) on AWS.
+// parameter. Setting storageConfig to CDMStorageConfig starts the bootstrap
+// process for a physical Rubrik Cluster, setting it to AWSStorageConfig starts
+// the process for a Rubrik Cloud Cluster Elastic Storage (CCES) on AWS and
+// setting it to AzureStorageConfig starts the process for a Rubrik Cloud
+// Cluster Elastic Storage (CCES) on Azure.
 type ClusterConfig struct {
 	ClusterName          string
 	ClusterNodes         []NodeConfig
@@ -91,22 +101,30 @@ type ClusterConfig struct {
 	ManagementSubnetMask string
 	AdminEmail           string
 	AdminPassword        string
-	EnableEncryption     bool
 	DNSServers           []string
 	DNSSearchDomains     []string
 	NTPServers           []NTPServerConfig
-	CloudStorageLocation CloudStorageLocation
+	StorageConfig        StorageConfig
 }
 
-// BootstrapClient
+// BootstrapClient is used to make bootstrap API calls to the CDM platform.
 type BootstrapClient struct {
 	*client
+	Log log.Logger
 }
 
-// NewBootstrapClient
+// NewBootstrapClient creates a new bootstrap client from the provided Rubrik
+// cluster credentials.
 func NewBootstrapClient(allowInsecureTLS bool) *BootstrapClient {
+	return NewBootstrapClientWithLogger(allowInsecureTLS, log.DiscardLogger{})
+}
+
+// NewBootstrapClientWithLogger creates a new bootstrap client from the provided
+// Rubrik cluster credentials.
+func NewBootstrapClientWithLogger(allowInsecureTLS bool, logger log.Logger) *BootstrapClient {
 	return &BootstrapClient{
 		client: newClient(allowInsecureTLS),
+		Log:    logger,
 	}
 }
 
@@ -114,11 +132,27 @@ func NewBootstrapClient(allowInsecureTLS bool) *BootstrapClient {
 // returns the bootstrap request ID. To wait for the bootstrap process to
 // finish, pass the bootstrap request ID to the WaitForBootstrap function.
 //
+// The cluster can be rebooted at any time when this function runs, the timeout
+// parameter controls how long we wait for the cluster to become responsive
+// again.
+//
 // Bootstrapping a Rubrik cluster requires a single node to have its management
 // interface configured.
-func (c *BootstrapClient) BootstrapCluster(ctx context.Context, nodeIP string, config ClusterConfig) (int, error) {
-	if ok, err := c.IsBootstrapped(ctx, nodeIP); ok || err != nil {
-		return 0, err
+func (c *BootstrapClient) BootstrapCluster(ctx context.Context, nodeIP string, config ClusterConfig, timeout time.Duration) (int, error) {
+	c.Log.Print(log.Trace)
+
+	ok, err := c.IsBootstrapped(ctx, nodeIP, timeout)
+	if err != nil {
+		return 0, fmt.Errorf("failed to check cluster bootstrap status: %s", err)
+	}
+	if ok {
+		return 0, errors.New("cluster is already bootstrapped")
+	}
+
+	// Encryption can only be enabled on physical Rubrik clusters.
+	var enableEncryption bool
+	if cdmConfig, ok := config.StorageConfig.(CDMStorageConfig); ok {
+		enableEncryption = cdmConfig.EnableEncryption
 	}
 
 	// Transform cluster configuration.
@@ -129,11 +163,11 @@ func (c *BootstrapClient) BootstrapCluster(ctx context.Context, nodeIP string, c
 		NameServers   []string              `json:"dnsNameservers"`
 		SearchDomains []string              `json:"dnsSearchDomains"`
 		NTPServers    []NTPServerConfig     `json:"ntpServerConfigs"`
-		StorageConfig CloudStorageLocation  `json:"cloudStorageLocation,omitempty"`
+		StorageConfig StorageConfig         `json:"cloudStorageLocation,omitempty"`
 		Nodes         map[string]nodeConfig `json:"nodeConfigs"`
 	}{
 		Name:       config.ClusterName,
-		Encryption: config.EnableEncryption,
+		Encryption: enableEncryption,
 		Admin: admin{
 			ID:       "admin",
 			Email:    config.AdminEmail,
@@ -142,7 +176,8 @@ func (c *BootstrapClient) BootstrapCluster(ctx context.Context, nodeIP string, c
 		NameServers:   config.DNSServers,
 		SearchDomains: config.DNSSearchDomains,
 		NTPServers:    config.NTPServers,
-		StorageConfig: config.CloudStorageLocation,
+		StorageConfig: wrapCloudStorageProvider(config.StorageConfig),
+		Nodes:         make(map[string]nodeConfig, len(config.ClusterNodes)),
 	}
 	for _, node := range config.ClusterNodes {
 		bootstrapConfig.Nodes[node.Name] = nodeConfig{
@@ -154,7 +189,6 @@ func (c *BootstrapClient) BootstrapCluster(ctx context.Context, nodeIP string, c
 		}
 	}
 
-	// Start cluster bootstrap.
 	endpoint := "/cluster/me/bootstrap"
 	buf, code, err := c.post(ctx, nodeIP, endpoint, Internal, bootstrapConfig)
 	if err != nil {
@@ -175,24 +209,35 @@ func (c *BootstrapClient) BootstrapCluster(ctx context.Context, nodeIP string, c
 }
 
 // IsBootstrapped returns true if the cluster has been bootstrapped, false
-// otherwise.
-func (c *BootstrapClient) IsBootstrapped(ctx context.Context, nodeIP string) (bool, error) {
-	reqCtx, cancel := context.WithTimeout(ctx, 4*time.Minute)
-	defer cancel()
+// otherwise. The cluster can be rebooted at any time when this function runs,
+// the timeout parameter controls how long we wait for the cluster to become
+// responsive again.
+func (c *BootstrapClient) IsBootstrapped(ctx context.Context, nodeIP string, timeout time.Duration) (bool, error) {
+	c.Log.Print(log.Trace)
 
+	errTimer := newErrTimer(timeout)
+	defer errTimer.reset(nil)
 	for {
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		case <-errTimer.expired():
+			return false, errTimer.err
+		default:
+		}
+
 		endpoint := "/node_management/is_bootstrapped"
-		buf, code, err := c.get(reqCtx, nodeIP, endpoint, Internal)
-		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				return false, ctx.Err()
+		buf, code, err := c.get(ctx, nodeIP, endpoint, Internal)
+		if code != 200 || err != nil {
+			if err == nil {
+				err = errors.New(http.StatusText(code))
 			}
-			time.Sleep(defaultWaitTime)
+			errTimer.reset(fmt.Errorf("failed GET request %q: %s", endpoint, err))
+			c.Log.Printf(log.Debug, "Request returned: %s, retrying", err)
+			time.Sleep(defaultWait)
 			continue
 		}
-		if code != 200 {
-			return false, fmt.Errorf("failed GET request %q: %s", endpoint, http.StatusText(code))
-		}
+		errTimer.reset(err)
 
 		var isBootstrapped struct {
 			Value bool `json:"value"`
@@ -200,22 +245,41 @@ func (c *BootstrapClient) IsBootstrapped(ctx context.Context, nodeIP string) (bo
 		if err := json.Unmarshal(buf, &isBootstrapped); err != nil {
 			return false, fmt.Errorf("failed to unmarshal bootstrap status: %s", err)
 		}
+
 		return isBootstrapped.Value, nil
 	}
 }
 
 // WaitForBootstrap blocks until the bootstrapping of the cluster succeeds or
-// fails.
-func (c *BootstrapClient) WaitForBootstrap(ctx context.Context, nodeIP string, requestID int) error {
+// fails. The cluster can be rebooted at any time when this function runs, the
+// timeout parameter controls how long we wait for the cluster to become
+// responsive again.
+func (c *BootstrapClient) WaitForBootstrap(ctx context.Context, nodeIP string, requestID int, timeout time.Duration) error {
+	c.Log.Print(log.Trace)
+
+	errTimer := newErrTimer(timeout)
+	defer errTimer.reset(nil)
 	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-errTimer.expired():
+			return errTimer.err
+		default:
+		}
+
 		endpoint := "/cluster/me/bootstrap"
 		res, code, err := c.get(ctx, nodeIP, fmt.Sprintf("%s?request_id=%d", endpoint, requestID), Internal)
-		if err != nil {
-			return fmt.Errorf("failed GET request %q: %s", endpoint, err)
+		if code != 200 || err != nil {
+			if err == nil {
+				err = errors.New(http.StatusText(code))
+			}
+			errTimer.reset(fmt.Errorf("failed GET request %q: %s", endpoint, err))
+			c.Log.Printf(log.Debug, "Request returned: %s, retrying", err)
+			time.Sleep(defaultWait)
+			continue
 		}
-		if code != 200 {
-			return fmt.Errorf("failed GET request %q: %s", endpoint, http.StatusText(code))
-		}
+		errTimer.reset(err)
 
 		var bootstrap struct {
 			Status  string `json:"status"`
@@ -226,7 +290,8 @@ func (c *BootstrapClient) WaitForBootstrap(ctx context.Context, nodeIP string, r
 		}
 		switch bootstrap.Status {
 		case "IN_PROGRESS":
-			time.Sleep(30 * time.Second)
+			c.Log.Print(log.Debug, "Bootstrap in progress")
+			time.Sleep(defaultWait)
 		case "FAILURE", "FAILED":
 			return fmt.Errorf("bootstrap failed: %s", bootstrap.Message)
 		default:
@@ -251,7 +316,26 @@ type nodeConfig struct {
 	ManagementIPConfig managementIPConfig `json:"managementIpConfig"`
 }
 
+// wrapCloudStorageProvider wraps the CloudStorageLocation in a cloud storage
+// provider, as expected by CDM.
+func wrapCloudStorageProvider(config StorageConfig) StorageConfig {
+	switch config.(type) {
+	case AWSStorageConfig, *AWSStorageConfig:
+		return struct {
+			StorageConfig `json:"awsStorageConfig"`
+		}{StorageConfig: config}
+	case AzureStorageConfig, *AzureStorageConfig:
+		return struct {
+			StorageConfig `json:"azureStorageConfig"`
+		}{StorageConfig: config}
+	default:
+		return nil
+	}
+}
+
 func (c *BootstrapClient) get(ctx context.Context, nodeIP, endpoint string, version APIVersion) ([]byte, int, error) {
+	c.Log.Print(log.Trace)
+
 	req, err := c.request(ctx, http.MethodGet, nodeIP, version, endpoint, nil)
 	if err != nil {
 		return nil, 0, err
@@ -261,6 +345,8 @@ func (c *BootstrapClient) get(ctx context.Context, nodeIP, endpoint string, vers
 }
 
 func (c *BootstrapClient) post(ctx context.Context, nodeIP, endpoint string, version APIVersion, payload any) ([]byte, int, error) {
+	c.Log.Print(log.Trace)
+
 	req, err := c.request(ctx, http.MethodPost, nodeIP, version, endpoint, payload)
 	if err != nil {
 		return nil, 0, err
