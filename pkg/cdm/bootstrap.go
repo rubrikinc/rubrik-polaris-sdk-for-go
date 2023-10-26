@@ -229,8 +229,8 @@ func (c *BootstrapClient) IsBootstrapped(ctx context.Context, nodeIP string, tim
 			return isBootstrapped.Value, nil
 		}
 
-		if errors.Is(err, context.DeadlineExceeded) {
-			return false, err
+		if ctx.Err() != nil {
+			return false, ctx.Err()
 		}
 		if err == nil {
 			err = errors.New(http.StatusText(code))
@@ -238,7 +238,7 @@ func (c *BootstrapClient) IsBootstrapped(ctx context.Context, nodeIP string, tim
 		if failure.IsZero() {
 			failure = time.Now()
 		}
-		if !failure.IsZero() && time.Since(failure) > timeout {
+		if time.Since(failure) > timeout {
 			return false, err
 		}
 
@@ -279,8 +279,8 @@ func (c *BootstrapClient) WaitForBootstrap(ctx context.Context, nodeIP string, r
 			}
 		}
 
-		if errors.Is(err, context.DeadlineExceeded) {
-			return err
+		if ctx.Err() != nil {
+			return ctx.Err()
 		}
 		if err == nil {
 			err = errors.New(http.StatusText(code))
@@ -288,7 +288,7 @@ func (c *BootstrapClient) WaitForBootstrap(ctx context.Context, nodeIP string, r
 		if failure.IsZero() {
 			failure = time.Now()
 		}
-		if !failure.IsZero() && time.Since(failure) > timeout {
+		if time.Since(failure) > timeout {
 			return err
 		}
 
