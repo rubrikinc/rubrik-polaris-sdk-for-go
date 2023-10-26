@@ -232,7 +232,7 @@ func (c *BootstrapClient) IsBootstrapped(ctx context.Context, nodeIP string, tim
 			if err == nil {
 				err = errors.New(http.StatusText(code))
 			}
-			errTimer.reset(fmt.Errorf("failed GET request %q: %s", endpoint, err))
+			errTimer.reset(err)
 			c.Log.Printf(log.Debug, "Request returned: %s, retrying", err)
 			time.Sleep(defaultWait)
 			continue

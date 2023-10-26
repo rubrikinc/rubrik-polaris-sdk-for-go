@@ -20,7 +20,9 @@
 
 package cdm
 
-import "time"
+import (
+	"time"
+)
 
 type errTimer struct {
 	timer   *time.Timer
@@ -52,7 +54,10 @@ func (t *errTimer) reset(err error) {
 		t.timer.Reset(t.timeout)
 	case err == nil && t.err != nil:
 		if !t.timer.Stop() {
-			<-t.timer.C
+			select {
+			case <-t.timer.C:
+			default:
+			}
 		}
 	}
 
