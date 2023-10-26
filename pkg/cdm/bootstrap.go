@@ -215,38 +215,35 @@ func (c *BootstrapClient) BootstrapCluster(ctx context.Context, nodeIP string, c
 func (c *BootstrapClient) IsBootstrapped(ctx context.Context, nodeIP string, timeout time.Duration) (bool, error) {
 	c.Log.Print(log.Trace)
 
-	errTimer := newErrTimer(timeout)
-	defer errTimer.reset(nil)
+	var failure time.Time
 	for {
-		select {
-		case <-ctx.Done():
-			return false, ctx.Err()
-		case <-errTimer.expired():
-			return false, errTimer.err
-		default:
-		}
-
-		endpoint := "/node_management/is_bootstrapped"
-		buf, code, err := c.get(ctx, nodeIP, endpoint, Internal)
-		if code != 200 || err != nil {
-			if err == nil {
-				err = errors.New(http.StatusText(code))
+		buf, code, err := c.get(ctx, nodeIP, "/node_management/is_bootstrapped", Internal)
+		if err == nil && code == 200 {
+			var isBootstrapped struct {
+				Value bool `json:"value"`
 			}
-			errTimer.reset(err)
-			c.Log.Printf(log.Debug, "Request returned: %s, retrying", err)
-			time.Sleep(defaultWait)
-			continue
-		}
-		errTimer.reset(err)
+			if err := json.Unmarshal(buf, &isBootstrapped); err != nil {
+				return false, fmt.Errorf("failed to unmarshal bootstrap status: %s", err)
+			}
 
-		var isBootstrapped struct {
-			Value bool `json:"value"`
-		}
-		if err := json.Unmarshal(buf, &isBootstrapped); err != nil {
-			return false, fmt.Errorf("failed to unmarshal bootstrap status: %s", err)
+			return isBootstrapped.Value, nil
 		}
 
-		return isBootstrapped.Value, nil
+		if errors.Is(err, context.DeadlineExceeded) {
+			return false, err
+		}
+		if err == nil {
+			err = errors.New(http.StatusText(code))
+		}
+		if failure.IsZero() {
+			failure = time.Now()
+		}
+		if !failure.IsZero() && time.Since(failure) > timeout {
+			return false, err
+		}
+
+		c.Log.Printf(log.Debug, "Request returned: %s, retrying", err)
+		time.Sleep(defaultWait)
 	}
 }
 
@@ -257,46 +254,46 @@ func (c *BootstrapClient) IsBootstrapped(ctx context.Context, nodeIP string, tim
 func (c *BootstrapClient) WaitForBootstrap(ctx context.Context, nodeIP string, requestID int, timeout time.Duration) error {
 	c.Log.Print(log.Trace)
 
-	errTimer := newErrTimer(timeout)
-	defer errTimer.reset(nil)
+	var failure time.Time
 	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-errTimer.expired():
-			return errTimer.err
-		default:
-		}
+		res, code, err := c.get(ctx, nodeIP, fmt.Sprintf("/cluster/me/bootstrap?request_id=%d", requestID), Internal)
+		if err == nil && code == 200 {
+			failure = time.Time{}
 
-		endpoint := "/cluster/me/bootstrap"
-		res, code, err := c.get(ctx, nodeIP, fmt.Sprintf("%s?request_id=%d", endpoint, requestID), Internal)
-		if code != 200 || err != nil {
-			if err == nil {
-				err = errors.New(http.StatusText(code))
+			var bootstrap struct {
+				Status  string `json:"status"`
+				Message string `json:"message"`
 			}
-			errTimer.reset(fmt.Errorf("failed GET request %q: %s", endpoint, err))
-			c.Log.Printf(log.Debug, "Request returned: %s, retrying", err)
-			time.Sleep(defaultWait)
-			continue
+			if err := json.Unmarshal(res, &bootstrap); err != nil {
+				return fmt.Errorf("failed to unmarshal bootstrap status: %s", err)
+			}
+			switch bootstrap.Status {
+			case "IN_PROGRESS":
+				c.Log.Print(log.Debug, "Bootstrap in progress")
+				time.Sleep(defaultWait)
+				continue
+			case "FAILURE", "FAILED":
+				return fmt.Errorf("bootstrap failed: %s", bootstrap.Message)
+			default:
+				return nil
+			}
 		}
-		errTimer.reset(err)
 
-		var bootstrap struct {
-			Status  string `json:"status"`
-			Message string `json:"message"`
+		if errors.Is(err, context.DeadlineExceeded) {
+			return err
 		}
-		if err := json.Unmarshal(res, &bootstrap); err != nil {
-			return fmt.Errorf("failed to unmarshal bootstrap status: %s", err)
+		if err == nil {
+			err = errors.New(http.StatusText(code))
 		}
-		switch bootstrap.Status {
-		case "IN_PROGRESS":
-			c.Log.Print(log.Debug, "Bootstrap in progress")
-			time.Sleep(defaultWait)
-		case "FAILURE", "FAILED":
-			return fmt.Errorf("bootstrap failed: %s", bootstrap.Message)
-		default:
-			return nil
+		if failure.IsZero() {
+			failure = time.Now()
 		}
+		if !failure.IsZero() && time.Since(failure) > timeout {
+			return err
+		}
+
+		c.Log.Printf(log.Debug, "Request returned: %s, retrying", err)
+		time.Sleep(defaultWait)
 	}
 }
 
