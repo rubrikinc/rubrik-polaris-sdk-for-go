@@ -88,22 +88,19 @@ func UserAccountFromEnv() (*UserAccount, error) {
 // userAccountFromFile returns a UserAccount from the specified file with the
 // given name.
 func userAccountFromFile(file, name string) (UserAccount, error) {
-	if strings.HasPrefix(file, "~/") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return UserAccount{}, fmt.Errorf("failed to get home dir: %v", err)
-		}
-		file = filepath.Join(home, strings.TrimPrefix(file, "~/"))
+	expFile, err := expandPath(file)
+	if err != nil {
+		return UserAccount{}, fmt.Errorf("failed to expand file path: %s", err)
 	}
 
-	buf, err := os.ReadFile(file)
+	buf, err := os.ReadFile(expFile)
 	if err != nil {
-		return UserAccount{}, fmt.Errorf("failed to read user account file: %v", err)
+		return UserAccount{}, fmt.Errorf("failed to read user account file: %s", err)
 	}
 
 	var accounts map[string]UserAccount
 	if err := json.Unmarshal(buf, &accounts); err != nil {
-		return UserAccount{}, fmt.Errorf("failed to unmarshal user account file: %v", err)
+		return UserAccount{}, fmt.Errorf("failed to unmarshal user account file: %s", err)
 	}
 
 	account, ok := accounts[name]
@@ -254,22 +251,19 @@ func ServiceAccountFromEnv() (*ServiceAccount, error) {
 
 // serviceAccountFromFile returns a ServiceAccount from the specified file.
 func serviceAccountFromFile(file string) (ServiceAccount, error) {
-	if strings.HasPrefix(file, "~/") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return ServiceAccount{}, fmt.Errorf("failed to get home dir: %v", err)
-		}
-		file = filepath.Join(home, strings.TrimPrefix(file, "~/"))
+	expFile, err := expandPath(file)
+	if err != nil {
+		return ServiceAccount{}, fmt.Errorf("failed to expand file path: %s", err)
 	}
 
-	buf, err := os.ReadFile(file)
+	buf, err := os.ReadFile(expFile)
 	if err != nil {
-		return ServiceAccount{}, fmt.Errorf("failed to read service account file: %v", err)
+		return ServiceAccount{}, fmt.Errorf("failed to read service account file: %s", err)
 	}
 
 	var account ServiceAccount
 	if err := json.Unmarshal(buf, &account); err != nil {
-		return ServiceAccount{}, fmt.Errorf("failed to unmarshal service account file: %v", err)
+		return ServiceAccount{}, fmt.Errorf("failed to unmarshal service account file: %s", err)
 	}
 
 	return account, nil
@@ -352,4 +346,24 @@ func ServiceAccountFromFile(file string, allowEnvOverride bool) (*ServiceAccount
 // used to override the file that the service account is read from.
 func DefaultServiceAccount(allowEnvOverride bool) (*ServiceAccount, error) {
 	return ServiceAccountFromFile(DefaultServiceAccountFile, allowEnvOverride)
+}
+
+func expandPath(file string) (string, error) {
+	// Expand the ~ token to the user's home directory.
+	if homeToken := fmt.Sprintf("~%c", filepath.Separator); strings.HasPrefix(file, homeToken) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		file = filepath.Join(home, strings.TrimPrefix(file, homeToken))
+	}
+
+	// Expand environment variables and make sure that the path is absolute.
+	var err error
+	file, err = filepath.Abs(os.ExpandEnv(file))
+	if err != nil {
+		return "", err
+	}
+
+	return file, nil
 }
