@@ -141,13 +141,13 @@ func UserAccountFromEnv() (*UserAccount, error) {
 
 	// Validate.
 	if account.Name == "" {
-		return nil, errors.New("invalid RUBRIK_POLARIS_ACCOUNT_NAME")
+		return nil, errors.New("invalid account name")
 	}
 	if account.Username == "" {
-		return nil, errors.New("invalid RUBRIK_POLARIS_ACCOUNT_USERNAME")
+		return nil, errors.New("invalid account username")
 	}
 	if account.Password == "" {
-		return nil, errors.New("invalid RUBRIK_POLARIS_ACCOUNT_PASSWORD")
+		return nil, errors.New("invalid account password")
 	}
 
 	return &account, nil
@@ -217,12 +217,14 @@ func userAccountFromFile(file, name string) (UserAccount, error) {
 //
 // Note that RSC user accounts with MFA enabled cannot be used.
 func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount, error) {
-	envAccount, err := userAccountFromEnv(name)
-	if err != nil {
-		return nil, err
-	}
-
+	var envAccount UserAccount
 	if allowEnvOverride {
+		var err error
+		envAccount, err = userAccountFromEnv(name)
+		if err != nil {
+			return nil, err
+		}
+
 		if envAccount.Name != "" {
 			name = envAccount.Name
 		}
@@ -256,11 +258,11 @@ func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount
 	var msg string
 	switch {
 	case account.Name == "":
-		msg = "invalid name"
+		msg = "invalid account name"
 	case account.Username == "":
-		msg = "invalid username"
+		msg = "invalid account username"
 	case account.Password == "":
-		msg = "invalid password"
+		msg = "invalid account password"
 	}
 	if msg != "" {
 		if fileErr != nil {
@@ -340,16 +342,16 @@ func ServiceAccountFromEnv() (*ServiceAccount, error) {
 
 	// Validate.
 	if account.Name == "" {
-		return nil, errors.New("invalid RUBRIK_POLARIS_SERVICEACCOUNT_NAME")
+		return nil, errors.New("invalid service account name")
 	}
 	if account.ClientID == "" {
-		return nil, errors.New("invalid RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID")
+		return nil, errors.New("invalid service account client id")
 	}
 	if account.ClientSecret == "" {
-		return nil, errors.New("invalid RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET")
+		return nil, errors.New("invalid service account client secret")
 	}
 	if account.AccessTokenURI == "" {
-		return nil, errors.New("invalid RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI")
+		return nil, errors.New("invalid service account access token uri")
 	}
 
 	return &account, nil
@@ -384,21 +386,22 @@ func serviceAccountFromFile(file string) (ServiceAccount, error) {
 // addition, the environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE can be
 // used to override the file that the service account is read from.
 func ServiceAccountFromFile(file string, allowEnvOverride bool) (*ServiceAccount, error) {
-	envAccount, err := serviceAccountFromEnv()
-	if err != nil {
-		return nil, err
-	}
-
+	var envAccount ServiceAccount
 	if allowEnvOverride {
+		var err error
+		envAccount, err = serviceAccountFromEnv()
+		if err != nil {
+			return nil, err
+		}
+
 		if envFile, ok := os.LookupEnv("RUBRIK_POLARIS_SERVICEACCOUNT_FILE"); ok {
 			file = envFile
 		}
 	}
 
+	// Ignore errors for now since they might be corrected by what's in the
+	// current environment.
 	account, fileErr := serviceAccountFromFile(file)
-	if err != nil {
-		return nil, err
-	}
 	account.envOverride = allowEnvOverride
 
 	// Merge with shell environment.
@@ -421,13 +424,13 @@ func ServiceAccountFromFile(file string, allowEnvOverride bool) (*ServiceAccount
 	var msg string
 	switch {
 	case account.Name == "":
-		msg = "invalid name"
+		msg = "invalid service account name"
 	case account.ClientID == "":
-		msg = "invalid client id"
+		msg = "invalid service account client id"
 	case account.ClientSecret == "":
-		msg = "invalid client secret"
+		msg = "invalid service account client secret"
 	case account.AccessTokenURI == "":
-		msg = "invalid access token uri"
+		msg = "invalid service account access token uri"
 	}
 	if msg != "" {
 		if fileErr != nil {
