@@ -279,7 +279,7 @@ func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount
 	}
 	if msg != "" {
 		if fileErr != nil {
-			msg = fmt.Sprintf("%s (user account file error: %w)", msg, fileErr)
+			return nil, fmt.Errorf("%s (user account file error: %w)", msg, fileErr)
 		}
 		return nil, errors.New(msg)
 	}
