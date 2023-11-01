@@ -27,6 +27,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
 
 // UserAccount holds an RSC local user account configuration. Note that RSC
@@ -72,25 +74,36 @@ func lookupUserAccount(name string, accounts map[string]UserAccount) UserAccount
 
 // userAccountFromEnv returns a UserAccount from the current environment.
 func userAccountFromEnv(name string) (UserAccount, error) {
+	var envKeyFound bool
+
 	var accounts map[string]UserAccount
 	if creds, ok := os.LookupEnv("RUBRIK_POLARIS_ACCOUNT_CREDENTIALS"); ok {
 		if err := json.Unmarshal([]byte(creds), &accounts); err != nil {
 			return UserAccount{}, fmt.Errorf("failed to unmarshal RUBRIK_POLARIS_ACCOUNT_CREDENTIALS: %s", err)
 		}
+		envKeyFound = true
 	}
 
 	if envName, ok := os.LookupEnv("RUBRIK_POLARIS_ACCOUNT_NAME"); ok {
 		name = envName
+		envKeyFound = true
 	}
 	account := lookupUserAccount(name, accounts)
 	if v, ok := os.LookupEnv("RUBRIK_POLARIS_ACCOUNT_USERNAME"); ok {
 		account.Username = v
+		envKeyFound = true
 	}
 	if v, ok := os.LookupEnv("RUBRIK_POLARIS_ACCOUNT_PASSWORD"); ok {
 		account.Password = v
+		envKeyFound = true
 	}
 	if v, ok := os.LookupEnv("RUBRIK_POLARIS_ACCOUNT_URL"); ok {
 		account.URL = v
+		envKeyFound = true
+	}
+
+	if !envKeyFound {
+		return UserAccount{}, fmt.Errorf("failed to read user account from env: %w", graphql.ErrNotFound)
 	}
 
 	return account, nil
@@ -141,13 +154,13 @@ func UserAccountFromEnv() (*UserAccount, error) {
 
 	// Validate.
 	if account.Name == "" {
-		return nil, errors.New("invalid account name")
+		return nil, errors.New("invalid user account name")
 	}
 	if account.Username == "" {
-		return nil, errors.New("invalid account username")
+		return nil, errors.New("invalid user account username")
 	}
 	if account.Password == "" {
-		return nil, errors.New("invalid account password")
+		return nil, errors.New("invalid user account password")
 	}
 
 	return &account, nil
@@ -173,7 +186,7 @@ func userAccountFromFile(file, name string) (UserAccount, error) {
 
 	account, ok := accounts[name]
 	if !ok {
-		return UserAccount{}, fmt.Errorf("local user account %q not found", name)
+		return UserAccount{}, fmt.Errorf("failed to lookup user account %q: %w", name, graphql.ErrNotFound)
 	}
 	account.Name = name
 
@@ -221,7 +234,7 @@ func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount
 	if allowEnvOverride {
 		var err error
 		envAccount, err = userAccountFromEnv(name)
-		if err != nil {
+		if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 			return nil, err
 		}
 
@@ -258,15 +271,15 @@ func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount
 	var msg string
 	switch {
 	case account.Name == "":
-		msg = "invalid account name"
+		msg = "invalid user account name"
 	case account.Username == "":
-		msg = "invalid account username"
+		msg = "invalid user account username"
 	case account.Password == "":
-		msg = "invalid account password"
+		msg = "invalid user account password"
 	}
 	if msg != "" {
 		if fileErr != nil {
-			msg = fmt.Sprintf("%s (user account file error: %s)", msg, fileErr)
+			msg = fmt.Sprintf("%s (user account file error: %w)", msg, fileErr)
 		}
 		return nil, errors.New(msg)
 	}
@@ -303,24 +316,35 @@ func (a *ServiceAccount) allowEnvOverride() bool {
 
 // serviceAccountFromEnv returns a ServiceAccount from the current environment.
 func serviceAccountFromEnv() (ServiceAccount, error) {
+	var envKeyFound bool
+
 	var account ServiceAccount
 	if creds, ok := os.LookupEnv("RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS"); ok {
 		if err := json.Unmarshal([]byte(creds), &account); err != nil {
 			return ServiceAccount{}, fmt.Errorf("failed to unmarshal RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS: %s", err)
 		}
+		envKeyFound = true
 	}
 
 	if v, ok := os.LookupEnv("RUBRIK_POLARIS_SERVICEACCOUNT_NAME"); ok {
 		account.Name = v
+		envKeyFound = true
 	}
 	if v, ok := os.LookupEnv("RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID"); ok {
 		account.ClientID = v
+		envKeyFound = true
 	}
 	if v, ok := os.LookupEnv("RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET"); ok {
 		account.ClientSecret = v
+		envKeyFound = true
 	}
 	if v, ok := os.LookupEnv("RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI"); ok {
 		account.AccessTokenURI = v
+		envKeyFound = true
+	}
+
+	if !envKeyFound {
+		return ServiceAccount{}, fmt.Errorf("failed to read service account from env: %w", graphql.ErrNotFound)
 	}
 
 	return account, nil
@@ -390,7 +414,7 @@ func ServiceAccountFromFile(file string, allowEnvOverride bool) (*ServiceAccount
 	if allowEnvOverride {
 		var err error
 		envAccount, err = serviceAccountFromEnv()
-		if err != nil {
+		if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 			return nil, err
 		}
 
