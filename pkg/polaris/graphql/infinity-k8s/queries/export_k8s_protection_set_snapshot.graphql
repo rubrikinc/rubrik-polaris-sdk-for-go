@@ -1,5 +1,5 @@
 mutation RubrikPolarisSDKRequest($id: String!, $jobConfig: K8sExportParametersInput!) {
-  exportK8sResourceSetSnapshot(input: {id: $id, jobConfig: $jobConfig}) {
+  exportK8sProtectionSetSnapshot(input: {id: $id, jobConfig: $jobConfig}) {
     endTime
     error {
       message

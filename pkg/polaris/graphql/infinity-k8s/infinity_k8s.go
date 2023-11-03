@@ -49,40 +49,37 @@ type JobInstanceDetail struct {
 	IsDisabled         bool    `json:"isDisabled"`
 	ID                 string  `json:"id"`
 	ErrorInfo          string  `json:"errorInfo,omitempty"`
+	EventSeriesID      string  `json:"eventSeriesId,omitempty"`
 	EndTime            string  `json:"endTime,omitempty"`
 	ChildJobDebugInfo  string  `json:"childJobDebugInfo,omitempty"`
 	Archived           bool    `json:"archived"`
 }
 
-// AddK8sResourceSetConfig defines the input parameters required to a
-// ResourceSet.
-type AddK8sResourceSetConfig struct {
-	Definition            string   `json:"definition"`
-	HookConfigs           []string `json:"hookConfigs,omitempty"`
-	K8sClusterUUID        string   `json:"k8SClusterUuid,omitempty"`
-	K8sNamespace          string   `json:"k8SNamespace,omitempty"`
-	KubernetesClusterUUID string   `json:"kubernetesClusterUuid,omitempty"`
-	KubernetesNamespace   string   `json:"kubernetesNamespace,omitempty"`
-	Name                  string   `json:"name"`
-	RSType                string   `json:"rsType"`
+// AddK8sProtectionSetConfig defines the input parameters required to a
+// ProtectionSet.
+type AddK8sProtectionSetConfig struct {
+	Definition          string   `json:"definition"`
+	HookConfigs         []string `json:"hookConfigs,omitempty"`
+	KubernetesClusterId string   `json:"kubernetesClusterId,omitempty"`
+	KubernetesNamespace string   `json:"kubernetesNamespace,omitempty"`
+	Name                string   `json:"name"`
+	RSType              string   `json:"rsType"`
 }
 
-// AddK8sResourceSetResponse is the response received from adding a K8s cluster.
-type AddK8sResourceSetResponse struct {
+// AddK8sProtectionSetResponse is the response received from adding a K8s cluster.
+type AddK8sProtectionSetResponse struct {
 	ID                    string   `json:"id"`
 	Definition            string   `json:"definition"`
 	HookConfigs           []string `json:"hookConfigs,omitempty"`
-	K8sClusterUUID        string   `json:"k8SClusterUuid,omitempty"`
-	K8sNamespace          string   `json:"k8SNamespace,omitempty"`
 	KubernetesClusterUUID string   `json:"kubernetesClusterUuid,omitempty"`
 	KubernetesNamespace   string   `json:"kubernetesNamespace,omitempty"`
 	Name                  string   `json:"name"`
 	RSType                string   `json:"rsType"`
 }
 
-// ExportK8sResourceSetSnapshotJobConfig defines parameters required to
+// ExportK8sProtectionSetSnapshotJobConfig defines parameters required to
 // export a snapshot.
-type ExportK8sResourceSetSnapshotJobConfig struct {
+type ExportK8sProtectionSetSnapshotJobConfig struct {
 	TargetNamespaceName string `json:"targetNamespaceName"`
 	TargetClusterFID    string `json:"targetClusterId"`
 	IgnoreErrors        bool   `json:"ignoreErrors,omitempty"`
@@ -138,8 +135,8 @@ type DataLocation struct {
 	Type string `json:"type"`
 }
 
-// KubernetesResourceSet contains fields contained in a ResourceSet snappable.
-type KubernetesResourceSet struct {
+// KubernetesProtectionSet contains fields contained in a ProtectionSet snappable.
+type KubernetesProtectionSet struct {
 	CDMID                       string         `json:"cdmId"`
 	ClusterUUID                 string         `json:"clusterUuid"`
 	ConfiguredSLADomain         core.SLADomain `json:"configuredSlaDomain"`
@@ -169,6 +166,42 @@ type BaseSnapshotSummary struct {
 	SLAID string `json:"slaId"`
 }
 
+// ActivitySeriesInput is the input for the activitySeries query.
+type ActivitySeriesInput struct {
+	ActivitySeriesId uuid.UUID `json:"activitySeriesId"`
+	ClusterUUID      uuid.UUID `json:"clusterUuid,omitempty"`
+}
+
+// EventSeverity is the severity of the event.
+type EventSeverity string
+
+const (
+	// EventSeverityCritical is the critical severity.
+	EventSeverityCritical EventSeverity = "Critical"
+	// EventSeverityWarning is the warning severity.
+	EventSeverityWarning EventSeverity = "Warning"
+	// EventSeverityInfo is the info severity.
+	EventSeverityInfo EventSeverity = "Info"
+)
+
+// ActivitySeries is the response for the activitySeries query.
+type ActivitySeries struct {
+	// Required: true
+	ActivityInfo string `json:"activityInfo"`
+
+	// Required: true
+	Message string `json:"message"`
+
+	// Required: true
+	Status string `json:"status"`
+
+	// Required: true
+	Time time.Time `json:"time"`
+
+	// Required: true
+	Severity EventSeverity `json:"severity"`
+}
+
 // API wraps around GraphQL clients to give them the RSC Infinity K8s API.
 type API struct {
 	GQL *graphql.Client
@@ -180,34 +213,34 @@ func Wrap(client *polaris.Client) API {
 	return API{GQL: client.GQL, log: client.GQL.Log()}
 }
 
-// AddK8sResourceSet adds the K8s resource set for the given config.
-func (a API) AddK8sResourceSet(
+// AddK8sProtectionSet adds the K8s protection set for the given config.
+func (a API) AddK8sProtectionSet(
 	ctx context.Context,
-	config AddK8sResourceSetConfig,
-) (AddK8sResourceSetResponse, error) {
+	config AddK8sProtectionSetConfig,
+) (AddK8sProtectionSetResponse, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(
-		ctx, addK8sResourcesetQuery, struct {
-			Config AddK8sResourceSetConfig `json:"config"`
+		ctx, addK8sProtectionSetQuery, struct {
+			Config AddK8sProtectionSetConfig `json:"config"`
 		}{Config: config},
 	)
 	if err != nil {
-		return AddK8sResourceSetResponse{}, fmt.Errorf(
-			"failed to request addK8sResourceSet: %w",
+		return AddK8sProtectionSetResponse{}, fmt.Errorf(
+			"failed to request addK8sProtectionSet: %w",
 			err,
 		)
 	}
-	a.log.Printf(log.Debug, "addK8sResourceSet(%v): %s", config, string(buf))
+	a.log.Printf(log.Debug, "addK8sProtectionSet(%v): %s", config, string(buf))
 
 	var payload struct {
 		Data struct {
-			Config AddK8sResourceSetResponse `json:"addK8sResourceSet"`
+			Config AddK8sProtectionSetResponse `json:"addK8sProtectionSet"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return AddK8sResourceSetResponse{}, fmt.Errorf(
-			"failed to unmarshal addK8sResourceSet: %v",
+		return AddK8sProtectionSetResponse{}, fmt.Errorf(
+			"failed to unmarshal addK8sProtectionSet: %v",
 			err,
 		)
 	}
@@ -215,44 +248,44 @@ func (a API) AddK8sResourceSet(
 	return payload.Data.Config, nil
 }
 
-// GetK8sResourceSet get the K8s resource set corresponding to the given fid.
-func (a API) GetK8sResourceSet(
+// GetK8sProtectionSet get the K8s protection set corresponding to the given fid.
+func (a API) GetK8sProtectionSet(
 	ctx context.Context,
 	fid uuid.UUID,
-) (KubernetesResourceSet, error) {
+) (KubernetesProtectionSet, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(
-		ctx, k8sResourcesetQuery, struct {
+		ctx, k8sProtectionSetQuery, struct {
 			FID uuid.UUID `json:"fid"`
 		}{FID: fid},
 	)
 	if err != nil {
-		return KubernetesResourceSet{}, fmt.Errorf(
-			"failed to request kubernetesResourceSet: %w",
+		return KubernetesProtectionSet{}, fmt.Errorf(
+			"failed to request kubernetesProtectionSet: %w",
 			err,
 		)
 	}
-	a.log.Printf(log.Debug, "kubernetesResourceSet(%v): %s", fid, string(buf))
+	a.log.Printf(log.Debug, "kubernetesProtectionSet(%v): %s", fid, string(buf))
 
 	var payload struct {
 		Data struct {
-			KubernetesResourceSet KubernetesResourceSet `json:"kubernetesResourceSet"`
+			KubernetesProtectionSet KubernetesProtectionSet `json:"kubernetesProtectionSet"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return KubernetesResourceSet{}, fmt.Errorf(
-			"failed to unmarshal kubernetesResourceSet: %v",
+		return KubernetesProtectionSet{}, fmt.Errorf(
+			"failed to unmarshal kubernetesProtectionSet: %v",
 			err,
 		)
 	}
 
-	return payload.Data.KubernetesResourceSet, nil
+	return payload.Data.KubernetesProtectionSet, nil
 }
 
-// DeleteK8sResourceSet deletes the K8s resource set corresponding to the
+// DeleteK8sProtectionSet deletes the K8s protection set corresponding to the
 // provided fid.
-func (a API) DeleteK8sResourceSet(
+func (a API) DeleteK8sProtectionSet(
 	ctx context.Context,
 	fid string,
 	preserveSnapshots bool,
@@ -261,7 +294,7 @@ func (a API) DeleteK8sResourceSet(
 
 	buf, err := a.GQL.Request(
 		ctx,
-		deleteK8sResourcesetQuery,
+		deleteK8sProtectionSetQuery,
 		struct {
 			ID                string `json:"id"`
 			PreserveSnapshots bool   `json:"preserveSnapshots"`
@@ -272,11 +305,14 @@ func (a API) DeleteK8sResourceSet(
 	)
 
 	if err != nil {
-		return false, fmt.Errorf("failed to request deleteK8sResourceset: %w", err)
+		return false, fmt.Errorf(
+			"failed to request deleteK8sProtectionSet: %w",
+			err,
+		)
 	}
 	a.log.Printf(
 		log.Debug,
-		"deleteK8sResourceset(%q, %q): %s",
+		"deleteK8sProtectionSet(%q, %q): %s",
 		fid,
 		preserveSnapshots,
 		string(buf),
@@ -286,19 +322,19 @@ func (a API) DeleteK8sResourceSet(
 		Data struct {
 			ResponseSuccess struct {
 				Success bool `json:"success"`
-			} `json:"deleteK8sResourceset"`
+			} `json:"deleteK8sProtectionSet"`
 		} `json:"data"`
 	}
 
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return false, fmt.Errorf(
-			"failed to unmarshal deleteK8sResourceset response: %v",
+			"failed to unmarshal deleteK8sProtectionSet response: %v",
 			err,
 		)
 	}
 	if !payload.Data.ResponseSuccess.Success {
 		return false, fmt.Errorf(
-			"failed to delete k8s resource set with fid %q",
+			"failed to delete k8s protection set with fid %q",
 			fid,
 		)
 	}
@@ -306,7 +342,7 @@ func (a API) DeleteK8sResourceSet(
 	return true, nil
 }
 
-// GetJobInstance fetches information about the CDM job corresponding to the
+// GetInstance fetches information about the CDM job corresponding to the
 // given jobID and cdmClusterID.
 func (a API) GetJobInstance(
 	ctx context.Context,
@@ -357,21 +393,21 @@ func (a API) GetJobInstance(
 	return payload.Data.Response, nil
 }
 
-// ExportK8sResourceSetSnapshot takes a snapshot FID, the export job config and
+// ExportK8sProtectionSetSnapshot takes a snapshot FID, the export job config and
 // starts an on-demand export job in CDM.
-func (a API) ExportK8sResourceSetSnapshot(
+func (a API) ExportK8sProtectionSetSnapshot(
 	ctx context.Context,
 	snapshotFID string,
-	jobConfig ExportK8sResourceSetSnapshotJobConfig,
+	jobConfig ExportK8sProtectionSetSnapshotJobConfig,
 ) (AsyncRequestStatus, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(
 		ctx,
-		exportK8sResourcesetSnapshotQuery,
+		exportK8sProtectionSetSnapshotQuery,
 		struct {
-			SnapshotFID string                                `json:"id"`
-			JobConfig   ExportK8sResourceSetSnapshotJobConfig `json:"jobConfig"`
+			SnapshotFID string                                  `json:"id"`
+			JobConfig   ExportK8sProtectionSetSnapshotJobConfig `json:"jobConfig"`
 		}{
 			SnapshotFID: snapshotFID,
 			JobConfig:   jobConfig,
@@ -380,13 +416,13 @@ func (a API) ExportK8sResourceSetSnapshot(
 
 	if err != nil {
 		return AsyncRequestStatus{}, fmt.Errorf(
-			"failed to request exportK8sResourceSetSnapshot: %w",
+			"failed to request exportK8sProtectionSetSnapshot: %w",
 			err,
 		)
 	}
 	a.log.Printf(
 		log.Debug,
-		"exportK8sResourceSetSnapshot(%q, %q): %s",
+		"exportK8sProtectionSetSnapshot(%q, %q): %s",
 		snapshotFID,
 		jobConfig,
 		string(buf),
@@ -394,13 +430,13 @@ func (a API) ExportK8sResourceSetSnapshot(
 
 	var payload struct {
 		Data struct {
-			Response AsyncRequestStatus `json:"exportK8sResourceSetSnapshot"`
+			Response AsyncRequestStatus `json:"exportK8sProtectionSetSnapshot"`
 		} `json:"data"`
 	}
 
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return AsyncRequestStatus{}, fmt.Errorf(
-			"failed to unmarshal exportK8sResourceSetSnapshot response: %v",
+			"failed to unmarshal exportK8sProtectionSetSnapshot response: %v",
 			err,
 		)
 	}
@@ -408,50 +444,50 @@ func (a API) ExportK8sResourceSetSnapshot(
 	return payload.Data.Response, nil
 }
 
-// CreateK8sResourceSnapshot takes a ResourceSetFID, the snapshot job config and
+// CreateK8sResourceSnapshot takes a ProtectionSetFID, the snapshot job config and
 // starts an on-demand snapshot job in CDM.
 func (a API) CreateK8sResourceSnapshot(
 	ctx context.Context,
-	resourceSetFID string,
+	protectionSetFID string,
 	jobConfig BaseOnDemandSnapshotConfigInput,
 ) (AsyncRequestStatus, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(
 		ctx,
-		createK8sResourceSnapshotQuery,
+		createK8sProtectionSetSnapshotQuery,
 		struct {
-			ResourceSetID string                          `json:"resourceSetId"`
-			JobConfig     BaseOnDemandSnapshotConfigInput `json:"jobConfig"`
+			ProtectionSetID string                          `json:"protectionSetId"`
+			JobConfig       BaseOnDemandSnapshotConfigInput `json:"jobConfig"`
 		}{
-			ResourceSetID: resourceSetFID,
-			JobConfig:     jobConfig,
+			ProtectionSetID: protectionSetFID,
+			JobConfig:       jobConfig,
 		},
 	)
 
 	if err != nil {
 		return AsyncRequestStatus{}, fmt.Errorf(
-			"failed to request createK8sResourceSetSnapshot: %w",
+			"failed to request createK8sProtectionSetSnapshot: %w",
 			err,
 		)
 	}
 	a.log.Printf(
 		log.Debug,
-		"createK8sResourceSetSnapshot(%q, %q): %s",
-		resourceSetFID,
+		"createK8sProtectionSetSnapshot(%q, %q): %s",
+		protectionSetFID,
 		jobConfig,
 		string(buf),
 	)
 
 	var payload struct {
 		Data struct {
-			Response AsyncRequestStatus `json:"createK8sResourceSetSnapshot"`
+			Response AsyncRequestStatus `json:"createK8sProtectionSetSnapshot"`
 		} `json:"data"`
 	}
 
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return AsyncRequestStatus{}, fmt.Errorf(
-			"failed to unmarshal createK8sResourceSetSnapshot response: %v",
+			"failed to unmarshal createK8sProtectionSetSnapshot response: %v",
 			err,
 		)
 	}
@@ -542,9 +578,9 @@ func (a API) GetK8sObjectInternalID(
 	return payload.Data.ObjectInternalID, nil
 }
 
-// getResourceSetSnapshots get initial snapshots for a given fid. Only used
-// internally for testing puporses.
-func (a API) getResourceSetSnapshots(
+// getProtectionSetSnapshots get initial snapshots for a given fid. Only used
+// internally for testing purposes.
+func (a API) getProtectionSetSnapshots(
 	ctx context.Context,
 	fid string,
 ) ([]string, error) {
@@ -552,7 +588,7 @@ func (a API) getResourceSetSnapshots(
 
 	buf, err := a.GQL.Request(
 		ctx,
-		getResourcesetSnapshotQuery,
+		getProtectionSetSnapshotQuery,
 		struct {
 			FID string `json:"fid"`
 		}{
@@ -565,7 +601,7 @@ func (a API) getResourceSetSnapshots(
 			err,
 		)
 	}
-	a.log.Printf(log.Debug, "k8sResourceSetSnapshots(%v): %s", fid, string(buf))
+	a.log.Printf(log.Debug, "k8sProtectionSetSnapshots(%v): %s", fid, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -573,12 +609,12 @@ func (a API) getResourceSetSnapshots(
 				Data []struct {
 					BaseSnapshotSummary BaseSnapshotSummary `json:"baseSnapshotSummary"`
 				} `json:"data"`
-			} `json:"k8sResourceSetSnapshots"`
+			} `json:"k8sProtectionSetSnapshots"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return nil, fmt.Errorf(
-			"failed to unmarshal k8sResourceSetSnapshots: %v",
+			"failed to unmarshal k8sProtectionSetSnapshots: %v",
 			err,
 		)
 	}
@@ -587,4 +623,66 @@ func (a API) getResourceSetSnapshots(
 		snaps[i] = item.BaseSnapshotSummary.ID
 	}
 	return snaps, nil
+}
+
+// GetActivitySeries fetches the activity series for the
+// given activity series id.
+func (a API) GetActivitySeries(
+	ctx context.Context,
+	activitySeriesId uuid.UUID,
+	clusterUUID uuid.UUID,
+) ([]ActivitySeries, error) {
+
+	var ret []ActivitySeries
+	// Currently the pagination is handled within the call, but we may want to
+	// expose that outside the API.
+	for true {
+		var cursor string
+
+		a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.getActivitySeries")
+		buf, err := a.GQL.Request(
+			ctx,
+			activitySeriesQuery,
+			struct {
+				Input ActivitySeriesInput `json:"input"`
+				After string              `json:"after,omitempty"`
+			}{
+				Input: ActivitySeriesInput{
+					ActivitySeriesId: activitySeriesId, ClusterUUID: clusterUUID,
+				},
+				After: cursor,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+		var payload struct {
+			Data struct {
+				ActivitySeriesData struct {
+					ActivityConnection struct {
+						Nodes    []ActivitySeries `json:"nodes"`
+						PageInfo struct {
+							EndCursor   string `json:"endCursor"`
+							HasNextPage bool   `json:"hasNextPage"`
+						} `json:"pageInfo"`
+						Count int `json:"count"`
+					} `json:"activityConnection"`
+				} `json:"activitySeries"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(buf, &payload); err != nil {
+			return nil, err
+		}
+
+		cursor = payload.Data.ActivitySeriesData.ActivityConnection.PageInfo.EndCursor
+		ret = append(
+			ret,
+			payload.Data.ActivitySeriesData.ActivityConnection.Nodes...,
+		)
+
+		if !payload.Data.ActivitySeriesData.ActivityConnection.PageInfo.HasNextPage {
+			break
+		}
+	}
+	return ret, nil
 }
