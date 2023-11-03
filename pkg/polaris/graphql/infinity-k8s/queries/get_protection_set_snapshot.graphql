@@ -1,5 +1,5 @@
-query SdkGolangK8sResourceSnapshots($fid: String!) {
-    k8sResourceSetSnapshots(input: {id: $fid}) {
+query SdkGolangK8sProtectionSetSnapshots($fid: String!) {
+    k8sProtectionSetSnapshots(input: {id: $fid}) {
         data {
             baseSnapshotSummary {
                 id

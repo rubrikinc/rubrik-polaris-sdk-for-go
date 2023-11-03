@@ -1,5 +1,5 @@
 query RubrikPolarisSDKRequest($fid: UUID!) {
-  kubernetesResourceSet(fid: $fid) {
+  kubernetesProtectionSet(fid: $fid) {
     cdmId
     clusterUuid
     configuredSlaDomain {

@@ -3,6 +3,7 @@ query RubrikPolarisSDKRequest($id:String!, $clusterUuid: String!) {
     archived
     endTime
     errorInfo
+    eventSeriesId
     id
     isDisabled
     jobProgress

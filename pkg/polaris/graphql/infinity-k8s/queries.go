@@ -24,13 +24,33 @@
 
 package infinityk8s
 
-// addK8sResourceset GraphQL query
-var addK8sResourcesetQuery = `mutation SdkGolangAddK8sResourceset($config: K8sResourceSetAddInput!) {
-  addK8sResourceSet(input: {config: $config}) {
+// activitySeries GraphQL query
+var activitySeriesQuery = `query SdkGolangActivitySeries(
+    $input: ActivitySeriesInput!
+) {
+    activitySeries(input: $input) {
+        activityConnection {
+            nodes {
+                activityInfo
+                message
+                status
+                time
+                severity
+            }
+            pageInfo {
+                endCursor
+                hasNextPage
+            }
+            count
+        }
+    }
+}`
+
+// addK8sProtectionSet GraphQL query
+var addK8sProtectionSetQuery = `mutation SdkGolangAddK8sProtectionSet($config: K8sProtectionSetAddInput!) {
+  addK8sProtectionSet(input: {config: $config}) {
     id
     name
-    k8SClusterUuid
-    k8SNamespace
     rsType
     definition
     kubernetesNamespace
@@ -39,9 +59,9 @@ var addK8sResourcesetQuery = `mutation SdkGolangAddK8sResourceset($config: K8sRe
   }
 }`
 
-// createK8sResourceSnapshot GraphQL query
-var createK8sResourceSnapshotQuery = `mutation SdkGolangCreateK8sResourceSnapshot($resourceSetId: String!, $jobConfig: BaseOnDemandSnapshotConfigInput!) {
-    createK8sResourceSetSnapshot(input: {id: $resourceSetId, config: $jobConfig}) {
+// createK8sProtectionSetSnapshot GraphQL query
+var createK8sProtectionSetSnapshotQuery = `mutation SdkGolangCreateK8sProtectionSetSnapshot($protectionSetId: String!, $jobConfig: BaseOnDemandSnapshotConfigInput!) {
+    createK8sProtectionSetSnapshot(input: {id: $protectionSetId, config: $jobConfig}) {
         endTime
         error {
             message
@@ -58,16 +78,16 @@ var createK8sResourceSnapshotQuery = `mutation SdkGolangCreateK8sResourceSnapsho
     }
 }`
 
-// deleteK8sResourceset GraphQL query
-var deleteK8sResourcesetQuery = `mutation SdkGolangDeleteK8sResourceset($id:String!, $preserveSnapshots: Boolean) {
-  deleteK8sResourceSet(input: {id: $id, preserveSnapshots: $preserveSnapshots}) {
+// deleteK8sProtectionSet GraphQL query
+var deleteK8sProtectionSetQuery = `mutation SdkGolangDeleteK8sProtectionSet($id:String!, $preserveSnapshots: Boolean) {
+  deleteK8sProtectionSet(input: {id: $id, preserveSnapshots: $preserveSnapshots}) {
     success
   }
 }`
 
-// exportK8sResourcesetSnapshot GraphQL query
-var exportK8sResourcesetSnapshotQuery = `mutation SdkGolangExportK8sResourcesetSnapshot($id: String!, $jobConfig: K8sExportParametersInput!) {
-  exportK8sResourceSetSnapshot(input: {id: $id, jobConfig: $jobConfig}) {
+// exportK8sProtectionSetSnapshot GraphQL query
+var exportK8sProtectionSetSnapshotQuery = `mutation SdkGolangExportK8sProtectionSetSnapshot($id: String!, $jobConfig: K8sExportParametersInput!) {
+  exportK8sProtectionSetSnapshot(input: {id: $id, jobConfig: $jobConfig}) {
     endTime
     error {
       message
@@ -84,9 +104,9 @@ var exportK8sResourcesetSnapshotQuery = `mutation SdkGolangExportK8sResourcesetS
   }
 }`
 
-// getResourcesetSnapshot GraphQL query
-var getResourcesetSnapshotQuery = `query SdkGolangK8sResourceSnapshots($fid: String!) {
-    k8sResourceSetSnapshots(input: {id: $fid}) {
+// getProtectionSetSnapshot GraphQL query
+var getProtectionSetSnapshotQuery = `query SdkGolangK8sProtectionSetSnapshots($fid: String!) {
+    k8sProtectionSetSnapshots(input: {id: $fid}) {
         data {
             baseSnapshotSummary {
                 id
@@ -102,6 +122,7 @@ var jobInstanceQuery = `query SdkGolangJobInstance($id:String!, $clusterUuid: St
     archived
     endTime
     errorInfo
+    eventSeriesId
     id
     isDisabled
     jobProgress
@@ -125,9 +146,9 @@ var k8sObjectInternalIdQuery = `query SdkGolangK8sObjectInternalId($fid: UUID!) 
   k8sObjectInternalId(fid: $fid)
 }`
 
-// k8sResourceset GraphQL query
-var k8sResourcesetQuery = `query SdkGolangK8sResourceset($fid: UUID!) {
-  kubernetesResourceSet(fid: $fid) {
+// k8sProtectionSet GraphQL query
+var k8sProtectionSetQuery = `query SdkGolangK8sProtectionSet($fid: UUID!) {
+  kubernetesProtectionSet(fid: $fid) {
     cdmId
     clusterUuid
     configuredSlaDomain {

@@ -19,9 +19,9 @@ import (
 // client is the common RSC client used for tests. By reusing the same client
 // we reduce the risk of hitting rate limits when access tokens are created.
 var (
-	cdmID      = uuid.MustParse("8c02fa3d-e452-4d40-82f2-ff94812e994a")
-	k8sFID     = uuid.MustParse("71cb046b-f588-5c22-8599-57caab3fd44b")
-	goldSLAFID = uuid.MustParse("351d014c-f601-5e7d-981e-16607e69d7a4")
+	cdmID      = uuid.MustParse("22950e27-9a7d-4ac1-b32d-0d858de01f9e")
+	k8sFID     = uuid.MustParse("ea176753-d4ee-59b0-b770-54f77335abe3")
+	goldSLAFID = uuid.MustParse("34d1f3c4-3521-5747-836e-4345b363175d")
 	client     *polaris.Client
 )
 
@@ -63,7 +63,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// TestIntegration tests the flow from creation of a ResourceSet to export.
+// TestIntegration tests the flow from creation of a ProtectionSet to export.
 // Needs
 // - RSC service account setup in ~/.rubrik/polaris-service-account.json
 // - CDM onboarded onto above account and its ID.
@@ -80,16 +80,16 @@ func TestIntegration(t *testing.T) {
 	logger := infinityK8sClient.GQL.Log()
 	logger.SetLogLevel(log.Debug)
 
-	// 1. Add ResourceSet.
-	config := infinityk8s.AddK8sResourceSetConfig{
-		KubernetesClusterUUID: k8sFID.String(),
-		KubernetesNamespace:   "default",
-		Definition:            "{}",
-		Name:                  "default-rs",
-		RSType:                "namespace",
+	// 1. Add ProtectionSet.
+	config := infinityk8s.AddK8sProtectionSetConfig{
+		KubernetesClusterId: k8sFID.String(),
+		KubernetesNamespace: "default",
+		Definition:          "{}",
+		Name:                "default-rs",
+		RSType:              "namespace",
 	}
 
-	addResp, err := infinityK8sClient.AddK8sResourceSet(ctx, config)
+	addResp, err := infinityK8sClient.AddK8sProtectionSet(ctx, config)
 	if err != nil {
 		t.Error(err)
 		return
@@ -101,10 +101,10 @@ func TestIntegration(t *testing.T) {
 
 	logger.Printf(log.Info, "add succeeded, %+v", addResp)
 
-	// 2. Get resourceset.
+	// 2. Get ProtectionSet.
 	// If we get to this point, addResp.ID should be a valid uuid.
 	rsFID := uuid.Must(uuid.Parse(addResp.ID))
-	getResp, err := infinityK8sClient.GetK8sResourceSet(ctx, rsFID)
+	getResp, err := infinityK8sClient.GetK8sProtectionSet(ctx, rsFID)
 	if err != nil {
 		t.Error(err)
 		return
@@ -112,8 +112,8 @@ func TestIntegration(t *testing.T) {
 	logger.Printf(log.Info, "get succeeded, %+v", getResp)
 
 	defer func() {
-		// N + 1. Delete resourceset.
-		delResp, err := infinityK8sClient.DeleteK8sResourceSet(
+		// N + 1. Delete ProtectionSet.
+		delResp, err := infinityK8sClient.DeleteK8sProtectionSet(
 			ctx,
 			rsFID.String(),
 			false,
@@ -147,9 +147,9 @@ func TestIntegration(t *testing.T) {
 	}
 	logger.Printf(log.Info, "Assign SLA response %v\n", assignResp)
 
-	// 4. Get resourceset and check the sla.
+	// 4. Get ProtectionSet and check the sla.
 	time.Sleep(1 * time.Minute)
-	getResp, err = infinityK8sClient.GetK8sResourceSet(ctx, rsFID)
+	getResp, err = infinityK8sClient.GetK8sProtectionSet(ctx, rsFID)
 	if err != nil {
 		t.Error(err)
 		return
@@ -201,7 +201,7 @@ func TestIntegration(t *testing.T) {
 			case <-ctx.Done():
 				return nil, errors.New("timeout")
 			default:
-				snapshots, err := infinityK8sClient.GetResourceSetSnapshots(
+				snapshots, err := infinityK8sClient.GetProtectionSetSnapshots(
 					timeoutCTX,
 					rsFID.String(),
 				)
@@ -222,11 +222,33 @@ func TestIntegration(t *testing.T) {
 	}
 	logger.Printf(log.Info, "Get snapshot response: %+v", snaps)
 
+	// 6.1 check for events on the snapshot job. Since the job is complete, we
+	// should see all the events.
+	esi := getJobResp.EventSeriesID
+	series, err := infinityK8sClient.GetActivitySeries(
+		ctx,
+		uuid.MustParse(esi),
+		cdmID,
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	for _, act := range series {
+		logger.Printf(
+			log.Info,
+			"snapshot activity: %s, %s, %s",
+			act.ActivityInfo,
+			act.Message,
+			act.Status,
+		)
+	}
+
 	// 8. Start the on demand export k8s resource set snapshot job
-	exportJobResp, err := infinityK8sClient.ExportK8sResourceSetSnapshot(
+	exportJobResp, err := infinityK8sClient.ExportK8sProtectionSetSnapshot(
 		ctx,
 		snaps[0],
-		infinityk8s.ExportK8sResourceSetSnapshotJobConfig{
+		infinityk8s.ExportK8sProtectionSetSnapshotJobConfig{
 			TargetNamespaceName: "default-export-ns",
 			TargetClusterFID:    k8sFID.String(),
 			IgnoreErrors:        false,
@@ -252,6 +274,28 @@ func TestIntegration(t *testing.T) {
 	}
 	logger.Printf(log.Info, "get job response: %+v", getJobResp)
 
+	// 9.1 check for events on the restore job. Since the job is incomplete, we
+	// should not see all the events.
+	resi := getJobResp.EventSeriesID
+	rseries, err := infinityK8sClient.GetActivitySeries(
+		ctx,
+		uuid.MustParse(resi),
+		cdmID,
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	for _, act := range rseries {
+		logger.Printf(
+			log.Info,
+			"restore activity: %s, %s, %s",
+			act.ActivityInfo,
+			act.Message,
+			act.Status,
+		)
+	}
+
 	// 11. Translate FID to internal_id and back.
 	interalID, err := infinityK8sClient.GetK8sObjectInternalID(ctx, rsFID)
 	if err != nil {
@@ -276,6 +320,54 @@ func TestIntegration(t *testing.T) {
 			"internal id %s doesn't match expectation %s",
 			fid.String(),
 			rsFID.String(),
+		)
+	}
+}
+
+func TestIntegrationTemp(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	infinityK8sClient := infinityk8s.Wrap(client)
+	logger := infinityK8sClient.GQL.Log()
+	logger.SetLogLevel(log.Debug)
+
+	// 6. Get the status of the job.
+	getJobResp, err := infinityK8sClient.GetJobInstance(
+		ctx,
+		"CREATE_MN_K8S_SNAPSHOT_d75bccbe-2a4e-4b0b-8ca1-c6a604540a03_80e516da-fd28-4091-80a1-2bb60e16d6e3:::0",
+		cdmID.String(),
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	logger.Printf(log.Info, "get snapshot job response: %+v", getJobResp)
+
+	// 6.1 check for events on the snapshot job. Since the job is complete, we
+	// should see all the events.
+	esi := getJobResp.EventSeriesID
+	series, err := infinityK8sClient.GetActivitySeries(
+		ctx,
+		uuid.MustParse(esi),
+		cdmID,
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	for _, act := range series {
+		logger.Printf(
+			log.Info,
+			"snapshot activity: %s, %s, %s, %s, %+v",
+			act.ActivityInfo,
+			act.Message,
+			act.Status,
+			act.Severity,
+			act.Time,
 		)
 	}
 }

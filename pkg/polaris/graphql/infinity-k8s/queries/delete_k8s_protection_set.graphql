@@ -1,5 +1,5 @@
 mutation RubrikPolarisSDKRequest($id:String!, $preserveSnapshots: Boolean) {
-  deleteK8sResourceSet(input: {id: $id, preserveSnapshots: $preserveSnapshots}) {
+  deleteK8sProtectionSet(input: {id: $id, preserveSnapshots: $preserveSnapshots}) {
     success
   }
 }
