@@ -166,7 +166,7 @@ func TestIntegration(t *testing.T) {
 	}
 
 	// 5. Create an on-demand snapshot.
-	snapshotRet, err := infinityK8sClient.CreateK8sResourceSnapshot(
+	snapshotRet, err := infinityK8sClient.CreateK8sProtectionSetSnapshot(
 		ctx,
 		rsFID.String(),
 		infinityk8s.BaseOnDemandSnapshotConfigInput{SLAID: goldSLAFID.String()},

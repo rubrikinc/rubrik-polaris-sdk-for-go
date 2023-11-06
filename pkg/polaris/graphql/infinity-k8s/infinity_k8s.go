@@ -444,9 +444,9 @@ func (a API) ExportK8sProtectionSetSnapshot(
 	return payload.Data.Response, nil
 }
 
-// CreateK8sResourceSnapshot takes a ProtectionSetFID, the snapshot job config and
-// starts an on-demand snapshot job in CDM.
-func (a API) CreateK8sResourceSnapshot(
+// CreateK8sProtectionSetSnapshot takes a ProtectionSetFID, the snapshot job
+// config and starts an on-demand snapshot job in CDM.
+func (a API) CreateK8sProtectionSetSnapshot(
 	ctx context.Context,
 	protectionSetFID string,
 	jobConfig BaseOnDemandSnapshotConfigInput,
@@ -605,7 +605,7 @@ func (a API) getProtectionSetSnapshots(
 
 	var payload struct {
 		Data struct {
-			K8sResourceSnapshots struct {
+			K8sProtectionSetSnapshots struct {
 				Data []struct {
 					BaseSnapshotSummary BaseSnapshotSummary `json:"baseSnapshotSummary"`
 				} `json:"data"`
@@ -618,8 +618,8 @@ func (a API) getProtectionSetSnapshots(
 			err,
 		)
 	}
-	snaps := make([]string, len(payload.Data.K8sResourceSnapshots.Data))
-	for i, item := range payload.Data.K8sResourceSnapshots.Data {
+	snaps := make([]string, len(payload.Data.K8sProtectionSetSnapshots.Data))
+	for i, item := range payload.Data.K8sProtectionSetSnapshots.Data {
 		snaps[i] = item.BaseSnapshotSummary.ID
 	}
 	return snaps, nil
