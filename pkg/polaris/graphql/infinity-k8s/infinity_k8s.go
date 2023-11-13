@@ -60,7 +60,7 @@ type JobInstanceDetail struct {
 type AddK8sProtectionSetConfig struct {
 	Definition          string   `json:"definition"`
 	HookConfigs         []string `json:"hookConfigs,omitempty"`
-	KubernetesClusterId string   `json:"kubernetesClusterId,omitempty"`
+	KubernetesClusterID string   `json:"kubernetesClusterId,omitempty"`
 	KubernetesNamespace string   `json:"kubernetesNamespace,omitempty"`
 	Name                string   `json:"name"`
 	RSType              string   `json:"rsType"`
@@ -80,10 +80,19 @@ type AddK8sProtectionSetResponse struct {
 // ExportK8sProtectionSetSnapshotJobConfig defines parameters required to
 // export a snapshot.
 type ExportK8sProtectionSetSnapshotJobConfig struct {
-	TargetNamespaceName string `json:"targetNamespaceName"`
-	TargetClusterFID    string `json:"targetClusterId"`
-	IgnoreErrors        bool   `json:"ignoreErrors,omitempty"`
-	Filter              string `json:"filter,omitempty"`
+	TargetNamespaceName string   `json:"targetNamespaceName"`
+	TargetClusterFID    string   `json:"targetClusterId"`
+	IgnoreErrors        bool     `json:"ignoreErrors,omitempty"`
+	Filter              string   `json:"filter,omitempty"`
+	PVCNames            []string `json:"pvcNames,omitempty"`
+}
+
+// RestoreK8sProtectionSetSnapshotJobConfig defines parameters required to
+// export a snapshot.
+type RestoreK8sProtectionSetSnapshotJobConfig struct {
+	IgnoreErrors bool     `json:"ignoreErrors,omitempty"`
+	Filter       string   `json:"filter,omitempty"`
+	PVCNames     []string `json:"pvcNames,omitempty"`
 }
 
 // BaseOnDemandSnapshotConfigInput defines parameters required to take an
@@ -168,8 +177,8 @@ type BaseSnapshotSummary struct {
 
 // ActivitySeriesInput is the input for the activitySeries query.
 type ActivitySeriesInput struct {
-	ActivitySeriesId uuid.UUID `json:"activitySeriesId"`
-	ClusterUUID      uuid.UUID `json:"clusterUuid,omitempty"`
+	ActivitySeriesID uuid.UUID `json:"activitySeriesId"`
+	CDMClusterUUID   uuid.UUID `json:"clusterUuid,omitempty"`
 }
 
 // EventSeverity is the severity of the event.
@@ -342,7 +351,7 @@ func (a API) DeleteK8sProtectionSet(
 	return true, nil
 }
 
-// GetInstance fetches information about the CDM job corresponding to the
+// GetJobInstance fetches information about the CDM job corresponding to the
 // given jobID and cdmClusterID.
 func (a API) GetJobInstance(
 	ctx context.Context,
@@ -393,8 +402,8 @@ func (a API) GetJobInstance(
 	return payload.Data.Response, nil
 }
 
-// ExportK8sProtectionSetSnapshot takes a snapshot FID, the export job config and
-// starts an on-demand export job in CDM.
+// ExportK8sProtectionSetSnapshot takes a snapshot FID, the export job config
+// and starts an on-demand export job in CDM.
 func (a API) ExportK8sProtectionSetSnapshot(
 	ctx context.Context,
 	snapshotFID string,
@@ -437,6 +446,57 @@ func (a API) ExportK8sProtectionSetSnapshot(
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return AsyncRequestStatus{}, fmt.Errorf(
 			"failed to unmarshal exportK8sProtectionSetSnapshot response: %v",
+			err,
+		)
+	}
+
+	return payload.Data.Response, nil
+}
+
+// RestoreK8sProtectionSetSnapshot takes a snapshot FID, the restore job config
+// and starts an on-demand restore job in CDM.
+func (a API) RestoreK8sProtectionSetSnapshot(
+	ctx context.Context,
+	snapshotFID string,
+	jobConfig RestoreK8sProtectionSetSnapshotJobConfig,
+) (AsyncRequestStatus, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		restoreK8sProtectionSetSnapshotQuery,
+		struct {
+			SnapshotFID string                                   `json:"id"`
+			JobConfig   RestoreK8sProtectionSetSnapshotJobConfig `json:"jobConfig"`
+		}{
+			SnapshotFID: snapshotFID,
+			JobConfig:   jobConfig,
+		},
+	)
+
+	if err != nil {
+		return AsyncRequestStatus{}, fmt.Errorf(
+			"failed to request restoreK8sProtectionSetSnapshot: %w",
+			err,
+		)
+	}
+	a.log.Printf(
+		log.Debug,
+		"restoreK8sProtectionSetSnapshot(%q, %q): %s",
+		snapshotFID,
+		jobConfig,
+		string(buf),
+	)
+
+	var payload struct {
+		Data struct {
+			Response AsyncRequestStatus `json:"restoreK8sProtectionSetSnapshot"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return AsyncRequestStatus{}, fmt.Errorf(
+			"failed to unmarshal restoreK8sProtectionSetSnapshot response: %v",
 			err,
 		)
 	}
@@ -629,8 +689,8 @@ func (a API) getProtectionSetSnapshots(
 // given activity series id.
 func (a API) GetActivitySeries(
 	ctx context.Context,
-	activitySeriesId uuid.UUID,
-	clusterUUID uuid.UUID,
+	activitySeriesID uuid.UUID,
+	cdmClusterID uuid.UUID,
 ) ([]ActivitySeries, error) {
 
 	var ret []ActivitySeries
@@ -648,7 +708,7 @@ func (a API) GetActivitySeries(
 				After string              `json:"after,omitempty"`
 			}{
 				Input: ActivitySeriesInput{
-					ActivitySeriesId: activitySeriesId, ClusterUUID: clusterUUID,
+					ActivitySeriesID: activitySeriesID, CDMClusterUUID: cdmClusterID,
 				},
 				After: cursor,
 			},

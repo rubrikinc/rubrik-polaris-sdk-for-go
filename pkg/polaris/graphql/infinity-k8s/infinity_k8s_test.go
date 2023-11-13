@@ -82,7 +82,7 @@ func TestIntegration(t *testing.T) {
 
 	// 1. Add ProtectionSet.
 	config := infinityk8s.AddK8sProtectionSetConfig{
-		KubernetesClusterId: k8sFID.String(),
+		KubernetesClusterID: k8sFID.String(),
 		KubernetesNamespace: "default",
 		Definition:          "{}",
 		Name:                "default-rs",
@@ -274,7 +274,7 @@ func TestIntegration(t *testing.T) {
 	}
 	logger.Printf(log.Info, "get job response: %+v", getJobResp)
 
-	// 9.1 check for events on the restore job. Since the job is incomplete, we
+	// 10 check for events on the restore job. Since the job is incomplete, we
 	// should not see all the events.
 	resi := getJobResp.EventSeriesID
 	rseries, err := infinityK8sClient.GetActivitySeries(
@@ -296,7 +296,34 @@ func TestIntegration(t *testing.T) {
 		)
 	}
 
-	// 11. Translate FID to internal_id and back.
+	// 11. Start the on demand restore k8s resource set snapshot job
+	restoreJobResp, err := infinityK8sClient.RestoreK8sProtectionSetSnapshot(
+		ctx,
+		snaps[0],
+		infinityk8s.RestoreK8sProtectionSetSnapshotJobConfig{
+			IgnoreErrors: false,
+			Filter:       "{}",
+		},
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	logger.Printf(log.Info, "restore job response: %+v", restoreJobResp)
+
+	// 12. Use the job id of the new job and call the get job instance operation
+	// restoreJobResp.ID would have a valid job instance id
+	getJobResp, err = infinityK8sClient.GetJobInstance(
+		ctx,
+		restoreJobResp.ID,
+		cdmID.String(),
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// 13. Translate FID to internal_id and back.
 	interalID, err := infinityK8sClient.GetK8sObjectInternalID(ctx, rsFID)
 	if err != nil {
 		t.Error(err)

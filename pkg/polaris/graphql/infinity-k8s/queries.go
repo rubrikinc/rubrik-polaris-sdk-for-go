@@ -199,3 +199,22 @@ var k8sProtectionSetQuery = `query SdkGolangK8sProtectionSet($fid: UUID!) {
     slaPauseStatus
   }
 }`
+
+// restoreK8sProtectionSetSnapshot GraphQL query
+var restoreK8sProtectionSetSnapshotQuery = `mutation SdkGolangRestoreK8sProtectionSetSnapshot($id: String!, $jobConfig: K8sRestoreParametersInput!) {
+  restoreK8sProtectionSetSnapshot(input: {id: $id, jobConfig: $jobConfig}) {
+    endTime
+    error {
+      message
+    }
+    id
+    links {
+      rel
+      href
+    }
+    nodeId
+    progress
+    startTime
+    status
+  }
+}`
