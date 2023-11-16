@@ -627,7 +627,7 @@ func (a API) AccountArtifacts(ctx context.Context, id IdentityFunc) (map[string]
 
 	artifacts, err := aws.Wrap(a.client).ArtifactsToDelete(ctx, nativeID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%s", err)
+		return nil, nil, fmt.Errorf("failed to get artifacts registered with account: %s", err)
 	}
 
 	instanceProfiles := make(map[string]string)
