@@ -58,10 +58,19 @@ type ExocomputeConfig struct {
 // ExocomputeConfigsForAccount holds all exocompute configs for a specific
 // account.
 type ExocomputeConfigsForAccount struct {
-	Account         CloudAccount       `json:"awsCloudAccount"`
-	Configs         []ExocomputeConfig `json:"configs"`
-	EligibleRegions []string           `json:"exocomputeEligibleRegions"`
-	Feature         Feature            `json:"featureDetail"`
+	Account         CloudAccount          `json:"awsCloudAccount"`
+	Configs         []ExocomputeConfig    `json:"configs"`
+	EligibleRegions []string              `json:"exocomputeEligibleRegions"`
+	Feature         Feature               `json:"featureDetail"`
+	MappedAccounts  []CloudAccountDetails `json:"mappedCloudAccounts"`
+}
+
+// CloudAccountDetails holds the details about an exocompute application account
+// mapping.
+type CloudAccountDetails struct {
+	ID       uuid.UUID `json:"id"`
+	NativeID string    `json:"nativeId"`
+	Name     string    `json:"name"`
 }
 
 // ExocomputeConfigs returns all exocompute configs matching the specified
@@ -205,4 +214,65 @@ func (a API) StartExocomputeDisableJob(ctx context.Context, id uuid.UUID) (uuid.
 	}
 
 	return payload.Data.Result.JobID, nil
+}
+
+// MapCloudAccountExocomputeAccount maps the slice of exocompute application
+// accounts to the specified exocompute host account.
+func (a API) MapCloudAccountExocomputeAccount(ctx context.Context, hostID uuid.UUID, appIDs []uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, mapCloudAccountExocomputeAccountQuery, struct {
+		HostID uuid.UUID   `json:"exocomputeCloudAccountId"`
+		AppIDs []uuid.UUID `json:"cloudAccountIds"`
+	}{HostID: hostID, AppIDs: appIDs})
+	if err != nil {
+		return fmt.Errorf("failed to request mapCloudAccountExocomputeAccount: %w", err)
+	}
+	a.log.Printf(log.Debug, "mapCloudAccountExocomputeAccount(%q, %v): %s", hostID, appIDs, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Success bool `json:"isSuccess"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal mapCloudAccountExocomputeAccount: %v", err)
+	}
+	if !payload.Data.Result.Success {
+		return errors.New("")
+	}
+
+	return nil
+}
+
+// UnmapCloudAccountExocomputeAccount unmaps the slice of exocompute application
+// accounts.
+func (a API) UnmapCloudAccountExocomputeAccount(ctx context.Context, appIDs []uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, unmapCloudAccountExocomputeAccountQuery, struct {
+		AppIDs []uuid.UUID `json:"cloudAccountIds"`
+	}{AppIDs: appIDs})
+	if err != nil {
+		return fmt.Errorf("failed to request unmapCloudAccountExocomputeAccount: %w", err)
+	}
+	a.log.Printf(log.Debug, "unmapCloudAccountExocomputeAccount(%v): %s", appIDs, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Success bool `json:"isSuccess"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal unmapCloudAccountExocomputeAccount: %v", err)
+	}
+	if !payload.Data.Result.Success {
+		return errors.New("")
+	}
+
+	return nil
 }

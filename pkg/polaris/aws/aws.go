@@ -380,7 +380,7 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, features []
 	}
 
 	if config.config != nil {
-		for _, feature := range features {
+		for _, feature := range sortFeaturesForRemoval(features) {
 			if err := a.removeAccountWithCFT(ctx, config, akkount, feature, deleteSnapshots); err != nil {
 				return err
 			}
@@ -394,7 +394,7 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, features []
 func (a API) removeAccount(ctx context.Context, account CloudAccount, features []core.Feature, deleteSnapshots bool) error {
 	a.log.Print(log.Trace)
 
-	for _, feature := range features {
+	for _, feature := range sortFeaturesForRemoval(features) {
 		if err := a.disableFeature(ctx, account, feature, deleteSnapshots); err != nil {
 			return fmt.Errorf("failed to disable native account: %s", err)
 		}
@@ -753,4 +753,32 @@ func (a API) TrustPolicies(ctx context.Context, id IdentityFunc, features []core
 	}
 
 	return trustPolicies, nil
+}
+
+// sortFeaturesForRemoval sorts the features in order for removal.
+// The exocompute feature must be removed before the cloud native protection
+// feature.
+func sortFeaturesForRemoval(features []core.Feature) []core.Feature {
+	var removalOrder = map[core.Feature]int{
+		core.FeatureExocompute:            1,
+		core.FeatureRDSProtection:         2,
+		core.FeatureCloudNativeProtection: 3,
+		core.FeatureAll:                   4,
+	}
+
+	sort.Slice(features, func(i, j int) bool {
+		wi, ok := removalOrder[features[i]]
+		if !ok {
+			wi = 0
+		}
+
+		wj, ok := removalOrder[features[j]]
+		if !ok {
+			wj = 0
+		}
+
+		return wi < wj
+	})
+
+	return features
 }

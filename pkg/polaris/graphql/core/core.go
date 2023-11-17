@@ -72,21 +72,22 @@ const (
 )
 
 var validFeatures = map[Feature]struct{}{
-	FeatureAll:                       {},
-	FeatureAppFlows:                  {},
-	FeatureArchival:                  {},
-	FeatureAzureSQLDBProtection:      {},
-	FeatureAzureSQLMIProtection:      {},
-	FeatureCloudAccounts:             {},
-	FeatureCloudNativeArchival:       {},
-	FeatureCloudNativeBLOBProtection: {},
-	FeatureCloudNativeProtection:     {},
-	FeatureCloudNativeS3Protection:   {},
-	FeatureExocompute:                {},
-	FeatureGCPSharedVPCHost:          {},
-	FeatureKubernetesProtection:      {},
-	FeatureRDSProtection:             {},
-	FeatureServerAndApps:             {},
+	FeatureAll:                           {},
+	FeatureAppFlows:                      {},
+	FeatureArchival:                      {},
+	FeatureAzureSQLDBProtection:          {},
+	FeatureAzureSQLMIProtection:          {},
+	FeatureCloudAccounts:                 {},
+	FeatureCloudNativeArchival:           {},
+	FeatureCloudNativeArchivalEncryption: {},
+	FeatureCloudNativeBLOBProtection:     {},
+	FeatureCloudNativeProtection:         {},
+	FeatureCloudNativeS3Protection:       {},
+	FeatureExocompute:                    {},
+	FeatureGCPSharedVPCHost:              {},
+	FeatureKubernetesProtection:          {},
+	FeatureRDSProtection:                 {},
+	FeatureServerAndApps:                 {},
 }
 
 // ContainsFeature returns true if the features slice contains the specified

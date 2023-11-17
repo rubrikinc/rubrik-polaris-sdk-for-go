@@ -79,6 +79,11 @@ var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsN
             status
             awsRegions
         }
+        mappedCloudAccounts {
+            id
+            name
+            nativeId
+        }
     }
 }`
 
@@ -291,6 +296,17 @@ var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloud
     }
 }`
 
+// mapCloudAccountExocomputeAccount GraphQL query
+var mapCloudAccountExocomputeAccountQuery = `mutation SdkGolangMapCloudAccountExocomputeAccount($exocomputeCloudAccountId: UUID!, $cloudAccountIds: [UUID!]!) {
+    result: mapCloudAccountExocomputeAccount(input: {
+        exocomputeCloudAccountId: $exocomputeCloudAccountId,
+        cloudAccountIds:          $cloudAccountIds,
+        cloudVendor:              AWS
+    }) {
+        isSuccess
+    }
+}`
+
 // prepareAwsCloudAccountDeletion GraphQL query
 var prepareAwsCloudAccountDeletionQuery = `mutation SdkGolangPrepareAwsCloudAccountDeletion($cloudAccountId: UUID!, $feature: CloudAccountFeature!) {
     prepareAwsCloudAccountDeletion(input: {cloudAccountId: $cloudAccountId, feature: $feature}) {
@@ -334,6 +350,16 @@ var startAwsNativeAccountDisableJobQuery = `mutation SdkGolangStartAwsNativeAcco
     }) {
         error
         jobId
+    }
+}`
+
+// unmapCloudAccountExocomputeAccount GraphQL query
+var unmapCloudAccountExocomputeAccountQuery = `mutation SdkGolangUnmapCloudAccountExocomputeAccount($cloudAccountIds: [UUID!]!) {
+    result: unmapCloudAccountExocomputeAccount(input: {
+        cloudAccountIds: $cloudAccountIds,
+        cloudVendor:     AWS,
+    }) {
+        isSuccess
     }
 }`
 

@@ -217,7 +217,7 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 
 	configsForAccounts, err := aws.Wrap(a.client).ExocomputeConfigs(ctx, "")
 	if err != nil {
-		return ExocomputeConfig{}, fmt.Errorf("failed to get exocompute configs: %s", err)
+		return ExocomputeConfig{}, fmt.Errorf("failed to get exocompute configs for account: %s", err)
 	}
 
 	exoID := id.String()
@@ -244,7 +244,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]Exocompu
 
 	configsForAccounts, err := aws.Wrap(a.client).ExocomputeConfigs(ctx, nativeID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get exocompute configs: %s", err)
+		return nil, fmt.Errorf("failed to get exocompute configs for account: %s", err)
 	}
 
 	var exoConfigs []ExocomputeConfig
@@ -297,6 +297,101 @@ func (a API) RemoveExocomputeConfig(ctx context.Context, id uuid.UUID) error {
 	err := aws.Wrap(a.client).DeleteExocomputeConfig(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to remove exocompute config: %v", err)
+	}
+
+	return nil
+}
+
+// ExocomputeHostAccount returns the exocompute host account for the exocompute
+// application account with the specified id.
+func (a API) ExocomputeHostAccount(ctx context.Context, appID IdentityFunc) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	cloudAccountID, err := a.toCloudAccountID(ctx, appID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to get cloud account id: %s", err)
+	}
+
+	configsForAccounts, err := aws.Wrap(a.client).ExocomputeConfigs(ctx, "")
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to get exocompute configs for account: %s", err)
+	}
+
+	for _, configsForAccount := range configsForAccounts {
+		for _, mappedAccount := range configsForAccount.MappedAccounts {
+			if mappedAccount.ID == cloudAccountID {
+				return configsForAccount.Account.ID, nil
+			}
+		}
+	}
+
+	return uuid.Nil, fmt.Errorf("exocompute account %w", graphql.ErrNotFound)
+}
+
+// ExocomputeApplicationAccounts returns the exocompute application accounts for
+// the exocompute host account with the specified id.
+func (a API) ExocomputeApplicationAccounts(ctx context.Context, hostID IdentityFunc) ([]uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	nativeID, err := a.toNativeID(ctx, hostID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get native id: %s", err)
+	}
+
+	configsForAccounts, err := aws.Wrap(a.client).ExocomputeConfigs(ctx, nativeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get exocompute configs for account: %s", err)
+	}
+
+	var mappedAccounts []uuid.UUID
+	for _, configsForAccount := range configsForAccounts {
+		if configsForAccount.Account.NativeID == nativeID {
+			for _, mappedAccount := range configsForAccount.MappedAccounts {
+				mappedAccounts = append(mappedAccounts, mappedAccount.ID)
+			}
+		}
+	}
+	if len(mappedAccounts) == 0 {
+		return nil, fmt.Errorf("exocompute mapped accounts %w", graphql.ErrNotFound)
+	}
+
+	return mappedAccounts, nil
+}
+
+// MapExocompute maps the exocompute application account to the specified
+// exocompute host account.
+func (a API) MapExocompute(ctx context.Context, hostID IdentityFunc, appID IdentityFunc) error {
+	a.log.Print(log.Trace)
+
+	hostCloudAccountID, err := a.toCloudAccountID(ctx, hostID)
+	if err != nil {
+		return fmt.Errorf("failed to get cloud account id: %s", err)
+	}
+
+	appCloudAccountID, err := a.toCloudAccountID(ctx, appID)
+	if err != nil {
+		return fmt.Errorf("failed to get cloud account id: %s", err)
+	}
+
+	if err = aws.Wrap(a.client).MapCloudAccountExocomputeAccount(ctx, hostCloudAccountID, []uuid.UUID{appCloudAccountID}); err != nil {
+		return fmt.Errorf("failed to map exocompute config: %v", err)
+	}
+
+	return nil
+}
+
+// UnmapExocompute unmaps the exocompute application account with the specified
+// id.
+func (a API) UnmapExocompute(ctx context.Context, appID IdentityFunc) error {
+	a.log.Print(log.Trace)
+
+	cloudAccountID, err := a.toCloudAccountID(ctx, appID)
+	if err != nil {
+		return fmt.Errorf("failed to get cloud account id: %s", err)
+	}
+
+	if err := aws.Wrap(a.client).UnmapCloudAccountExocomputeAccount(ctx, []uuid.UUID{cloudAccountID}); err != nil {
+		return fmt.Errorf("failed to unmap exocompute config: %v", err)
 	}
 
 	return nil

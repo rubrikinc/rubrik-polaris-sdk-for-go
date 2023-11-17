@@ -32,5 +32,10 @@ query RubrikPolarisSDKRequest($awsNativeAccountIdOrNamePrefix: String!) {
             status
             awsRegions
         }
+        mappedCloudAccounts {
+            id
+            name
+            nativeId
+        }
     }
 }
