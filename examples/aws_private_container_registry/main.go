@@ -59,7 +59,7 @@ func main() {
 
 	// Set the private container registry for the AWS account.
 	err = awsClient.SetPrivateContainerRegistry(ctx, aws.CloudAccountID(id),
-		"https://123456789012.dkr.ecr.us-east-2.amazonaws.com", "123456789012")
+		"123456789012.dkr.ecr.us-east-2.amazonaws.com", "123456789012")
 	if err != nil {
 		log.Fatal(err)
 	}
