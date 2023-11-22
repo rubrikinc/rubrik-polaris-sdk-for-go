@@ -1,0 +1,11 @@
+mutation RubrikPolarisSDKRequest($exocomputeCloudAccountId: UUID!, $pcrUrl: String!, $awsNativeId: String) {
+    result: setPrivateContainerRegistryDetails(input: {
+        exocomputeCloudAccountId: $exocomputeCloudAccountId,
+        pcrUrl:                   $pcrUrl,
+        pcrAwsImagePullDetails: {
+            awsNativeId: $awsNativeId
+        }
+    }) {
+        success
+    }
+}

@@ -333,6 +333,19 @@ var registerAwsFeatureArtifactsQuery = `mutation SdkGolangRegisterAwsFeatureArti
     }
 }`
 
+// setPrivateContainerRegistryDetails GraphQL query
+var setPrivateContainerRegistryDetailsQuery = `mutation SdkGolangSetPrivateContainerRegistryDetails($exocomputeCloudAccountId: UUID!, $pcrUrl: String!, $awsNativeId: String) {
+    result: setPrivateContainerRegistryDetails(input: {
+        exocomputeCloudAccountId: $exocomputeCloudAccountId,
+        pcrUrl:                   $pcrUrl,
+        pcrAwsImagePullDetails: {
+            awsNativeId: $awsNativeId
+        }
+    }) {
+        success
+    }
+}`
+
 // startAwsExocomputeDisableJob GraphQL query
 var startAwsExocomputeDisableJobQuery = `mutation SdkGolangStartAwsExocomputeDisableJob($cloudAccountId: UUID!) {
     result: startAwsExocomputeDisableJob(input: {cloudAccountId: $cloudAccountId}) {
