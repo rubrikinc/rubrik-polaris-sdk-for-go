@@ -106,6 +106,35 @@ var allAwsPermissionPoliciesQuery = `query SdkGolangAllAwsPermissionPolicies($cl
     }
 }`
 
+// allTargetMappings GraphQL query
+var allTargetMappingsQuery = `query SdkGolangAllTargetMappings($filter: [TargetMappingFilterInput!]) {
+    result: allTargetMappings(sortBy: NAME, sortOrder: ASC, filter: $filter) {
+        id
+        name
+        groupType
+        targetType
+        connectionStatus {
+            status
+        }
+        targetTemplate {
+            ... on AwsTargetTemplate {
+                cloudAccount {
+                    cloudAccountId
+                }
+                bucketPrefix
+                storageClass
+                region
+                kmsMasterKeyId
+                cloudNativeLocTemplateType
+                bucketTags {
+                    key
+                    value
+                }
+            }
+        }
+    }
+}`
+
 // allVpcsByRegionFromAws GraphQL query
 var allVpcsByRegionFromAwsQuery = `query SdkGolangAllVpcsByRegionFromAws($awsAccountRubrikId: UUID!, $region: AwsNativeRegion!) {
     allVpcsByRegionFromAws(awsAccountRubrikId: $awsAccountRubrikId, region: $region) {
@@ -256,6 +285,33 @@ var createAwsExocomputeConfigsQuery = `mutation SdkGolangCreateAwsExocomputeConf
     }
 }`
 
+// createCloudNativeAwsStorageSetting GraphQL query
+var createCloudNativeAwsStorageSettingQuery = `mutation SdkGolangCreateCloudNativeAwsStorageSetting(
+    $cloudAccountId:  UUID!,
+    $name:            String!,
+    $bucketPrefix:    String!,
+    $storageClass:    AwsStorageClass!,
+    $region:          AwsRegion,
+    $kmsMasterKeyId:  String!,
+    $locTemplateType: CloudNativeLocTemplateType!,
+    $bucketTags:      TagsInput
+) {
+    result: createCloudNativeAwsStorageSetting(input: {
+        cloudAccountId:             $cloudAccountId,
+        name:                       $name,
+        bucketPrefix:               $bucketPrefix,
+        storageClass:               $storageClass,
+        region:                     $region,
+        kmsMasterKeyId:             $kmsMasterKeyId,
+        cloudNativeLocTemplateType: $locTemplateType,
+        bucketTags:                 $bucketTags
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}`
+
 // deleteAwsExocomputeConfigs GraphQL query
 var deleteAwsExocomputeConfigsQuery = `mutation SdkGolangDeleteAwsExocomputeConfigs($configIdsToBeDeleted: [UUID!]!) {
     deleteAwsExocomputeConfigs(input: {configIdsToBeDeleted: $configIdsToBeDeleted}) {
@@ -264,6 +320,13 @@ var deleteAwsExocomputeConfigsQuery = `mutation SdkGolangDeleteAwsExocomputeConf
             success
         }
     }
+}`
+
+// deleteTargetMapping GraphQL query
+var deleteTargetMappingQuery = `mutation SdkGolangDeleteTargetMapping($id: String!) {
+    result: deleteTargetMapping(input: {
+        id: $id
+    })
 }`
 
 // finalizeAwsCloudAccountDeletion GraphQL query
@@ -385,6 +448,25 @@ var updateAwsCloudAccountQuery = `mutation SdkGolangUpdateAwsCloudAccount($cloud
 var updateAwsCloudAccountFeatureQuery = `mutation SdkGolangUpdateAwsCloudAccountFeature($action: CloudAccountAction!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegion!]!, $feature: CloudAccountFeature!) {
     result: updateAwsCloudAccountFeature(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
         message
+    }
+}`
+
+// updateCloudNativeAwsStorageSetting GraphQL query
+var updateCloudNativeAwsStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeAwsStorageSetting(
+    $id:             UUID!,
+    $name:           String,
+    $storageClass:   AwsStorageClass,
+    $kmsMasterKeyId: String
+) {
+    result: updateCloudNativeAwsStorageSetting(input: {
+        id:             $id,
+        name:           $name,
+        storageClass:   $storageClass,
+        kmsMasterKeyId: $kmsMasterKeyId
+    }) {
+        targetMapping {
+            id
+        }
     }
 }`
 
