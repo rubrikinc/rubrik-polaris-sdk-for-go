@@ -40,7 +40,7 @@ func AWSAccount() (testAwsAccount, error) {
 		return testAwsAccount{}, err
 	}
 
-	if n := len(testAccount.Exocompute.Subnets); n != 2 {
+	if n := len(testAccount.Exocompute.Subnets); n < 2 {
 		return testAwsAccount{}, fmt.Errorf("file contains the wrong number of subnets: %d", n)
 	}
 
