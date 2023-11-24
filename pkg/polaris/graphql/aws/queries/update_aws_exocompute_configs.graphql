@@ -1,0 +1,21 @@
+mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
+    updateAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
+        configs {
+            areSecurityGroupsRscManaged
+            clusterSecurityGroupId
+            configUuid
+            message
+            nodeSecurityGroupId
+            region
+            subnet1 {
+                availabilityZone
+                subnetId
+            }
+            subnet2 {
+                availabilityZone
+                subnetId
+            }
+            vpcId
+        }
+    }
+}

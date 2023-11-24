@@ -139,6 +139,40 @@ func (a API) CreateExocomputeConfig(ctx context.Context, id uuid.UUID, config Ex
 	return payload.Data.Query.Configs[0], nil
 }
 
+// UpdateExocomputeConfig updates an exocompute config for the account with
+// the specified RSC cloud account id. Returns the updated exocompute config.
+func (a API) UpdateExocomputeConfig(ctx context.Context, id uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, updateAwsExocomputeConfigsQuery, struct {
+		ID      uuid.UUID                `json:"cloudAccountId"`
+		Configs []ExocomputeConfigCreate `json:"configs"`
+	}{ID: id, Configs: []ExocomputeConfigCreate{config}})
+	if err != nil {
+		return ExocomputeConfig{}, fmt.Errorf("failed to request updateAwsExocomputeConfigs: %w", err)
+	}
+	a.log.Printf(log.Debug, "updateAwsExocomputeConfigs(%q, %v): %s", id, config, string(buf))
+
+	var payload struct {
+		Data struct {
+			Query struct {
+				Configs []ExocomputeConfig `json:"configs"`
+			} `json:"updateAwsExocomputeConfigs"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return ExocomputeConfig{}, fmt.Errorf("failed to unmarshal updateAwsExocomputeConfigs: %v", err)
+	}
+	if len(payload.Data.Query.Configs) != 1 {
+		return ExocomputeConfig{}, errors.New("expected a single result")
+	}
+	if payload.Data.Query.Configs[0].Message != "" {
+		return ExocomputeConfig{}, errors.New(payload.Data.Query.Configs[0].Message)
+	}
+
+	return payload.Data.Query.Configs[0], nil
+}
+
 // DeleteExocomputeConfig deletes the exocompute config with the specified RSC
 // exocompute config id.
 func (a API) DeleteExocomputeConfig(ctx context.Context, id uuid.UUID) error {

@@ -26,6 +26,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -109,37 +110,57 @@ func TestAwsExocompute(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Retrieve the exocompute config added.
-	exoConfig, err := awsClient.ExocomputeConfig(ctx, exoID)
+	validateConfig := func(exoID uuid.UUID, sn1inx, sn2inx int) {
+		// Retrieve the exocompute config added.
+		exoConfig, err := awsClient.ExocomputeConfig(ctx, exoID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if exoConfig.ID != exoID {
+			t.Errorf("invalid id: %v", exoConfig.ID)
+		}
+		if exoConfig.Region != "us-east-2" {
+			t.Errorf("invalid region: %v", exoConfig.Region)
+		}
+		if exoConfig.VPCID != testAccount.Exocompute.VPCID {
+			t.Errorf("invalid vpc id: %v", exoConfig.VPCID)
+		}
+		sn1 := testAccount.Exocompute.Subnets[sn1inx]
+		sn2 := testAccount.Exocompute.Subnets[sn2inx]
+		if sn := exoConfig.Subnets[0]; sn.ID != sn1.ID && sn.ID != sn2.ID {
+			t.Errorf("invalid subnet id: %v", sn.ID)
+		}
+		if sn := exoConfig.Subnets[0]; sn.AvailabilityZone != sn1.AvailabilityZone && sn.AvailabilityZone != sn2.AvailabilityZone {
+			t.Errorf("invalid subnet availability zone: %v", sn.AvailabilityZone)
+		}
+		if sn := exoConfig.Subnets[1]; sn.ID != sn1.ID && sn.ID != sn2.ID {
+			t.Errorf("invalid subnet id: %v", sn.ID)
+		}
+		if sn := exoConfig.Subnets[1]; sn.AvailabilityZone != sn1.AvailabilityZone && sn.AvailabilityZone != sn2.AvailabilityZone {
+			t.Errorf("invalid subnet availability zone: %v", sn.AvailabilityZone)
+		}
+		if !exoConfig.ManagedByRubrik {
+			t.Errorf("invalid polaris managed state: %t", exoConfig.ManagedByRubrik)
+		}
+	}
+
+	// Verify that the exocompute config uses subnet 0 & 1 from the test account.
+	validateConfig(exoID, 0, 1)
+
+	// Update the exocompute config to use subnet 1 & 2.
+	updatedExoID, err := awsClient.UpdateExocomputeConfig(ctx, AccountID(testAccount.AccountID),
+		Managed("us-east-2", testAccount.Exocompute.VPCID,
+			[]string{testAccount.Exocompute.Subnets[1].ID, testAccount.Exocompute.Subnets[2].ID}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exoConfig.ID != exoID {
-		t.Errorf("invalid id: %v", exoConfig.ID)
+
+	if updatedExoID != exoID {
+		t.Errorf("invalid exo id post update, expected: %v, got: %v", exoID, updatedExoID)
 	}
-	if exoConfig.Region != "us-east-2" {
-		t.Errorf("invalid region: %v", exoConfig.Region)
-	}
-	if exoConfig.VPCID != testAccount.Exocompute.VPCID {
-		t.Errorf("invalid vpc id: %v", exoConfig.VPCID)
-	}
-	sn1 := testAccount.Exocompute.Subnets[0]
-	sn2 := testAccount.Exocompute.Subnets[1]
-	if sn := exoConfig.Subnets[0]; sn.ID != sn1.ID && sn.ID != sn2.ID {
-		t.Errorf("invalid subnet id: %v", sn.ID)
-	}
-	if sn := exoConfig.Subnets[0]; sn.AvailabilityZone != sn1.AvailabilityZone && sn.AvailabilityZone != sn2.AvailabilityZone {
-		t.Errorf("invalid subnet availability zone: %v", sn.AvailabilityZone)
-	}
-	if sn := exoConfig.Subnets[1]; sn.ID != sn1.ID && sn.ID != sn2.ID {
-		t.Errorf("invalid subnet id: %v", sn.ID)
-	}
-	if sn := exoConfig.Subnets[1]; sn.AvailabilityZone != sn1.AvailabilityZone && sn.AvailabilityZone != sn2.AvailabilityZone {
-		t.Errorf("invalid subnet availability zone: %v", sn.AvailabilityZone)
-	}
-	if !exoConfig.ManagedByRubrik {
-		t.Errorf("invalid polaris managed state: %t", exoConfig.ManagedByRubrik)
-	}
+
+	// Verify that the exocompute config has been updated to use subnet 1 & 2 from the test account.
+	validateConfig(exoID, 1, 2)
 
 	// Remove the exocompute config.
 	err = awsClient.RemoveExocomputeConfig(ctx, exoID)
@@ -148,7 +169,7 @@ func TestAwsExocompute(t *testing.T) {
 	}
 
 	// Verify that the exocompute config was successfully removed.
-	exoConfig, err = awsClient.ExocomputeConfig(ctx, exoID)
+	_, err = awsClient.ExocomputeConfig(ctx, exoID)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
