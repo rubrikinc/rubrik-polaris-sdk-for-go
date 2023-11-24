@@ -1,0 +1,17 @@
+mutation RubrikPolarisSDKRequest(
+    $id:             UUID!,
+    $name:           String,
+    $storageClass:   AwsStorageClass,
+    $kmsMasterKeyId: String
+) {
+    result: updateCloudNativeAwsStorageSetting(input: {
+        id:             $id,
+        name:           $name,
+        storageClass:   $storageClass,
+        kmsMasterKeyId: $kmsMasterKeyId
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}
