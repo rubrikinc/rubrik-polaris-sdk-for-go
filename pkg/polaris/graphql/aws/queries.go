@@ -451,6 +451,29 @@ var updateAwsCloudAccountFeatureQuery = `mutation SdkGolangUpdateAwsCloudAccount
     }
 }`
 
+// updateAwsExocomputeConfigs GraphQL query
+var updateAwsExocomputeConfigsQuery = `mutation SdkGolangUpdateAwsExocomputeConfigs($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
+    updateAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
+        configs {
+            areSecurityGroupsRscManaged
+            clusterSecurityGroupId
+            configUuid
+            message
+            nodeSecurityGroupId
+            region
+            subnet1 {
+                availabilityZone
+                subnetId
+            }
+            subnet2 {
+                availabilityZone
+                subnetId
+            }
+            vpcId
+        }
+    }
+}`
+
 // updateCloudNativeAwsStorageSetting GraphQL query
 var updateCloudNativeAwsStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeAwsStorageSetting(
     $id:             UUID!,
