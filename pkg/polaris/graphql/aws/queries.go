@@ -277,6 +277,29 @@ var updateAwsCloudAccountQuery = `mutation SdkGolangUpdateAwsCloudAccount($actio
     }
 }`
 
+// updateAwsExocomputeConfigs GraphQL query
+var updateAwsExocomputeConfigsQuery = `mutation SdkGolangUpdateAwsExocomputeConfigs($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
+    updateAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
+        configs {
+            areSecurityGroupsRscManaged
+            clusterSecurityGroupId
+            configUuid
+            message
+            nodeSecurityGroupId
+            region
+            subnet1 {
+                availabilityZone
+                subnetId
+            }
+            subnet2 {
+                availabilityZone
+                subnetId
+            }
+            vpcId
+        }
+    }
+}`
+
 // validateAndCreateAwsCloudAccount GraphQL query
 var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!]!) {
     result: validateAndCreateAwsCloudAccount(input: {
