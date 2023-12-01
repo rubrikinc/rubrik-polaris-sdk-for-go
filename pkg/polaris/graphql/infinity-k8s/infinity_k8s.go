@@ -66,6 +66,13 @@ type AddK8sProtectionSetConfig struct {
 	RSType              string   `json:"rsType"`
 }
 
+// UpdateK8sProtectionSetConfig defines the input parameters required to update
+// a ProtectionSet.
+type UpdateK8sProtectionSetConfig struct {
+	Definition  string   `json:"definition,omitempty"`
+	HookConfigs []string `json:"hookConfigs,omitempty"`
+}
+
 // AddK8sProtectionSetResponse is the response received from adding a K8s cluster.
 type AddK8sProtectionSetResponse struct {
 	ID                    string   `json:"id"`
@@ -745,4 +752,55 @@ func (a API) GetActivitySeries(
 		}
 	}
 	return ret, nil
+}
+
+// UpdateK8sProtectionSet updates the K8s protection set corresponding to fid
+// with the config.
+func (a API) UpdateK8sProtectionSet(
+	ctx context.Context,
+	fid string,
+	config UpdateK8sProtectionSetConfig,
+) (bool, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		updateK8sProtectionSetQuery,
+		struct {
+			ID           string                       `json:"id"`
+			UpdateConfig UpdateK8sProtectionSetConfig `json:"updateConfig"`
+		}{
+			ID:           fid,
+			UpdateConfig: config,
+		},
+	)
+	if err != nil {
+		return false, fmt.Errorf(
+			"failed to request updateK8sProtectionSet: %w",
+			err,
+		)
+	}
+	a.log.Printf(
+		log.Debug,
+		"updateK8sProtectionSet(%q, %q): %s",
+		fid,
+		config,
+		string(buf),
+	)
+
+	var payload struct {
+		Data struct {
+			ResponseSuccess struct {
+				Success bool `json:"success"`
+			} `json:"updateK8sProtectionSet"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return false, fmt.Errorf(
+			"failed to unmarshal updateK8sProtectionSet: %v",
+			err,
+		)
+	}
+
+	return payload.Data.ResponseSuccess.Success, nil
 }

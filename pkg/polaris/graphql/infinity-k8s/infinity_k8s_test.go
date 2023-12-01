@@ -128,6 +128,23 @@ func TestIntegration(t *testing.T) {
 		logger.Printf(log.Info, "del succeeded, %+v", delResp)
 	}()
 
+	// 2.1 update ProtectionSet.
+	updateResp, err := infinityK8sClient.UpdateK8sProtectionSet(
+		ctx,
+		rsFID.String(),
+		infinityk8s.UpdateK8sProtectionSetConfig{
+			Definition:  "{\"includes\": [{\"resource\": \"Deployment\"}]}",
+		},
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if updateResp != true {
+		t.Errorf("update failed, %v", updateResp)
+	}
+	logger.Printf(log.Info, "update succeeded, %+v", updateResp)
+
 	// 3. Assign SLA to resource set
 	slaClient := core.Wrap(client.GQL)
 	assignResp, err := slaClient.AssignSLAForSnappableHierarchies(
