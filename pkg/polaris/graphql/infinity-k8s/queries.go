@@ -218,3 +218,13 @@ var restoreK8sProtectionSetSnapshotQuery = `mutation SdkGolangRestoreK8sProtecti
     status
   }
 }`
+
+// updateK8sProtectionSet GraphQL query
+var updateK8sProtectionSetQuery = `mutation SdkGolangUpdateK8sProtectionSet(
+    $id: String!
+    $updateConfig: K8sProtectionSetUpdateConfigInput!
+) {
+    updateK8sProtectionSet(input: { id: $id, config: $updateConfig }) {
+        success
+    }
+}`
