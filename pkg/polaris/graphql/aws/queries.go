@@ -47,44 +47,46 @@ var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWi
 // allAwsExocomputeConfigs GraphQL query
 var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsNativeAccountIdOrNamePrefix: String!) {
     result: allAwsExocomputeConfigs(awsNativeAccountIdOrNamePrefix: $awsNativeAccountIdOrNamePrefix) {
-        awsCloudAccount {
-            cloudType
-            id
-            nativeId
-            message
-            accountName
-        }
-        configs {
-            areSecurityGroupsRscManaged
-            clusterSecurityGroupId
-            configUuid
-            message
-            nodeSecurityGroupId
-            region
-            subnet1 {
-                availabilityZone
-                subnetId
-            }
-            subnet2 {
-                availabilityZone
-                subnetId
-             }
-            vpcId
-        }
-        exocomputeEligibleRegions
-        featureDetail {
-            feature
-            roleArn
-            stackArn
-            status
-            awsRegions
-        }
-        mappedCloudAccounts {
-            id
-            name
-            nativeId
-        }
+    awsCloudAccount {
+      accountName
+      cloudType
+      id
+      nativeId
+      seamlessFlowEnabled
+      message
     }
+    exocomputeConfigs {
+      configUuid
+      hasPcr
+      healthCheckStatus {
+        failureReason
+        lastUpdatedAt
+        status
+        taskchainId
+      }
+      message
+      pcrUrl
+      region
+      configUuid
+      ... on AwsCustomerManagedExocomputeConfig {
+        clusterName
+      }
+      ... on AwsRscManagedExocomputeConfig {
+        vpcId
+        clusterSecurityGroupId
+        nodeSecurityGroupId
+        subnet1 {
+          availabilityZone
+          subnetId
+        }
+        subnet2 {
+          availabilityZone
+          subnetId
+        }
+        areSecurityGroupsRscManaged
+      }
+    }
+  }
 }`
 
 // allAwsPermissionPolicies GraphQL query

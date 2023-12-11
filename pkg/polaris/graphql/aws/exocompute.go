@@ -53,13 +53,16 @@ type ExocomputeConfig struct {
 	// to be specified if IsPolarisManaged is false.
 	ClusterSecurityGroupID string `json:"clusterSecurityGroupId"`
 	NodeSecurityGroupID    string `json:"nodeSecurityGroupId"`
+
+	// Only for customer managed clusters
+	ClusterName string `json:"clusterName"`
 }
 
 // ExocomputeConfigsForAccount holds all exocompute configs for a specific
 // account.
 type ExocomputeConfigsForAccount struct {
 	Account         CloudAccount          `json:"awsCloudAccount"`
-	Configs         []ExocomputeConfig    `json:"configs"`
+	Configs         []ExocomputeConfig    `json:"exocomputeConfigs"`
 	EligibleRegions []string              `json:"exocomputeEligibleRegions"`
 	Feature         Feature               `json:"featureDetail"`
 	MappedAccounts  []CloudAccountDetails `json:"mappedCloudAccounts"`
@@ -101,9 +104,14 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 // ExocomputeConfigCreate represents an exocompute config to be created by
 // Polaris.
 type ExocomputeConfigCreate struct {
-	Region  Region   `json:"region"`
-	VPCID   string   `json:"vpcId"`
-	Subnets []Subnet `json:"subnets"`
+	Region Region `json:"region"`
+
+	// Only required for RSC managed clusters
+	VPCID   string   `json:"vpcId,omitempty"`
+	Subnets []Subnet `json:"subnets,omitempty"`
+
+	// Only required for customer managed clusters
+	ClusterName string `json:"clusterName,omitempty"`
 
 	// When true Rubrik will manage the security groups.
 	IsManagedByRubrik bool `json:"isRscManaged"`
