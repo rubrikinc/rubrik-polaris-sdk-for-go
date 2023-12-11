@@ -289,6 +289,32 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 	return exoID, nil
 }
 
+func (a API) UpdateExocomputeConfig(ctx context.Context, id IdentityFunc, config ExoConfigFunc) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	accountID, err := a.toCloudAccountID(ctx, id)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to get cloud account id: %s", err)
+	}
+
+	exoConfig, err := config(ctx, a.client, accountID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to lookup exocompute config: %s", err)
+	}
+
+	exo, err := aws.Wrap(a.client).UpdateExocomputeConfig(ctx, accountID, exoConfig)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to create exocompute config: %s", err)
+	}
+
+	exoID, err := uuid.Parse(exo.ID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("invalid exocompute configuration id: %s", err)
+	}
+
+	return exoID, nil
+}
+
 // RemoveExocomputeConfig removes the exocompute config with the specified
 // exocompute config id.
 func (a API) RemoveExocomputeConfig(ctx context.Context, id uuid.UUID) error {

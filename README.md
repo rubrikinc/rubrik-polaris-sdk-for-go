@@ -229,6 +229,9 @@ correctly to Polaris:
         }, {
             "id": "<aws-subnet-id>",
             "availabilityZone": "<aws-availability-zone>"
+        }, {
+            "id": "<aws-subnet-id>",
+            "availabilityZone": "<aws-availability-zone>"
         }]
     }
 }
