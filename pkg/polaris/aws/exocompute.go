@@ -213,14 +213,18 @@ func toExocomputeConfig(config aws.ExocomputeConfig) (ExocomputeConfig, error) {
 		return ExocomputeConfig{}, fmt.Errorf("invalid exocompute configuration id: %s", err)
 	}
 
+	var subnets []Subnet
+	for _, s := range []aws.Subnet{config.Subnet1, config.Subnet2} {
+		if s.ID == "" || s.AvailabilityZone == "" {
+			break
+		}
+		subnets = append(subnets, Subnet{ID: s.ID, AvailabilityZone: s.AvailabilityZone})
+	}
 	return ExocomputeConfig{
-		ID:     id,
-		Region: aws.FormatRegion(config.Region),
-		VPCID:  config.VPCID,
-		Subnets: []Subnet{
-			{ID: config.Subnet1.ID, AvailabilityZone: config.Subnet1.AvailabilityZone},
-			{ID: config.Subnet2.ID, AvailabilityZone: config.Subnet2.AvailabilityZone},
-		},
+		ID:                     id,
+		Region:                 aws.FormatRegion(config.Region),
+		VPCID:                  config.VPCID,
+		Subnets:                subnets,
 		ManagedByRubrik:        config.IsManagedByRubrik,
 		ClusterSecurityGroupID: config.ClusterSecurityGroupID,
 		NodeSecurityGroupID:    config.NodeSecurityGroupID,
