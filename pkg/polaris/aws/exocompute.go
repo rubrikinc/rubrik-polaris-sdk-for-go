@@ -51,6 +51,9 @@ type ExocomputeConfig struct {
 	// Security group ids of cluster control plane and worker node.
 	ClusterSecurityGroupID string
 	NodeSecurityGroupID    string
+
+	// Customer cluster name, only for customer managed clusters
+	ClusterName string
 }
 
 // ExoConfigFunc returns an exocompute config initialized from the values
@@ -188,6 +191,20 @@ func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID,
 	}
 }
 
+func CustomerCluster(region, clusterName string) ExoConfigFunc {
+	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
+		reg, err := aws.ParseRegion(region)
+		if err != nil {
+			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
+		}
+
+		return aws.ExocomputeConfigCreate{
+			Region:      reg,
+			ClusterName: clusterName,
+		}, nil
+	}
+}
+
 // toExocomputeConfig converts an polaris/graphql/aws exocompute config to a
 // polaris/aws exocompute config.
 func toExocomputeConfig(config aws.ExocomputeConfig) (ExocomputeConfig, error) {
@@ -207,6 +224,7 @@ func toExocomputeConfig(config aws.ExocomputeConfig) (ExocomputeConfig, error) {
 		ManagedByRubrik:        config.IsManagedByRubrik,
 		ClusterSecurityGroupID: config.ClusterSecurityGroupID,
 		NodeSecurityGroupID:    config.NodeSecurityGroupID,
+		ClusterName:            config.ClusterName,
 	}, nil
 }
 
