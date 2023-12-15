@@ -43,3 +43,20 @@ func (a API) SetPrivateContainerRegistry(ctx context.Context, id IdentityFunc, u
 
 	return nil
 }
+
+// PrivateContainerRegistry
+func (a API) PrivateContainerRegistry(ctx context.Context, id IdentityFunc) (nativeID, url string, err error) {
+	a.log.Print(log.Trace)
+
+	cloudAccountID, err := a.toCloudAccountID(ctx, id)
+	if err != nil {
+		return "", "", err
+	}
+
+	nativeID, url, err = aws.Wrap(a.client).PrivateContainerRegistry(ctx, cloudAccountID)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read private container registrys: %s", err)
+	}
+
+	return nativeID, url, err
+}

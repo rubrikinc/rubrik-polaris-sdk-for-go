@@ -387,6 +387,22 @@ var prepareFeatureUpdateForAwsCloudAccountQuery = `mutation SdkGolangPrepareFeat
     }
 }`
 
+// privateContainerRegistry GraphQL query
+var privateContainerRegistryQuery = `query SdkGolangPrivateContainerRegistry($exocomputeCloudAccountId: UUID!) {
+    result: privateContainerRegistry(input: {
+        exocomputeAccountId: $exocomputeCloudAccountId,
+    }) {
+        pcrDetails {
+            imagePullDetails {
+              ... on PcrAwsImagePullDetails {
+                awsNativeId
+              }
+            }
+            registryUrl
+        }
+    }
+}`
+
 // registerAwsFeatureArtifacts GraphQL query
 var registerAwsFeatureArtifactsQuery = `mutation SdkGolangRegisterAwsFeatureArtifacts($cloudType: AwsCloudType, $awsArtifacts: [AwsAccountFeatureArtifact!]!) {
     result: registerAwsFeatureArtifacts(input: {cloudType: $cloudType, awsArtifacts: $awsArtifacts}) {
@@ -399,16 +415,14 @@ var registerAwsFeatureArtifactsQuery = `mutation SdkGolangRegisterAwsFeatureArti
 }`
 
 // setPrivateContainerRegistryDetails GraphQL query
-var setPrivateContainerRegistryDetailsQuery = `mutation SdkGolangSetPrivateContainerRegistryDetails($exocomputeCloudAccountId: UUID!, $pcrUrl: String!, $awsNativeId: String) {
-    result: setPrivateContainerRegistryDetails(input: {
-        exocomputeCloudAccountId: $exocomputeCloudAccountId,
-        pcrUrl:                   $pcrUrl,
+var setPrivateContainerRegistryDetailsQuery = `mutation SdkGolangSetPrivateContainerRegistryDetails($exocomputeAccountId: UUID!, $registryUrl: String!, $awsNativeId: String) {
+    setPrivateContainerRegistry(input: {
+        exocomputeAccountId: $exocomputeAccountId,
+        registryUrl:         $registryUrl,
         pcrAwsImagePullDetails: {
             awsNativeId: $awsNativeId
         }
-    }) {
-        success
-    }
+    })
 }`
 
 // startAwsExocomputeDisableJob GraphQL query

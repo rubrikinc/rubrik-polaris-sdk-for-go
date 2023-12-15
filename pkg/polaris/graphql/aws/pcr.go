@@ -34,8 +34,8 @@ func (a API) SetPrivateContainerRegistryDetails(ctx context.Context, id uuid.UUI
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, setPrivateContainerRegistryDetailsQuery, struct {
-		ID       uuid.UUID `json:"exocomputeCloudAccountId"`
-		URL      string    `json:"pcrUrl"`
+		ID       uuid.UUID `json:"exocomputeAccountId"`
+		URL      string    `json:"registryUrl"`
 		NativeID string    `json:"awsNativeId,omitempty"`
 	}{ID: id, URL: url, NativeID: nativeID})
 	if err != nil {
@@ -43,16 +43,35 @@ func (a API) SetPrivateContainerRegistryDetails(ctx context.Context, id uuid.UUI
 	}
 	a.log.Printf(log.Debug, "setPrivateContainerRegistryDetails(%q, %q, %q): %s", id, url, nativeID, string(buf))
 
+	return nil
+}
+
+// PrivateContainerRegistry
+func (a API) PrivateContainerRegistry(ctx context.Context, id uuid.UUID) (nativeID, URL string, err error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, privateContainerRegistryQuery, struct {
+		ID uuid.UUID `json:"exocomputeCloudAccountId"`
+	}{ID: id})
+	if err != nil {
+		return "", "", fmt.Errorf("failed to request privateContainerRegistry: %w", err)
+	}
+	a.log.Printf(log.Debug, "privateContainerRegistry(%q): %s", id, string(buf))
 	var payload struct {
 		Data struct {
 			Result struct {
-				Success bool `json:"success"`
+				PCRDetails struct {
+					ImagePullDetails struct {
+						NativeID string `json:"awsNativeId,omitempty"`
+					} `json:"imagePullDetails"`
+					URL string `json:"registryUrl"`
+				} `json:"pcrDetails"`
 			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal setPrivateContainerRegistryDetails: %s", err)
+		return "", "", fmt.Errorf("failed to unmarshal privateContainerRegistry: %s", err)
 	}
 
-	return nil
+	return payload.Data.Result.PCRDetails.ImagePullDetails.NativeID, payload.Data.Result.PCRDetails.URL, nil
 }
