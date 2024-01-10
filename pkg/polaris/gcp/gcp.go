@@ -110,7 +110,7 @@ func (a API) projects(ctx context.Context, feature core.Feature, filter string) 
 			ProjectNumber:         accountWithFeature.Account.ProjectNumber,
 			DefaultServiceAccount: accountWithFeature.Account.UsesGlobalConfig,
 			Features: []Feature{{
-				Feature: accountWithFeature.Feature.Feature,
+				Feature: core.Feature{Name: accountWithFeature.Feature.Feature},
 				Status:  accountWithFeature.Feature.Status,
 			}},
 		})

@@ -29,7 +29,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// SetPrivateContainerRegistryDetails
+// SetPrivateContainerRegistryDetails sets the private container registry.
 func (a API) SetPrivateContainerRegistryDetails(ctx context.Context, id uuid.UUID, url string, nativeID string) error {
 	a.log.Print(log.Trace)
 
@@ -46,7 +46,7 @@ func (a API) SetPrivateContainerRegistryDetails(ctx context.Context, id uuid.UUI
 	return nil
 }
 
-// PrivateContainerRegistry
+// PrivateContainerRegistry returns the private container registry.
 func (a API) PrivateContainerRegistry(ctx context.Context, id uuid.UUID) (nativeID, URL string, err error) {
 	a.log.Print(log.Trace)
 

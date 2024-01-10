@@ -75,7 +75,7 @@ func (a API) Permissions(ctx context.Context, cloud string, features []core.Feat
 		for _, policy := range artifact.CustomerManagedPolicies {
 			customerPolicies = append(customerPolicies, CustomerManagedPolicy{
 				Artifact: strings.TrimSuffix(artifact.ArtifactKey, roleArnSuffix),
-				Feature:  policy.Feature,
+				Feature:  core.Feature{Name: policy.Feature},
 				Name:     policy.PolicyName,
 				Policy:   policy.PolicyDocument,
 			})

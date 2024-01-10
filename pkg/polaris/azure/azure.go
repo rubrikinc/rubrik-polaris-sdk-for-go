@@ -226,7 +226,7 @@ func (a API) subscriptions(ctx context.Context, feature core.Feature, filter str
 				Name:         account.Name,
 				TenantDomain: tenantWithAccounts.DomainName,
 				Features: []Feature{{
-					Feature: account.Feature.Feature,
+					Feature: core.Feature{Name: account.Feature.Feature},
 					Regions: azure.FormatRegions(account.Feature.Regions),
 					Status:  account.Feature.Status,
 				}},
@@ -382,7 +382,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 
 	cloudAccountFeature := azure.CloudAccountFeature{
 		PolicyVersion:       perms.PermissionVersion,
-		FeatureType:         feature,
+		FeatureType:         feature.Name,
 		ResourceGroup:       options.resourceGroup,
 		FeatureSpecificInfo: options.featureSpecificInfo,
 	}

@@ -6,7 +6,7 @@ mutation RubrikPolarisSDKRequest($nativeId: String!, $accountName: String!, $fea
             nativeId: $nativeId,
         }],
         features: $features,
-        featureWithPermissionsGroups: $featuresWithPG
+        featuresWithPermissionsGroups: $featuresWithPG
     }) {
         initiateResponse {
             cloudFormationUrl

@@ -35,9 +35,9 @@ type PermissionPolicyArtifact struct {
 	ArtifactKey             string   `json:"externalArtifactKey"`
 	ManagedPolicies         []string `json:"awsManagedPolicies"`
 	CustomerManagedPolicies []struct {
-		Feature        core.Feature `json:"feature"`
-		PolicyName     string       `json:"policyName"`
-		PolicyDocument string       `json:"policyDocumentJson"`
+		Feature        string `json:"feature"`
+		PolicyName     string `json:"policyName"`
+		PolicyDocument string `json:"policyDocumentJson"`
 	} `json:"customerManagedPolicies"`
 }
 
@@ -102,13 +102,13 @@ func (a API) TrustPolicy(ctx context.Context, cloud Cloud, features []core.Featu
 
 	buf, err := a.GQL.Request(ctx, awsTrustPolicyQuery, struct {
 		Cloud          Cloud                `json:"cloudType"`
-		Features       []core.Feature       `json:"features"`
+		Features       []string             `json:"features"`
 		NativeAccounts []TrustPolicyAccount `json:"awsNativeAccounts"`
-	}{Cloud: cloud, Features: features, NativeAccounts: trustPolicyAccounts})
+	}{Cloud: cloud, Features: core.FeatureNames(features), NativeAccounts: trustPolicyAccounts})
 	if err != nil {
 		return nil, fmt.Errorf("failed to request awsTrustPolicy: %w", err)
 	}
-	a.log.Printf(log.Debug, "awsTrustPolicy(%q, %v, %v): %s", cloud, features, trustPolicyAccounts, string(buf))
+	a.log.Printf(log.Debug, "awsTrustPolicy(%q, %v, %v): %s", cloud, core.FeatureNames(features), trustPolicyAccounts, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -128,7 +128,7 @@ func (a API) TrustPolicy(ctx context.Context, cloud Cloud, features []core.Featu
 // the native ID.
 type AccountFeatureArtifact struct {
 	NativeID  string             `json:"awsNativeId"`
-	Features  []core.Feature     `json:"features"`
+	Features  []string           `json:"features"`
 	Artifacts []ExternalArtifact `json:"externalArtifacts"`
 }
 
@@ -176,7 +176,7 @@ func (a API) RegisterFeatureArtifacts(ctx context.Context, cloud Cloud, artifact
 
 // FeatureResult gives the result of the delete operation for a feature.
 type FeatureResult struct {
-	Feature core.Feature
+	Feature string
 	Success bool
 }
 
@@ -187,9 +187,9 @@ func (a API) DeleteCloudAccountWithoutCft(ctx context.Context, nativeID string, 
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, bulkDeleteAwsCloudAccountWithoutCftQuery, struct {
-		NativeID string         `json:"awsNativeId"`
-		Features []core.Feature `json:"features"`
-	}{NativeID: nativeID, Features: features})
+		NativeID string   `json:"awsNativeId"`
+		Features []string `json:"features"`
+	}{NativeID: nativeID, Features: core.FeatureNames(features)})
 	if err != nil {
 		return nil, fmt.Errorf("failed to request bulkDeleteAwsCloudAccountWithoutCft: %w", err)
 	}
@@ -221,9 +221,9 @@ func (a API) ArtifactsToDelete(ctx context.Context, nativeID string) ([]Artifact
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, awsArtifactsToDeleteQuery, struct {
-		NativeID string         `json:"awsNativeId"`
-		Features []core.Feature `json:"features"`
-	}{NativeID: nativeID, Features: []core.Feature{}})
+		NativeID string   `json:"awsNativeId"`
+		Features []string `json:"features"`
+	}{NativeID: nativeID, Features: []string{}})
 	if err != nil {
 		return nil, fmt.Errorf("failed to request awsArtifactsToDelete: %w", err)
 	}

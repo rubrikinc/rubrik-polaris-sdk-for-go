@@ -120,6 +120,37 @@ func (feature Feature) String() string {
 	return fmt.Sprintf("%s(%s)", feature.Name, buf.String()[:buf.Len()-1])
 }
 
+// FeatureNames
+func FeatureNames(features []Feature) []string {
+	var names []string
+	for _, feature := range features {
+		names = append(names, feature.Name)
+	}
+
+	return names
+}
+
+/*
+const (
+	FeatureNameInvalid                       = ""
+	FeatureNameAll                           = "ALL"
+	FeatureNameAppFlows                      = "APP_FLOWS"
+	FeatureNameArchival                      = "ARCHIVAL"
+	FeatureNameAzureSQLDBProtection          = "AZURE_SQL_DB_PROTECTION"
+	FeatureNameAzureSQLMIProtection          = "AZURE_SQL_MI_PROTECTION"
+	FeatureNameCloudNativeArchival           = "CLOUD_NATIVE_ARCHIVAL"
+	FeatureNameCloudNativeArchivalEncryption = "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"
+	FeatureNameCloudNativeBLOBProtection     = "CLOUD_NATIVE_BLOB_PROTECTION"
+	FeatureNameCloudNativeProtection         = "CLOUD_NATIVE_PROTECTION"
+	FeatureNameCloudNativeS3Protection       = "CLOUD_NATIVE_S3_PROTECTION"
+	FeatureNameExocompute                    = "EXOCOMPUTE"
+	FeatureNameGCPSharedVPCHost              = "GCP_SHARED_VPC_HOST"
+	FeatureNameServerAndApps                 = "SERVERS_AND_APPS"
+	FeatureNameRDSProtection                 = "RDS_PROTECTION"
+	FeatureNameKubernetesProtection          = "KUBERNETES_PROTECTION"
+)
+*/
+
 var (
 	FeatureInvalid                       = Feature{Name: ""}
 	FeatureAll                           = Feature{Name: "ALL"}

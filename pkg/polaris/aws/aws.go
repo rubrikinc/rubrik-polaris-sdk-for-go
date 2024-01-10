@@ -408,7 +408,7 @@ func (a API) removeAccount(ctx context.Context, account CloudAccount, features [
 	for _, result := range results {
 		if !result.Success {
 			sb.WriteString(", ")
-			sb.WriteString(string(result.Feature.Name))
+			sb.WriteString(string(result.Feature))
 		}
 	}
 	if sb.Len() > 0 {
@@ -682,7 +682,7 @@ func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features 
 	for {
 		mappings, err = aws.Wrap(a.client).RegisterFeatureArtifacts(ctx, aws.Cloud(account.Cloud), []aws.AccountFeatureArtifact{{
 			NativeID:  account.NativeID,
-			Features:  features,
+			Features:  core.FeatureNames(features),
 			Artifacts: externalArtifacts,
 		}})
 		if err != nil {

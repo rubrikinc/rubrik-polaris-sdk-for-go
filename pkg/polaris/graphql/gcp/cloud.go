@@ -46,8 +46,8 @@ type CloudAccount struct {
 // Feature represents an RSC Cloud Account feature for GCP, e.g. Cloud Native
 // Protection.
 type Feature struct {
-	Feature core.Feature `json:"feature"`
-	Status  core.Status  `json:"status"`
+	Feature string      `json:"feature"`
+	Status  core.Status `json:"status"`
 }
 
 // CloudAccountWithFeature hold details about a cloud account and the features
@@ -64,13 +64,13 @@ func (a API) CloudAccountProjectsByFeature(ctx context.Context, feature core.Fea
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, allGcpCloudAccountProjectsByFeatureQuery, struct {
-		Feature core.Feature `json:"feature"`
-		Filter  string       `json:"projectSearchText"`
-	}{Feature: feature, Filter: filter})
+		Feature string `json:"feature"`
+		Filter  string `json:"projectSearchText"`
+	}{Feature: feature.Name, Filter: filter})
 	if err != nil {
 		return nil, fmt.Errorf("failed to request allGcpCloudAccountProjectsByFeature: %w", err)
 	}
-	a.log.Printf(log.Debug, "allGcpCloudAccountProjectsByFeature(%q, %q): %s", feature, filter, string(buf))
+	a.log.Printf(log.Debug, "allGcpCloudAccountProjectsByFeature(%q, %q): %s", feature.Name, filter, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -89,14 +89,14 @@ func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, pr
 	a.log.Print(log.Trace)
 
 	_, err := a.GQL.Request(ctx, gcpCloudAccountAddManualAuthProjectQuery, struct {
-		ID           string       `json:"gcpNativeProjectId"`
-		Name         string       `json:"gcpProjectName"`
-		Number       int64        `json:"gcpProjectNumber"`
-		OrgName      string       `json:"organizationName,omitempty"`
-		JwtConfig    string       `json:"serviceAccountJwtConfig,omitempty"`
-		JwtConfigOpt string       `json:"serviceAccountJwtConfigOptional,omitempty"`
-		Feature      core.Feature `json:"feature"`
-	}{ID: projectID, Name: projectName, Number: projectNumber, OrgName: orgName, JwtConfig: jwtConfig, JwtConfigOpt: jwtConfig, Feature: feature})
+		ID           string `json:"gcpNativeProjectId"`
+		Name         string `json:"gcpProjectName"`
+		Number       int64  `json:"gcpProjectNumber"`
+		OrgName      string `json:"organizationName,omitempty"`
+		JwtConfig    string `json:"serviceAccountJwtConfig,omitempty"`
+		JwtConfigOpt string `json:"serviceAccountJwtConfigOptional,omitempty"`
+		Feature      string `json:"feature"`
+	}{ID: projectID, Name: projectName, Number: projectNumber, OrgName: orgName, JwtConfig: jwtConfig, JwtConfigOpt: jwtConfig, Feature: feature.Name})
 	if err != nil {
 		return fmt.Errorf("failed to request gcpCloudAccountAddManualAuthProject: %w", err)
 	}
@@ -148,12 +148,12 @@ func (a API) FeaturePermissionsForCloudAccount(ctx context.Context, feature core
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, allFeaturePermissionsForGcpCloudAccountQuery, struct {
-		Feature core.Feature `json:"feature"`
-	}{Feature: feature})
+		Feature string `json:"feature"`
+	}{Feature: feature.Name})
 	if err != nil {
 		return nil, fmt.Errorf("failed to request allFeaturePermissionsForGcpCloudAccount: %w", err)
 	}
-	a.log.Printf(log.Debug, "allFeaturePermissionsForGcpCloudAccount(%q): %s", feature, string(buf))
+	a.log.Printf(log.Debug, "allFeaturePermissionsForGcpCloudAccount(%q): %s", feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -181,13 +181,13 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id 
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, upgradeGcpCloudAccountPermissionsWithoutOauthQuery, struct {
-		ID      uuid.UUID    `json:"cloudAccountId"`
-		Feature core.Feature `json:"feature"`
-	}{ID: id, Feature: feature})
+		ID      uuid.UUID `json:"cloudAccountId"`
+		Feature string    `json:"feature"`
+	}{ID: id, Feature: feature.Name})
 	if err != nil {
 		return fmt.Errorf("failed to request upgradeGcpCloudAccountPermissionsWithoutOauth: %w", err)
 	}
-	a.log.Printf(log.Debug, "upgradeGcpCloudAccountPermissionsWithoutOauth(%q, %q): %s", id, feature, string(buf))
+	a.log.Printf(log.Debug, "upgradeGcpCloudAccountPermissionsWithoutOauth(%q, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {

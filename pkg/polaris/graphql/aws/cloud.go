@@ -73,13 +73,13 @@ func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, awsCloudAccountWithFeaturesQuery, struct {
-		ID       uuid.UUID      `json:"cloudAccountId"`
-		Features []core.Feature `json:"features"`
-	}{ID: id, Features: []core.Feature{feature}})
+		ID       uuid.UUID `json:"cloudAccountId"`
+		Features []string  `json:"features"`
+	}{ID: id, Features: []string{feature.Name}})
 	if err != nil {
 		return CloudAccountWithFeatures{}, fmt.Errorf("failed to request awsCloudAccountWithFeatures: %w", err)
 	}
-	a.log.Printf(log.Debug, "awsCloudAccountWithFeatures(%q, %q): %s", id, feature, string(buf))
+	a.log.Printf(log.Debug, "awsCloudAccountWithFeatures(%q, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -100,13 +100,13 @@ func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, allAwsCloudAccountsWithFeaturesQuery, struct {
-		Feature core.Feature `json:"feature"`
-		Filter  string       `json:"columnSearchFilter"`
-	}{Filter: filter, Feature: feature})
+		Feature string `json:"feature"`
+		Filter  string `json:"columnSearchFilter"`
+	}{Filter: filter, Feature: feature.Name})
 	if err != nil {
 		return nil, fmt.Errorf("failed to request allAwsCloudAccountsWithFeatures: %w", err)
 	}
-	a.log.Printf(log.Debug, "allAwsCloudAccountsWithFeatures(%q, %q): %s", filter, feature, string(buf))
+	a.log.Printf(log.Debug, "allAwsCloudAccountsWithFeatures(%q, %q): %s", filter, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -153,7 +153,7 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 	if err != nil {
 		return CloudAccountInitiate{}, fmt.Errorf("failed to request validateAndCreateAwsCloudAccount: %w", err)
 	}
-	a.log.Printf(log.Debug, "validateAndCreateAwsCloudAccount(%q, %q, %v): %s", id, name, features, string(buf))
+	a.log.Printf(log.Debug, "validateAndCreateAwsCloudAccount(%q, %q, %v, %v): %s", id, name, plainFeatures, features, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -214,8 +214,8 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 	if err != nil {
 		return fmt.Errorf("failed to request finalizeAwsCloudAccountProtection: %w", err)
 	}
-	a.log.Printf(log.Debug, "finalizeAwsCloudAccountProtection(%q, %q, %q, %q, %v, %v, %q): %s", id, name, regions, init.ExternalID,
-		init.FeatureVersions, features, init.StackName, string(buf))
+	a.log.Printf(log.Debug, "finalizeAwsCloudAccountProtection(%q, %q, %q, %q, %v, %v, %v, %q): %s", id, name, regions, init.ExternalID,
+		init.FeatureVersions, plainFeatures, features, init.StackName, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -266,13 +266,13 @@ func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feat
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, prepareAwsCloudAccountDeletionQuery, struct {
-		ID      uuid.UUID    `json:"cloudAccountId"`
-		Feature core.Feature `json:"feature"`
-	}{ID: id, Feature: feature})
+		ID      uuid.UUID `json:"cloudAccountId"`
+		Feature string    `json:"feature"`
+	}{ID: id, Feature: feature.Name})
 	if err != nil {
 		return "", fmt.Errorf("failed to request prepareAwsCloudAccountDeletion: %w", err)
 	}
-	a.log.Printf(log.Debug, "prepareAwsCloudAccountDeletion(%q, %q): %s", id, feature, string(buf))
+	a.log.Printf(log.Debug, "prepareAwsCloudAccountDeletion(%q, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -295,13 +295,13 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountDeletionQuery, struct {
-		ID      uuid.UUID    `json:"cloudAccountId"`
-		Feature core.Feature `json:"feature"`
-	}{ID: id, Feature: feature})
+		ID      uuid.UUID `json:"cloudAccountId"`
+		Feature string    `json:"feature"`
+	}{ID: id, Feature: feature.Name})
 	if err != nil {
 		return fmt.Errorf("failed to request finalizeAwsCloudAccountDeletion: %w", err)
 	}
-	a.log.Printf(log.Debug, "finalizeAwsCloudAccountDeletion(%q, %q): %s", id, feature, string(buf))
+	a.log.Printf(log.Debug, "finalizeAwsCloudAccountDeletion(%q, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -357,12 +357,12 @@ func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAcc
 		Action  core.CloudAccountAction `json:"action"`
 		ID      uuid.UUID               `json:"cloudAccountId"`
 		Regions []Region                `json:"awsRegions"`
-		Feature core.Feature            `json:"feature"`
-	}{Action: action, ID: id, Regions: regions, Feature: feature})
+		Feature string                  `json:"feature"`
+	}{Action: action, ID: id, Regions: regions, Feature: feature.Name})
 	if err != nil {
 		return fmt.Errorf("failed to request updateAwsCloudAccountFeature: %w", err)
 	}
-	a.log.Printf(log.Debug, "updateAwsCloudAccountFeature(%q, %q, %q, %q): %s", action, id, regions, feature, string(buf))
+	a.log.Printf(log.Debug, "updateAwsCloudAccountFeature(%q, %q, %q, %q): %s", action, id, regions, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -430,13 +430,13 @@ func (a API) PrepareFeatureUpdateForAwsCloudAccount(ctx context.Context, id uuid
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, prepareFeatureUpdateForAwsCloudAccountQuery, struct {
-		ID       uuid.UUID      `json:"cloudAccountId"`
-		Features []core.Feature `json:"features"`
-	}{ID: id, Features: features})
+		ID       uuid.UUID `json:"cloudAccountId"`
+		Features []string  `json:"features"`
+	}{ID: id, Features: core.FeatureNames(features)})
 	if err != nil {
 		return "", "", fmt.Errorf("failed to request prepareFeatureUpdateForAwsCloudAccount: %w", err)
 	}
-	a.log.Printf(log.Debug, "prepareFeatureUpdateForAwsCloudAccount(%q, %v): %s", id, features, string(buf))
+	a.log.Printf(log.Debug, "prepareFeatureUpdateForAwsCloudAccount(%q, %v): %s", id, core.FeatureNames(features), string(buf))
 
 	var payload struct {
 		Data struct {

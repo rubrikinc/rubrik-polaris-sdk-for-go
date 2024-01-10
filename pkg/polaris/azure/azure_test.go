@@ -242,7 +242,7 @@ func TestAzureArchivalSubscriptionAddAndRemove(t *testing.T) {
 		t.Errorf("invalid tenant domain: %v", account.TenantDomain)
 	}
 	if n := len(account.Features); n == 1 {
-		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeProtection) {
+		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeArchival) {
 			t.Errorf("invalid feature name: %v", feature)
 		}
 		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"eastus2"}) {
@@ -378,7 +378,7 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 		t.Errorf("invalid tenant domain: %v", account.TenantDomain)
 	}
 	if n := len(account.Features); n == 1 {
-		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeProtection) {
+		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeArchivalEncryption) {
 			t.Errorf("invalid feature name: %v", feature)
 		}
 		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"eastus2"}) {

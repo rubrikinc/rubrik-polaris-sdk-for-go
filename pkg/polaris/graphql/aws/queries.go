@@ -95,7 +95,7 @@ var allAwsPermissionPoliciesQuery = `query SdkGolangAllAwsPermissionPolicies($cl
     result: allAwsPermissionPolicies(input: {
         cloudType: $cloudType,
         features: $features,
-        featureWithPermissionsGroups: $featuresWithPG,
+        featuresWithPermissionsGroups: $featuresWithPG,
         featureSpecificDetails: {
             ec2RecoveryRolePath: $ec2RecoveryRolePath
         }
@@ -521,7 +521,7 @@ var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreate
             nativeId: $nativeId,
         }],
         features: $features,
-        featureWithPermissionsGroups: $featuresWithPG
+        featuresWithPermissionsGroups: $featuresWithPG
     }) {
         initiateResponse {
             cloudFormationUrl
