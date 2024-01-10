@@ -68,7 +68,7 @@ type CloudAccount struct {
 // Feature returns the specified feature from the CloudAccount's features.
 func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 	for _, f := range c.Features {
-		if f.Name == feature {
+		if f.Feature.Equal(feature) {
 			return f, true
 		}
 	}
@@ -78,7 +78,7 @@ func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 
 // Feature for Amazon Web Services accounts.
 type Feature struct {
-	Name     core.Feature
+	Feature  core.Feature
 	Regions  []string
 	RoleArn  string
 	StackArn string
@@ -169,7 +169,7 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 	features := make([]Feature, 0, len(accountWithFeatures.Features))
 	for _, feature := range accountWithFeatures.Features {
 		features = append(features, Feature{
-			Name:     feature.Name,
+			Feature:  feature.Feature,
 			Regions:  aws.FormatRegions(feature.Regions),
 			RoleArn:  feature.RoleArn,
 			StackArn: feature.StackArn,
@@ -408,7 +408,7 @@ func (a API) removeAccount(ctx context.Context, account CloudAccount, features [
 	for _, result := range results {
 		if !result.Success {
 			sb.WriteString(", ")
-			sb.WriteString(string(result.Feature))
+			sb.WriteString(string(result.Feature.Name))
 		}
 	}
 	if sb.Len() > 0 {
@@ -484,13 +484,13 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 	}
 
 	switch {
-	case rmFeature.Name == core.FeatureCloudNativeProtection:
+	case rmFeature.Feature.Equal(core.FeatureCloudNativeProtection):
 		return a.disableNativeAccount(ctx, account.ID, aws.EC2, deleteSnapshots)
 
-	case rmFeature.Name == core.FeatureRDSProtection:
+	case rmFeature.Feature.Equal(core.FeatureRDSProtection):
 		return a.disableNativeAccount(ctx, account.ID, aws.RDS, deleteSnapshots)
 
-	case rmFeature.Name == core.FeatureExocompute:
+	case rmFeature.Feature.Equal(core.FeatureExocompute):
 		jobID, err := aws.Wrap(a.client).StartExocomputeDisableJob(ctx, account.ID)
 		if err != nil {
 			return fmt.Errorf("failed to disable native account: %s", err)

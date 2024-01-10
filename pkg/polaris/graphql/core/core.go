@@ -26,9 +26,11 @@ package core
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -48,53 +50,117 @@ const (
 	UpdateRegions       CloudAccountAction = "UPDATE_REGIONS"
 )
 
-// Feature represents a Polaris cloud account feature.
-type Feature string
+// PermissionGroup
+type PermissionGroup string
 
 const (
-	FeatureInvalid                       Feature = ""
-	FeatureAll                           Feature = "ALL"
-	FeatureAppFlows                      Feature = "APP_FLOWS"
-	FeatureArchival                      Feature = "ARCHIVAL"
-	FeatureAzureSQLDBProtection          Feature = "AZURE_SQL_DB_PROTECTION"
-	FeatureAzureSQLMIProtection          Feature = "AZURE_SQL_MI_PROTECTION"
-	FeatureCloudAccounts                 Feature = "CLOUDACCOUNTS" // Deprecated, no replacement.
-	FeatureCloudNativeArchival           Feature = "CLOUD_NATIVE_ARCHIVAL"
-	FeatureCloudNativeArchivalEncryption Feature = "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"
-	FeatureCloudNativeBLOBProtection     Feature = "CLOUD_NATIVE_BLOB_PROTECTION"
-	FeatureCloudNativeProtection         Feature = "CLOUD_NATIVE_PROTECTION"
-	FeatureCloudNativeS3Protection       Feature = "CLOUD_NATIVE_S3_PROTECTION"
-	FeatureExocompute                    Feature = "EXOCOMPUTE"
-	FeatureGCPSharedVPCHost              Feature = "GCP_SHARED_VPC_HOST"
-	FeatureServerAndApps                 Feature = "SERVERS_AND_APPS"
-	FeatureRDSProtection                 Feature = "RDS_PROTECTION"
-	FeatureKubernetesProtection          Feature = "KUBERNETES_PROTECTION"
+	PermissionGroupInvalid           PermissionGroup = "GROUP_UNSPECIFIED"
+	PermissionGroupBasic             PermissionGroup = "BASIC"
+	PermissionGroupRSCManagedCluster PermissionGroup = "RSC_MANAGED_CLUSTER"
 )
 
-var validFeatures = map[Feature]struct{}{
-	FeatureAll:                           {},
-	FeatureAppFlows:                      {},
-	FeatureArchival:                      {},
-	FeatureAzureSQLDBProtection:          {},
-	FeatureAzureSQLMIProtection:          {},
-	FeatureCloudAccounts:                 {},
-	FeatureCloudNativeArchival:           {},
-	FeatureCloudNativeArchivalEncryption: {},
-	FeatureCloudNativeBLOBProtection:     {},
-	FeatureCloudNativeProtection:         {},
-	FeatureCloudNativeS3Protection:       {},
-	FeatureExocompute:                    {},
-	FeatureGCPSharedVPCHost:              {},
-	FeatureKubernetesProtection:          {},
-	FeatureRDSProtection:                 {},
-	FeatureServerAndApps:                 {},
+// Feature represents a Polaris cloud account feature.
+type Feature struct {
+	Name             string
+	PermissionGroups []PermissionGroup
+}
+
+// Equal returns true if the features have the same name.
+func (feature Feature) Equal(other Feature) bool {
+	return feature.Name == other.Name
+}
+
+// DeepEqual returns true if the features are equal. The features are equal if
+// they have the same and the same permission groups.
+func (feature Feature) DeepEqual(other Feature) bool {
+	if !feature.Equal(other) {
+		return false
+	}
+	if len(feature.PermissionGroups) != len(other.PermissionGroups) {
+		return false
+	}
+	for _, permissionGroup := range feature.PermissionGroups {
+		if !slices.Contains(other.PermissionGroups, permissionGroup) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// HasPermissionGroup returns true if the feature has the specified permission
+// group.
+func (feature Feature) HasPermissionGroup(permissionGroup PermissionGroup) bool {
+	return slices.Contains(feature.PermissionGroups, permissionGroup)
+}
+
+// Key
+func (feature Feature) Key() string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(feature.String())))
+}
+
+// String
+func (feature Feature) String() string {
+	if len(feature.PermissionGroups) == 0 {
+		return feature.Name
+	}
+
+	var buf strings.Builder
+	permissionGroups := slices.Clone(feature.PermissionGroups)
+	slices.Sort(permissionGroups)
+	for _, permissionGroup := range permissionGroups {
+		buf.WriteString(string(permissionGroup))
+		buf.WriteString(",")
+	}
+
+	return fmt.Sprintf("%s(%s)", feature.Name, buf.String()[:buf.Len()-1])
+}
+
+var (
+	FeatureInvalid                       = Feature{Name: ""}
+	FeatureAll                           = Feature{Name: "ALL"}
+	FeatureAppFlows                      = Feature{Name: "APP_FLOWS"}
+	FeatureArchival                      = Feature{Name: "ARCHIVAL"}
+	FeatureAzureSQLDBProtection          = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
+	FeatureAzureSQLMIProtection          = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
+	FeatureCloudAccounts                 = Feature{Name: "CLOUDACCOUNTS"} // Deprecated, no replacement.
+	FeatureCloudNativeArchival           = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
+	FeatureCloudNativeArchivalEncryption = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
+	FeatureCloudNativeBLOBProtection     = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
+	FeatureCloudNativeProtection         = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
+	FeatureCloudNativeS3Protection       = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
+	FeatureExocompute                    = Feature{Name: "EXOCOMPUTE"}
+	FeatureGCPSharedVPCHost              = Feature{Name: "GCP_SHARED_VPC_HOST"}
+	FeatureServerAndApps                 = Feature{Name: "SERVERS_AND_APPS"}
+	FeatureRDSProtection                 = Feature{Name: "RDS_PROTECTION"}
+	FeatureKubernetesProtection          = Feature{Name: "KUBERNETES_PROTECTION"}
+)
+
+// validFeatures
+var validFeatures = map[string]struct{}{
+	FeatureAll.Key():                           {},
+	FeatureAppFlows.Key():                      {},
+	FeatureArchival.Key():                      {},
+	FeatureAzureSQLDBProtection.Key():          {},
+	FeatureAzureSQLMIProtection.Key():          {},
+	FeatureCloudAccounts.Key():                 {},
+	FeatureCloudNativeArchival.Key():           {},
+	FeatureCloudNativeArchivalEncryption.Key(): {},
+	FeatureCloudNativeBLOBProtection.Key():     {},
+	FeatureCloudNativeProtection.Key():         {},
+	FeatureCloudNativeS3Protection.Key():       {},
+	FeatureExocompute.Key():                    {},
+	FeatureGCPSharedVPCHost.Key():              {},
+	FeatureKubernetesProtection.Key():          {},
+	FeatureRDSProtection.Key():                 {},
+	FeatureServerAndApps.Key():                 {},
 }
 
 // ContainsFeature returns true if the features slice contains the specified
 // feature.
 func ContainsFeature(features []Feature, feature Feature) bool {
 	for _, f := range features {
-		if f == feature {
+		if f.Equal(feature) {
 			return true
 		}
 	}
@@ -105,16 +171,16 @@ func ContainsFeature(features []Feature, feature Feature) bool {
 // FormatFeature returns the Feature as a string using lower case and with
 // hyphen as a separator.
 func FormatFeature(feature Feature) string {
-	return strings.ReplaceAll(strings.ToLower(string(feature)), "_", "-")
+	return strings.ReplaceAll(strings.ToLower(feature.Name), "_", "-")
 }
 
-// ParseFeature returns the Feature matching the given feature name. Case-
-// insensitive.
+// ParseFeature returns the Feature matching the given feature name.
+// Case-insensitive.
 func ParseFeature(feature string) (Feature, error) {
 	feature = strings.ReplaceAll(feature, "-", "_")
 
-	f := Feature(strings.ToUpper(feature))
-	if _, ok := validFeatures[f]; ok {
+	f := Feature{Name: strings.ToUpper(feature)}
+	if _, ok := validFeatures[f.Key()]; ok {
 		return f, nil
 	}
 

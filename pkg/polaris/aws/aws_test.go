@@ -122,13 +122,13 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 		t.Errorf("invalid native id: %v", account.NativeID)
 	}
 	if n := len(account.Features); n == 1 {
-		if account.Features[0].Name != "CLOUD_NATIVE_PROTECTION" {
-			t.Errorf("invalid feature name: %v", account.Features[0].Name)
+		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeProtection) {
+			t.Errorf("invalid feature name: %v", feature)
 		}
 		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
 			t.Errorf("invalid feature regions: %v", regions)
 		}
-		if account.Features[0].Status != "CONNECTED" {
+		if account.Features[0].Status != core.StatusConnected {
 			t.Errorf("invalid feature status: %v", account.Features[0].Status)
 		}
 	} else {
@@ -214,13 +214,13 @@ func TestAwsCrossAccountAddAndRemove(t *testing.T) {
 		t.Errorf("invalid native id: %v", account.NativeID)
 	}
 	if n := len(account.Features); n == 1 {
-		if account.Features[0].Name != "CLOUD_NATIVE_PROTECTION" {
-			t.Errorf("invalid feature name: %v", account.Features[0].Name)
+		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeProtection) {
+			t.Errorf("invalid feature name: %v", feature)
 		}
 		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
 			t.Errorf("invalid feature regions: %v", regions)
 		}
-		if account.Features[0].Status != "CONNECTED" {
+		if account.Features[0].Status != core.StatusConnected {
 			t.Errorf("invalid feature status: %v", account.Features[0].Status)
 		}
 	} else {

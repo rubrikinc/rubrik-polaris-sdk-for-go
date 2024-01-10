@@ -46,7 +46,7 @@ type CloudAccount struct {
 // Feature represents an RSC Cloud Account feature for AWS, e.g Cloud Native
 // Protection.
 type Feature struct {
-	Name     core.Feature `json:"feature"`
+	Feature  core.Feature `json:"feature"`
 	Regions  []Region     `json:"awsRegions"`
 	RoleArn  string       `json:"roleArn"`
 	StackArn string       `json:"stackArn"`

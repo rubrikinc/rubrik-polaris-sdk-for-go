@@ -125,10 +125,10 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 		t.Errorf("invalid project number: %v", account.ProjectNumber)
 	}
 	if n := len(account.Features); n == 1 {
-		if name := account.Features[0].Name; name != "CLOUD_NATIVE_PROTECTION" {
-			t.Errorf("invalid feature name: %v", name)
+		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeProtection) {
+			t.Errorf("invalid feature name: %v", feature)
 		}
-		if status := account.Features[0].Status; status != "CONNECTED" {
+		if status := account.Features[0].Status; status != core.StatusConnected {
 			t.Errorf("invalid feature status: %v", status)
 		}
 	} else {
@@ -212,10 +212,10 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 		t.Errorf("invalid project number: %v", account.ProjectNumber)
 	}
 	if n := len(account.Features); n == 1 {
-		if name := account.Features[0].Name; name != "CLOUD_NATIVE_PROTECTION" {
-			t.Errorf("invalid feature name: %v", name)
+		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeProtection) {
+			t.Errorf("invalid feature name: %v", feature)
 		}
-		if status := account.Features[0].Status; status != "CONNECTED" {
+		if status := account.Features[0].Status; status != core.StatusConnected {
 			t.Errorf("invalid feature status: %v", status)
 		}
 	} else {

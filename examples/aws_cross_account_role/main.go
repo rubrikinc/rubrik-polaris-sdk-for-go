@@ -70,7 +70,7 @@ func main() {
 
 	fmt.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
 	for _, feature := range account.Features {
-		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
+		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Feature, feature.Regions, feature.Status)
 	}
 
 	// Remove the AWS account from Polaris using a cross account role.

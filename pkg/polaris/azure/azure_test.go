@@ -131,8 +131,8 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 		t.Errorf("invalid tenant domain: %v", account.TenantDomain)
 	}
 	if n := len(account.Features); n == 1 {
-		if name := account.Features[0].Name; name != "CLOUD_NATIVE_PROTECTION" {
-			t.Errorf("invalid feature name: %v", name)
+		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeProtection) {
+			t.Errorf("invalid feature name: %v", feature)
 		}
 		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"eastus2"}) {
 			t.Errorf("invalid feature regions: %v", regions)
@@ -242,13 +242,13 @@ func TestAzureArchivalSubscriptionAddAndRemove(t *testing.T) {
 		t.Errorf("invalid tenant domain: %v", account.TenantDomain)
 	}
 	if n := len(account.Features); n == 1 {
-		if name := account.Features[0].Name; name != "CLOUD_NATIVE_ARCHIVAL" {
-			t.Errorf("invalid feature name: %v", name)
+		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeProtection) {
+			t.Errorf("invalid feature name: %v", feature)
 		}
 		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"eastus2"}) {
 			t.Errorf("invalid feature regions: %v", regions)
 		}
-		if account.Features[0].Status != "CONNECTED" {
+		if account.Features[0].Status != core.StatusConnected {
 			t.Errorf("invalid feature status: %v", account.Features[0].Status)
 		}
 	} else {
@@ -378,13 +378,13 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 		t.Errorf("invalid tenant domain: %v", account.TenantDomain)
 	}
 	if n := len(account.Features); n == 1 {
-		if name := account.Features[0].Name; name != "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION" {
-			t.Errorf("invalid feature name: %v", name)
+		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeProtection) {
+			t.Errorf("invalid feature name: %v", feature)
 		}
 		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"eastus2"}) {
 			t.Errorf("invalid feature regions: %v", regions)
 		}
-		if account.Features[0].Status != "CONNECTED" {
+		if account.Features[0].Status != core.StatusConnected {
 			t.Errorf("invalid feature status: %v", account.Features[0].Status)
 		}
 	} else {

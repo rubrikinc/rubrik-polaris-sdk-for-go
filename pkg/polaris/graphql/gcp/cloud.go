@@ -46,8 +46,8 @@ type CloudAccount struct {
 // Feature represents an RSC Cloud Account feature for GCP, e.g. Cloud Native
 // Protection.
 type Feature struct {
-	Name   core.Feature `json:"feature"`
-	Status core.Status  `json:"status"`
+	Feature core.Feature `json:"feature"`
+	Status  core.Status  `json:"status"`
 }
 
 // CloudAccountWithFeature hold details about a cloud account and the features
