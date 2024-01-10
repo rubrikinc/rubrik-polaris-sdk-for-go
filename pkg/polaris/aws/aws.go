@@ -169,7 +169,7 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 	features := make([]Feature, 0, len(accountWithFeatures.Features))
 	for _, feature := range accountWithFeatures.Features {
 		features = append(features, Feature{
-			Feature:  feature.Feature,
+			Feature:  core.Feature{Name: feature.Feature, PermissionGroups: feature.PermissionGroups},
 			Regions:  aws.FormatRegions(feature.Regions),
 			RoleArn:  feature.RoleArn,
 			StackArn: feature.StackArn,

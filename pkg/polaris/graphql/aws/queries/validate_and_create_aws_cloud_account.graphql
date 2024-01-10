@@ -1,11 +1,12 @@
-mutation RubrikPolarisSDKRequest($nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!]!) {
+mutation RubrikPolarisSDKRequest($nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!]) {
     result: validateAndCreateAwsCloudAccount(input: {
         action: CREATE,
         awsChildAccounts: [{
             accountName: $accountName,
             nativeId: $nativeId,
         }],
-        features: $features
+        features: $features,
+        featureWithPermissionsGroups: $featuresWithPG
     }) {
         initiateResponse {
             cloudFormationUrl

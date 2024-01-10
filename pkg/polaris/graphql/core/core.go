@@ -50,7 +50,8 @@ const (
 	UpdateRegions       CloudAccountAction = "UPDATE_REGIONS"
 )
 
-// PermissionGroup
+// PermissionGroup represents a named set of permissions for a feature. Note,
+// not all permission groups are applicable to all features.
 type PermissionGroup string
 
 const (
@@ -59,19 +60,22 @@ const (
 	PermissionGroupRSCManagedCluster PermissionGroup = "RSC_MANAGED_CLUSTER"
 )
 
-// Feature represents a Polaris cloud account feature.
+// Feature represents a Polaris cloud account feature with a set of permission
+// groups. If the PermissionGroups field is nil then the full set of permissions
+// are used for the feature.
 type Feature struct {
 	Name             string
 	PermissionGroups []PermissionGroup
 }
 
-// Equal returns true if the features have the same name.
+// Equal returns true if the features have the same name. Note, this function
+// does not compare the permission groups.
 func (feature Feature) Equal(other Feature) bool {
 	return feature.Name == other.Name
 }
 
 // DeepEqual returns true if the features are equal. The features are equal if
-// they have the same and the same permission groups.
+// they have the same name and the same permission groups.
 func (feature Feature) DeepEqual(other Feature) bool {
 	if !feature.Equal(other) {
 		return false
@@ -94,12 +98,12 @@ func (feature Feature) HasPermissionGroup(permissionGroup PermissionGroup) bool 
 	return slices.Contains(feature.PermissionGroups, permissionGroup)
 }
 
-// Key
+// Key returns a map compatible key for the feature.
 func (feature Feature) Key() string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(feature.String())))
 }
 
-// String
+// String returns a string representation of the feature.
 func (feature Feature) String() string {
 	if len(feature.PermissionGroups) == 0 {
 		return feature.Name
@@ -136,7 +140,6 @@ var (
 	FeatureKubernetesProtection          = Feature{Name: "KUBERNETES_PROTECTION"}
 )
 
-// validFeatures
 var validFeatures = map[string]struct{}{
 	FeatureAll.Key():                           {},
 	FeatureAppFlows.Key():                      {},

@@ -43,14 +43,15 @@ type CloudAccount struct {
 	SeamlessFlowEnabled bool      `json:"seamlessFlowEnabled"`
 }
 
-// Feature represents an RSC Cloud Account feature for AWS, e.g Cloud Native
+// Feature represents an RSC Cloud Account feature for AWS, e.g. Cloud Native
 // Protection.
 type Feature struct {
-	Feature  core.Feature `json:"feature"`
-	Regions  []Region     `json:"awsRegions"`
-	RoleArn  string       `json:"roleArn"`
-	StackArn string       `json:"stackArn"`
-	Status   core.Status  `json:"status"`
+	Feature          string                 `json:"feature"`
+	PermissionGroups []core.PermissionGroup `json:"permissionsGroups"`
+	Regions          []Region               `json:"awsRegions"`
+	RoleArn          string                 `json:"roleArn"`
+	StackArn         string                 `json:"stackArn"`
+	Status           core.Status            `json:"status"`
 }
 
 // FeatureVersion maps an RSC Cloud Account feature to a version number.
@@ -137,11 +138,18 @@ type CloudAccountInitiate struct {
 func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string, features []core.Feature) (CloudAccountInitiate, error) {
 	a.log.Print(log.Trace)
 
+	// Features and FeaturesWithPG are mutually exclusive.
+	plainFeatures := plainFeatures(features)
+	if len(plainFeatures) > 0 {
+		features = nil
+	}
+
 	buf, err := a.GQL.Request(ctx, validateAndCreateAwsCloudAccountQuery, struct {
-		ID       string         `json:"nativeId"`
-		Name     string         `json:"accountName"`
-		Features []core.Feature `json:"features"`
-	}{ID: id, Name: name, Features: features})
+		ID             string         `json:"nativeId"`
+		Name           string         `json:"accountName"`
+		Features       []string       `json:"features,omitempty"`
+		FeaturesWithPG []core.Feature `json:"featuresWithPG,omitempty"`
+	}{ID: id, Name: name, Features: plainFeatures, FeaturesWithPG: features})
 	if err != nil {
 		return CloudAccountInitiate{}, fmt.Errorf("failed to request validateAndCreateAwsCloudAccount: %w", err)
 	}
@@ -186,6 +194,12 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id, name string, features []core.Feature, regions []Region, init CloudAccountInitiate) error {
 	a.log.Print(log.Trace)
 
+	// Features and FeaturesWithPG are mutually exclusive.
+	plainFeatures := plainFeatures(features)
+	if len(plainFeatures) > 0 {
+		features = nil
+	}
+
 	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountProtectionQuery, struct {
 		Cloud          Cloud            `json:"cloudType"`
 		ID             string           `json:"nativeId"`
@@ -193,9 +207,10 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 		Regions        []Region         `json:"awsRegions,omitempty"`
 		ExternalID     string           `json:"externalId"`
 		FeatureVersion []FeatureVersion `json:"featureVersion"`
-		Features       []core.Feature   `json:"features"`
+		Features       []string         `json:"features,omitempty"`
+		FeaturesWithPG []core.Feature   `json:"featuresWithPG,omitempty"`
 		StackName      string           `json:"stackName"`
-	}{Cloud: cloud, ID: id, Name: name, Regions: regions, ExternalID: init.ExternalID, FeatureVersion: init.FeatureVersions, Features: features, StackName: init.StackName})
+	}{Cloud: cloud, ID: id, Name: name, Regions: regions, ExternalID: init.ExternalID, FeatureVersion: init.FeatureVersions, Features: plainFeatures, FeaturesWithPG: features, StackName: init.StackName})
 	if err != nil {
 		return fmt.Errorf("failed to request finalizeAwsCloudAccountProtection: %w", err)
 	}
@@ -227,6 +242,21 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 	}
 
 	return nil
+}
+
+// plainFeatures checks if any of the features contains any permission groups,
+// if they do nil is returned, otherwise the names of the features without
+// permission groups are returned.
+func plainFeatures(features []core.Feature) []string {
+	var plainFeatures []string
+	for _, feature := range features {
+		if len(feature.PermissionGroups) > 0 {
+			return nil
+		}
+		plainFeatures = append(plainFeatures, feature.Name)
+	}
+
+	return plainFeatures
 }
 
 // PrepareCloudAccountDeletion prepares the deletion of the cloud account

@@ -1,4 +1,4 @@
-mutation RubrikPolarisSDKRequest($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegion!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $features: [CloudAccountFeature!]!, $stackName: String!) {
+mutation RubrikPolarisSDKRequest($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegion!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!], $stackName: String!) {
     finalizeAwsCloudAccountProtection(input: {
         action: CREATE,
         awsChildAccounts: [{
@@ -9,6 +9,7 @@ mutation RubrikPolarisSDKRequest($nativeId: String!, $accountName: String!, $aws
         externalId: $externalId,
         featureVersion: $featureVersion,
         features: $features,
+        featuresWithPermissionsGroups: $featuresWithPG,
         stackName: $stackName,
     }) {
        awsChildAccounts {

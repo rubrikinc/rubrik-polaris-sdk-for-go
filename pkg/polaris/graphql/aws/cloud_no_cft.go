@@ -46,11 +46,18 @@ type PermissionPolicyArtifact struct {
 func (a API) AllPermissionPolicies(ctx context.Context, cloud Cloud, features []core.Feature, ec2RecoveryRolePath string) ([]PermissionPolicyArtifact, error) {
 	a.log.Print(log.Trace)
 
+	// Features and FeaturesWithPG are mutually exclusive.
+	plainFeatures := plainFeatures(features)
+	if len(plainFeatures) > 0 {
+		features = nil
+	}
+
 	buf, err := a.GQL.Request(ctx, allAwsPermissionPoliciesQuery, struct {
-		Cloud    Cloud          `json:"cloudType"`
-		Features []core.Feature `json:"features"`
-		RolePath string         `json:"ec2RecoveryRolePath,omitempty"`
-	}{Cloud: cloud, Features: features, RolePath: ec2RecoveryRolePath})
+		Cloud          Cloud          `json:"cloudType"`
+		Features       []string       `json:"features,omitempty"`
+		FeaturesWithPG []core.Feature `json:"featuresWithPG,omitempty"`
+		RolePath       string         `json:"ec2RecoveryRolePath,omitempty"`
+	}{Cloud: cloud, Features: plainFeatures, FeaturesWithPG: features, RolePath: ec2RecoveryRolePath})
 	if err != nil {
 		return nil, fmt.Errorf("failed to request allAwsPermissionPolicies: %w", err)
 	}
