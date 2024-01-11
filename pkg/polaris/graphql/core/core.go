@@ -64,8 +64,8 @@ const (
 // groups. If the PermissionGroups field is nil then the full set of permissions
 // are used for the feature.
 type Feature struct {
-	Name             string
-	PermissionGroups []PermissionGroup
+	Name             string            `json:"featureType"`
+	PermissionGroups []PermissionGroup `json:"permissionsGroups"`
 }
 
 // Equal returns true if the features have the same name. Note, this function
@@ -120,7 +120,14 @@ func (feature Feature) String() string {
 	return fmt.Sprintf("%s(%s)", feature.Name, buf.String()[:buf.Len()-1])
 }
 
-// FeatureNames
+// WithPermissionGroups returns a copy of the feature with the specified
+// permission groups added.
+func (feature Feature) WithPermissionGroups(permissionGroups ...PermissionGroup) Feature {
+	groups := append(feature.PermissionGroups, permissionGroups...)
+	return Feature{Name: feature.Name, PermissionGroups: groups}
+}
+
+// FeatureNames returns the names of the features.
 func FeatureNames(features []Feature) []string {
 	var names []string
 	for _, feature := range features {
@@ -129,27 +136,6 @@ func FeatureNames(features []Feature) []string {
 
 	return names
 }
-
-/*
-const (
-	FeatureNameInvalid                       = ""
-	FeatureNameAll                           = "ALL"
-	FeatureNameAppFlows                      = "APP_FLOWS"
-	FeatureNameArchival                      = "ARCHIVAL"
-	FeatureNameAzureSQLDBProtection          = "AZURE_SQL_DB_PROTECTION"
-	FeatureNameAzureSQLMIProtection          = "AZURE_SQL_MI_PROTECTION"
-	FeatureNameCloudNativeArchival           = "CLOUD_NATIVE_ARCHIVAL"
-	FeatureNameCloudNativeArchivalEncryption = "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"
-	FeatureNameCloudNativeBLOBProtection     = "CLOUD_NATIVE_BLOB_PROTECTION"
-	FeatureNameCloudNativeProtection         = "CLOUD_NATIVE_PROTECTION"
-	FeatureNameCloudNativeS3Protection       = "CLOUD_NATIVE_S3_PROTECTION"
-	FeatureNameExocompute                    = "EXOCOMPUTE"
-	FeatureNameGCPSharedVPCHost              = "GCP_SHARED_VPC_HOST"
-	FeatureNameServerAndApps                 = "SERVERS_AND_APPS"
-	FeatureNameRDSProtection                 = "RDS_PROTECTION"
-	FeatureNameKubernetesProtection          = "KUBERNETES_PROTECTION"
-)
-*/
 
 var (
 	FeatureInvalid                       = Feature{Name: ""}
