@@ -21,11 +21,13 @@
 package aws
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
@@ -161,6 +163,97 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 
 	// Verify that the account was successfully removed.
 	account, err = awsClient.Account(ctx, AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal(err)
+	}
+}
+
+// TestAwsAccountAddAndRemoveWithPermissionGroups verifies that the SDK can add
+// and remove and AWS account using permission groups on a real RSC instance.
+//
+// To run this test against an RSC instance the following environment variables
+// needs to be set:
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_AWSACCOUNT_FILE=<path-to-test-aws-account-file>
+//   - AWS_SHARED_CREDENTIALS_FILE=<path-to-aws-credentials-file>
+//   - AWS_CONFIG_FILE=<path-to-aws-config-file>
+//
+// The file referred to by TEST_AWSACCOUNT_FILE should contain a single
+// testAwsAccount JSON object.
+func TestAwsAccountAddAndRemoveWithPermissionGroups(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	testAccount, err := testsetup.AWSAccount()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	awsClient := Wrap(client)
+
+	// RSC features and their permission groups.
+	features := []core.Feature{
+		core.FeatureCloudNativeProtection.WithPermissionGroups(core.PermissionGroupBasic),
+		core.FeatureExocompute.WithPermissionGroups(core.PermissionGroupBasic, core.PermissionGroupRSCManagedCluster),
+	}
+
+	// Adds the AWS account identified by the specified profile to RSC. Note
+	// that the profile needs to have a default region.
+	id, err := awsClient.AddAccount(ctx, Profile(testAccount.Profile), features, Name(testAccount.AccountName),
+		Regions("us-east-2"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the account was successfully added.
+	account, err := awsClient.Account(ctx, CloudAccountID(id), core.FeatureAll)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if account.Name != testAccount.AccountName {
+		t.Errorf("invalid name: %v", account.Name)
+	}
+	if account.NativeID != testAccount.AccountID {
+		t.Errorf("invalid native id: %v", account.NativeID)
+	}
+	if n := len(account.Features); n != 2 {
+		t.Errorf("invalid number of features: %v", n)
+	}
+	slices.SortFunc(account.Features, func(lhs, rhs Feature) int {
+		return cmp.Compare(lhs.Feature.Name, rhs.Feature.Name)
+	})
+	if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeProtection) {
+		t.Errorf("invalid feature name: %v", feature)
+	}
+	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+		t.Errorf("invalid feature regions: %v", regions)
+	}
+	if account.Features[0].Status != core.StatusConnected {
+		t.Errorf("invalid feature status: %v", account.Features[0].Status)
+	}
+	if feature := account.Features[1].Feature; !feature.Equal(core.FeatureExocompute) {
+		t.Errorf("invalid feature name: %v", feature)
+	}
+	if regions := account.Features[1].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+		t.Errorf("invalid feature regions: %v", regions)
+	}
+	if account.Features[1].Status != core.StatusConnected {
+		t.Errorf("invalid feature status: %v", account.Features[0].Status)
+	}
+
+	// Remove AWS account from RSC.
+	err = awsClient.RemoveAccount(ctx, Profile(testAccount.Profile), features, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the account was successfully removed.
+	account, err = awsClient.Account(ctx, AccountID(testAccount.AccountID), core.FeatureAll)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}

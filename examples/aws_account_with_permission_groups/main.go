@@ -1,4 +1,4 @@
-// Copyright 2021 Rubrik, Inc.
+// Copyright 2024 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -51,6 +51,7 @@ func main() {
 
 	awsClient := aws.Wrap(client)
 
+	// RSC features and their permission groups.
 	features := []core.Feature{
 		core.FeatureCloudNativeProtection.WithPermissionGroups(core.PermissionGroupBasic),
 		core.FeatureExocompute.WithPermissionGroups(core.PermissionGroupBasic, core.PermissionGroupRSCManagedCluster),
