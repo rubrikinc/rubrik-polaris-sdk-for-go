@@ -56,8 +56,12 @@ type Feature struct {
 
 // FeatureVersion maps an RSC Cloud Account feature to a version number.
 type FeatureVersion struct {
-	Name    string `json:"feature"`
-	Version int    `json:"version"`
+	Name                    string `json:"feature"`
+	Version                 int    `json:"version"`
+	PermissionGroupsVersion []struct {
+		PermissionGroups string `json:"permissionsGroup"`
+		Version          int    `json:"version"`
+	} `json:"permissionsGroupVersions"`
 }
 
 // CloudAccountWithFeatures hold details about a cloud account and the features

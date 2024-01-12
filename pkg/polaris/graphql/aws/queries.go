@@ -181,6 +181,7 @@ var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatur
         }
         featureDetails {
             feature
+            permissionsGroups
             roleArn
             stackArn
             status
@@ -528,6 +529,10 @@ var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreate
             externalId
             featureVersions {
                 feature
+                permissionsGroupVersions {
+                    permissionsGroup
+                    version
+                }
                 version
             }
             stackName

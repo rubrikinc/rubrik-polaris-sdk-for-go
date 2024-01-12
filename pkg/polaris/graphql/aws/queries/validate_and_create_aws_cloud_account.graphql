@@ -13,6 +13,10 @@ mutation RubrikPolarisSDKRequest($nativeId: String!, $accountName: String!, $fea
             externalId
             featureVersions {
                 feature
+                permissionsGroupVersions {
+                    permissionsGroup
+                    version
+                }
                 version
             }
             stackName

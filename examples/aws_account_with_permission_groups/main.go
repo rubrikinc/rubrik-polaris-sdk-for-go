@@ -44,7 +44,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClientWithLogger(polAccount, polaris_log.NewStandardLogger())
+	logger := polaris_log.NewStandardLogger()
+	polaris.SetLogLevelFromEnv(logger)
+	client, err := polaris.NewClientWithLogger(polAccount, logger)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -71,7 +73,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
+	fmt.Printf("ID: %v, Name: %v, NativeID: %v\n", account.ID, account.Name, account.NativeID)
 	for _, feature := range account.Features {
 		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Feature, feature.Regions, feature.Status)
 	}
