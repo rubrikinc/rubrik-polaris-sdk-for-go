@@ -36,6 +36,7 @@ var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWi
         }
         featureDetails {
             feature
+            permissionsGroups
             roleArn
             stackArn
             status
@@ -90,10 +91,11 @@ var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsN
 }`
 
 // allAwsPermissionPolicies GraphQL query
-var allAwsPermissionPoliciesQuery = `query SdkGolangAllAwsPermissionPolicies($cloudType: AwsCloudType!, $features: [CloudAccountFeature!]!, $ec2RecoveryRolePath: String) {
+var allAwsPermissionPoliciesQuery = `query SdkGolangAllAwsPermissionPolicies($cloudType: AwsCloudType!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!], $ec2RecoveryRolePath: String) {
     result: allAwsPermissionPolicies(input: {
         cloudType: $cloudType,
         features: $features,
+        featuresWithPermissionsGroups: $featuresWithPG,
         featureSpecificDetails: {
             ec2RecoveryRolePath: $ec2RecoveryRolePath
         }
@@ -179,6 +181,7 @@ var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatur
         }
         featureDetails {
             feature
+            permissionsGroups
             roleArn
             stackArn
             status
@@ -339,7 +342,7 @@ var finalizeAwsCloudAccountDeletionQuery = `mutation SdkGolangFinalizeAwsCloudAc
 }`
 
 // finalizeAwsCloudAccountProtection GraphQL query
-var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloudAccountProtection($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegion!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $features: [CloudAccountFeature!]!, $stackName: String!) {
+var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloudAccountProtection($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegion!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!], $stackName: String!) {
     finalizeAwsCloudAccountProtection(input: {
         action: CREATE,
         awsChildAccounts: [{
@@ -350,6 +353,7 @@ var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloud
         externalId: $externalId,
         featureVersion: $featureVersion,
         features: $features,
+        featuresWithPermissionsGroups: $featuresWithPG,
         stackName: $stackName,
     }) {
        awsChildAccounts {
@@ -510,20 +514,25 @@ var updateCloudNativeAwsStorageSettingQuery = `mutation SdkGolangUpdateCloudNati
 }`
 
 // validateAndCreateAwsCloudAccount GraphQL query
-var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!]!) {
+var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!]) {
     result: validateAndCreateAwsCloudAccount(input: {
         action: CREATE,
         awsChildAccounts: [{
             accountName: $accountName,
             nativeId: $nativeId,
         }],
-        features: $features
+        features: $features,
+        featuresWithPermissionsGroups: $featuresWithPG
     }) {
         initiateResponse {
             cloudFormationUrl
             externalId
             featureVersions {
                 feature
+                permissionsGroupVersions {
+                    permissionsGroup
+                    version
+                }
                 version
             }
             stackName

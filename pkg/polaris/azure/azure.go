@@ -65,7 +65,7 @@ type CloudAccount struct {
 // Feature returns the specified feature from the CloudAccount's features.
 func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 	for _, f := range c.Features {
-		if f.Name == feature {
+		if f.Equal(feature) {
 			return f, true
 		}
 	}
@@ -75,7 +75,7 @@ func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 
 // Feature for Microsoft Azure subscriptions.
 type Feature struct {
-	Name    core.Feature
+	core.Feature
 	Regions []string
 	Status  core.Status
 }
@@ -226,7 +226,7 @@ func (a API) subscriptions(ctx context.Context, feature core.Feature, filter str
 				Name:         account.Name,
 				TenantDomain: tenantWithAccounts.DomainName,
 				Features: []Feature{{
-					Name:    account.Feature.Name,
+					Feature: core.Feature{Name: account.Feature.Feature},
 					Regions: azure.FormatRegions(account.Feature.Regions),
 					Status:  account.Feature.Status,
 				}},
@@ -325,7 +325,7 @@ func (a API) Subscriptions(ctx context.Context, feature core.Feature, filter str
 
 	var accounts []CloudAccount
 	var err error
-	if feature == core.FeatureAll {
+	if feature.Equal(core.FeatureAll) {
 		accounts, err = a.subscriptionsAllFeatures(ctx, filter)
 	} else {
 		accounts, err = a.subscriptions(ctx, feature, filter)
@@ -382,7 +382,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 
 	cloudAccountFeature := azure.CloudAccountFeature{
 		PolicyVersion:       perms.PermissionVersion,
-		FeatureType:         feature,
+		FeatureType:         feature.Name,
 		ResourceGroup:       options.resourceGroup,
 		FeatureSpecificInfo: options.featureSpecificInfo,
 	}
@@ -416,7 +416,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 	}
 
 	switch {
-	case account.Features[0].Name == core.FeatureCloudNativeProtection && account.Features[0].Status != core.StatusDisabled:
+	case account.Features[0].Equal(core.FeatureCloudNativeProtection) && account.Features[0].Status != core.StatusDisabled:
 		// Lookup the RSC native account id from the RSC subscription name and
 		// the Azure subscription id. The RSC native account id is needed to
 		// delete the RSC native account subscription.
@@ -440,8 +440,8 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 		if state != core.TaskChainSucceeded {
 			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
 		}
-	case account.Features[0].Name == core.FeatureExocompute && account.Features[0].Status != core.StatusDisabled:
-		jobID, err := azure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, account.Features[0].Name)
+	case account.Features[0].Equal(core.FeatureExocompute) && account.Features[0].Status != core.StatusDisabled:
+		jobID, err := azure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, account.Features[0].Feature)
 		if err != nil {
 			return fmt.Errorf("failed to disable subscription feature %q: %v", feature, err)
 		}
@@ -503,7 +503,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 			return errors.New("invalid cloud account: no features")
 		}
 
-		err := azure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, account.Features[0].Name, options.name,
+		err := azure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, account.Features[0].Feature, options.name,
 			[]azure.Region{}, []azure.Region{})
 		if err != nil {
 			return fmt.Errorf("failed to update subscription: %v", err)
@@ -536,7 +536,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 			add = append(add, region)
 		}
 
-		err = azure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, accountFeature.Name, options.name, add, remove)
+		err = azure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, accountFeature.Feature, options.name, add, remove)
 		if err != nil {
 			return fmt.Errorf("failed to update subscription: %v", err)
 		}

@@ -43,20 +43,25 @@ type CloudAccount struct {
 	SeamlessFlowEnabled bool      `json:"seamlessFlowEnabled"`
 }
 
-// Feature represents an RSC Cloud Account feature for AWS, e.g Cloud Native
+// Feature represents an RSC Cloud Account feature for AWS, e.g. Cloud Native
 // Protection.
 type Feature struct {
-	Name     core.Feature `json:"feature"`
-	Regions  []Region     `json:"awsRegions"`
-	RoleArn  string       `json:"roleArn"`
-	StackArn string       `json:"stackArn"`
-	Status   core.Status  `json:"status"`
+	Feature          string                 `json:"feature"`
+	PermissionGroups []core.PermissionGroup `json:"permissionsGroups"`
+	Regions          []Region               `json:"awsRegions"`
+	RoleArn          string                 `json:"roleArn"`
+	StackArn         string                 `json:"stackArn"`
+	Status           core.Status            `json:"status"`
 }
 
 // FeatureVersion maps an RSC Cloud Account feature to a version number.
 type FeatureVersion struct {
-	Name    string `json:"feature"`
-	Version int    `json:"version"`
+	Name                    string `json:"feature"`
+	Version                 int    `json:"version"`
+	PermissionGroupsVersion []struct {
+		PermissionGroups string `json:"permissionsGroup"`
+		Version          int    `json:"version"`
+	} `json:"permissionsGroupVersions"`
 }
 
 // CloudAccountWithFeatures hold details about a cloud account and the features
@@ -72,13 +77,13 @@ func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, awsCloudAccountWithFeaturesQuery, struct {
-		ID       uuid.UUID      `json:"cloudAccountId"`
-		Features []core.Feature `json:"features"`
-	}{ID: id, Features: []core.Feature{feature}})
+		ID       uuid.UUID `json:"cloudAccountId"`
+		Features []string  `json:"features"`
+	}{ID: id, Features: []string{feature.Name}})
 	if err != nil {
 		return CloudAccountWithFeatures{}, fmt.Errorf("failed to request awsCloudAccountWithFeatures: %w", err)
 	}
-	a.log.Printf(log.Debug, "awsCloudAccountWithFeatures(%q, %q): %s", id, feature, string(buf))
+	a.log.Printf(log.Debug, "awsCloudAccountWithFeatures(%q, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -99,13 +104,13 @@ func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, allAwsCloudAccountsWithFeaturesQuery, struct {
-		Feature core.Feature `json:"feature"`
-		Filter  string       `json:"columnSearchFilter"`
-	}{Filter: filter, Feature: feature})
+		Feature string `json:"feature"`
+		Filter  string `json:"columnSearchFilter"`
+	}{Filter: filter, Feature: feature.Name})
 	if err != nil {
 		return nil, fmt.Errorf("failed to request allAwsCloudAccountsWithFeatures: %w", err)
 	}
-	a.log.Printf(log.Debug, "allAwsCloudAccountsWithFeatures(%q, %q): %s", filter, feature, string(buf))
+	a.log.Printf(log.Debug, "allAwsCloudAccountsWithFeatures(%q, %q): %s", filter, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -137,15 +142,22 @@ type CloudAccountInitiate struct {
 func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string, features []core.Feature) (CloudAccountInitiate, error) {
 	a.log.Print(log.Trace)
 
+	// Features and FeaturesWithPG are mutually exclusive.
+	plainFeatures := plainFeatures(features)
+	if len(plainFeatures) > 0 {
+		features = nil
+	}
+
 	buf, err := a.GQL.Request(ctx, validateAndCreateAwsCloudAccountQuery, struct {
-		ID       string         `json:"nativeId"`
-		Name     string         `json:"accountName"`
-		Features []core.Feature `json:"features"`
-	}{ID: id, Name: name, Features: features})
+		ID             string         `json:"nativeId"`
+		Name           string         `json:"accountName"`
+		Features       []string       `json:"features,omitempty"`
+		FeaturesWithPG []core.Feature `json:"featuresWithPG,omitempty"`
+	}{ID: id, Name: name, Features: plainFeatures, FeaturesWithPG: features})
 	if err != nil {
 		return CloudAccountInitiate{}, fmt.Errorf("failed to request validateAndCreateAwsCloudAccount: %w", err)
 	}
-	a.log.Printf(log.Debug, "validateAndCreateAwsCloudAccount(%q, %q, %v): %s", id, name, features, string(buf))
+	a.log.Printf(log.Debug, "validateAndCreateAwsCloudAccount(%q, %q, %v, %v): %s", id, name, plainFeatures, features, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -186,6 +198,12 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id, name string, features []core.Feature, regions []Region, init CloudAccountInitiate) error {
 	a.log.Print(log.Trace)
 
+	// Features and FeaturesWithPG are mutually exclusive.
+	plainFeatures := plainFeatures(features)
+	if len(plainFeatures) > 0 {
+		features = nil
+	}
+
 	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountProtectionQuery, struct {
 		Cloud          Cloud            `json:"cloudType"`
 		ID             string           `json:"nativeId"`
@@ -193,14 +211,15 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 		Regions        []Region         `json:"awsRegions,omitempty"`
 		ExternalID     string           `json:"externalId"`
 		FeatureVersion []FeatureVersion `json:"featureVersion"`
-		Features       []core.Feature   `json:"features"`
+		Features       []string         `json:"features,omitempty"`
+		FeaturesWithPG []core.Feature   `json:"featuresWithPG,omitempty"`
 		StackName      string           `json:"stackName"`
-	}{Cloud: cloud, ID: id, Name: name, Regions: regions, ExternalID: init.ExternalID, FeatureVersion: init.FeatureVersions, Features: features, StackName: init.StackName})
+	}{Cloud: cloud, ID: id, Name: name, Regions: regions, ExternalID: init.ExternalID, FeatureVersion: init.FeatureVersions, Features: plainFeatures, FeaturesWithPG: features, StackName: init.StackName})
 	if err != nil {
 		return fmt.Errorf("failed to request finalizeAwsCloudAccountProtection: %w", err)
 	}
-	a.log.Printf(log.Debug, "finalizeAwsCloudAccountProtection(%q, %q, %q, %q, %v, %v, %q): %s", id, name, regions, init.ExternalID,
-		init.FeatureVersions, features, init.StackName, string(buf))
+	a.log.Printf(log.Debug, "finalizeAwsCloudAccountProtection(%q, %q, %q, %q, %v, %v, %v, %q): %s", id, name, regions, init.ExternalID,
+		init.FeatureVersions, plainFeatures, features, init.StackName, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -229,6 +248,21 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 	return nil
 }
 
+// plainFeatures checks if any of the features contains any permission groups,
+// if they do nil is returned, otherwise the names of the features without
+// permission groups are returned.
+func plainFeatures(features []core.Feature) []string {
+	var plainFeatures []string
+	for _, feature := range features {
+		if len(feature.PermissionGroups) > 0 {
+			return nil
+		}
+		plainFeatures = append(plainFeatures, feature.Name)
+	}
+
+	return plainFeatures
+}
+
 // PrepareCloudAccountDeletion prepares the deletion of the cloud account
 // identified by the specified RSC cloud account id.
 // FinalizeCloudAccountDeletion is the next step in the process.
@@ -236,13 +270,13 @@ func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feat
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, prepareAwsCloudAccountDeletionQuery, struct {
-		ID      uuid.UUID    `json:"cloudAccountId"`
-		Feature core.Feature `json:"feature"`
-	}{ID: id, Feature: feature})
+		ID      uuid.UUID `json:"cloudAccountId"`
+		Feature string    `json:"feature"`
+	}{ID: id, Feature: feature.Name})
 	if err != nil {
 		return "", fmt.Errorf("failed to request prepareAwsCloudAccountDeletion: %w", err)
 	}
-	a.log.Printf(log.Debug, "prepareAwsCloudAccountDeletion(%q, %q): %s", id, feature, string(buf))
+	a.log.Printf(log.Debug, "prepareAwsCloudAccountDeletion(%q, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -265,13 +299,13 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountDeletionQuery, struct {
-		ID      uuid.UUID    `json:"cloudAccountId"`
-		Feature core.Feature `json:"feature"`
-	}{ID: id, Feature: feature})
+		ID      uuid.UUID `json:"cloudAccountId"`
+		Feature string    `json:"feature"`
+	}{ID: id, Feature: feature.Name})
 	if err != nil {
 		return fmt.Errorf("failed to request finalizeAwsCloudAccountDeletion: %w", err)
 	}
-	a.log.Printf(log.Debug, "finalizeAwsCloudAccountDeletion(%q, %q): %s", id, feature, string(buf))
+	a.log.Printf(log.Debug, "finalizeAwsCloudAccountDeletion(%q, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -327,12 +361,12 @@ func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAcc
 		Action  core.CloudAccountAction `json:"action"`
 		ID      uuid.UUID               `json:"cloudAccountId"`
 		Regions []Region                `json:"awsRegions"`
-		Feature core.Feature            `json:"feature"`
-	}{Action: action, ID: id, Regions: regions, Feature: feature})
+		Feature string                  `json:"feature"`
+	}{Action: action, ID: id, Regions: regions, Feature: feature.Name})
 	if err != nil {
 		return fmt.Errorf("failed to request updateAwsCloudAccountFeature: %w", err)
 	}
-	a.log.Printf(log.Debug, "updateAwsCloudAccountFeature(%q, %q, %q, %q): %s", action, id, regions, feature, string(buf))
+	a.log.Printf(log.Debug, "updateAwsCloudAccountFeature(%q, %q, %q, %q): %s", action, id, regions, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -400,13 +434,13 @@ func (a API) PrepareFeatureUpdateForAwsCloudAccount(ctx context.Context, id uuid
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, prepareFeatureUpdateForAwsCloudAccountQuery, struct {
-		ID       uuid.UUID      `json:"cloudAccountId"`
-		Features []core.Feature `json:"features"`
-	}{ID: id, Features: features})
+		ID       uuid.UUID `json:"cloudAccountId"`
+		Features []string  `json:"features"`
+	}{ID: id, Features: core.FeatureNames(features)})
 	if err != nil {
 		return "", "", fmt.Errorf("failed to request prepareFeatureUpdateForAwsCloudAccount: %w", err)
 	}
-	a.log.Printf(log.Debug, "prepareFeatureUpdateForAwsCloudAccount(%q, %v): %s", id, features, string(buf))
+	a.log.Printf(log.Debug, "prepareFeatureUpdateForAwsCloudAccount(%q, %v): %s", id, core.FeatureNames(features), string(buf))
 
 	var payload struct {
 		Data struct {

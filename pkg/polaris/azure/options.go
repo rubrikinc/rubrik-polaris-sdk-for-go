@@ -148,8 +148,8 @@ func ManagedIdentity(name, resourceGroup, principalID, region string) OptionFunc
 }
 
 func verifyOptionsForFeature(opts options, feature core.Feature) error {
-	switch feature {
-	case core.FeatureCloudNativeArchivalEncryption:
+	switch {
+	case feature.Equal(core.FeatureCloudNativeArchivalEncryption):
 		if opts.featureSpecificInfo == nil ||
 			opts.featureSpecificInfo.UserAssignedManagedIdentity == nil {
 			return fmt.Errorf("managed identity should be added for archival encryption")
@@ -157,7 +157,7 @@ func verifyOptionsForFeature(opts options, feature core.Feature) error {
 		if opts.resourceGroup == nil {
 			return fmt.Errorf("resource group should be added for archival encryption")
 		}
-	case core.FeatureCloudNativeArchival:
+	case feature.Equal(core.FeatureCloudNativeArchival):
 		if opts.resourceGroup == nil {
 			return fmt.Errorf("resource group should be added for archival")
 		}

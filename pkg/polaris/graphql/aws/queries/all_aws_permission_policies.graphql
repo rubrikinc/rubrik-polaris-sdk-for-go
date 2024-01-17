@@ -1,7 +1,8 @@
-query RubrikPolarisSDKRequest($cloudType: AwsCloudType!, $features: [CloudAccountFeature!]!, $ec2RecoveryRolePath: String) {
+query RubrikPolarisSDKRequest($cloudType: AwsCloudType!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!], $ec2RecoveryRolePath: String) {
     result: allAwsPermissionPolicies(input: {
         cloudType: $cloudType,
         features: $features,
+        featuresWithPermissionsGroups: $featuresWithPG,
         featureSpecificDetails: {
             ec2RecoveryRolePath: $ec2RecoveryRolePath
         }

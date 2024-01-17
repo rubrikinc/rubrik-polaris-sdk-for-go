@@ -42,7 +42,7 @@ type CustomerManagedPolicy struct {
 }
 
 func (policy CustomerManagedPolicy) lessThan(other CustomerManagedPolicy) bool {
-	return policy.Artifact < other.Artifact || policy.Feature < other.Feature || policy.Name < other.Name
+	return policy.Artifact < other.Artifact || policy.Feature.Name < other.Feature.Name || policy.Name < other.Name
 }
 
 // ManagedPolicy represents a policy that is managed by AWS.
@@ -75,7 +75,7 @@ func (a API) Permissions(ctx context.Context, cloud string, features []core.Feat
 		for _, policy := range artifact.CustomerManagedPolicies {
 			customerPolicies = append(customerPolicies, CustomerManagedPolicy{
 				Artifact: strings.TrimSuffix(artifact.ArtifactKey, roleArnSuffix),
-				Feature:  policy.Feature,
+				Feature:  core.Feature{Name: policy.Feature},
 				Name:     policy.PolicyName,
 				Policy:   policy.PolicyDocument,
 			})

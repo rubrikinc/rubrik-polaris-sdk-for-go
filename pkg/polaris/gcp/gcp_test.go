@@ -113,26 +113,25 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	// id to be the same as the name.
 	account, err := gcpClient.Project(ctx, CloudAccountID(id), core.FeatureCloudNativeProtection)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if account.Name != testProject.ProjectName {
-		t.Errorf("invalid name: %v", account.Name)
+		t.Fatalf("invalid name: %v", account.Name)
 	}
 	if strings.ToLower(account.NativeID) != testProject.ProjectID {
-		t.Errorf("invalid project id: %v", account.NativeID)
+		t.Fatalf("invalid project id: %v", account.NativeID)
 	}
 	if account.ProjectNumber != testProject.ProjectNumber {
-		t.Errorf("invalid project number: %v", account.ProjectNumber)
+		t.Fatalf("invalid project number: %v", account.ProjectNumber)
 	}
-	if n := len(account.Features); n == 1 {
-		if name := account.Features[0].Name; name != "CLOUD_NATIVE_PROTECTION" {
-			t.Errorf("invalid feature name: %v", name)
-		}
-		if status := account.Features[0].Status; status != "CONNECTED" {
-			t.Errorf("invalid feature status: %v", status)
-		}
-	} else {
-		t.Errorf("invalid number of features: %v", n)
+	if n := len(account.Features); n != 1 {
+		t.Fatalf("invalid number of features: %v", n)
+	}
+	if !account.Features[0].Equal(core.FeatureCloudNativeProtection) {
+		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
+	}
+	if status := account.Features[0].Status; status != core.StatusConnected {
+		t.Fatalf("invalid feature status: %v", status)
 	}
 
 	// Verify that the Project function does not return a project given a prefix
@@ -203,23 +202,22 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 		t.Error(err)
 	}
 	if account.Name != testProject.ProjectName {
-		t.Errorf("invalid name: %v", account.Name)
+		t.Fatalf("invalid name: %v", account.Name)
 	}
 	if strings.ToLower(account.NativeID) != testProject.ProjectID {
-		t.Errorf("invalid project id: %v", account.NativeID)
+		t.Fatalf("invalid project id: %v", account.NativeID)
 	}
 	if account.ProjectNumber != testProject.ProjectNumber {
-		t.Errorf("invalid project number: %v", account.ProjectNumber)
+		t.Fatalf("invalid project number: %v", account.ProjectNumber)
 	}
-	if n := len(account.Features); n == 1 {
-		if name := account.Features[0].Name; name != "CLOUD_NATIVE_PROTECTION" {
-			t.Errorf("invalid feature name: %v", name)
-		}
-		if status := account.Features[0].Status; status != "CONNECTED" {
-			t.Errorf("invalid feature status: %v", status)
-		}
-	} else {
-		t.Errorf("invalid number of features: %v", n)
+	if n := len(account.Features); n != 1 {
+		t.Fatalf("invalid number of features: %v", n)
+	}
+	if !account.Features[0].Equal(core.FeatureCloudNativeProtection) {
+		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
+	}
+	if status := account.Features[0].Status; status != core.StatusConnected {
+		t.Fatalf("invalid feature status: %v", status)
 	}
 
 	// Remove GCP project from RSC keeping the snapshots.
