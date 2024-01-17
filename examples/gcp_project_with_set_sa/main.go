@@ -82,7 +82,7 @@ func main() {
 	fmt.Printf("Name: %v, ProjectID: %v, ProjectNumber: %v, DefaultServiceAccount: %v\n",
 		account.Name, account.ID, account.ProjectNumber, account.DefaultServiceAccount)
 	for _, feature := range account.Features {
-		fmt.Printf("Feature: %v, Status: %v\n", feature.Feature, feature.Status)
+		fmt.Printf("Feature: %v, Status: %v\n", feature.Name, feature.Status)
 	}
 
 	// Remove the GCP account from Polaris.

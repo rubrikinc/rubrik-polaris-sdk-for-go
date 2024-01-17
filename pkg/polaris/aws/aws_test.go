@@ -118,41 +118,39 @@ func TestAwsAccountAddAndRemove(t *testing.T) {
 		t.Error(err)
 	}
 	if account.Name != testAccount.AccountName {
-		t.Errorf("invalid name: %v", account.Name)
+		t.Fatalf("invalid name: %v", account.Name)
 	}
 	if account.NativeID != testAccount.AccountID {
-		t.Errorf("invalid native id: %v", account.NativeID)
+		t.Fatalf("invalid native id: %v", account.NativeID)
 	}
-	if n := len(account.Features); n == 1 {
-		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeProtection) {
-			t.Errorf("invalid feature name: %v", feature)
-		}
-		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
-			t.Errorf("invalid feature regions: %v", regions)
-		}
-		if account.Features[0].Status != core.StatusConnected {
-			t.Errorf("invalid feature status: %v", account.Features[0].Status)
-		}
-	} else {
-		t.Errorf("invalid number of features: %v", n)
+	if n := len(account.Features); n != 1 {
+		t.Fatalf("invalid number of features: %v", n)
+	}
+	if !account.Features[0].Equal(core.FeatureCloudNativeProtection) {
+		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
+	}
+	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+		t.Fatalf("invalid feature regions: %v", regions)
+	}
+	if account.Features[0].Status != core.StatusConnected {
+		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
 	}
 
 	// Update and verify regions for AWS account.
 	err = awsClient.UpdateAccount(ctx, AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection,
 		Regions("us-west-2"))
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	account, err = awsClient.Account(ctx, AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-	if n := len(account.Features); n == 1 {
-		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-west-2"}) {
-			t.Errorf("invalid feature regions: %v", regions)
-		}
-	} else {
-		t.Errorf("invalid number of features: %v", n)
+	if n := len(account.Features); n != 1 {
+		t.Fatalf("invalid number of features: %v", n)
+	}
+	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-west-2"}) {
+		t.Fatalf("invalid feature regions: %v", regions)
 	}
 
 	// Remove AWS account from RSC.
@@ -212,38 +210,38 @@ func TestAwsAccountAddAndRemoveWithPermissionGroups(t *testing.T) {
 	// Verify that the account was successfully added.
 	account, err := awsClient.Account(ctx, CloudAccountID(id), core.FeatureAll)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if account.Name != testAccount.AccountName {
-		t.Errorf("invalid name: %v", account.Name)
+		t.Fatalf("invalid name: %v", account.Name)
 	}
 	if account.NativeID != testAccount.AccountID {
-		t.Errorf("invalid native id: %v", account.NativeID)
+		t.Fatalf("invalid native id: %v", account.NativeID)
 	}
 	if n := len(account.Features); n != 2 {
-		t.Errorf("invalid number of features: %v", n)
+		t.Fatalf("invalid number of features: %v", n)
 	}
 	slices.SortFunc(account.Features, func(lhs, rhs Feature) int {
 		return cmp.Compare(lhs.Feature.Name, rhs.Feature.Name)
 	})
-	if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeProtection) {
-		t.Errorf("invalid feature name: %v", feature)
+	if !account.Features[0].Equal(core.FeatureCloudNativeProtection) {
+		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
 	}
 	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
-		t.Errorf("invalid feature regions: %v", regions)
+		t.Fatalf("invalid feature regions: %v", regions)
 	}
 	if account.Features[0].Status != core.StatusConnected {
-		t.Errorf("invalid feature status: %v", account.Features[0].Status)
+		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
 	}
-	if feature := account.Features[1].Feature; !feature.Equal(core.FeatureExocompute) {
-		t.Errorf("invalid feature name: %v", feature)
+	if !account.Features[1].Equal(core.FeatureExocompute) {
+		t.Fatalf("invalid feature name: %v", account.Features[1].Name)
 	}
 	if regions := account.Features[1].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
-		t.Errorf("invalid feature regions: %v", regions)
+		t.Fatalf("invalid feature regions: %v", regions)
 	}
 	if account.Features[1].Status != core.StatusConnected {
-		t.Errorf("invalid feature status: %v", account.Features[0].Status)
+		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
 	}
 
 	// Remove AWS account from RSC.
@@ -298,35 +296,34 @@ func TestAwsCrossAccountAddAndRemove(t *testing.T) {
 	// Verify that the account was successfully added.
 	account, err := awsClient.Account(ctx, CloudAccountID(id), core.FeatureCloudNativeProtection)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if account.Name != testAccount.CrossAccountName {
-		t.Errorf("invalid name: %v", account.Name)
+		t.Fatalf("invalid name: %v", account.Name)
 	}
 	if account.NativeID != testAccount.CrossAccountID {
-		t.Errorf("invalid native id: %v", account.NativeID)
+		t.Fatalf("invalid native id: %v", account.NativeID)
 	}
-	if n := len(account.Features); n == 1 {
-		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureCloudNativeProtection) {
-			t.Errorf("invalid feature name: %v", feature)
-		}
-		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
-			t.Errorf("invalid feature regions: %v", regions)
-		}
-		if account.Features[0].Status != core.StatusConnected {
-			t.Errorf("invalid feature status: %v", account.Features[0].Status)
-		}
-	} else {
-		t.Errorf("invalid number of features: %v", n)
+	if n := len(account.Features); n != 1 {
+		t.Fatalf("invalid number of features: %v", n)
+	}
+	if !account.Features[0].Equal(core.FeatureCloudNativeProtection) {
+		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
+	}
+	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+		t.Fatalf("invalid feature regions: %v", regions)
+	}
+	if account.Features[0].Status != core.StatusConnected {
+		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
 	}
 
 	// Verify that it's possible to search for the account using a role.
 	account, err = awsClient.Account(ctx, Role(testAccount.CrossAccountRole), core.FeatureCloudNativeProtection)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if account.ID != id {
-		t.Errorf("invalid id: %v", account.ID)
+		t.Fatalf("invalid id: %v", account.ID)
 	}
 
 	// Remove AWS account from RSC using a cross account role.

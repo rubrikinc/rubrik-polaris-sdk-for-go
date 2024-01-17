@@ -79,8 +79,8 @@ func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 
 // Feature for Google Cloud Platform projects.
 type Feature struct {
-	Feature core.Feature
-	Status  core.Status
+	core.Feature
+	Status core.Status
 }
 
 // RSC does not support the AllFeatures for GCP cloud accounts. We work around
@@ -320,7 +320,7 @@ func (a API) RemoveProject(ctx context.Context, id IdentityFunc, feature core.Fe
 		return fmt.Errorf("feature %w", graphql.ErrNotFound)
 	}
 
-	if account.Features[0].Feature.Equal(core.FeatureCloudNativeProtection) && account.Features[0].Status != core.StatusDisabled {
+	if account.Features[0].Equal(core.FeatureCloudNativeProtection) && account.Features[0].Status != core.StatusDisabled {
 		// Lookup the RSC Native ID from the GCP project number. The RSC Native
 		// Account ID is needed to delete the RSC Native Project.
 		natives, err := gcp.Wrap(a.client).NativeProjects(ctx, strconv.FormatInt(account.ProjectNumber, 10))

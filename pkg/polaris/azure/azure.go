@@ -65,7 +65,7 @@ type CloudAccount struct {
 // Feature returns the specified feature from the CloudAccount's features.
 func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 	for _, f := range c.Features {
-		if f.Feature.Equal(feature) {
+		if f.Equal(feature) {
 			return f, true
 		}
 	}
@@ -75,7 +75,7 @@ func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 
 // Feature for Microsoft Azure subscriptions.
 type Feature struct {
-	Feature core.Feature
+	core.Feature
 	Regions []string
 	Status  core.Status
 }
@@ -416,7 +416,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 	}
 
 	switch {
-	case account.Features[0].Feature.Equal(core.FeatureCloudNativeProtection) && account.Features[0].Status != core.StatusDisabled:
+	case account.Features[0].Equal(core.FeatureCloudNativeProtection) && account.Features[0].Status != core.StatusDisabled:
 		// Lookup the RSC native account id from the RSC subscription name and
 		// the Azure subscription id. The RSC native account id is needed to
 		// delete the RSC native account subscription.
@@ -440,7 +440,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 		if state != core.TaskChainSucceeded {
 			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
 		}
-	case account.Features[0].Feature.Equal(core.FeatureExocompute) && account.Features[0].Status != core.StatusDisabled:
+	case account.Features[0].Equal(core.FeatureExocompute) && account.Features[0].Status != core.StatusDisabled:
 		jobID, err := azure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, account.Features[0].Feature)
 		if err != nil {
 			return fmt.Errorf("failed to disable subscription feature %q: %v", feature, err)

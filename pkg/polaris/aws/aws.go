@@ -68,7 +68,7 @@ type CloudAccount struct {
 // Feature returns the specified feature from the CloudAccount's features.
 func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 	for _, f := range c.Features {
-		if f.Feature.Equal(feature) {
+		if f.Equal(feature) {
 			return f, true
 		}
 	}
@@ -78,7 +78,7 @@ func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 
 // Feature for Amazon Web Services accounts.
 type Feature struct {
-	Feature  core.Feature
+	core.Feature
 	Regions  []string
 	RoleArn  string
 	StackArn string
@@ -408,7 +408,7 @@ func (a API) removeAccount(ctx context.Context, account CloudAccount, features [
 	for _, result := range results {
 		if !result.Success {
 			sb.WriteString(", ")
-			sb.WriteString(string(result.Feature))
+			sb.WriteString(result.Feature)
 		}
 	}
 	if sb.Len() > 0 {
@@ -484,13 +484,13 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 	}
 
 	switch {
-	case rmFeature.Feature.Equal(core.FeatureCloudNativeProtection):
+	case rmFeature.Equal(core.FeatureCloudNativeProtection):
 		return a.disableNativeAccount(ctx, account.ID, aws.EC2, deleteSnapshots)
 
-	case rmFeature.Feature.Equal(core.FeatureRDSProtection):
+	case rmFeature.Equal(core.FeatureRDSProtection):
 		return a.disableNativeAccount(ctx, account.ID, aws.RDS, deleteSnapshots)
 
-	case rmFeature.Feature.Equal(core.FeatureExocompute):
+	case rmFeature.Equal(core.FeatureExocompute):
 		jobID, err := aws.Wrap(a.client).StartExocomputeDisableJob(ctx, account.ID)
 		if err != nil {
 			return fmt.Errorf("failed to disable native account: %s", err)

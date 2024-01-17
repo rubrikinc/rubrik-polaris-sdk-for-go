@@ -84,23 +84,22 @@ func TestAwsExocompute(t *testing.T) {
 		t.Fatal(err)
 	}
 	if account.Name != testAccount.AccountName {
-		t.Errorf("invalid name: %v", account.Name)
+		t.Fatalf("invalid name: %v", account.Name)
 	}
 	if account.NativeID != testAccount.AccountID {
-		t.Errorf("invalid native id: %v", account.NativeID)
+		t.Fatalf("invalid native id: %v", account.NativeID)
 	}
-	if n := len(account.Features); n == 1 {
-		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureExocompute) {
-			t.Errorf("invalid feature name: %v", feature)
-		}
-		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
-			t.Errorf("invalid feature regions: %v", regions)
-		}
-		if account.Features[0].Status != core.StatusConnected {
-			t.Errorf("invalid feature status: %v", account.Features[0].Status)
-		}
-	} else {
-		t.Errorf("invalid number of features: %v", n)
+	if n := len(account.Features); n != 1 {
+		t.Fatalf("invalid number of features: %v", n)
+	}
+	if !account.Features[0].Equal(core.FeatureExocompute) {
+		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
+	}
+	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+		t.Fatalf("invalid feature regions: %v", regions)
+	}
+	if account.Features[0].Status != core.StatusConnected {
+		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
 	}
 
 	exoID, err := awsClient.AddExocomputeConfig(ctx, AccountID(testAccount.AccountID),
@@ -117,30 +116,30 @@ func TestAwsExocompute(t *testing.T) {
 			t.Fatal(err)
 		}
 		if exoConfig.ID != exoID {
-			t.Errorf("invalid id: %v", exoConfig.ID)
+			t.Fatalf("invalid id: %v", exoConfig.ID)
 		}
 		if exoConfig.Region != "us-east-2" {
-			t.Errorf("invalid region: %v", exoConfig.Region)
+			t.Fatalf("invalid region: %v", exoConfig.Region)
 		}
 		if exoConfig.VPCID != testAccount.Exocompute.VPCID {
-			t.Errorf("invalid vpc id: %v", exoConfig.VPCID)
+			t.Fatalf("invalid vpc id: %v", exoConfig.VPCID)
 		}
 		sn1 := testAccount.Exocompute.Subnets[sn1inx]
 		sn2 := testAccount.Exocompute.Subnets[sn2inx]
 		if sn := exoConfig.Subnets[0]; sn.ID != sn1.ID && sn.ID != sn2.ID {
-			t.Errorf("invalid subnet id: %v", sn.ID)
+			t.Fatalf("invalid subnet id: %v", sn.ID)
 		}
 		if sn := exoConfig.Subnets[0]; sn.AvailabilityZone != sn1.AvailabilityZone && sn.AvailabilityZone != sn2.AvailabilityZone {
-			t.Errorf("invalid subnet availability zone: %v", sn.AvailabilityZone)
+			t.Fatalf("invalid subnet availability zone: %v", sn.AvailabilityZone)
 		}
 		if sn := exoConfig.Subnets[1]; sn.ID != sn1.ID && sn.ID != sn2.ID {
-			t.Errorf("invalid subnet id: %v", sn.ID)
+			t.Fatalf("invalid subnet id: %v", sn.ID)
 		}
 		if sn := exoConfig.Subnets[1]; sn.AvailabilityZone != sn1.AvailabilityZone && sn.AvailabilityZone != sn2.AvailabilityZone {
-			t.Errorf("invalid subnet availability zone: %v", sn.AvailabilityZone)
+			t.Fatalf("invalid subnet availability zone: %v", sn.AvailabilityZone)
 		}
 		if !exoConfig.ManagedByRubrik {
-			t.Errorf("invalid polaris managed state: %t", exoConfig.ManagedByRubrik)
+			t.Fatalf("invalid polaris managed state: %t", exoConfig.ManagedByRubrik)
 		}
 	}
 
@@ -156,7 +155,7 @@ func TestAwsExocompute(t *testing.T) {
 	}
 
 	if updatedExoID != exoID {
-		t.Errorf("invalid exo id post update, expected: %v, got: %v", exoID, updatedExoID)
+		t.Fatalf("invalid exo id post update, expected: %v, got: %v", exoID, updatedExoID)
 	}
 
 	// Verify that the exocompute config has been updated to use subnet 1 & 2 from the test account.

@@ -107,7 +107,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 
 		// Check that the feature is in the feature set unless the set is
 		// empty which is when all features should be updated.
-		if _, ok := featureSet[feature.Feature.Key()]; len(featureSet) > 0 && !ok {
+		if _, ok := featureSet[feature.Key()]; len(featureSet) > 0 && !ok {
 			continue
 		}
 
@@ -151,7 +151,7 @@ func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain
 
 			// Check that the feature is in the feature set unless the set is
 			// empty which is when all features should be updated.
-			if _, ok := featureSet[feature.Feature.Key()]; len(featureSet) > 0 && !ok {
+			if _, ok := featureSet[feature.Key()]; len(featureSet) > 0 && !ok {
 				continue
 			}
 

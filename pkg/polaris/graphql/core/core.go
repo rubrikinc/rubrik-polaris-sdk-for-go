@@ -80,16 +80,19 @@ func (feature Feature) DeepEqual(other Feature) bool {
 	if !feature.Equal(other) {
 		return false
 	}
-	if len(feature.PermissionGroups) != len(other.PermissionGroups) {
-		return false
-	}
+
+	set := make(map[PermissionGroup]struct{}, len(feature.PermissionGroups))
 	for _, permissionGroup := range feature.PermissionGroups {
-		if !slices.Contains(other.PermissionGroups, permissionGroup) {
+		set[permissionGroup] = struct{}{}
+	}
+	for _, permissionGroup := range other.PermissionGroups {
+		if _, ok := set[permissionGroup]; !ok {
 			return false
 		}
+		delete(set, permissionGroup)
 	}
 
-	return true
+	return len(set) == 0
 }
 
 // HasPermissionGroup returns true if the feature has the specified permission
