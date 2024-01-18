@@ -234,6 +234,9 @@ func TestAwsAccountAddAndRemoveWithPermissionGroups(t *testing.T) {
 	if account.Features[0].Status != core.StatusConnected {
 		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
 	}
+	if groups := account.Features[0].PermissionGroups; !reflect.DeepEqual(groups, []core.PermissionGroup{core.PermissionGroupBasic}) {
+		t.Fatalf("invalid permission groups: %v", groups)
+	}
 	if !account.Features[1].Equal(core.FeatureExocompute) {
 		t.Fatalf("invalid feature name: %v", account.Features[1].Name)
 	}
@@ -243,7 +246,9 @@ func TestAwsAccountAddAndRemoveWithPermissionGroups(t *testing.T) {
 	if account.Features[1].Status != core.StatusConnected {
 		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
 	}
-
+	if groups := account.Features[1].PermissionGroups; !reflect.DeepEqual(groups, []core.PermissionGroup{core.PermissionGroupBasic, core.PermissionGroupRSCManagedCluster}) {
+		t.Fatalf("invalid permission groups: %v", groups)
+	}
 	// Remove AWS account from RSC.
 	err = awsClient.RemoveAccount(ctx, Profile(testAccount.Profile), features, false)
 	if err != nil {

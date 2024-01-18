@@ -368,8 +368,30 @@ func (a API) DeploymentVersion(ctx context.Context) (string, error) {
 	return payload.Data.DeploymentVersion, nil
 }
 
-// AllEnabledFeaturesForAccount returns all features enable for the RSC account.
-func (a API) AllEnabledFeaturesForAccount(ctx context.Context) ([]Feature, error) {
+// DeploymentIPAddresses returns the deployment IP addresses.
+func (a API) DeploymentIPAddresses(ctx context.Context) ([]string, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, allDeploymentIpAddressesQuery, struct{}{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to request allDeploymentIpAddresses: %w", err)
+	}
+	a.log.Printf(log.Debug, "allDeploymentIpAddresses(): %s", string(buf))
+
+	var payload struct {
+		Data struct {
+			DeploymentIPAddresses []string `json:"allDeploymentIpAddresses"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal allDeploymentIpAddresses: %v", err)
+	}
+
+	return payload.Data.DeploymentIPAddresses, nil
+}
+
+// EnabledFeaturesForAccount returns all features enable for the RSC account.
+func (a API) EnabledFeaturesForAccount(ctx context.Context) ([]Feature, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, allEnabledFeaturesForAccountQuery, struct{}{})
