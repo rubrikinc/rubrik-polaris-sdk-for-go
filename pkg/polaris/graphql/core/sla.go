@@ -83,10 +83,10 @@ func (a API) AssignSLAForSnappableHierarchies(
 	globalSLAAssignType SLAAssignType,
 	ObjectIDs []uuid.UUID,
 	applicableSnappableTypes []SnappableLevelHierarchyType,
-	shouldApplyToExistingSnapshots bool,
-	shouldApplyToNonPolicySnapshots bool,
-	globalExistingSnapshotRetention GlobalExistingSnapshotRetention,
-	userNote string,
+	shouldApplyToExistingSnapshots *bool,
+	shouldApplyToNonPolicySnapshots *bool,
+	globalExistingSnapshotRetention *GlobalExistingSnapshotRetention,
+	userNote *string,
 ) ([]bool, error) {
 	a.log.Print(log.Trace)
 
@@ -94,14 +94,14 @@ func (a API) AssignSLAForSnappableHierarchies(
 		ctx,
 		assignSlaForSnappableHierarchiesQuery,
 		struct {
-			GlobalSLAOptionalFID            *uuid.UUID                      `json:"globalSlaOptionalFid"`
-			GlobalSLAAssignType             SLAAssignType                   `json:"globalSlaAssignType"`
-			ObjectIDs                       []uuid.UUID                     `json:"objectIds"`
-			ApplicableSnappableTypes        []SnappableLevelHierarchyType   `json:"applicableSnappableTypes"`
-			ShouldApplyToExistingSnapshots  bool                            `json:"shouldApplyToExistingSnapshots"`
-			ShouldApplyToNonPolicySnapshots bool                            `json:"shouldApplyToNonPolicySnapshots"`
-			GlobalExistingSnapshotRetention GlobalExistingSnapshotRetention `json:"globalExistingSnapshotRetention"`
-			UserNote                        string                          `json:"userNote"`
+			GlobalSLAOptionalFID            *uuid.UUID                       `json:"globalSlaOptionalFid"`
+			GlobalSLAAssignType             SLAAssignType                    `json:"globalSlaAssignType"`
+			ObjectIDs                       []uuid.UUID                      `json:"objectIds"`
+			ApplicableSnappableTypes        []SnappableLevelHierarchyType    `json:"applicableSnappableTypes"`
+			ShouldApplyToExistingSnapshots  *bool                            `json:"shouldApplyToExistingSnapshots"`
+			ShouldApplyToNonPolicySnapshots *bool                            `json:"shouldApplyToNonPolicySnapshots"`
+			GlobalExistingSnapshotRetention *GlobalExistingSnapshotRetention `json:"globalExistingSnapshotRetention"`
+			UserNote                        *string                          `json:"userNote"`
 		}{
 			GlobalSLAOptionalFID:            globalSLAOptionalFID,
 			GlobalSLAAssignType:             globalSLAAssignType,

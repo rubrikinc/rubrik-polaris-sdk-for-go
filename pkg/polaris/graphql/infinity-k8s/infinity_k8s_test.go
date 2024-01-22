@@ -23,6 +23,8 @@ var (
 	k8sFID     = uuid.MustParse("ea176753-d4ee-59b0-b770-54f77335abe3")
 	goldSLAFID = uuid.MustParse("34d1f3c4-3521-5747-836e-4345b363175d")
 	client     *polaris.Client
+	trueValue  = true
+	falseValue = false
 )
 
 func TestMain(m *testing.M) {
@@ -133,7 +135,7 @@ func TestIntegration(t *testing.T) {
 		ctx,
 		rsFID.String(),
 		infinityk8s.UpdateK8sProtectionSetConfig{
-			Definition:  "{\"includes\": [{\"resource\": \"Deployment\"}]}",
+			Definition: "{\"includes\": [{\"resource\": \"Deployment\"}]}",
 		},
 	)
 	if err != nil {
@@ -153,10 +155,10 @@ func TestIntegration(t *testing.T) {
 		core.ProtectWithSLAID,
 		[]uuid.UUID{rsFID},
 		nil,
-		true,  // shouldApplyToExistingSnapshots
-		false, // shouldApplyToNonPolicySnapshots
-		core.RetainSnapshots,
-		"", // userNote
+		&trueValue,  // shouldApplyToExistingSnapshots
+		&falseValue, // shouldApplyToNonPolicySnapshots
+		nil,
+		nil, // userNote
 	)
 	if err != nil {
 		t.Error(err)
@@ -378,40 +380,23 @@ func TestIntegrationTemp(t *testing.T) {
 	infinityK8sClient := infinityk8s.Wrap(client)
 	logger := infinityK8sClient.GQL.Log()
 	logger.SetLogLevel(log.Debug)
-
-	// 6. Get the status of the job.
-	getJobResp, err := infinityK8sClient.GetJobInstance(
+	// 1. Assign SLA to resource set
+	slaClient := core.Wrap(client.GQL)
+	retention := core.RetainSnapshots
+	slaResp, err := slaClient.AssignSLAForSnappableHierarchies(
 		ctx,
-		"CREATE_MN_K8S_SNAPSHOT_d75bccbe-2a4e-4b0b-8ca1-c6a604540a03_80e516da-fd28-4091-80a1-2bb60e16d6e3:::0",
-		cdmID.String(),
+		nil,
+		core.DoNotProtect,
+		[]uuid.UUID{uuid.MustParse("ffcafccd-0712-5c09-9e98-f71d035d7866")},
+		nil,
+		nil,         // shouldApplyToExistingSnapshots
+		&falseValue, // shouldApplyToNonPolicySnapshots
+		&retention,
+		nil, // userNote
 	)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	logger.Printf(log.Info, "get snapshot job response: %+v", getJobResp)
-
-	// 6.1 check for events on the snapshot job. Since the job is complete, we
-	// should see all the events.
-	esi := getJobResp.EventSeriesID
-	series, err := infinityK8sClient.GetActivitySeries(
-		ctx,
-		uuid.MustParse(esi),
-		cdmID,
-	)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	for _, act := range series {
-		logger.Printf(
-			log.Info,
-			"snapshot activity: %s, %s, %s, %s, %+v",
-			act.ActivityInfo,
-			act.Message,
-			act.Status,
-			act.Severity,
-			act.Time,
-		)
-	}
+	logger.Printf(log.Info, "Assign SLA response %v\n", slaResp)
 }
