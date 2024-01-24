@@ -52,7 +52,7 @@ type ExocomputeConfig struct {
 	ClusterSecurityGroupID string
 	NodeSecurityGroupID    string
 
-	// Customer cluster name, only for customer managed clusters
+	// Customer cluster name, only for customer managed clusters.
 	ClusterName string
 }
 
