@@ -56,6 +56,13 @@ type ExocomputeConfig struct {
 
 	// Only for customer managed clusters
 	ClusterName string `json:"clusterName"`
+
+	HealthCheckStatus struct {
+		Status        string `json:"status"`
+		FailureReason string `json:"failureReason"`
+		LastUpdatedAt string `json:"lastUpdatedAt"`
+		TaskchainID   string `json:"taskchainId"`
+	}
 }
 
 // ExocomputeConfigsForAccount holds all exocompute configs for a specific

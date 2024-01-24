@@ -48,46 +48,53 @@ var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWi
 // allAwsExocomputeConfigs GraphQL query
 var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsNativeAccountIdOrNamePrefix: String!) {
     result: allAwsExocomputeConfigs(awsNativeAccountIdOrNamePrefix: $awsNativeAccountIdOrNamePrefix) {
-    awsCloudAccount {
-      accountName
-      cloudType
-      id
-      nativeId
-      seamlessFlowEnabled
-      message
-    }
-    exocomputeConfigs {
-      configUuid
-      hasPcr
-      healthCheckStatus {
-        failureReason
-        lastUpdatedAt
-        status
-        taskchainId
-      }
-      message
-      pcrUrl
-      region
-      configUuid
-      ... on AwsCustomerManagedExocomputeConfig {
-        clusterName
-      }
-      ... on AwsRscManagedExocomputeConfig {
-        vpcId
-        clusterSecurityGroupId
-        nodeSecurityGroupId
-        subnet1 {
-          availabilityZone
-          subnetId
+        awsCloudAccount {
+            cloudType
+            id
+            nativeId
+            message
+            accountName
         }
-        subnet2 {
-          availabilityZone
-          subnetId
+        mappedCloudAccounts {
+            id
+            name
+            nativeId
         }
-        areSecurityGroupsRscManaged
-      }
+        featureDetail {
+            feature
+            roleArn
+            stackArn
+            status
+            awsRegions
+        }
+        exocomputeConfigs {
+            configUuid
+            healthCheckStatus {
+                failureReason
+                lastUpdatedAt
+                status
+                taskchainId
+            }
+            region
+            ... on AwsCustomerManagedExocomputeConfig {
+                clusterName
+            }
+            ... on AwsRscManagedExocomputeConfig {
+                vpcId
+                clusterSecurityGroupId
+                nodeSecurityGroupId
+                subnet1 {
+                    availabilityZone
+                    subnetId
+                }
+                subnet2 {
+                    availabilityZone
+                    subnetId
+                }
+                areSecurityGroupsRscManaged
+            }
+        }
     }
-  }
 }`
 
 // allAwsPermissionPolicies GraphQL query
