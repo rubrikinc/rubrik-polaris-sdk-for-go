@@ -64,7 +64,11 @@ func NewClient(apiURL string, tokenSource token.Source) *Client {
 
 // NewClientWithLogger returns a new Client for the specified API URL, logging
 // to the given logger.
-func NewClientWithLogger(apiURL string, tokenSource token.Source, logger log.Logger) *Client {
+func NewClientWithLogger(
+	apiURL string,
+	tokenSource token.Source,
+	logger log.Logger,
+) *Client {
 	logger.Printf(log.Info, "Polaris API URL: %s", apiURL)
 
 	client := &Client{
@@ -79,23 +83,50 @@ func NewClientWithLogger(apiURL string, tokenSource token.Source, logger log.Log
 }
 
 // Deprecated: use NewClientWithLogger.
-func NewClientFromLocalUser(app, apiURL, username, password string, logger log.Logger) *Client {
-	tokenSource := token.NewUserSourceWithLogger(http.DefaultClient, apiURL, username, password, logger)
+func NewClientFromLocalUser(
+	app, apiURL, username, password string,
+	logger log.Logger,
+) *Client {
+	tokenSource := token.NewUserSourceWithLogger(
+		http.DefaultClient,
+		apiURL,
+		username,
+		password,
+		logger,
+	)
 
 	return NewClient(apiURL, tokenSource)
 }
 
 // Deprecated: use NewClientWithLogger.
-func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSecret string, logger log.Logger) *Client {
-	tokenSource := token.NewServiceAccountSourceWithLogger(http.DefaultClient, accessTokenURI, clientID, clientSecret, logger)
+func NewClientFromServiceAccount(
+	app, apiURL, accessTokenURI, clientID, clientSecret string,
+	logger log.Logger,
+) *Client {
+	tokenSource := token.NewServiceAccountSourceWithLogger(
+		http.DefaultClient,
+		accessTokenURI,
+		clientID,
+		clientSecret,
+		logger,
+	)
 
 	return NewClient(apiURL, tokenSource)
 }
 
 // NewTestClient returns a new Client intended to be used by unit tests.
-func NewTestClient(username, password string, logger log.Logger) (*Client, *testnet.TestListener) {
+func NewTestClient(username, password string, logger log.Logger) (
+	*Client,
+	*testnet.TestListener,
+) {
 	testClient, listener := testnet.NewPipeNet()
-	tokenSource := token.NewUserSourceWithLogger(testClient, "http://test/api", username, password, logger)
+	tokenSource := token.NewUserSourceWithLogger(
+		testClient,
+		"http://test/api",
+		username,
+		password,
+		logger,
+	)
 
 	client := &Client{
 		gqlURL: "http://test/api/graphql",
@@ -112,7 +143,11 @@ func NewTestClient(username, password string, logger log.Logger) (*Client, *test
 func (c *Client) DeploymentVersion(ctx context.Context) (Version, error) {
 	c.log.Print(log.Trace)
 
-	buf, err := c.Request(ctx, "query SdkGolangDeploymentVersion { deploymentVersion }", struct{}{})
+	buf, err := c.Request(
+		ctx,
+		"query SdkGolangDeploymentVersion { deploymentVersion }",
+		struct{}{},
+	)
 	if err != nil {
 		return "", fmt.Errorf("failed to request deploymentVersion: %w", err)
 	}
@@ -176,7 +211,11 @@ func operationName(query string) string {
 
 // Request posts the specified GraphQL query with the given variables to the
 // Polaris platform. Returns the response JSON text as is.
-func (c *Client) Request(ctx context.Context, query string, variables interface{}) ([]byte, error) {
+func (c *Client) Request(
+	ctx context.Context,
+	query string,
+	variables interface{},
+) ([]byte, error) {
 	c.log.Print(log.Trace)
 
 	// Extract operation name from query to pass in the body of the request for
@@ -184,17 +223,25 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 	operation := operationName(query)
 
 	// Prepare the query request body.
-	buf, err := json.Marshal(struct {
-		Query     string      `json:"query"`
-		Variables interface{} `json:"variables,omitempty"`
-		Operation string      `json:"operationName,omitempty"`
-	}{Query: query, Variables: variables, Operation: operation})
+	buf, err := json.Marshal(
+		struct {
+			Query     string      `json:"query"`
+			Variables interface{} `json:"variables,omitempty"`
+			Operation string      `json:"operationName,omitempty"`
+		}{Query: query, Variables: variables, Operation: operation},
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal graphql request body: %v", err)
 	}
 
+	c.log.Print(log.Info, "graphql request body: ", string(buf))
 	// Send the query to the remote API endpoint.
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.gqlURL, bytes.NewReader(buf))
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		c.gqlURL,
+		bytes.NewReader(buf),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create graphql request: %v", err)
 	}
@@ -209,12 +256,19 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 	// Remote responded without a body. For status code 200 this means we are
 	// missing the GraphQL response. For an error we have no additional details.
 	if res.ContentLength == 0 {
-		return nil, fmt.Errorf("graphql response has no body (status code %d)", res.StatusCode)
+		return nil, fmt.Errorf(
+			"graphql response has no body (status code %d)",
+			res.StatusCode,
+		)
 	}
 
 	buf, err = io.ReadAll(res.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read graphql response body (status code %d): %v", res.StatusCode, err)
+		return nil, fmt.Errorf(
+			"failed to read graphql response body (status code %d): %v",
+			res.StatusCode,
+			err,
+		)
 	}
 
 	// Verify that the content type of the body is JSON. For status code 200
@@ -226,28 +280,42 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 		if len(snippet) > 512 {
 			snippet = snippet[:512]
 		}
-		return nil, fmt.Errorf("graphql response has Content-Type %s (status code %d): %q",
-			contentType, res.StatusCode, snippet)
+		return nil, fmt.Errorf(
+			"graphql response has Content-Type %s (status code %d): %q",
+			contentType, res.StatusCode, snippet,
+		)
 	}
 
 	// Remote responded with a JSON document. Try to parse it as both known
 	// error message formats.
 	var jsonErr errors.JSONError
 	if err := json.Unmarshal(buf, &jsonErr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
-			res.StatusCode, err)
+		return nil, fmt.Errorf(
+			"failed to unmarshal graphql response body as an error (status code %d): %v",
+			res.StatusCode, err,
+		)
 	}
 	if jsonErr.IsError() {
-		return nil, fmt.Errorf("graphql response body is an error (status code %d): %w", res.StatusCode, jsonErr)
+		return nil, fmt.Errorf(
+			"graphql response body is an error (status code %d): %w",
+			res.StatusCode,
+			jsonErr,
+		)
 	}
 
 	var gqlErr GQLError
 	if err := json.Unmarshal(buf, &gqlErr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
-			res.StatusCode, err)
+		return nil, fmt.Errorf(
+			"failed to unmarshal graphql response body as an error (status code %d): %v",
+			res.StatusCode, err,
+		)
 	}
 	if gqlErr.isError() {
-		return nil, fmt.Errorf("graphql response body is an error (status code %d): %w", res.StatusCode, gqlErr)
+		return nil, fmt.Errorf(
+			"graphql response body is an error (status code %d): %w",
+			res.StatusCode,
+			gqlErr,
+		)
 	}
 
 	if res.StatusCode != 200 {
