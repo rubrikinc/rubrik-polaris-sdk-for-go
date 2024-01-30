@@ -38,6 +38,13 @@ type Subnet struct {
 	AvailabilityZone string
 }
 
+type HealthCheckStatus struct {
+	Status        string
+	FailureReason string
+	LastUpdatedAt string
+	TaskchainID   string
+}
+
 // ExocomputeConfig represents a single exocompute config.
 type ExocomputeConfig struct {
 	ID      uuid.UUID
@@ -52,8 +59,8 @@ type ExocomputeConfig struct {
 	ClusterSecurityGroupID string
 	NodeSecurityGroupID    string
 
-	// Customer cluster name, only for customer managed clusters.
-	ClusterName string
+	// Health status of the exocompute cluster.
+	HealthCheckStatus HealthCheckStatus
 }
 
 // ExoConfigFunc returns an exocompute config initialized from the values
@@ -191,17 +198,14 @@ func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID,
 	}
 }
 
-func CustomerCluster(region, clusterName string) ExoConfigFunc {
+func BYOKCluster(region string) ExoConfigFunc {
 	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
 		reg, err := aws.ParseRegion(region)
 		if err != nil {
 			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
 		}
 
-		return aws.ExocomputeConfigCreate{
-			Region:      reg,
-			ClusterName: clusterName,
-		}, nil
+		return aws.ExocomputeConfigCreate{Region: reg}, nil
 	}
 }
 
@@ -228,13 +232,18 @@ func toExocomputeConfig(config aws.ExocomputeConfig) (ExocomputeConfig, error) {
 		ManagedByRubrik:        config.IsManagedByRubrik,
 		ClusterSecurityGroupID: config.ClusterSecurityGroupID,
 		NodeSecurityGroupID:    config.NodeSecurityGroupID,
-		ClusterName:            config.ClusterName,
+		HealthCheckStatus: HealthCheckStatus{
+			Status:        config.HealthCheckStatus.Status,
+			FailureReason: config.HealthCheckStatus.FailureReason,
+			LastUpdatedAt: config.HealthCheckStatus.LastUpdatedAt,
+			TaskchainID:   config.HealthCheckStatus.TaskchainID,
+		},
 	}, nil
 }
 
 // ExocomputeConfig returns the exocompute config with the specified exocompute
 // config id.
-func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConfig, error) {
+func (a API) ExocomputeConfig(ctx context.Context, configID uuid.UUID) (ExocomputeConfig, error) {
 	a.log.Print(log.Trace)
 
 	configsForAccounts, err := aws.Wrap(a.client).ExocomputeConfigs(ctx, "")
@@ -242,7 +251,7 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 		return ExocomputeConfig{}, fmt.Errorf("failed to get exocompute configs for account: %s", err)
 	}
 
-	exoID := id.String()
+	exoID := configID.String()
 	for _, configsForAccount := range configsForAccounts {
 		for _, config := range configsForAccount.Configs {
 			if config.ID == exoID {
@@ -339,10 +348,10 @@ func (a API) UpdateExocomputeConfig(ctx context.Context, id IdentityFunc, config
 
 // RemoveExocomputeConfig removes the exocompute config with the specified
 // exocompute config id.
-func (a API) RemoveExocomputeConfig(ctx context.Context, id uuid.UUID) error {
+func (a API) RemoveExocomputeConfig(ctx context.Context, configID uuid.UUID) error {
 	a.log.Print(log.Trace)
 
-	err := aws.Wrap(a.client).DeleteExocomputeConfig(ctx, id)
+	err := aws.Wrap(a.client).DeleteExocomputeConfig(ctx, configID)
 	if err != nil {
 		return fmt.Errorf("failed to remove exocompute config: %v", err)
 	}
@@ -443,4 +452,17 @@ func (a API) UnmapExocompute(ctx context.Context, appID IdentityFunc) error {
 	}
 
 	return nil
+}
+
+// AddClusterToExocomputeConfig adds the named cluster to specified exocompute
+// configration. The cluster ID and connection command are returned.
+func (a API) AddClusterToExocomputeConfig(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, error) {
+	a.log.Print(log.Trace)
+
+	clusterID, cmd, err := aws.Wrap(a.client).ConnectExocomputeCluster(ctx, configID, clusterName)
+	if err != nil {
+		return uuid.Nil, "", fmt.Errorf("failed to connect exocompute cluster: %v", err)
+	}
+
+	return clusterID, cmd, nil
 }

@@ -274,6 +274,17 @@ var bulkDeleteAwsCloudAccountWithoutCftQuery = `mutation SdkGolangBulkDeleteAwsC
     }
 }`
 
+// connectAwsExocomputeCluster GraphQL query
+var connectAwsExocomputeClusterQuery = `mutation SdkGolangConnectAwsExocomputeCluster($clusterName: String!, $exocomputeConfigId: String!) {
+    result: connectAwsExocomputeCluster(input: {
+        clusterName:        $clusterName,
+        exocomputeConfigId: $exocomputeConfigId
+    }) {
+        clusterUuid
+        connectionCommand
+    }
+}`
+
 // createAwsExocomputeConfigs GraphQL query
 var createAwsExocomputeConfigsQuery = `mutation SdkGolangCreateAwsExocomputeConfigs($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
     createAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
