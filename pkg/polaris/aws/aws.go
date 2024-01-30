@@ -206,8 +206,6 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 
 		// We need to list all accounts and filter on the cloud account id since
 		// the API that looks up cloud accounts returns archived accounts too.
-		// Note, as of now, this endpoint doesn't return the permission groups
-		// for the accounts.
 		accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, "")
 		if err != nil {
 			return CloudAccount{}, fmt.Errorf("failed to get account: %s", err)
@@ -216,19 +214,12 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 		// Find the exact match.
 		for _, accountWithFeatures := range accountsWithFeatures {
 			if accountWithFeatures.Account.ID == cloudAccountID {
-				// Explicitly get the permission groups for the account.
-				account, err := aws.Wrap(a.client).CloudAccountWithFeatures(ctx, accountWithFeatures.Account.ID, feature)
-				if err != nil {
-					return CloudAccount{}, fmt.Errorf("failed to get account with permission groups: %s", err)
-				}
-
-				return toCloudAccount(account), nil
+				return toCloudAccount(accountWithFeatures), nil
 			}
 		}
 	} else {
 		// We need to list accounts and filter on the native id since there is
-		// no API to look up an account by native id. Note, as of now, this
-		// endpoint doesn't return the permission groups for the accounts.
+		// no API to look up an account by native id.
 		accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, identity.id)
 		if err != nil {
 			return CloudAccount{}, fmt.Errorf("failed to get account: %s", err)
@@ -237,13 +228,7 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 		// Find the exact match.
 		for _, accountWithFeatures := range accountsWithFeatures {
 			if accountWithFeatures.Account.NativeID == identity.id {
-				// Explicitly get the permission groups for the account.
-				account, err := aws.Wrap(a.client).CloudAccountWithFeatures(ctx, accountWithFeatures.Account.ID, feature)
-				if err != nil {
-					return CloudAccount{}, fmt.Errorf("failed to get account with permission groups: %s", err)
-				}
-
-				return toCloudAccount(account), nil
+				return toCloudAccount(accountWithFeatures), nil
 			}
 		}
 	}
@@ -256,8 +241,6 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
 	a.log.Print(log.Trace)
 
-	// Note, as of now, this endpoint doesn't return the permission groups for
-	// the accounts.
 	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, filter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get accounts: %s", err)
@@ -265,13 +248,7 @@ func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) 
 
 	accounts := make([]CloudAccount, 0, len(accountsWithFeatures))
 	for _, accountWithFeatures := range accountsWithFeatures {
-		// Explicitly get the permission groups for each account.
-		account, err := aws.Wrap(a.client).CloudAccountWithFeatures(ctx, accountWithFeatures.Account.ID, feature)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get accounts with permission groups: %s", err)
-		}
-
-		accounts = append(accounts, toCloudAccount(account))
+		accounts = append(accounts, toCloudAccount(accountWithFeatures))
 	}
 
 	return accounts, nil
