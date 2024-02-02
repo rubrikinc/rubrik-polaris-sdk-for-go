@@ -122,7 +122,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 
 	featureSet := make(map[string]struct{})
 	for _, feature := range features {
-		featureSet[feature.Key()] = struct{}{}
+		featureSet[feature.Name] = struct{}{}
 	}
 
 	account, err := a.Project(ctx, id, core.FeatureAll)
@@ -137,7 +137,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 
 		// Check that the feature is in the feature set unless the set is
 		// empty which is when all features should be updated.
-		if _, ok := featureSet[feature.Key()]; len(featureSet) > 0 && !ok {
+		if _, ok := featureSet[feature.Name]; len(featureSet) > 0 && !ok {
 			continue
 		}
 
@@ -161,7 +161,7 @@ func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.F
 
 	featureSet := make(map[string]struct{})
 	for _, feature := range features {
-		featureSet[feature.Key()] = struct{}{}
+		featureSet[feature.Name] = struct{}{}
 	}
 
 	accounts, err := a.Projects(ctx, core.FeatureAll, "")
@@ -181,7 +181,7 @@ func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.F
 
 			// Check that the feature is in the feature set unless the set is
 			// empty which is when all features should be updated.
-			if _, ok := featureSet[feature.Key()]; len(featureSet) > 0 && !ok {
+			if _, ok := featureSet[feature.Name]; len(featureSet) > 0 && !ok {
 				continue
 			}
 
