@@ -26,7 +26,6 @@ package core
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -101,11 +100,6 @@ func (feature Feature) HasPermissionGroup(permissionGroup PermissionGroup) bool 
 	return slices.Contains(feature.PermissionGroups, permissionGroup)
 }
 
-// Key returns a map compatible key for the feature.
-func (feature Feature) Key() string {
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(feature.String())))
-}
-
 // String returns a string representation of the feature.
 func (feature Feature) String() string {
 	if len(feature.PermissionGroups) == 0 {
@@ -161,22 +155,22 @@ var (
 )
 
 var validFeatures = map[string]struct{}{
-	FeatureAll.Key():                           {},
-	FeatureAppFlows.Key():                      {},
-	FeatureArchival.Key():                      {},
-	FeatureAzureSQLDBProtection.Key():          {},
-	FeatureAzureSQLMIProtection.Key():          {},
-	FeatureCloudAccounts.Key():                 {},
-	FeatureCloudNativeArchival.Key():           {},
-	FeatureCloudNativeArchivalEncryption.Key(): {},
-	FeatureCloudNativeBLOBProtection.Key():     {},
-	FeatureCloudNativeProtection.Key():         {},
-	FeatureCloudNativeS3Protection.Key():       {},
-	FeatureExocompute.Key():                    {},
-	FeatureGCPSharedVPCHost.Key():              {},
-	FeatureKubernetesProtection.Key():          {},
-	FeatureRDSProtection.Key():                 {},
-	FeatureServerAndApps.Key():                 {},
+	FeatureAll.Name:                           {},
+	FeatureAppFlows.Name:                      {},
+	FeatureArchival.Name:                      {},
+	FeatureAzureSQLDBProtection.Name:          {},
+	FeatureAzureSQLMIProtection.Name:          {},
+	FeatureCloudAccounts.Name:                 {},
+	FeatureCloudNativeArchival.Name:           {},
+	FeatureCloudNativeArchivalEncryption.Name: {},
+	FeatureCloudNativeBLOBProtection.Name:     {},
+	FeatureCloudNativeProtection.Name:         {},
+	FeatureCloudNativeS3Protection.Name:       {},
+	FeatureExocompute.Name:                    {},
+	FeatureGCPSharedVPCHost.Name:              {},
+	FeatureKubernetesProtection.Name:          {},
+	FeatureRDSProtection.Name:                 {},
+	FeatureServerAndApps.Name:                 {},
 }
 
 // ContainsFeature returns true if the features slice contains the specified
@@ -202,9 +196,9 @@ func FormatFeature(feature Feature) string {
 func ParseFeature(feature string) (Feature, error) {
 	feature = strings.ReplaceAll(feature, "-", "_")
 
-	f := Feature{Name: strings.ToUpper(feature)}
-	if _, ok := validFeatures[f.Key()]; ok {
-		return f, nil
+	name := strings.ToUpper(feature)
+	if _, ok := validFeatures[name]; ok {
+		return Feature{Name: name}, nil
 	}
 
 	return FeatureInvalid, fmt.Errorf("invalid feature: %s", feature)
