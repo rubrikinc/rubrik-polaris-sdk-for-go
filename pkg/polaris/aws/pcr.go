@@ -29,9 +29,12 @@ import (
 )
 
 // SetPrivateContainerRegistry sets the private container registry details for
-// the give RSC account. nativeID specifies the AWS account where the PCR will
-// be hosted, this AWS account doesn't need to be same account as the previously
-// onboarded account.
+// the given RSC account.
+//
+// The nativeID parameter specifies the AWS account that will pull images from
+// the RSC container registry. RSC will whitelist the account. The nativeID AWS
+// account doesn't need to be the same account as a previously onboarded
+// account.
 func (a API) SetPrivateContainerRegistry(ctx context.Context, id IdentityFunc, url string, nativeID string) error {
 	a.log.Print(log.Trace)
 
