@@ -197,6 +197,17 @@ var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatur
     }
 }`
 
+// awsExocomputeClusterConnect GraphQL query
+var awsExocomputeClusterConnectQuery = `mutation SdkGolangAwsExocomputeClusterConnect($clusterName: String!, $exocomputeConfigId: UUID!) {
+    result: awsExocomputeClusterConnect(input: {
+        clusterName:        $clusterName,
+        exocomputeConfigId: $exocomputeConfigId
+    }) {
+        clusterUuid
+        connectionCommand
+    }
+}`
+
 // awsNativeAccount GraphQL query
 var awsNativeAccountQuery = `query SdkGolangAwsNativeAccount($awsNativeAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeature!) {
 	awsNativeAccount(awsNativeAccountRubrikId: $awsNativeAccountRubrikId, awsNativeProtectionFeature: $awsNativeProtectionFeature) {
@@ -274,17 +285,6 @@ var bulkDeleteAwsCloudAccountWithoutCftQuery = `mutation SdkGolangBulkDeleteAwsC
     }
 }`
 
-// connectAwsExocomputeCluster GraphQL query
-var connectAwsExocomputeClusterQuery = `mutation SdkGolangConnectAwsExocomputeCluster($clusterName: String!, $exocomputeConfigId: UUID!) {
-    result: awsExocomputeClusterConnect(input: {
-        clusterName:        $clusterName,
-        exocomputeConfigId: $exocomputeConfigId
-    }) {
-        clusterUuid
-        connectionCommand
-    }
-}`
-
 // createAwsExocomputeConfigs GraphQL query
 var createAwsExocomputeConfigsQuery = `mutation SdkGolangCreateAwsExocomputeConfigs($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
     createAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
@@ -349,6 +349,13 @@ var deleteAwsExocomputeConfigsQuery = `mutation SdkGolangDeleteAwsExocomputeConf
 var deleteTargetMappingQuery = `mutation SdkGolangDeleteTargetMapping($id: String!) {
     result: deleteTargetMapping(input: {
         id: $id
+    })
+}`
+
+// disconnectAwsExocomputeCluster GraphQL query
+var disconnectAwsExocomputeClusterQuery = `mutation SdkGolangDisconnectAwsExocomputeCluster($clusterId: UUID!) {
+    disconnectAwsExocomputeCluster(input: {
+        clusterId: $clusterId
     })
 }`
 

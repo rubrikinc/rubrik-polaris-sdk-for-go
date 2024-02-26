@@ -52,7 +52,7 @@ type ExocomputeConfig struct {
 	VPCID   string
 	Subnets []Subnet
 
-	// When true Rubrik manages the security groups.
+	// When true, Rubrik manages the security groups.
 	ManagedByRubrik bool
 
 	// Security group ids of cluster control plane and worker node.
@@ -465,4 +465,15 @@ func (a API) AddClusterToExocomputeConfig(ctx context.Context, configID uuid.UUI
 	}
 
 	return clusterID, cmd, nil
+}
+
+// RemoveExocomputeCluster removes the exocompute cluster with the specified ID.
+func (a API) RemoveExocomputeCluster(ctx context.Context, clusterID uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	if err := aws.Wrap(a.client).DisconnectExocomputeCluster(ctx, clusterID); err != nil {
+		return fmt.Errorf("failed to disconnect exocompute cluster: %v", err)
+	}
+
+	return nil
 }

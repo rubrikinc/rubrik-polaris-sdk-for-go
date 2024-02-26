@@ -325,14 +325,14 @@ func (a API) UnmapCloudAccountExocomputeAccount(ctx context.Context, appIDs []uu
 func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, connectAwsExocomputeClusterQuery, struct {
+	buf, err := a.GQL.Request(ctx, awsExocomputeClusterConnectQuery, struct {
 		ConfigID    uuid.UUID `json:"exocomputeConfigId"`
 		ClusterName string    `json:"clusterName"`
 	}{ConfigID: configID, ClusterName: clusterName})
 	if err != nil {
-		return uuid.Nil, "", fmt.Errorf("failed to request connectAwsExocomputeCluster: %w", err)
+		return uuid.Nil, "", fmt.Errorf("failed to request awsExocomputeClusterConnect: %w", err)
 	}
-	a.log.Printf(log.Debug, "connectAwsExocomputeCluster(%q, %q): %s", configID, clusterName, string(buf))
+	a.log.Printf(log.Debug, "awsExocomputeClusterConnect(%q, %q): %s", configID, clusterName, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -343,8 +343,24 @@ func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, c
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, "", fmt.Errorf("failed to unmarshal connectAwsExocomputeCluster: %v", err)
+		return uuid.Nil, "", fmt.Errorf("failed to unmarshal awsExocomputeClusterConnect: %v", err)
 	}
 
 	return payload.Data.Result.ID, payload.Data.Result.Command, nil
+}
+
+// DisconnectExocomputeCluster disconnects the exocomptue cluster with the
+// specified ID from RSC.
+func (a API) DisconnectExocomputeCluster(ctx context.Context, clusterID uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	_, err := a.GQL.Request(ctx, disconnectAwsExocomputeClusterQuery, struct {
+		ClusterID uuid.UUID `json:"clusterId"`
+	}{ClusterID: clusterID})
+	if err != nil {
+		return fmt.Errorf("failed to request disconnectAwsExocomputeCluster: %w", err)
+	}
+	a.log.Printf(log.Debug, "disconnectAwsExocomputeCluster(%q)", clusterID)
+
+	return nil
 }
