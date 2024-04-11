@@ -69,7 +69,7 @@ type CloudAccount struct {
 // Feature returns the specified feature from the CloudAccount's features.
 func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 	for _, f := range c.Features {
-		if f.Name == feature {
+		if f.Feature.Equal(feature) {
 			return f, true
 		}
 	}
@@ -79,7 +79,7 @@ func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 
 // Feature for Google Cloud Platform projects.
 type Feature struct {
-	Name   core.Feature
+	core.Feature
 	Status core.Status
 }
 
@@ -110,8 +110,8 @@ func (a API) projects(ctx context.Context, feature core.Feature, filter string) 
 			ProjectNumber:         accountWithFeature.Account.ProjectNumber,
 			DefaultServiceAccount: accountWithFeature.Account.UsesGlobalConfig,
 			Features: []Feature{{
-				Name:   accountWithFeature.Feature.Name,
-				Status: accountWithFeature.Feature.Status,
+				Feature: core.Feature{Name: accountWithFeature.Feature.Feature},
+				Status:  accountWithFeature.Feature.Status,
 			}},
 		})
 	}
@@ -214,7 +214,7 @@ func (a API) Projects(ctx context.Context, feature core.Feature, filter string) 
 
 	var accounts []CloudAccount
 	var err error
-	if feature == core.FeatureAll {
+	if feature.Equal(core.FeatureAll) {
 		accounts, err = a.projectsAllFeatures(ctx, filter)
 	} else {
 		accounts, err = a.projects(ctx, feature, filter)
@@ -253,7 +253,7 @@ func (a API) Projects(ctx context.Context, feature core.Feature, filter string) 
 func (a API) AddProject(ctx context.Context, project ProjectFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	if feature != core.FeatureCloudNativeProtection {
+	if !feature.Equal(core.FeatureCloudNativeProtection) {
 		return uuid.Nil, fmt.Errorf("feature not supported on gcp: %v", core.FormatFeature(feature))
 	}
 
@@ -320,7 +320,7 @@ func (a API) RemoveProject(ctx context.Context, id IdentityFunc, feature core.Fe
 		return fmt.Errorf("feature %w", graphql.ErrNotFound)
 	}
 
-	if account.Features[0].Name == core.FeatureCloudNativeProtection && account.Features[0].Status != core.StatusDisabled {
+	if account.Features[0].Equal(core.FeatureCloudNativeProtection) && account.Features[0].Status != core.StatusDisabled {
 		// Lookup the RSC Native ID from the GCP project number. The RSC Native
 		// Account ID is needed to delete the RSC Native Project.
 		natives, err := gcp.Wrap(a.client).NativeProjects(ctx, strconv.FormatInt(account.ProjectNumber, 10))

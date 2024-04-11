@@ -57,7 +57,7 @@ func main() {
 	// variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_REGION.
 	id, err := awsClient.AddAccount(ctx,
 		aws.DefaultWithRole("arn:aws:iam::123456789012:role/MyCrossAccountRole"),
-		core.FeatureCloudNativeProtection, aws.Regions("us-east-2"))
+		[]core.Feature{core.FeatureCloudNativeProtection}, aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func main() {
 	// Remove the AWS account from Polaris using a cross account role.
 	err = awsClient.RemoveAccount(ctx,
 		aws.DefaultWithRole("arn:aws:iam::123456789012:role/MyCrossAccountRole"),
-		core.FeatureCloudNativeProtection, false)
+		[]core.Feature{core.FeatureCloudNativeProtection}, false)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,5 +1,3 @@
-mutation RubrikPolarisSDKRequest($action: CloudAccountAction!, $cloudAccountId: UUID!, $awsRegions: [AwsCloudAccountRegion!]!, $feature: CloudAccountFeature!) {
-    result: updateAwsCloudAccountFeature(input: {action: $action, cloudAccountId: $cloudAccountId, awsRegions: $awsRegions, feature: $feature}) {
-        message
-    }
+mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $awsAccountName: String) {
+  result: updateAwsCloudAccount(input: {cloudAccountId: $cloudAccountId, awsAccountName: $awsAccountName})
 }

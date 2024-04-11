@@ -1,0 +1,18 @@
+query RubrikPolarisSDKRequest($cloudType: AwsCloudType!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!], $ec2RecoveryRolePath: String) {
+    result: allAwsPermissionPolicies(input: {
+        cloudType: $cloudType,
+        features: $features,
+        featuresWithPermissionsGroups: $featuresWithPG,
+        featureSpecificDetails: {
+            ec2RecoveryRolePath: $ec2RecoveryRolePath
+        }
+    }) {
+        externalArtifactKey
+        awsManagedPolicies
+        customerManagedPolicies {
+            feature
+            policyName
+            policyDocumentJson
+        }
+    }
+}

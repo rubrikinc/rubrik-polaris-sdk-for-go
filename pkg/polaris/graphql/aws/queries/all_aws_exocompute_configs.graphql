@@ -7,30 +7,44 @@ query RubrikPolarisSDKRequest($awsNativeAccountIdOrNamePrefix: String!) {
             message
             accountName
         }
-        configs {
-            areSecurityGroupsRscManaged
-            clusterSecurityGroupId
-            configUuid
-            message
-            nodeSecurityGroupId
-            region
-            subnet1 {
-                availabilityZone
-                subnetId
-            }
-            subnet2 {
-                availabilityZone
-                subnetId
-             }
-            vpcId
+        mappedCloudAccounts {
+            id
+            name
+            nativeId
         }
-        exocomputeEligibleRegions
         featureDetail {
             feature
             roleArn
             stackArn
             status
             awsRegions
+        }
+        exocomputeConfigs {
+            configUuid
+            healthCheckStatus {
+                failureReason
+                lastUpdatedAt
+                status
+                taskchainId
+            }
+            region
+            ... on AwsCustomerManagedExocomputeConfig {
+                clusterName
+            }
+            ... on AwsRscManagedExocomputeConfig {
+                vpcId
+                clusterSecurityGroupId
+                nodeSecurityGroupId
+                subnet1 {
+                    availabilityZone
+                    subnetId
+                }
+                subnet2 {
+                    availabilityZone
+                    subnetId
+                }
+                areSecurityGroupsRscManaged
+            }
         }
     }
 }

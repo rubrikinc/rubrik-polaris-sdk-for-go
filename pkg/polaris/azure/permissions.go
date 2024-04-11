@@ -90,9 +90,9 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
 	a.client.Log().Print(log.Trace)
 
-	featureSet := make(map[core.Feature]struct{})
+	featureSet := make(map[string]struct{})
 	for _, feature := range features {
-		featureSet[feature] = struct{}{}
+		featureSet[feature.Name] = struct{}{}
 	}
 
 	account, err := a.Subscription(ctx, id, core.FeatureAll)
@@ -111,7 +111,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 			continue
 		}
 
-		err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
+		err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Feature)
 		if err != nil {
 			return fmt.Errorf("failed to update permissions: %v", err)
 		}
@@ -129,9 +129,9 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain string, features []core.Feature) error {
 	a.client.Log().Print(log.Trace)
 
-	featureSet := make(map[core.Feature]struct{})
+	featureSet := make(map[string]struct{})
 	for _, feature := range features {
-		featureSet[feature] = struct{}{}
+		featureSet[feature.Name] = struct{}{}
 	}
 
 	accounts, err := a.Subscriptions(ctx, core.FeatureAll, "")
@@ -155,7 +155,7 @@ func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain
 				continue
 			}
 
-			err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
+			err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Feature)
 			if err != nil {
 				return fmt.Errorf("failed to update permissions: %v", err)
 			}

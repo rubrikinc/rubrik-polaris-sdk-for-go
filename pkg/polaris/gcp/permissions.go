@@ -120,9 +120,9 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
 	a.log.Print(log.Trace)
 
-	featureSet := make(map[core.Feature]struct{})
+	featureSet := make(map[string]struct{})
 	for _, feature := range features {
-		featureSet[feature] = struct{}{}
+		featureSet[feature.Name] = struct{}{}
 	}
 
 	account, err := a.Project(ctx, id, core.FeatureAll)
@@ -141,7 +141,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 			continue
 		}
 
-		err := gcp.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
+		err := gcp.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Feature)
 		if err != nil {
 			return fmt.Errorf("failed to update permissions: %v", err)
 		}
@@ -159,9 +159,9 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.Feature) error {
 	a.log.Print(log.Trace)
 
-	featureSet := make(map[core.Feature]struct{})
+	featureSet := make(map[string]struct{})
 	for _, feature := range features {
-		featureSet[feature] = struct{}{}
+		featureSet[feature.Name] = struct{}{}
 	}
 
 	accounts, err := a.Projects(ctx, core.FeatureAll, "")
@@ -185,7 +185,7 @@ func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.F
 				continue
 			}
 
-			err := gcp.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Name)
+			err := gcp.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Feature)
 			if err != nil {
 				return fmt.Errorf("failed to update permissions: %v", err)
 			}

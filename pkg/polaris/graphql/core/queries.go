@@ -24,6 +24,18 @@
 
 package core
 
+// allDeploymentIpAddresses GraphQL query
+var allDeploymentIpAddressesQuery = `query SdkGolangAllDeploymentIpAddresses {
+  allDeploymentIpAddresses
+}`
+
+// allEnabledFeaturesForAccount GraphQL query
+var allEnabledFeaturesForAccountQuery = `query SdkGolangAllEnabledFeaturesForAccount {
+    result: allEnabledFeaturesForAccount {
+        features
+    }
+}`
+
 // deploymentVersion GraphQL query
 var deploymentVersionQuery = `query SdkGolangDeploymentVersion {
     deploymentVersion

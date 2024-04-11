@@ -41,7 +41,7 @@ func TestParseFeature(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if feature != FeatureCloudNativeProtection {
+	if !feature.Equal(FeatureCloudNativeProtection) {
 		t.Errorf("invalid feature: %s", feature)
 	}
 
@@ -49,7 +49,7 @@ func TestParseFeature(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if feature != FeatureCloudNativeProtection {
+	if !feature.Equal(FeatureCloudNativeProtection) {
 		t.Errorf("invalid feature: %s", feature)
 	}
 
@@ -57,7 +57,7 @@ func TestParseFeature(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if feature != FeatureCloudNativeProtection {
+	if !feature.Equal(FeatureCloudNativeProtection) {
 		t.Errorf("invalid feature: %s", feature)
 	}
 
@@ -65,7 +65,7 @@ func TestParseFeature(t *testing.T) {
 	if err == nil {
 		t.Error("expected test to fail")
 	}
-	if feature != FeatureInvalid {
+	if !feature.Equal(FeatureInvalid) {
 		t.Errorf("invalid feature: %s", feature)
 	}
 }

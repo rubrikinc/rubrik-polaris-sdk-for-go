@@ -1,0 +1,11 @@
+query RubrikPolarisSDKRequest($awsNativeId: String!, $features: [CloudAccountFeature!]!) {
+  result: awsArtifactsToDelete(input: {awsNativeId: $awsNativeId, features: $features}) {
+    artifactsToDelete {
+      feature
+      artifactsToDelete {
+        externalArtifactKey
+        externalArtifactValue
+      }
+    }
+  }
+}

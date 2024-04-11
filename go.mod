@@ -1,6 +1,6 @@
 module github.com/rubrikinc/rubrik-polaris-sdk-for-go
 
-go 1.20
+go 1.21
 
 require (
 	github.com/Azure/azure-sdk-for-go v55.6.0+incompatible

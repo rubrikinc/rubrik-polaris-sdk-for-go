@@ -43,9 +43,9 @@ type CloudAccount struct {
 // Feature represents an RSC Cloud Account feature for Azure, e.g. Cloud Native
 // Protection.
 type Feature struct {
-	Name    core.Feature `json:"feature"`
-	Regions []Region     `json:"regions"`
-	Status  core.Status  `json:"status"`
+	Feature string      `json:"feature"`
+	Regions []Region    `json:"regions"`
+	Status  core.Status `json:"status"`
 }
 
 // CloudAccountTenant hold details about an Azure tenant and the cloud
@@ -98,7 +98,7 @@ type UserAssignedManagedIdentity struct {
 type CloudAccountFeature struct {
 	PolicyVersion       int                  `json:"policyVersion"`
 	ResourceGroup       *ResourceGroup       `json:"resourceGroup"`
-	FeatureType         core.Feature         `json:"featureType"`
+	FeatureType         string               `json:"featureType"`
 	FeatureSpecificInfo *FeatureSpecificInfo `json:"specificFeatureInput"`
 }
 
@@ -109,10 +109,10 @@ func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, azureCloudAccountTenantQuery, struct {
-		ID      uuid.UUID    `json:"tenantId"`
-		Feature core.Feature `json:"feature"`
-		Filter  string       `json:"subscriptionSearchText"`
-	}{ID: id, Feature: feature, Filter: filter})
+		ID      uuid.UUID `json:"tenantId"`
+		Feature string    `json:"feature"`
+		Filter  string    `json:"subscriptionSearchText"`
+	}{ID: id, Feature: feature.Name, Filter: filter})
 	if err != nil {
 		return CloudAccountTenant{}, fmt.Errorf("failed to request azureCloudAccountTenant: %w", err)
 	}
@@ -138,13 +138,13 @@ func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, incl
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, allAzureCloudAccountTenantsQuery, struct {
-		Feature              core.Feature `json:"feature"`
-		IncludeSubscriptions bool         `json:"includeSubscriptionDetails"`
-	}{Feature: feature, IncludeSubscriptions: includeSubscriptions})
+		Feature              string `json:"feature"`
+		IncludeSubscriptions bool   `json:"includeSubscriptionDetails"`
+	}{Feature: feature.Name, IncludeSubscriptions: includeSubscriptions})
 	if err != nil {
 		return nil, fmt.Errorf("failed to request allAzureCloudAccountTenants: %w", err)
 	}
-	a.log.Printf(log.Debug, "allAzureCloudAccountTenants(%q, %t): %s", feature, includeSubscriptions, string(buf))
+	a.log.Printf(log.Debug, "allAzureCloudAccountTenants(%q, %t): %s", feature.Name, includeSubscriptions, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -210,13 +210,13 @@ func (a API) DeleteCloudAccountWithoutOAuth(ctx context.Context, id uuid.UUID, f
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, deleteAzureCloudAccountWithoutOauthQuery, struct {
-		IDs      []uuid.UUID    `json:"subscriptionIds"`
-		Features []core.Feature `json:"features"`
-	}{IDs: []uuid.UUID{id}, Features: []core.Feature{feature}})
+		IDs      []uuid.UUID `json:"subscriptionIds"`
+		Features []string    `json:"features"`
+	}{IDs: []uuid.UUID{id}, Features: []string{feature.Name}})
 	if err != nil {
 		return fmt.Errorf("failed to request deleteAzureCloudAccountWithoutOauth: %w", err)
 	}
-	a.log.Printf(log.Debug, "deleteAzureCloudAccountWithoutOauth(%v, %q): %s", id, feature, string(buf))
+	a.log.Printf(log.Debug, "deleteAzureCloudAccountWithoutOauth(%v, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -253,15 +253,15 @@ func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, updateAzureCloudAccountQuery, struct {
-		Features      []core.Feature       `json:"features"`
+		Features      []string             `json:"features"`
 		ToAdd         []Region             `json:"regionsToAdd,omitempty"`
 		ToRemove      []Region             `json:"regionsToRemove,omitempty"`
 		Subscriptions []updateSubscription `json:"subscriptions"`
-	}{Features: []core.Feature{feature}, ToAdd: toAdd, ToRemove: toRemove, Subscriptions: []updateSubscription{{ID: id, Name: name}}})
+	}{Features: []string{feature.Name}, ToAdd: toAdd, ToRemove: toRemove, Subscriptions: []updateSubscription{{ID: id, Name: name}}})
 	if err != nil {
 		return fmt.Errorf("failed to request updateAzureCloudAccount: %w", err)
 	}
-	a.log.Printf(log.Debug, "updateAzureCloudAccount(%q, %v, %v %v, %v): %s", id, feature, name, toAdd,
+	a.log.Printf(log.Debug, "updateAzureCloudAccount(%q, %v, %v %v, %v): %s", id, feature.Name, name, toAdd,
 		toRemove, string(buf))
 
 	var payload struct {
@@ -307,8 +307,8 @@ func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feat
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, azureCloudAccountPermissionConfigQuery, struct {
-		Feature core.Feature `json:"feature"`
-	}{Feature: feature})
+		Feature string `json:"feature"`
+	}{Feature: feature.Name})
 	if err != nil {
 		return PermissionConfig{}, fmt.Errorf("failed to request azureCloudAccountPermissionConfig: %w", err)
 	}
@@ -334,13 +334,13 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id 
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, upgradeAzureCloudAccountPermissionsWithoutOauthQuery, struct {
-		ID      uuid.UUID    `json:"cloudAccountId"`
-		Feature core.Feature `json:"feature"`
-	}{ID: id, Feature: feature})
+		ID      uuid.UUID `json:"cloudAccountId"`
+		Feature string    `json:"feature"`
+	}{ID: id, Feature: feature.Name})
 	if err != nil {
 		return fmt.Errorf("failed to request upgradeAzureCloudAccountPermissionsWithoutOauth: %w", err)
 	}
-	a.log.Printf(log.Debug, "upgradeAzureCloudAccountPermissionsWithoutOauth(%q, %q): %s", id, feature, string(buf))
+	a.log.Printf(log.Debug, "upgradeAzureCloudAccountPermissionsWithoutOauth(%q, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -366,13 +366,13 @@ func (a API) StartDisableCloudAccountJob(ctx context.Context, id uuid.UUID, feat
 	a.GQL.Log().Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, startDisableAzureCloudAccountJobQuery, struct {
-		ID      uuid.UUID    `json:"cloudAccountId"`
-		Feature core.Feature `json:"feature"`
-	}{ID: id, Feature: feature})
+		ID      uuid.UUID `json:"cloudAccountId"`
+		Feature string    `json:"feature"`
+	}{ID: id, Feature: feature.Name})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to request StartDisableCloudAccountJob: %w", err)
 	}
-	a.GQL.Log().Printf(log.Debug, "startDisableAzureCloudAccountJobQuery(%q, %q): %s", id, feature, string(buf))
+	a.GQL.Log().Printf(log.Debug, "startDisableAzureCloudAccountJobQuery(%q, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
