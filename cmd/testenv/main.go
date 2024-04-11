@@ -150,9 +150,11 @@ func clean(ctx context.Context, client *polaris.Client) error {
 				awsAccount.NativeID, testAcc.AccountID)
 		}
 
-		// TODO: we might need to iterate over awsAccount.Features to remove
-		// all of them in the future
-		return awsClient.RemoveAccount(ctx, aws.Profile(testAcc.Profile), core.FeatureCloudNativeProtection, false)
+		features := make([]core.Feature, 0, len(awsAccount.Features))
+		for _, feature := range awsAccount.Features {
+			features = append(features, feature.Feature)
+		}
+		return awsClient.RemoveAccount(ctx, aws.Profile(testAcc.Profile), features, false)
 	})
 
 	// AWS with cross account role
@@ -175,9 +177,11 @@ func clean(ctx context.Context, client *polaris.Client) error {
 				awsAccount.NativeID, testAcc.CrossAccountID)
 		}
 
-		// TODO: we might need to iterate over awsAccount.Features to remove
-		// all of them in the future
-		return awsClient.RemoveAccount(ctx, aws.DefaultWithRole(testAcc.CrossAccountRole), core.FeatureCloudNativeProtection, false)
+		features := make([]core.Feature, 0, len(awsAccount.Features))
+		for _, feature := range awsAccount.Features {
+			features = append(features, feature.Feature)
+		}
+		return awsClient.RemoveAccount(ctx, aws.DefaultWithRole(testAcc.CrossAccountRole), features, false)
 	})
 
 	// Azure
@@ -214,7 +218,7 @@ func clean(ctx context.Context, client *polaris.Client) error {
 
 		// Remove all features for the subscription.
 		for _, feature := range azureAcc.Features {
-			if err := azureClient.RemoveSubscription(ctx, azure.CloudAccountID(azureAcc.ID), feature.Name, false); err != nil {
+			if err := azureClient.RemoveSubscription(ctx, azure.CloudAccountID(azureAcc.ID), feature.Feature, false); err != nil {
 				return fmt.Errorf("failed to remove Azure cloud account fetaure: %v", pretty.Sprint(feature))
 			}
 		}

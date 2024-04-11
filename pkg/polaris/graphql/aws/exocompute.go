@@ -53,15 +53,31 @@ type ExocomputeConfig struct {
 	// to be specified if IsPolarisManaged is false.
 	ClusterSecurityGroupID string `json:"clusterSecurityGroupId"`
 	NodeSecurityGroupID    string `json:"nodeSecurityGroupId"`
+
+	HealthCheckStatus struct {
+		Status        string `json:"status"`
+		FailureReason string `json:"failureReason"`
+		LastUpdatedAt string `json:"lastUpdatedAt"`
+		TaskchainID   string `json:"taskchainId"`
+	}
 }
 
 // ExocomputeConfigsForAccount holds all exocompute configs for a specific
 // account.
 type ExocomputeConfigsForAccount struct {
-	Account         CloudAccount       `json:"awsCloudAccount"`
-	Configs         []ExocomputeConfig `json:"configs"`
-	EligibleRegions []string           `json:"exocomputeEligibleRegions"`
-	Feature         Feature            `json:"featureDetail"`
+	Account         CloudAccount          `json:"awsCloudAccount"`
+	Configs         []ExocomputeConfig    `json:"exocomputeConfigs"`
+	EligibleRegions []string              `json:"exocomputeEligibleRegions"`
+	Feature         Feature               `json:"featureDetail"`
+	MappedAccounts  []CloudAccountDetails `json:"mappedCloudAccounts"`
+}
+
+// CloudAccountDetails holds the details about an exocompute application account
+// mapping.
+type CloudAccountDetails struct {
+	ID       uuid.UUID `json:"id"`
+	NativeID string    `json:"nativeId"`
+	Name     string    `json:"name"`
 }
 
 // ExocomputeConfigs returns all exocompute configs matching the specified
@@ -92,9 +108,11 @@ func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]Exocompute
 // ExocomputeConfigCreate represents an exocompute config to be created by
 // Polaris.
 type ExocomputeConfigCreate struct {
-	Region  Region   `json:"region"`
-	VPCID   string   `json:"vpcId"`
-	Subnets []Subnet `json:"subnets"`
+	Region Region `json:"region"`
+
+	// Only required for RSC managed clusters
+	VPCID   string   `json:"vpcId,omitempty"`
+	Subnets []Subnet `json:"subnets,omitempty"`
 
 	// When true Rubrik will manage the security groups.
 	IsManagedByRubrik bool `json:"isRscManaged"`
@@ -107,17 +125,17 @@ type ExocomputeConfigCreate struct {
 
 // CreateExocomputeConfig creates a new exocompute config for the account with
 // the specified RSC cloud account id. Returns the created exocompute config
-func (a API) CreateExocomputeConfig(ctx context.Context, id uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
+func (a API) CreateExocomputeConfig(ctx context.Context, cloudAccountID uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, createAwsExocomputeConfigsQuery, struct {
 		ID      uuid.UUID                `json:"cloudAccountId"`
 		Configs []ExocomputeConfigCreate `json:"configs"`
-	}{ID: id, Configs: []ExocomputeConfigCreate{config}})
+	}{ID: cloudAccountID, Configs: []ExocomputeConfigCreate{config}})
 	if err != nil {
 		return ExocomputeConfig{}, fmt.Errorf("failed to request createAwsExocomputeConfigs: %w", err)
 	}
-	a.log.Printf(log.Debug, "createAwsExocomputeConfigs(%q, %v): %s", id, config, string(buf))
+	a.log.Printf(log.Debug, "createAwsExocomputeConfigs(%q, %v): %s", cloudAccountID, config, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -141,17 +159,17 @@ func (a API) CreateExocomputeConfig(ctx context.Context, id uuid.UUID, config Ex
 
 // UpdateExocomputeConfig updates an exocompute config for the account with
 // the specified RSC cloud account id. Returns the updated exocompute config.
-func (a API) UpdateExocomputeConfig(ctx context.Context, id uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
+func (a API) UpdateExocomputeConfig(ctx context.Context, cloudAccountID uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, updateAwsExocomputeConfigsQuery, struct {
 		ID      uuid.UUID                `json:"cloudAccountId"`
 		Configs []ExocomputeConfigCreate `json:"configs"`
-	}{ID: id, Configs: []ExocomputeConfigCreate{config}})
+	}{ID: cloudAccountID, Configs: []ExocomputeConfigCreate{config}})
 	if err != nil {
 		return ExocomputeConfig{}, fmt.Errorf("failed to request updateAwsExocomputeConfigs: %w", err)
 	}
-	a.log.Printf(log.Debug, "updateAwsExocomputeConfigs(%q, %v): %s", id, config, string(buf))
+	a.log.Printf(log.Debug, "updateAwsExocomputeConfigs(%q, %v): %s", cloudAccountID, config, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -175,16 +193,16 @@ func (a API) UpdateExocomputeConfig(ctx context.Context, id uuid.UUID, config Ex
 
 // DeleteExocomputeConfig deletes the exocompute config with the specified RSC
 // exocompute config id.
-func (a API) DeleteExocomputeConfig(ctx context.Context, id uuid.UUID) error {
+func (a API) DeleteExocomputeConfig(ctx context.Context, configID uuid.UUID) error {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, deleteAwsExocomputeConfigsQuery, struct {
 		IDs []uuid.UUID `json:"configIdsToBeDeleted"`
-	}{IDs: []uuid.UUID{id}})
+	}{IDs: []uuid.UUID{configID}})
 	if err != nil {
 		return fmt.Errorf("failed to request deleteAwsExocomputeConfigs: %w", err)
 	}
-	a.log.Printf(log.Debug, "deleteAwsExocomputeConfigs(%q): %s", id, string(buf))
+	a.log.Printf(log.Debug, "deleteAwsExocomputeConfigs(%q): %s", configID, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -212,16 +230,16 @@ func (a API) DeleteExocomputeConfig(ctx context.Context, id uuid.UUID) error {
 // StartExocomputeDisableJob starts a task chain job to disable the Exocompute
 // feature for the account with the specified RSC native account id. Returns the
 // RSC task chain id.
-func (a API) StartExocomputeDisableJob(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+func (a API) StartExocomputeDisableJob(ctx context.Context, nativeID uuid.UUID) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, startAwsExocomputeDisableJobQuery, struct {
 		ID uuid.UUID `json:"cloudAccountId"`
-	}{ID: id})
+	}{ID: nativeID})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to request startAwsExocomputeDisableJob: %w", err)
 	}
-	a.log.Printf(log.Debug, "startAwsExocomputeDisableJob(%q): %s", id, string(buf))
+	a.log.Printf(log.Debug, "startAwsExocomputeDisableJob(%q): %s", nativeID, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -239,4 +257,110 @@ func (a API) StartExocomputeDisableJob(ctx context.Context, id uuid.UUID) (uuid.
 	}
 
 	return payload.Data.Result.JobID, nil
+}
+
+// MapCloudAccountExocomputeAccount maps the slice of exocompute application
+// accounts to the specified exocompute host account.
+func (a API) MapCloudAccountExocomputeAccount(ctx context.Context, hostID uuid.UUID, appIDs []uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, mapCloudAccountExocomputeAccountQuery, struct {
+		HostID uuid.UUID   `json:"exocomputeCloudAccountId"`
+		AppIDs []uuid.UUID `json:"cloudAccountIds"`
+	}{HostID: hostID, AppIDs: appIDs})
+	if err != nil {
+		return fmt.Errorf("failed to request mapCloudAccountExocomputeAccount: %w", err)
+	}
+	a.log.Printf(log.Debug, "mapCloudAccountExocomputeAccount(%q, %v): %s", hostID, appIDs, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Success bool `json:"isSuccess"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal mapCloudAccountExocomputeAccount: %v", err)
+	}
+	if !payload.Data.Result.Success {
+		return errors.New("")
+	}
+
+	return nil
+}
+
+// UnmapCloudAccountExocomputeAccount unmaps the slice of exocompute application
+// accounts.
+func (a API) UnmapCloudAccountExocomputeAccount(ctx context.Context, appIDs []uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, unmapCloudAccountExocomputeAccountQuery, struct {
+		AppIDs []uuid.UUID `json:"cloudAccountIds"`
+	}{AppIDs: appIDs})
+	if err != nil {
+		return fmt.Errorf("failed to request unmapCloudAccountExocomputeAccount: %w", err)
+	}
+	a.log.Printf(log.Debug, "unmapCloudAccountExocomputeAccount(%v): %s", appIDs, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Success bool `json:"isSuccess"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal unmapCloudAccountExocomputeAccount: %v", err)
+	}
+	if !payload.Data.Result.Success {
+		return errors.New("")
+	}
+
+	return nil
+}
+
+// ConnectExocomputeCluster connects the named cluster to specified exocompute
+// configration. The cluster ID and connection command are returned.
+func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(ctx, awsExocomputeClusterConnectQuery, struct {
+		ConfigID    uuid.UUID `json:"exocomputeConfigId"`
+		ClusterName string    `json:"clusterName"`
+	}{ConfigID: configID, ClusterName: clusterName})
+	if err != nil {
+		return uuid.Nil, "", fmt.Errorf("failed to request awsExocomputeClusterConnect: %w", err)
+	}
+	a.log.Printf(log.Debug, "awsExocomputeClusterConnect(%q, %q): %s", configID, clusterName, string(buf))
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				ID      uuid.UUID `json:"clusterUuid"`
+				Command string    `json:"connectionCommand"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, "", fmt.Errorf("failed to unmarshal awsExocomputeClusterConnect: %v", err)
+	}
+
+	return payload.Data.Result.ID, payload.Data.Result.Command, nil
+}
+
+// DisconnectExocomputeCluster disconnects the exocomptue cluster with the
+// specified ID from RSC.
+func (a API) DisconnectExocomputeCluster(ctx context.Context, clusterID uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	_, err := a.GQL.Request(ctx, disconnectAwsExocomputeClusterQuery, struct {
+		ClusterID uuid.UUID `json:"clusterId"`
+	}{ClusterID: clusterID})
+	if err != nil {
+		return fmt.Errorf("failed to request disconnectAwsExocomputeCluster: %w", err)
+	}
+	a.log.Printf(log.Debug, "disconnectAwsExocomputeCluster(%q)", clusterID)
+
+	return nil
 }

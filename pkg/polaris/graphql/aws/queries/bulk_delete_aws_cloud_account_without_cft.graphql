@@ -1,0 +1,8 @@
+mutation RubrikPolarisSDKRequest($awsNativeId: String!, $features: [CloudAccountFeature!]) {
+    result: bulkDeleteAwsCloudAccountWithoutCft(input: {awsNativeId: $awsNativeId, features: $features}) {
+        deleteAwsCloudAccountWithoutCftResp {
+            feature
+            success
+        }
+    }
+}

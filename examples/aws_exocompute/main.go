@@ -49,7 +49,7 @@ func main() {
 	// Add the AWS default account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	accountID, err := awsClient.AddAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, aws.Regions("us-east-2", "us-west-2"))
+	accountID, err := awsClient.AddAccount(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection}, aws.Regions("us-east-2", "us-west-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func main() {
 	// Enable the exocompute feature for the account. Note that the
 	// cnpAccountID and exoAccountID should be the same, they refer to the same
 	// Polaris cloud account.
-	exoAccountID, err := awsClient.AddAccount(ctx, aws.Default(), core.FeatureExocompute, aws.Regions("us-east-2"))
+	exoAccountID, err := awsClient.AddAccount(ctx, aws.Default(), []core.Feature{core.FeatureExocompute}, aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -100,13 +100,13 @@ func main() {
 	}
 
 	// Disable the exocompute feature for the account.
-	err = awsClient.RemoveAccount(ctx, aws.Default(), core.FeatureExocompute, false)
+	err = awsClient.RemoveAccount(ctx, aws.Default(), []core.Feature{core.FeatureExocompute}, false)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Remove the AWS account from Polaris.
-	err = awsClient.RemoveAccount(ctx, aws.Default(), core.FeatureCloudNativeProtection, false)
+	err = awsClient.RemoveAccount(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection}, false)
 	if err != nil {
 		log.Fatal(err)
 	}

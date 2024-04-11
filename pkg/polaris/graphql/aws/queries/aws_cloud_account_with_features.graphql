@@ -9,6 +9,7 @@ query RubrikPolarisSDKRequest($cloudAccountId: UUID!, $features: [CloudAccountFe
         }
         featureDetails {
             feature
+            permissionsGroups
             roleArn
             stackArn
             status

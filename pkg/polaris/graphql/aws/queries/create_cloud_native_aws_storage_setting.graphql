@@ -1,0 +1,25 @@
+mutation RubrikPolarisSDKRequest(
+    $cloudAccountId:  UUID!,
+    $name:            String!,
+    $bucketPrefix:    String!,
+    $storageClass:    AwsStorageClass!,
+    $region:          AwsRegion,
+    $kmsMasterKeyId:  String!,
+    $locTemplateType: CloudNativeLocTemplateType!,
+    $bucketTags:      TagsInput
+) {
+    result: createCloudNativeAwsStorageSetting(input: {
+        cloudAccountId:             $cloudAccountId,
+        name:                       $name,
+        bucketPrefix:               $bucketPrefix,
+        storageClass:               $storageClass,
+        region:                     $region,
+        kmsMasterKeyId:             $kmsMasterKeyId,
+        cloudNativeLocTemplateType: $locTemplateType,
+        bucketTags:                 $bucketTags
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}

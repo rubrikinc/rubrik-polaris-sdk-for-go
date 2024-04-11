@@ -1,0 +1,9 @@
+mutation RubrikPolarisSDKRequest($clusterName: String!, $exocomputeConfigId: UUID!) {
+    result: awsExocomputeClusterConnect(input: {
+        clusterName:        $clusterName,
+        exocomputeConfigId: $exocomputeConfigId
+    }) {
+        clusterUuid
+        connectionCommand
+    }
+}

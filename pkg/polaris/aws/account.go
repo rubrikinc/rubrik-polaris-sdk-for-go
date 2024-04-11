@@ -25,6 +25,8 @@ import (
 	"errors"
 	"fmt"
 
+	graphqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
@@ -33,9 +35,10 @@ import (
 )
 
 type account struct {
+	cloud  graphqlaws.Cloud
 	id     string
 	name   string
-	config aws.Config
+	config *aws.Config
 }
 
 // AccountFunc returns an account initialized from the values passed to the
@@ -55,7 +58,7 @@ func Config(config aws.Config) AccountFunc {
 			name = id
 		}
 
-		return account{id: id, name: name, config: config}, nil
+		return account{id: id, name: name, config: &config}, nil
 	}
 }
 
@@ -154,7 +157,7 @@ func ProfileWithRegionAndRole(profile, region, roleARN string) AccountFunc {
 			name = id + " : " + profile
 		}
 
-		return account{id: id, name: name, config: config}, nil
+		return account{cloud: graphqlaws.CloudStandard, id: id, name: name, config: &config}, nil
 	}
 }
 
@@ -175,4 +178,27 @@ func awsAccountInfo(ctx context.Context, config aws.Config) (string, string, err
 	}
 
 	return *callerID.Account, *info.Account.Name, nil
+}
+
+// Account returns an AccountFunc that initializes the account with specified
+// cloud type and AWS account id.
+func Account(cloud, awsAccountID string) AccountFunc {
+	return AccountWithName(cloud, awsAccountID, awsAccountID)
+}
+
+// AccountWithName returns an AccountFunc that initializes the account with
+// specified cloud type, AWS account id and account name.
+func AccountWithName(cloud, awsAccountID, name string) AccountFunc {
+	return func(ctx context.Context) (account, error) {
+		c, err := graphqlaws.ParseCloud(cloud)
+		if err != nil {
+			return account{}, fmt.Errorf("failed to parse cloud: %s", err)
+		}
+
+		if !verifyAccountID(awsAccountID) {
+			return account{}, fmt.Errorf("invalid AWS account id")
+		}
+
+		return account{cloud: c, id: awsAccountID, name: name}, nil
+	}
 }

@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -57,6 +58,7 @@ func Wrap(client *polaris.Client) API {
 
 // CloudAccount for Amazon Web Services accounts.
 type CloudAccount struct {
+	Cloud    string
 	ID       uuid.UUID
 	NativeID string
 	Name     string
@@ -66,7 +68,7 @@ type CloudAccount struct {
 // Feature returns the specified feature from the CloudAccount's features.
 func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 	for _, f := range c.Features {
-		if f.Name == feature {
+		if f.Equal(feature) {
 			return f, true
 		}
 	}
@@ -76,7 +78,7 @@ func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 
 // Feature for Amazon Web Services accounts.
 type Feature struct {
-	Name     core.Feature
+	core.Feature
 	Regions  []string
 	RoleArn  string
 	StackArn string
@@ -104,13 +106,13 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 	}
 	identity, err := id(ctx)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to lookup identity: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to lookup identity: %s", err)
 	}
 
 	if identity.internal {
 		id, err := uuid.Parse(identity.id)
 		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to parse identity: %v", err)
+			return uuid.Nil, fmt.Errorf("failed to parse identity: %s", err)
 		}
 
 		return id, nil
@@ -118,7 +120,7 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 
 	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, core.FeatureCloudNativeProtection, identity.id)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get account: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 	}
 
 	// Find the exact match.
@@ -141,7 +143,7 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (string, error) {
 	}
 	identity, err := id(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to lookup identity: %v", err)
+		return "", fmt.Errorf("failed to lookup identity: %s", err)
 	}
 
 	if !identity.internal {
@@ -150,12 +152,12 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (string, error) {
 
 	uid, err := uuid.Parse(identity.id)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse identity: %v", err)
+		return "", fmt.Errorf("failed to parse identity: %s", err)
 	}
 
-	accountWithFeatures, err := aws.Wrap(a.client).CloudAccountWithFeatures(ctx, uid, core.FeatureCloudNativeProtection)
+	accountWithFeatures, err := aws.Wrap(a.client).CloudAccountWithFeatures(ctx, uid, core.FeatureAll)
 	if err != nil {
-		return "", fmt.Errorf("failed to get account: %v", err)
+		return "", fmt.Errorf("failed to get account: %s", err)
 	}
 
 	return accountWithFeatures.Account.NativeID, nil
@@ -167,7 +169,7 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 	features := make([]Feature, 0, len(accountWithFeatures.Features))
 	for _, feature := range accountWithFeatures.Features {
 		features = append(features, Feature{
-			Name:     feature.Name,
+			Feature:  core.Feature{Name: feature.Feature, PermissionGroups: feature.PermissionGroups},
 			Regions:  aws.FormatRegions(feature.Regions),
 			RoleArn:  feature.RoleArn,
 			StackArn: feature.StackArn,
@@ -176,6 +178,7 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 	}
 
 	return CloudAccount{
+		Cloud:    string(accountWithFeatures.Account.Cloud),
 		ID:       accountWithFeatures.Account.ID,
 		NativeID: accountWithFeatures.Account.NativeID,
 		Name:     accountWithFeatures.Account.Name,
@@ -192,18 +195,20 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 	}
 	identity, err := id(ctx)
 	if err != nil {
-		return CloudAccount{}, fmt.Errorf("failed to lookup identity: %v", err)
+		return CloudAccount{}, fmt.Errorf("failed to lookup identity: %s", err)
 	}
 
 	if identity.internal {
 		cloudAccountID, err := uuid.Parse(identity.id)
 		if err != nil {
-			return CloudAccount{}, fmt.Errorf("failed to parse identity: %v", err)
+			return CloudAccount{}, fmt.Errorf("failed to parse identity: %s", err)
 		}
 
+		// We need to list all accounts and filter on the cloud account id since
+		// the API that looks up cloud accounts returns archived accounts too.
 		accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, "")
 		if err != nil {
-			return CloudAccount{}, fmt.Errorf("failed to get account: %v", err)
+			return CloudAccount{}, fmt.Errorf("failed to get account: %s", err)
 		}
 
 		// Find the exact match.
@@ -213,9 +218,11 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 			}
 		}
 	} else {
+		// We need to list accounts and filter on the native id since there is
+		// no API to look up an account by native id.
 		accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, identity.id)
 		if err != nil {
-			return CloudAccount{}, fmt.Errorf("failed to get account: %v", err)
+			return CloudAccount{}, fmt.Errorf("failed to get account: %s", err)
 		}
 
 		// Find the exact match.
@@ -236,7 +243,7 @@ func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) 
 
 	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, filter)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get account: %v", err)
+		return nil, fmt.Errorf("failed to get accounts: %s", err)
 	}
 
 	accounts := make([]CloudAccount, 0, len(accountsWithFeatures))
@@ -247,15 +254,15 @@ func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) 
 	return accounts, nil
 }
 
-// AddAccount adds the AWS account to RSC for the given feature. Returns the RSC
-// cloud account id of the added account. If name isn't given as an option it's
-// derived from information in the cloud. The result can vary slightly depending
-// on permissions.
+// AddAccount adds the AWS account to RSC for the given features. Returns the
+// RSC cloud account id of the added account. If name isn't given as an option
+// it's derived from information in the cloud. The result can vary slightly
+// depending on AWS permissions.
 //
 // If adding the account fails due to permission problems when creating the
 // CloudFormation stack, it's safe to call AddAccount again with the same
 // parameters after the permission problems have been resolved.
-func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
+func (a API) AddAccount(ctx context.Context, account AccountFunc, features []core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
 	if account == nil {
@@ -263,20 +270,20 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 	}
 	config, err := account(ctx)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to lookup account: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to lookup account: %s", err)
 	}
 
 	var options options
 	for _, option := range opts {
 		if err := option(ctx, &options); err != nil {
-			return uuid.Nil, fmt.Errorf("failed to lookup option: %v", err)
+			return uuid.Nil, fmt.Errorf("failed to lookup option: %s", err)
 		}
 	}
 	if options.name != "" {
 		config.name = options.name
 	}
 
-	// If there already is a RSC cloud account for the given AWS account we use
+	// If there already is an RSC cloud account for the given AWS account we use
 	// the same account name when adding the feature. RSC does not allow the
 	// name to change between features.
 	akkount, err := a.Account(ctx, AccountID(config.id), core.FeatureAll)
@@ -284,34 +291,68 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 		config.name = akkount.Name
 	}
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
-		return uuid.Nil, fmt.Errorf("failed to get account: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 	}
 
-	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.id, config.name, feature)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to validate account: %v", err)
+	if config.config != nil {
+		err = a.addAccountWithCFT(ctx, features, config, options)
+	} else {
+		err = a.addAccount(ctx, features, config, options)
 	}
-
-	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.id, config.name, feature, options.regions, accountInit)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to add account: %v", err)
-	}
-
-	err = awsUpdateStack(ctx, a.client.Log(), config.config, accountInit.StackName, accountInit.TemplateURL)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to update CloudFormation stack: %v", err)
+		return uuid.Nil, err
 	}
 
 	// If the RSC cloud account did not exist prior we retrieve the RSC cloud
 	// account id.
 	if akkount.ID == uuid.Nil {
-		akkount, err = a.Account(ctx, AccountID(config.id), feature)
+		akkount, err = a.Account(ctx, AccountID(config.id), core.FeatureAll)
 		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to get account: %v", err)
+			return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 		}
 	}
 
 	return akkount.ID, nil
+}
+
+func (a API) addAccount(ctx context.Context, features []core.Feature, config account, options options) error {
+	a.log.Print(log.Trace)
+
+	accountInit := aws.CloudAccountInitiate{
+		CloudFormationURL: "",
+		ExternalID:        "",
+		FeatureVersions:   []aws.FeatureVersion{},
+		StackName:         "",
+		TemplateURL:       "",
+	}
+
+	err := aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, config.id, config.name, features, options.regions, accountInit)
+	if err != nil {
+		return fmt.Errorf("failed to add account: %s", err)
+	}
+
+	return nil
+}
+
+func (a API) addAccountWithCFT(ctx context.Context, features []core.Feature, config account, options options) error {
+	a.log.Print(log.Trace)
+
+	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.id, config.name, features)
+	if err != nil {
+		return fmt.Errorf("failed to validate account: %s", err)
+	}
+
+	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, config.id, config.name, features, options.regions, accountInit)
+	if err != nil {
+		return fmt.Errorf("failed to add account: %s", err)
+	}
+
+	err = awsUpdateStack(ctx, a.client.Log(), *config.config, accountInit.StackName, accountInit.TemplateURL)
+	if err != nil {
+		return fmt.Errorf("failed to update CloudFormation stack: %s", err)
+	}
+
+	return nil
 }
 
 // RemoveAccount removes the account with the specified id from RSC for the
@@ -319,89 +360,82 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, feature core.F
 // deleteSnapshots is true the snapshots are deleted otherwise they are kept.
 // Note that removing the Cloud Native Protection feature will also remove the
 // Exocompute feature.
-func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature core.Feature, deleteSnapshots bool) error {
+func (a API) RemoveAccount(ctx context.Context, account AccountFunc, features []core.Feature, deleteSnapshots bool) error {
 	a.log.Print(log.Trace)
-
-	version, err := a.client.DeploymentVersion(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get deployment version: %v", err)
-	}
 
 	if account == nil {
 		return errors.New("account is not allowed to be nil")
 	}
 	config, err := account(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to lookup account: %v", err)
+		return fmt.Errorf("failed to lookup account: %s", err)
 	}
 
 	akkount, err := a.Account(ctx, AccountID(config.id), core.FeatureAll)
 	if err != nil {
-		return fmt.Errorf("failed to get account: %v", err)
+		return fmt.Errorf("failed to get account: %s", err)
 	}
 
-	rmFeature, ok := akkount.Feature(feature)
-	if !ok {
-		return fmt.Errorf("feature %v %w", rmFeature, graphql.ErrNotFound)
-	}
-
-	// Disable the native (inventory) account before removing the feature.
-	switch {
-	case rmFeature.Name == core.FeatureCloudNativeProtection && rmFeature.Status != core.StatusDisabled && rmFeature.Status != core.StatusConnecting:
-		jobID, err := aws.Wrap(a.client).StartNativeAccountDisableJob(ctx, akkount.ID, aws.EC2, deleteSnapshots)
-		if err != nil {
-			return fmt.Errorf("failed to disable native account: %v", err)
-		}
-
-		state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
-		if err != nil {
-			return fmt.Errorf("failed to wait for task chain: %v", err)
-		}
-		if state != core.TaskChainSucceeded {
-			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
-		}
-
-	case rmFeature.Name == core.FeatureExocompute && rmFeature.Status != core.StatusDisabled && rmFeature.Status != core.StatusConnecting:
-		jobID, err := aws.Wrap(a.client).StartExocomputeDisableJob(ctx, akkount.ID)
-		if err != nil {
-			return fmt.Errorf("failed to disable native account: %v", err)
-		}
-
-		state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
-		if err != nil {
-			return fmt.Errorf("failed to wait for taskchain: %v", err)
-		}
-		if state != core.TaskChainSucceeded {
-			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
+	// Check that the account has all the features that are going to be removed.
+	for _, feature := range features {
+		if _, ok := akkount.Feature(feature); !ok {
+			return fmt.Errorf("feature %s %w", feature, graphql.ErrNotFound)
 		}
 	}
 
-	cfmURL, err := aws.Wrap(a.client).PrepareCloudAccountDeletion(ctx, akkount.ID, feature)
+	if config.config != nil {
+		for _, feature := range features {
+			if err := a.removeAccountWithCFT(ctx, config, akkount, feature, deleteSnapshots); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	return a.removeAccount(ctx, akkount, features, deleteSnapshots)
+}
+
+func (a API) removeAccount(ctx context.Context, account CloudAccount, features []core.Feature, deleteSnapshots bool) error {
+	a.log.Print(log.Trace)
+
+	for _, feature := range features {
+		if err := a.disableFeature(ctx, account, feature, deleteSnapshots); err != nil {
+			return fmt.Errorf("failed to disable native account: %s", err)
+		}
+	}
+
+	results, err := aws.Wrap(a.client).DeleteCloudAccountWithoutCft(ctx, account.NativeID, features)
 	if err != nil {
-		return fmt.Errorf("failed to prepare to delete account: %v", err)
+		return fmt.Errorf("failed to delete account: %s", err)
 	}
-
-	// Determine the number of features remaining after removing one feature.
-	features := len(akkount.Features) - 1
-
-	if version.Before("v20230628", "master-57488") {
-		// Having Cloud Native Protection or Exocompute implies the Cloud Accounts
-		// feature.
-		if rmFeature.Name != core.FeatureCloudAccounts {
-			features--
+	var sb strings.Builder
+	for _, result := range results {
+		if !result.Success {
+			sb.WriteString(", ")
+			sb.WriteString(result.Feature)
 		}
 	}
+	if sb.Len() > 0 {
+		return fmt.Errorf("failed to delete features: %s", sb.String()[2:])
+	}
 
-	// Removing the Cloud Native Protection feature implies removing the
-	// Exocompute feature.
-	if rmFeature.Name == core.FeatureCloudNativeProtection {
-		if _, ok := akkount.Feature(core.FeatureExocompute); ok {
-			features--
-		}
+	return nil
+}
+
+func (a API) removeAccountWithCFT(ctx context.Context, config account, account CloudAccount, feature core.Feature, deleteSnapshots bool) error {
+	a.log.Print(log.Trace)
+
+	if err := a.disableFeature(ctx, account, feature, deleteSnapshots); err != nil {
+		return fmt.Errorf("failed to disable native account: %s", err)
+	}
+
+	cfmURL, err := aws.Wrap(a.client).PrepareCloudAccountDeletion(ctx, account.ID, feature)
+	if err != nil {
+		return fmt.Errorf("failed to prepare to delete account: %s", err)
 	}
 
 	if cfmURL != "" {
-		if features > 0 {
+		if strings.Contains(cfmURL, "#/stack/update") {
 			i := strings.LastIndex(cfmURL, "#/stack/update") + 1
 			if i == 0 {
 				return errors.New("CloudFormation url does not contain #/stack/update")
@@ -409,14 +443,14 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 
 			u, err := url.Parse(cfmURL[i:])
 			if err != nil {
-				return fmt.Errorf("failed to parse CloudFormation url: %v", err)
+				return fmt.Errorf("failed to parse CloudFormation url: %s", err)
 			}
 			stackID := u.Query().Get("stackId")
 			tmplURL := u.Query().Get("templateURL")
 
-			err = awsUpdateStack(ctx, a.client.Log(), config.config, stackID, tmplURL)
+			err = awsUpdateStack(ctx, a.client.Log(), *config.config, stackID, tmplURL)
 			if err != nil {
-				return fmt.Errorf("failed to update CloudFormation stack: %v", err)
+				return fmt.Errorf("failed to update CloudFormation stack: %s", err)
 			}
 		} else {
 			i := strings.LastIndex(cfmURL, "#/stack/detail") + 1
@@ -426,49 +460,290 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, feature cor
 
 			u, err := url.Parse(cfmURL[i:])
 			if err != nil {
-				return fmt.Errorf("failed to parse CloudFormation url: %v", err)
+				return fmt.Errorf("failed to parse CloudFormation url: %s", err)
 			}
 			stackID := u.Query().Get("stackId")
 
-			err = awsDeleteStack(ctx, a.client.Log(), config.config, stackID)
+			err = awsDeleteStack(ctx, a.client.Log(), *config.config, stackID)
 			if err != nil {
-				return fmt.Errorf("failed to delete CloudFormation stack: %v", err)
+				return fmt.Errorf("failed to delete CloudFormation stack: %s", err)
 			}
 		}
 	}
 
-	err = aws.Wrap(a.client).FinalizeCloudAccountDeletion(ctx, akkount.ID, feature)
+	err = aws.Wrap(a.client).FinalizeCloudAccountDeletion(ctx, account.ID, feature)
 	if err != nil {
-		return fmt.Errorf("failed to delete account: %v", err)
+		return fmt.Errorf("failed to delete account: %s", err)
 	}
 
 	return nil
 }
 
-// UpdateAccount updates the account with the specified id and feature. It's
-// currently not possible to update the account name.
+func (a API) disableFeature(ctx context.Context, account CloudAccount, feature core.Feature, deleteSnapshots bool) error {
+	a.log.Print(log.Trace)
+
+	rmFeature, _ := account.Feature(feature)
+	if !featureNeedsToBeDisable(rmFeature) {
+		return nil
+	}
+
+	switch {
+	case rmFeature.Equal(core.FeatureCloudNativeProtection):
+		return a.disableNativeAccount(ctx, account.ID, aws.EC2, deleteSnapshots)
+
+	case rmFeature.Equal(core.FeatureRDSProtection):
+		return a.disableNativeAccount(ctx, account.ID, aws.RDS, deleteSnapshots)
+
+	case rmFeature.Equal(core.FeatureExocompute):
+		jobID, err := aws.Wrap(a.client).StartExocomputeDisableJob(ctx, account.ID)
+		if err != nil {
+			return fmt.Errorf("failed to disable native account: %s", err)
+		}
+
+		state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
+		if err != nil {
+			return fmt.Errorf("failed to wait for taskchain: %s", err)
+		}
+		if state != core.TaskChainSucceeded {
+			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
+		}
+	}
+
+	return nil
+}
+
+// featureNeedsToBeDisable returns true if the specified feature needs to be
+// disabled before being removed. Note, a feature in the connecting state can be
+// removed without being disabling first.
+func featureNeedsToBeDisable(feature Feature) bool {
+	return feature.Status != core.StatusDisabled && feature.Status != core.StatusConnecting
+}
+
+func (a API) disableNativeAccount(ctx context.Context, id uuid.UUID, protectionFeature aws.ProtectionFeature, deleteSnapshots bool) error {
+	jobID, err := aws.Wrap(a.client).StartNativeAccountDisableJob(ctx, id, protectionFeature, deleteSnapshots)
+	if err != nil {
+		return fmt.Errorf("failed to disable native account: %s", err)
+	}
+
+	state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to wait for task chain: %s", err)
+	}
+	if state != core.TaskChainSucceeded {
+		return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
+	}
+
+	return nil
+}
+
+// UpdateAccount updates the account with the specified id and feature. Note
+// that account name is not tied to a specific feature.
 func (a API) UpdateAccount(ctx context.Context, id IdentityFunc, feature core.Feature, opts ...OptionFunc) error {
 	a.log.Print(log.Trace)
 
 	var options options
 	for _, option := range opts {
 		if err := option(ctx, &options); err != nil {
-			return fmt.Errorf("failed to lookup option: %v", err)
+			return fmt.Errorf("failed to lookup option: %s", err)
 		}
 	}
-	if len(options.regions) == 0 {
-		return errors.New("nothing to update")
+
+	accountID, err := a.toCloudAccountID(ctx, id)
+	if err != nil {
+		return err
 	}
 
-	account, err := a.Account(ctx, id, feature)
-	if err != nil {
-		return fmt.Errorf("failed to get account: %v", err)
+	if options.name != "" {
+		if err := aws.Wrap(a.client).UpdateCloudAccount(ctx, accountID, options.name); err != nil {
+			return fmt.Errorf("failed to update account: %s", err)
+		}
 	}
 
-	err = aws.Wrap(a.client).UpdateCloudAccountFeature(ctx, core.UpdateRegions, account.ID, feature, options.regions)
-	if err != nil {
-		return fmt.Errorf("failed to update account: %v", err)
+	if len(options.regions) > 0 {
+		if err := aws.Wrap(a.client).UpdateCloudAccountFeature(ctx, core.UpdateRegions, accountID, feature, options.regions); err != nil {
+			return fmt.Errorf("failed to update account: %s", err)
+		}
 	}
 
 	return nil
+}
+
+const (
+	roleArnSuffix         = "_ROLE_ARN"
+	instanceProfileSuffix = "_INSTANCE_PROFILE"
+)
+
+// Artifacts returns the artifacts, instance profiles and roles, required by RSC
+// for the specified features.
+func (a API) Artifacts(ctx context.Context, cloud string, features []core.Feature) ([]string, []string, error) {
+	a.log.Print(log.Trace)
+
+	c, err := aws.ParseCloud(cloud)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse cloud: %s", err)
+	}
+
+	artifacts, err := aws.Wrap(a.client).AllPermissionPolicies(ctx, c, features, "")
+	if err != nil {
+		return nil, nil, err
+	}
+	var profiles, roles []string
+	for _, artifact := range artifacts {
+		key := artifact.ArtifactKey
+		switch {
+		case strings.HasSuffix(key, instanceProfileSuffix):
+			profiles = append(profiles, strings.TrimSuffix(key, instanceProfileSuffix))
+		case strings.HasSuffix(key, roleArnSuffix):
+			roles = append(roles, strings.TrimSuffix(key, roleArnSuffix))
+		default:
+			a.log.Printf(log.Info, "Ignoring artifact: %s", key)
+		}
+	}
+	sort.Slice(profiles, func(i, j int) bool {
+		return profiles[i] < profiles[j]
+	})
+	sort.Slice(roles, func(i, j int) bool {
+		return roles[i] < roles[j]
+	})
+
+	return profiles, roles, nil
+}
+
+// AccountArtifacts returns the artifacts added to the cloud account.
+func (a API) AccountArtifacts(ctx context.Context, id IdentityFunc) (map[string]string, map[string]string, error) {
+	a.log.Print(log.Trace)
+
+	nativeID, err := a.toNativeID(ctx, id)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	artifacts, err := aws.Wrap(a.client).ArtifactsToDelete(ctx, nativeID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get artifacts registered with account: %s", err)
+	}
+
+	instanceProfiles := make(map[string]string)
+	roles := make(map[string]string)
+	var skipped []string
+	for _, artifact := range artifacts {
+		for _, artifact := range artifact.ArtifactsToDelete {
+			switch {
+			case strings.HasSuffix(artifact.ExternalArtifactKey, instanceProfileSuffix):
+				key := strings.TrimSuffix(artifact.ExternalArtifactKey, instanceProfileSuffix)
+				instanceProfiles[key] = artifact.ExternalArtifactValue
+			case strings.HasSuffix(artifact.ExternalArtifactKey, roleArnSuffix):
+				key := strings.TrimSuffix(artifact.ExternalArtifactKey, roleArnSuffix)
+				roles[key] = artifact.ExternalArtifactValue
+			default:
+				skipped = append(skipped, artifact.ExternalArtifactKey)
+			}
+		}
+	}
+	a.log.Printf(log.Debug, "Skipped the following artifacts: %v", skipped)
+
+	return instanceProfiles, roles, nil
+}
+
+// AddAccountArtifacts adds the specified artifacts, instance profiles and
+// roles, to the cloud account.
+func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features []core.Feature, instanceProfiles map[string]string, roles map[string]string) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	account, err := a.Account(ctx, id, core.FeatureAll)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	externalArtifacts := make([]aws.ExternalArtifact, 0, len(instanceProfiles)+len(roles))
+	for key, value := range instanceProfiles {
+		if !strings.HasSuffix(key, instanceProfileSuffix) {
+			key = key + instanceProfileSuffix
+		}
+		externalArtifacts = append(externalArtifacts, aws.ExternalArtifact{
+			ExternalArtifactKey:   key,
+			ExternalArtifactValue: value,
+		})
+	}
+	for key, value := range roles {
+		if !strings.HasSuffix(key, roleArnSuffix) {
+			key = key + roleArnSuffix
+		}
+		externalArtifacts = append(externalArtifacts, aws.ExternalArtifact{
+			ExternalArtifactKey:   key,
+			ExternalArtifactValue: value,
+		})
+	}
+
+	// RegisterFeatureArtifacts fails with an error referring to RBK30300003
+	// if an instance profile or a role passed in as an artifact is not yet
+	// available. This can happen if the call to register the artifacts is
+	// performed right after the call to create the instance profile or the role
+	// returns. When this happens we wait 5 seconds before trying again. After
+	// 30 seconds we abort.
+	now := time.Now()
+	var mappings []aws.NativeIDToRSCIDMapping
+	for {
+		mappings, err = aws.Wrap(a.client).RegisterFeatureArtifacts(ctx, aws.Cloud(account.Cloud), []aws.AccountFeatureArtifact{{
+			NativeID:  account.NativeID,
+			Features:  core.FeatureNames(features),
+			Artifacts: externalArtifacts,
+		}})
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("failed to register feature artifacts: %s", err)
+		}
+		if len(mappings) != 1 {
+			return uuid.Nil, errors.New("expected account mappings for a single account")
+		}
+		if msg := mappings[0].Message; msg == "" || !strings.Contains(msg, "RBK30300003") {
+			break
+		}
+		if time.Since(now) > 30*time.Second {
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
+	if msg := mappings[0].Message; msg != "" {
+		return uuid.Nil, fmt.Errorf("failed to register feature artifacts: %s", msg)
+	}
+
+	accountID, err := uuid.Parse(mappings[0].CloudAccountID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to parse cloud account id: %s", err)
+	}
+
+	return accountID, nil
+}
+
+// TrustPolicies returns the trust policies required by RSC for the specified
+// features. If the external ID is the empty, RSC will generate an external ID.
+func (a API) TrustPolicies(ctx context.Context, id IdentityFunc, features []core.Feature, externalID string) (map[string]string, error) {
+	a.log.Print(log.Trace)
+
+	account, err := a.Account(ctx, id, core.FeatureAll)
+	if err != nil {
+		return nil, err
+	}
+
+	policies, err := aws.Wrap(a.client).TrustPolicy(ctx, aws.Cloud(account.Cloud), features, []aws.TrustPolicyAccount{{
+		ID:         account.NativeID,
+		ExternalID: externalID,
+	}})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get trust policies: %s", err)
+	}
+	if len(policies) != 1 {
+		return nil, fmt.Errorf("expected trust policies for a single account")
+	}
+
+	trustPolicies := make(map[string]string)
+	for _, artifact := range policies[0].Artifacts {
+		if msg := artifact.ErrorMessage; msg != "" {
+			return nil, fmt.Errorf("failed to get trust policies: %s", msg)
+		}
+		artifact.ExternalArtifactKey = strings.TrimSuffix(artifact.ExternalArtifactKey, roleArnSuffix)
+		trustPolicies[artifact.ExternalArtifactKey] = artifact.TrustPolicyDoc
+	}
+
+	return trustPolicies, nil
 }
