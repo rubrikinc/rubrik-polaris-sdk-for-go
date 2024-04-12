@@ -58,7 +58,7 @@ func TestCacheTokenSource(t *testing.T) {
 		t.Fatalf("wrong token: %s", tok)
 	}
 
-	// The wrapped token source return the unexpired token.
+	// The wrapped token source returns the unexpired token.
 	testToken, err = cache.token(context.Background())
 	if err != nil {
 		t.Fatal(err)

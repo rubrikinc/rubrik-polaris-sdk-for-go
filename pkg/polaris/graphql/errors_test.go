@@ -43,7 +43,7 @@ func TestErrorsWithNoError(t *testing.T) {
 }
 
 func TestGqlError(t *testing.T) {
-	buf, err := os.ReadFile("testdata/error_graphql.json")
+	buf, err := os.ReadFile("testdata/graphql_error_response.json")
 	if err != nil {
 		t.Fatal(err)
 	}

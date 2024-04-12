@@ -143,10 +143,7 @@ func (a API) CreateStorageSetting(ctx context.Context, id IdentityFunc, name, bu
 
 	reg := aws.RegionUnknown
 	if region != "" && region != "UNKNOWN_AWS_REGION" {
-		reg, err = aws.ParseRegion(region)
-		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to parse region: %s", err)
-		}
+		reg = aws.ParseRegionNoValidation(region)
 	}
 
 	locTemplate := "SPECIFIC_REGION"

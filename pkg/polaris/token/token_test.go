@@ -118,7 +118,7 @@ func TestTokenSource(t *testing.T) {
 func TestTokenSourceWithBadCredentials(t *testing.T) {
 	ctx := context.Background()
 
-	tmpl, err := template.ParseFiles("testdata/error_json_from_polaris.json")
+	tmpl, err := template.ParseFiles("testdata/auth_error_response.json")
 	if err != nil {
 		t.Fatal(err)
 	}

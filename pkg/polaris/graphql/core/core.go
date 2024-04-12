@@ -20,8 +20,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package core provides a low level interface to core GraphQL queries provided
-// by the Polaris platform. E.g. task chains and enum definitions.
+// Package core provides a low-level interface to core GraphQL queries provided
+// by the Polaris platform. E.g., task chains and enum definitions.
 package core
 
 import (
@@ -141,7 +141,7 @@ var (
 	FeatureArchival                      = Feature{Name: "ARCHIVAL"}
 	FeatureAzureSQLDBProtection          = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
 	FeatureAzureSQLMIProtection          = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
-	FeatureCloudAccounts                 = Feature{Name: "CLOUDACCOUNTS"} // Deprecated, no replacement.
+	FeatureCloudAccounts                 = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
 	FeatureCloudNativeArchival           = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
 	FeatureCloudNativeArchivalEncryption = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
 	FeatureCloudNativeBLOBProtection     = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
@@ -149,9 +149,9 @@ var (
 	FeatureCloudNativeS3Protection       = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
 	FeatureExocompute                    = Feature{Name: "EXOCOMPUTE"}
 	FeatureGCPSharedVPCHost              = Feature{Name: "GCP_SHARED_VPC_HOST"}
-	FeatureServerAndApps                 = Feature{Name: "SERVERS_AND_APPS"}
-	FeatureRDSProtection                 = Feature{Name: "RDS_PROTECTION"}
 	FeatureKubernetesProtection          = Feature{Name: "KUBERNETES_PROTECTION"}
+	FeatureRDSProtection                 = Feature{Name: "RDS_PROTECTION"}
+	FeatureServerAndApps                 = Feature{Name: "SERVERS_AND_APPS"}
 )
 
 var validFeatures = map[string]struct{}{
@@ -160,7 +160,7 @@ var validFeatures = map[string]struct{}{
 	FeatureArchival.Name:                      {},
 	FeatureAzureSQLDBProtection.Name:          {},
 	FeatureAzureSQLMIProtection.Name:          {},
-	FeatureCloudAccounts.Name:                 {},
+	FeatureCloudAccounts.Name:                 {}, // Deprecated: no replacement.
 	FeatureCloudNativeArchival.Name:           {},
 	FeatureCloudNativeArchivalEncryption.Name: {},
 	FeatureCloudNativeBLOBProtection.Name:     {},
@@ -185,28 +185,32 @@ func ContainsFeature(features []Feature, feature Feature) bool {
 	return false
 }
 
-// FormatFeature returns the Feature as a string using lower case and with
-// hyphen as a separator.
+// Deprecated: use Feature.Name instead.
 func FormatFeature(feature Feature) string {
 	return strings.ReplaceAll(strings.ToLower(feature.Name), "_", "-")
 }
 
-// ParseFeature returns the Feature matching the given feature name.
-// Case-insensitive.
+// Deprecated: use Feature{Name: <feature>} instead or ParseFeatureNoValidation
+// if you need to remain backwards compatible with previously accepted feature
+// names.
 func ParseFeature(feature string) (Feature, error) {
-	feature = strings.ReplaceAll(feature, "-", "_")
-
-	name := strings.ToUpper(feature)
-	if _, ok := validFeatures[name]; ok {
-		return Feature{Name: name}, nil
+	f := ParseFeatureNoValidation(feature)
+	if _, ok := validFeatures[f.Name]; ok {
+		return f, nil
 	}
 
 	return FeatureInvalid, fmt.Errorf("invalid feature: %s", feature)
 }
 
+// ParseFeatureNoValidation returns the Feature matching the given feature name.
+// No validation is performed.
+func ParseFeatureNoValidation(feature string) Feature {
+	return Feature{Name: strings.ToUpper(strings.ReplaceAll(feature, "-", "_"))}
+}
+
 const (
-	// Number of attempts before failing to wait for the Korg job when the error
-	// returned is a 403, objects not authorized.
+	// The number of attempts before failing to wait for the Korg job when the
+	// error returned is a 403, objects not authorized.
 	waitAttempts = 15
 )
 
@@ -221,7 +225,7 @@ const (
 	StatusMissingPermissions Status = "MISSING_PERMISSIONS"
 )
 
-// FormatStatus returns the Status as a string using lower case and with hyphen
+// FormatStatus returns the Status as a string using lower-case and with hyphen
 // as a separator.
 func FormatStatus(status Status) string {
 	return strings.ReplaceAll(strings.ToLower(string(status)), "_", "-")
@@ -306,7 +310,7 @@ func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, 
 }
 
 // WaitForTaskChain blocks until the Polaris task chain with the specified task
-// chain id has completed. When the task chain completes the final state of the
+// chain id has completed. When the task chain completes, the final state of the
 // task chain is returned. The wait parameter specifies the amount of time to
 // wait before requesting another task status update.
 func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Duration) (TaskChainState, error) {

@@ -20,7 +20,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package azure provides a low level interface to the Azure GraphQL queries
+// Package azure provides a low-level interface to the Azure GraphQL queries
 // provided by the Polaris platform.
 package azure
 
@@ -112,14 +112,14 @@ const (
 	RegionWestUS3            Region = "WESTUS3"
 )
 
-// FormatRegion returns the Region as a string formatted in Azure's style, i.e.
-// lower case.
+// FormatRegion returns the Region as a string formatted in Azure's style, i.e.,
+// lower case and without any underscores.
 func FormatRegion(region Region) string {
-	return strings.ToLower(string(region))
+	return strings.ToLower(strings.ReplaceAll(string(region), "_", ""))
 }
 
 // FormatRegions returns the Regions as a slice of strings formatted in Azure's
-// style, i.e. lower case.
+// style, i.e., lower case.
 func FormatRegions(regions []Region) []string {
 	regs := make([]string, 0, len(regions))
 	for _, region := range regions {
@@ -177,8 +177,7 @@ var validRegions = map[Region]struct{}{
 	RegionWestUS3:            {},
 }
 
-// ParseRegion returns the Region matching the given region. Accepts both
-// Polaris and Azure style region names.
+// Deprecated: use ParseRegionNoValidation.
 func ParseRegion(region string) (Region, error) {
 	// Polaris region name.
 	r := Region(region)
@@ -195,8 +194,7 @@ func ParseRegion(region string) (Region, error) {
 	return RegionUnknown, errors.New("invalid azure region")
 }
 
-// ParseRegions returns the Regions matching the given regions. Accepts both
-// Polaris and Azure style region names.
+// Deprecated: use ParseRegionsNoValidation.
 func ParseRegions(regions []string) ([]Region, error) {
 	regs := make([]Region, 0, len(regions))
 
@@ -210,6 +208,23 @@ func ParseRegions(regions []string) ([]Region, error) {
 	}
 
 	return regs, nil
+}
+
+// ParseRegionNoValidation returns the Region matching the given Azure region.
+// No validation is performed.
+func ParseRegionNoValidation(region string) Region {
+	return Region(strings.ToUpper(region))
+}
+
+// ParseRegionsNoValidation returns the Regions matching the given Azure
+// regions. No validation is Performed.
+func ParseRegionsNoValidation(regions []string) []Region {
+	regs := make([]Region, 0, len(regions))
+	for _, r := range regions {
+		regs = append(regs, ParseRegionNoValidation(r))
+	}
+
+	return regs
 }
 
 // API wraps around GraphQL clients to give them the RSC Azure API.
@@ -241,9 +256,9 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 		ShouldReplace bool      `json:"shouldReplace"`
 	}{Cloud: cloud, ID: appID, Name: appName, TenantID: appTenantID, TenantDomain: appTenantDomain, SecretKey: appSecretKey, ShouldReplace: shouldReplace})
 	if err != nil {
-		return fmt.Errorf("failed to request setAzureCloudAccountCustomerAppCredentialsQuery: %w", err)
+		return fmt.Errorf("failed to request setAzureCloudAccountCustomerAppCredentials: %w", err)
 	}
-	a.log.Printf(log.Debug, "setAzureCloudAccountCustomerAppCredentialsQuery(%v, %v, %v, \"<REDACTED>\", %v, %v, %v): %s", cloud,
+	a.log.Printf(log.Debug, "setAzureCloudAccountCustomerAppCredentials(%q, %q, %q, <REDACTED>, %q, %q, %t): %s", cloud,
 		appID, appName, appTenantID, appTenantDomain, shouldReplace, string(buf))
 
 	var payload struct {
@@ -252,7 +267,7 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal setAzureCloudAccountCustomerAppCredentialsQuery: %v", err)
+		return fmt.Errorf("failed to unmarshal setAzureCloudAccountCustomerAppCredentials: %s", err)
 	}
 	if !payload.Data.Result {
 		return errors.New("set app credentials failed")

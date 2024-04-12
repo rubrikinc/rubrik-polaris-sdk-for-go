@@ -19,7 +19,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 // Package graphql provides direct access to the RSC GraphQL API. Can be used
-// to execute both raw queries and prepared low level queries used by the high
+// to execute both raw queries and prepared low-level queries used by the high-
 // level part of the SDK.
 //
 // The graphql package tries to stay as close as possible to the GraphQL API:
@@ -206,8 +206,8 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 	}
 	defer res.Body.Close()
 
-	// Remote responded without a body. For status code 200 this means we are
-	// missing the GraphQL response. For an error we have no additional details.
+	// Remote responded without a body. For status code 200, this means we are
+	// missing the GraphQL response. For an error, we have no additional details.
 	if res.ContentLength == 0 {
 		return nil, fmt.Errorf("graphql response has no body (status code %d)", res.StatusCode)
 	}
@@ -217,9 +217,9 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 		return nil, fmt.Errorf("failed to read graphql response body (status code %d): %v", res.StatusCode, err)
 	}
 
-	// Verify that the content type of the body is JSON. For status code 200
-	// this mean we received something that isn't a GraphQL response. For an
-	// error we have no additional JSON details.
+	// Verify that the content type of the body is JSON. For status code 200,
+	// this means we received something that isn't a GraphQL response. For an
+	// error, we have no additional JSON details.
 	contentType := res.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
 		snippet := string(buf)

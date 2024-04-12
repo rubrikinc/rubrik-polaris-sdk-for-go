@@ -40,7 +40,7 @@ func TestValidateAndCreateAWSCloudAccountWithDuplicate(t *testing.T) {
 
 	// Respond with an error indicating that the account has already been added.
 	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
-		tmpl := template.Must(template.ParseFiles("testdata/validate_and_create_aws_cloud_account.json"))
+		tmpl := template.Must(template.ParseFiles("testdata/validate_and_create_aws_cloud_account_response.json"))
 
 		buf, err := io.ReadAll(req.Body)
 		if err != nil {

@@ -32,7 +32,7 @@ import (
 )
 
 func TestRequestUnauthenticated(t *testing.T) {
-	tmpl, err := template.ParseFiles("testdata/error_json_from_auth.json")
+	tmpl, err := template.ParseFiles("testdata/auth_error_response.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestRequestUnauthenticated(t *testing.T) {
 }
 
 func TestRequestWithInternalServerErrorJSONBody(t *testing.T) {
-	tmpl, err := template.ParseFiles("testdata/error_graphql.json")
+	tmpl, err := template.ParseFiles("testdata/graphql_error_response.json")
 	if err != nil {
 		t.Fatal(err)
 	}

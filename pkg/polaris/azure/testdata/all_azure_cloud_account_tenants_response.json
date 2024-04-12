@@ -1,0 +1,270 @@
+{
+  "data": {
+    "result": [
+      {
+        "cloudType": "AZUREPUBLICCLOUD",
+        "azureCloudAccountTenantRubrikId": "ca997d29-1811-4aab-a5dc-649082debe89",
+        "domainName": "domain1.onmicrosoft.com",
+        "clientId": "b6a26799-b722-4df6-b2df-9c70433ee55f",
+        "appName": "app1",
+        "subscriptionCount": 1,
+        "subscriptions": [
+          {
+            "id": "f4b69681-2ab8-4edc-81c2-8852e46c1ba3",
+            "name": "subscription1",
+            "nativeId": "c263212c-3f26-4b9a-8601-9efb466c8837",
+            "featureDetail": {
+              "feature": "CLOUD_NATIVE_PROTECTION",
+              "status": "MISSING_PERMISSIONS",
+              "regions": [
+                "EASTUS",
+                "WESTUS"
+              ],
+              "resourceGroup": {
+                "name": "rg1",
+                "nativeId": "/subscriptions/f4b69681-2ab8-4edc-81c2-8852e46c1ba3/resourceGroups/rg1",
+                "region": "WEST_US",
+                "tags": []
+              }
+            }
+          },
+          {
+            "id": "f4b69681-2ab8-4edc-81c2-8852e46c1ba3",
+            "name": "subscription1",
+            "nativeId": "c263212c-3f26-4b9a-8601-9efb466c8837",
+            "featureDetail": {
+              "feature": "EXOCOMPUTE",
+              "status": "CONNECTED",
+              "regions": [
+                "WESTUS"
+              ],
+              "resourceGroup": {
+                "name": "rg2",
+                "nativeId": "/subscriptions/f4b69681-2ab8-4edc-81c2-8852e46c1ba3/resourceGroups/rg2",
+                "region": "WEST_US",
+                "tags": []
+              }
+            }
+          }
+        ]
+      },
+      {
+        "cloudType": "AZUREPUBLICCLOUD",
+        "azureCloudAccountTenantRubrikId": "ca997d29-1811-4aab-a5dc-649082debe89",
+        "domainName": "domain1.onmicrosoft.com",
+        "clientId": "b6a26799-b722-4df6-b2df-9c70433ee55f",
+        "appName": "app1",
+        "subscriptionCount": 1,
+        "subscriptions": [
+          {
+            "id": "f4b69681-2ab8-4edc-81c2-8852e46c1ba3",
+            "name": "subscription1",
+            "nativeId": "c263212c-3f26-4b9a-8601-9efb466c8837",
+            "featureDetail": {
+              "feature": "CLOUD_NATIVE_PROTECTION",
+              "status": "MISSING_PERMISSIONS",
+              "regions": [
+                "EASTUS",
+                "WESTUS"
+              ],
+              "resourceGroup": {
+                "name": "rg1",
+                "nativeId": "/subscriptions/f4b69681-2ab8-4edc-81c2-8852e46c1ba3/resourceGroups/rg1",
+                "region": "WEST_US",
+                "tags": []
+              }
+            }
+          },
+          {
+            "id": "f4b69681-2ab8-4edc-81c2-8852e46c1ba3",
+            "name": "subscription1",
+            "nativeId": "c263212c-3f26-4b9a-8601-9efb466c8837",
+            "featureDetail": {
+              "feature": "EXOCOMPUTE",
+              "status": "CONNECTED",
+              "regions": [
+                "WESTUS"
+              ],
+              "resourceGroup": {
+                "name": "rg2",
+                "nativeId": "/subscriptions/f4b69681-2ab8-4edc-81c2-8852e46c1ba3/resourceGroups/rg2",
+                "region": "WEST_US",
+                "tags": []
+              }
+            }
+          }
+        ]
+      },
+      {
+        "cloudType": "AZUREPUBLICCLOUD",
+        "azureCloudAccountTenantRubrikId": "88af4472-ea52-4c8e-bf05-e4ca581370a7",
+        "domainName": "domain2.onmicrosoft.com",
+        "clientId": "6688f45e-b1dc-41d8-b926-3acef4a4beaf",
+        "appName": "app2",
+        "subscriptionCount": 2,
+        "subscriptions": [
+          {
+            "id": "e2e3fb63-2230-4154-9b1b-923f018dbc4f",
+            "name": "subscription2",
+            "nativeId": "1ee74f16-10d3-45fe-adfb-7f70ee77f5ee",
+            "featureDetail": {
+              "feature": "CLOUD_NATIVE_PROTECTION",
+              "status": "MISSING_PERMISSIONS",
+              "regions": [
+                "WESTUS2"
+              ],
+              "resourceGroup": {
+                "name": "rg3",
+                "nativeId": "/subscriptions/e2e3fb63-2230-4154-9b1b-923f018dbc4f/resourceGroups/rg3",
+                "region": "WEST_US2",
+                "tags": []
+              }
+            }
+          },
+          {
+            "id": "e2e3fb63-2230-4154-9b1b-923f018dbc4f",
+            "name": "subscription2",
+            "nativeId": "1ee74f16-10d3-45fe-adfb-7f70ee77f5ee",
+            "featureDetail": {
+              "feature": "EXOCOMPUTE",
+              "status": "CONNECTED",
+              "regions": [],
+              "resourceGroup": {
+                "name": "rg4",
+                "nativeId": "/subscriptions/e2e3fb63-2230-4154-9b1b-923f018dbc4f/resourceGroups/rg4",
+                "region": "WEST_US2",
+                "tags": []
+              }
+            }
+          },
+          {
+            "id": "31116cf6-6259-4cfc-b8a6-307cb0744ba1",
+            "name": "subscription3",
+            "nativeId": "973bfa00-0bfd-4850-aab1-ebd3f9d9b6b7",
+            "featureDetail": {
+              "feature": "CLOUD_NATIVE_PROTECTION",
+              "status": "MISSING_PERMISSIONS",
+              "regions": [
+                "WESTUS"
+              ],
+              "resourceGroup": {
+                "name": "rg5",
+                "nativeId": "/subscriptions/31116cf6-6259-4cfc-b8a6-307cb0744ba1/resourceGroups/rg5",
+                "region": "WEST_US",
+                "tags": [
+                  {
+                    "key": "key1",
+                    "value": "value1"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "31116cf6-6259-4cfc-b8a6-307cb0744ba1",
+            "name": "subscription3",
+            "nativeId": "973bfa00-0bfd-4850-aab1-ebd3f9d9b6b7",
+            "featureDetail": {
+              "feature": "EXOCOMPUTE",
+              "status": "MISSING_PERMISSIONS",
+              "regions": [
+                "WESTUS"
+              ],
+              "resourceGroup": {
+                "name": "rg5",
+                "nativeId": "/subscriptions/31116cf6-6259-4cfc-b8a6-307cb0744ba1/resourceGroups/rg5",
+                "region": "WEST_US",
+                "tags": []
+              }
+            }
+          }
+        ]
+      },
+      {
+        "cloudType": "AZUREPUBLICCLOUD",
+        "azureCloudAccountTenantRubrikId": "88af4472-ea52-4c8e-bf05-e4ca581370a7",
+        "domainName": "domain2.onmicrosoft.com",
+        "clientId": "6688f45e-b1dc-41d8-b926-3acef4a4beaf",
+        "appName": "app2",
+        "subscriptionCount": 2,
+        "subscriptions": [
+          {
+            "id": "e2e3fb63-2230-4154-9b1b-923f018dbc4f",
+            "name": "subscription2",
+            "nativeId": "1ee74f16-10d3-45fe-adfb-7f70ee77f5ee",
+            "featureDetail": {
+              "feature": "CLOUD_NATIVE_PROTECTION",
+              "status": "MISSING_PERMISSIONS",
+              "regions": [
+                "WESTUS2"
+              ],
+              "resourceGroup": {
+                "name": "rg3",
+                "nativeId": "/subscriptions/e2e3fb63-2230-4154-9b1b-923f018dbc4f/resourceGroups/rg3",
+                "region": "WEST_US2",
+                "tags": []
+              }
+            }
+          },
+          {
+            "id": "e2e3fb63-2230-4154-9b1b-923f018dbc4f",
+            "name": "subscription2",
+            "nativeId": "1ee74f16-10d3-45fe-adfb-7f70ee77f5ee",
+            "featureDetail": {
+              "feature": "EXOCOMPUTE",
+              "status": "CONNECTED",
+              "regions": [],
+              "resourceGroup": {
+                "name": "rg4",
+                "nativeId": "/subscriptions/e2e3fb63-2230-4154-9b1b-923f018dbc4f/resourceGroups/rg4",
+                "region": "WEST_US2",
+                "tags": []
+              }
+            }
+          },
+          {
+            "id": "31116cf6-6259-4cfc-b8a6-307cb0744ba1",
+            "name": "subscription3",
+            "nativeId": "973bfa00-0bfd-4850-aab1-ebd3f9d9b6b7",
+            "featureDetail": {
+              "feature": "CLOUD_NATIVE_PROTECTION",
+              "status": "MISSING_PERMISSIONS",
+              "regions": [
+                "WESTUS"
+              ],
+              "resourceGroup": {
+                "name": "rg5",
+                "nativeId": "/subscriptions/31116cf6-6259-4cfc-b8a6-307cb0744ba1/resourceGroups/rg5",
+                "region": "WEST_US",
+                "tags": [
+                  {
+                    "key": "key1",
+                    "value": "value1"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "31116cf6-6259-4cfc-b8a6-307cb0744ba1",
+            "name": "subscription3",
+            "nativeId": "973bfa00-0bfd-4850-aab1-ebd3f9d9b6b7",
+            "featureDetail": {
+              "feature": "EXOCOMPUTE",
+              "status": "MISSING_PERMISSIONS",
+              "regions": [
+                "WESTUS"
+              ],
+              "resourceGroup": {
+                "name": "rg5",
+                "nativeId": "/subscriptions/31116cf6-6259-4cfc-b8a6-307cb0744ba1/resourceGroups/rg5",
+                "region": "WEST_US",
+                "tags": []
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

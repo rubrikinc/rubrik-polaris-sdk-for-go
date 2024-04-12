@@ -37,7 +37,7 @@ type ExocomputeConfig struct {
 	Region   string
 	SubnetID string
 
-	// When true Rubrik will manage the security groups.
+	// When true, Rubrik will manage the security groups.
 	ManagedByRubrik bool
 }
 
@@ -49,12 +49,8 @@ type ExoConfigFunc func(ctx context.Context) (azure.ExocomputeConfigCreate, erro
 // security groups managed by Rubrik using the specified values.
 func Managed(region, subnetID string) ExoConfigFunc {
 	return func(ctx context.Context) (azure.ExocomputeConfigCreate, error) {
-		r, err := azure.ParseRegion(region)
-		if err != nil {
-			return azure.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
-		}
 		return azure.ExocomputeConfigCreate{
-			Region:            r,
+			Region:            azure.ParseRegionNoValidation(region),
 			SubnetID:          subnetID,
 			IsManagedByRubrik: true,
 		}, nil
