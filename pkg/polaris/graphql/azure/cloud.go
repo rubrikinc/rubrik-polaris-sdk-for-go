@@ -32,6 +32,18 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+// CloudAccountTenant hold details about an Azure tenant and the cloud
+// account associated with that tenant.
+type CloudAccountTenant struct {
+	Cloud             Cloud          `json:"cloudType"`
+	ID                uuid.UUID      `json:"azureCloudAccountTenantRubrikId"`
+	ClientID          uuid.UUID      `json:"clientId"`
+	AppName           string         `json:"appName"`
+	DomainName        string         `json:"domainName"`
+	SubscriptionCount int            `json:"subscriptionCount"`
+	Accounts          []CloudAccount `json:"subscriptions"`
+}
+
 // CloudAccount represents an RSC Cloud Account for Azure.
 type CloudAccount struct {
 	ID       uuid.UUID `json:"id"`
@@ -40,22 +52,21 @@ type CloudAccount struct {
 	Feature  Feature   `json:"featureDetail"`
 }
 
-// Feature represents an RSC Cloud Account feature for Azure, e.g. Cloud Native
+// Feature represents an RSC Cloud Account feature for Azure, e.g., Cloud Native
 // Protection.
 type Feature struct {
-	Feature string      `json:"feature"`
-	Regions []Region    `json:"regions"`
-	Status  core.Status `json:"status"`
+	Feature       string               `json:"feature"`
+	ResourceGroup FeatureResourceGroup `json:"resourceGroup"`
+	Regions       []Region             `json:"regions"`
+	Status        core.Status          `json:"status"`
 }
 
-// CloudAccountTenant hold details about an Azure tenant and the cloud
-// account associated with that tenant.
-type CloudAccountTenant struct {
-	Cloud      Cloud          `json:"cloudType"`
-	ID         uuid.UUID      `json:"azureCloudAccountTenantRubrikId"`
-	ClientID   uuid.UUID      `json:"clientId"`
-	DomainName string         `json:"domainName"`
-	Accounts   []CloudAccount `json:"subscriptions"`
+// FeatureResourceGroup represents the resource group for a particular feature.
+type FeatureResourceGroup struct {
+	Name     string `json:"name"`
+	NativeID string `json:"nativeId"`
+	Tags     []Tag  `json:"tags"`
+	Region   Region `json:"region"`
 }
 
 // Tag represents tags to be applied to Azure resource.
@@ -69,37 +80,37 @@ type TagList struct {
 	Tags []Tag `json:"tagList"`
 }
 
-// ResourceGroup contains the information of resource group
-// created for a particular feature.
+// ResourceGroup contains the information of resource group created for
+// a particular feature.
 type ResourceGroup struct {
-	Name    string   `json:"name"`
-	TagList *TagList `json:"tags"`
-	Region  `json:"region"`
+	Name    string  `json:"name"`
+	TagList TagList `json:"tags"`
+	Region  Region  `json:"region"`
 }
 
 // FeatureSpecificInfo represents feature specific information.
 // Supports:
 // 1. Managed Identity for Archival Encryption feature.
 type FeatureSpecificInfo struct {
-	UserAssignedManagedIdentity *UserAssignedManagedIdentity `json:"userAssignedManagedIdentityInput"`
+	UserAssignedManagedIdentity UserAssignedManagedIdentity `json:"userAssignedManagedIdentityInput"`
 }
 
-// UserAssignedManagedIdentity represents the managed identity
-// information for archival.
+// UserAssignedManagedIdentity represents the managed identity information for
+// archival.
 type UserAssignedManagedIdentity struct {
 	Name              string `json:"name"`
 	ResourceGroupName string `json:"resourceGroupName"`
 	PrincipalID       string `json:"principalId"`
-	Region            `json:"region"`
+	Region            Region `json:"region"`
 }
 
-// CloudAccountFeature represents feature information for
-// specific cloud native azure features.
+// CloudAccountFeature represents feature information for specific cloud native
+// azure features.
 type CloudAccountFeature struct {
 	PolicyVersion       int                  `json:"policyVersion"`
-	ResourceGroup       *ResourceGroup       `json:"resourceGroup"`
+	ResourceGroup       *ResourceGroup       `json:"resourceGroup,omitempty"`
 	FeatureType         string               `json:"featureType"`
-	FeatureSpecificInfo *FeatureSpecificInfo `json:"specificFeatureInput"`
+	FeatureSpecificInfo *FeatureSpecificInfo `json:"specificFeatureInput,omitempty"`
 }
 
 // CloudAccountTenant returns the tenant and cloud accounts for the specified
@@ -116,7 +127,7 @@ func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.
 	if err != nil {
 		return CloudAccountTenant{}, fmt.Errorf("failed to request azureCloudAccountTenant: %w", err)
 	}
-	a.log.Printf(log.Debug, "azureCloudAccountTenantQuery(%q, %q, %q): %s", id, feature, filter,
+	a.log.Printf(log.Debug, "azureCloudAccountTenant(%q, %q, %q): %s", id, feature, filter,
 		string(buf))
 
 	var payload struct {
@@ -125,15 +136,15 @@ func (a API) CloudAccountTenant(ctx context.Context, id uuid.UUID, feature core.
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return CloudAccountTenant{}, fmt.Errorf("failed to unmarshal azureCloudAccountTenantQuery: %v", err)
+		return CloudAccountTenant{}, fmt.Errorf("failed to unmarshal azureCloudAccountTenant: %v", err)
 	}
 
 	return payload.Data.Result, nil
 }
 
 // CloudAccountTenants return all tenants for the specified feature. If
-// includeSubscription is true all cloud accounts for each tenant are also
-// returned. Note that this function does not support AllFeatures.
+// includeSubscription is true, all cloud accounts for each tenant are also
+// returned.
 func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, includeSubscriptions bool) ([]CloudAccountTenant, error) {
 	a.log.Print(log.Trace)
 

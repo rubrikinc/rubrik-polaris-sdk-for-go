@@ -254,7 +254,7 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, feature core.F
 	a.log.Print(log.Trace)
 
 	if !feature.Equal(core.FeatureCloudNativeProtection) {
-		return uuid.Nil, fmt.Errorf("feature not supported on gcp: %v", core.FormatFeature(feature))
+		return uuid.Nil, fmt.Errorf("feature not supported on gcp: %v", feature)
 	}
 
 	if project == nil {

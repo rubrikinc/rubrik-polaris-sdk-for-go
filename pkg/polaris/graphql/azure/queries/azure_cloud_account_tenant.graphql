@@ -3,7 +3,9 @@ query RubrikPolarisSDKRequest($tenantId: UUID!, $feature: CloudAccountFeature!, 
         cloudType
         azureCloudAccountTenantRubrikId
         clientId
+        appName
         domainName
+        subscriptionCount
         subscriptions {
             id
             name
@@ -12,6 +14,15 @@ query RubrikPolarisSDKRequest($tenantId: UUID!, $feature: CloudAccountFeature!, 
                 feature
                 regions
                 status
+                resourceGroup {
+                    name
+                    nativeId
+                    region
+                    tags {
+                        key
+                        value
+                    }
+                }
             }
         }
     }

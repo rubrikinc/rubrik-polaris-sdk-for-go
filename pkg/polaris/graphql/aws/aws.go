@@ -20,7 +20,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package aws provides a low level interface to the AWS GraphQL queries
+// Package aws provides a low-level interface to the AWS GraphQL queries
 // provided by the Polaris platform.
 package aws
 
@@ -103,14 +103,14 @@ const (
 	RegionUsWest2      Region = "US_WEST_2"
 )
 
-// FormatRegion returns the Region as a string formatted in AWS's style, i.e.
+// FormatRegion returns the Region as a string formatted in AWS's style, i.e.,
 // lower case and with hyphen as a separator.
 func FormatRegion(region Region) string {
 	return strings.ReplaceAll(strings.ToLower(string(region)), "_", "-")
 }
 
 // FormatRegions returns the Regions as a slice of strings formatted in AWS's
-// style, i.e. lower case and with hyphen as a separator.
+// style, i.e., lower case and with hyphen as a separator.
 func FormatRegions(regions []Region) []string {
 	regs := make([]string, 0, len(regions))
 	for _, region := range regions {
@@ -150,8 +150,7 @@ var validRegions = map[Region]struct{}{
 	RegionUsWest2:      {},
 }
 
-// ParseRegion returns the Region matching the given region. Accepts both
-// Polaris and AWS style region names.
+// Deprecated: use ParseRegionNoValidation.
 func ParseRegion(region string) (Region, error) {
 	// Polaris region name.
 	r := Region(region)
@@ -168,8 +167,7 @@ func ParseRegion(region string) (Region, error) {
 	return RegionUnknown, fmt.Errorf("invalid aws region: %s", region)
 }
 
-// ParseRegions returns the Regions matching the given regions. Accepts both
-// Polaris and AWS style region names.
+// Deprecated: use ParseRegionsNoValidation.
 func ParseRegions(regions []string) ([]Region, error) {
 	regs := make([]Region, 0, len(regions))
 
@@ -183,6 +181,23 @@ func ParseRegions(regions []string) ([]Region, error) {
 	}
 
 	return regs, nil
+}
+
+// ParseRegionNoValidation returns the Region matching the given region.
+// No validation is performed.
+func ParseRegionNoValidation(region string) Region {
+	return Region(strings.ReplaceAll(strings.ToUpper(region), "-", "_"))
+}
+
+// ParseRegionsNoValidation returns the Regions matching the given regions.
+// No validation is Performed.
+func ParseRegionsNoValidation(regions []string) []Region {
+	regs := make([]Region, 0, len(regions))
+	for _, r := range regions {
+		regs = append(regs, ParseRegionNoValidation(r))
+	}
+
+	return regs
 }
 
 // API wraps around GraphQL clients to give them the RCS AWS API.

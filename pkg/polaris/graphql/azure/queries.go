@@ -67,7 +67,10 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
     result: allAzureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $includeSubscriptionDetails) {
         cloudType
         azureCloudAccountTenantRubrikId
+        clientId
+        appName
         domainName
+        subscriptionCount
         subscriptions {
             id
             name
@@ -76,6 +79,15 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
                 feature
                 status
                 regions
+                resourceGroup {
+                    name
+                    nativeId
+                    region
+                    tags {
+                        key
+                        value
+                    }
+                }
             }
         }
     }
@@ -129,7 +141,9 @@ var azureCloudAccountTenantQuery = `query SdkGolangAzureCloudAccountTenant($tena
         cloudType
         azureCloudAccountTenantRubrikId
         clientId
+        appName
         domainName
+        subscriptionCount
         subscriptions {
             id
             name
@@ -138,6 +152,15 @@ var azureCloudAccountTenantQuery = `query SdkGolangAzureCloudAccountTenant($tena
                 feature
                 regions
                 status
+                resourceGroup {
+                    name
+                    nativeId
+                    region
+                    tags {
+                        key
+                        value
+                    }
+                }
             }
         }
     }

@@ -38,24 +38,12 @@ func TestFormatRegion(t *testing.T) {
 }
 
 func TestParseRegion(t *testing.T) {
-	region, err := ParseRegion("northeurope")
-	if err != nil {
-		t.Error(err)
-	}
-	if region != RegionNorthEurope {
+	if region := ParseRegionNoValidation("northeurope"); region != RegionNorthEurope {
 		t.Errorf("invalid region: %v", region)
 	}
 
-	regions, err := ParseRegions([]string{"eastus", "westus"})
-	if err != nil {
-		t.Error(err)
-	}
+	regions := ParseRegionsNoValidation([]string{"eastus", "westus"})
 	if !reflect.DeepEqual(regions, []Region{RegionEastUS, RegionWestUS}) {
 		t.Errorf("invalid region: %v", regions)
-	}
-
-	_, err = ParseRegion("space-moon-1")
-	if err == nil {
-		t.Error("expected test to fail")
 	}
 }

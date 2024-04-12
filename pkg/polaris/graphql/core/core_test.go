@@ -36,42 +36,22 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-func TestParseFeature(t *testing.T) {
-	feature, err := ParseFeature("CLOUD_NATIVE_PROTECTION")
-	if err != nil {
-		t.Error(err)
-	}
-	if !feature.Equal(FeatureCloudNativeProtection) {
+func TestParseFeatureNoValidation(t *testing.T) {
+	if feature := ParseFeatureNoValidation("CLOUD_NATIVE_PROTECTION"); !feature.Equal(FeatureCloudNativeProtection) {
 		t.Errorf("invalid feature: %s", feature)
 	}
 
-	feature, err = ParseFeature("cloud_native_protection")
-	if err != nil {
-		t.Error(err)
-	}
-	if !feature.Equal(FeatureCloudNativeProtection) {
+	if feature := ParseFeatureNoValidation("cloud_native_protection"); !feature.Equal(FeatureCloudNativeProtection) {
 		t.Errorf("invalid feature: %s", feature)
 	}
 
-	feature, err = ParseFeature("cloud-native-protection")
-	if err != nil {
-		t.Error(err)
-	}
-	if !feature.Equal(FeatureCloudNativeProtection) {
-		t.Errorf("invalid feature: %s", feature)
-	}
-
-	feature, err = ParseFeature("invalid-feature")
-	if err == nil {
-		t.Error("expected test to fail")
-	}
-	if !feature.Equal(FeatureInvalid) {
+	if feature := ParseFeatureNoValidation("cloud-native-protection"); !feature.Equal(FeatureCloudNativeProtection) {
 		t.Errorf("invalid feature: %s", feature)
 	}
 }
 
 func TestKorgTaskChainStatus(t *testing.T) {
-	tmpl, err := template.ParseFiles("testdata/korgtaskchainstatus.json")
+	tmpl, err := template.ParseFiles("testdata/korg_taskchain_status_response.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +104,7 @@ func TestKorgTaskChainStatus(t *testing.T) {
 }
 
 func TestWaitForTaskChain(t *testing.T) {
-	tmpl, err := template.ParseFiles("testdata/korgtaskchainstatus.json")
+	tmpl, err := template.ParseFiles("testdata/korg_taskchain_status_response.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,8 +112,8 @@ func TestWaitForTaskChain(t *testing.T) {
 	client, lis := graphql.NewTestClient("john", "doe", log.DiscardLogger{})
 	coreAPI := Wrap(client)
 
-	// Respond with status code 200 and a valid body. First 2 reponses have
-	// state RUNNING. Third response is SUCCEEDED.
+	// Respond with status code 200 and a valid body. The First 2 responses have
+	// state RUNNING. The Third response is SUCCEEDED.
 	reqCount := 3
 	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
 		buf, err := io.ReadAll(req.Body)

@@ -18,14 +18,17 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package azure provides a high level interface to the Azure part of the RSC
+// Package azure provides a high-level interface to the Azure part of the RSC
 // platform.
 package azure
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -53,12 +56,23 @@ func Wrap(client *polaris.Client) API {
 	return API{client: client.GQL, log: client.GQL.Log()}
 }
 
+// CloudAccountTenant
+type CloudAccountTenant struct {
+	Cloud             string
+	ID                uuid.UUID // Rubrik tenant ID.
+	ClientID          uuid.UUID // Azure app registration application id.
+	AppName           string
+	DomainName        string // Azure tenant domain.
+	SubscriptionCount int
+}
+
 // CloudAccount for Microsoft Azure subscriptions.
 type CloudAccount struct {
-	ID           uuid.UUID
-	NativeID     uuid.UUID
+	ID           uuid.UUID // Rubrik cloud account ID.
+	NativeID     uuid.UUID // Azure subscription ID.
 	Name         string
-	TenantDomain string
+	TenantID     uuid.UUID // Rubrik tenant ID.
+	TenantDomain string    // Azure tenant domain.
 	Features     []Feature
 }
 
@@ -76,8 +90,9 @@ func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 // Feature for Microsoft Azure subscriptions.
 type Feature struct {
 	core.Feature
-	Regions []string
-	Status  core.Status
+	ResourceGroup FeatureResourceGroup
+	Regions       []string
+	Status        core.Status
 }
 
 // HasRegion returns true if the feature is enabled for the specified region.
@@ -91,17 +106,22 @@ func (f Feature) HasRegion(region string) bool {
 	return false
 }
 
-// RSC does not support the AllFeatures for Azure cloud accounts. We work around
-// this by translating FeatureAll to the following list of features.
-var allFeatures = []core.Feature{
-	core.FeatureCloudNativeArchival,
-	core.FeatureCloudNativeArchivalEncryption,
-	core.FeatureCloudNativeProtection,
-	core.FeatureExocompute,
+// SupportResourceGroup returns true if the feature supports being added with
+// a resource group.
+func (f Feature) SupportResourceGroup() bool {
+	return !f.Equal(core.FeatureAzureSQLDBProtection) && !f.Equal(core.FeatureAzureSQLMIProtection)
 }
 
-// toCloudAccountID returns the RSC cloud account id for the specified identity.
-// If the identity is a RSC cloud account id no remote endpoint is called.
+// FeatureResourceGroup for Microsoft Azure subscriptions.
+type FeatureResourceGroup struct {
+	Name     string
+	NativeID string
+	Tags     map[string]string
+	Region   string
+}
+
+// toCloudAccountID returns the RSC cloud account ID for the specified identity.
+// If the identity is an RSC cloud account ID, no remote endpoint is called.
 func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
@@ -121,39 +141,22 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 		return uid, nil
 	}
 
-	// Note that the same tenant can show up for multiple features.
-	tenantIDs := make(map[uuid.UUID]struct{})
-	for _, feature := range allFeatures {
-		tenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, feature, false)
-		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to get tenants: %v", err)
-		}
-		for _, tenant := range tenants {
-			tenantIDs[tenant.ID] = struct{}{}
-		}
+	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, true)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to get tenants: %s", err)
 	}
 
-	for tenantID := range tenantIDs {
-		for _, feature := range allFeatures {
-			tenantWithAccounts, err := azure.Wrap(a.client).CloudAccountTenant(ctx, tenantID, feature, identity.id)
-			if err != nil {
-				return uuid.Nil, fmt.Errorf("failed to get tenant: %v", err)
-			}
-
-			// Find the exact match.
-			for _, account := range tenantWithAccounts.Accounts {
-				if account.NativeID == uid {
-					return account.ID, nil
-				}
-			}
+	for _, account := range toSubscriptions(rawTenants) {
+		if account.NativeID == uid {
+			return account.ID, nil
 		}
 	}
 
 	return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotFound)
 }
 
-// toNativeID returns the Azure subscription id for the specified identity.
-// If the identity is an Azure subscription id no remote endpoint is called.
+// toNativeID returns the Azure subscription ID for the specified identity.
+// If the identity is an Azure subscription ID, no remote endpoint is called.
 func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
@@ -169,109 +172,84 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to parse identity: %v", err)
 	}
-
 	if !identity.internal {
 		return uid, nil
 	}
 
-	// Note that the same tenant can show up for multiple features.
-	tenantIDs := make(map[uuid.UUID]struct{})
-	for _, feature := range allFeatures {
-		tenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, feature, false)
-		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to get tenants: %v", err)
-		}
-		for _, tenant := range tenants {
-			tenantIDs[tenant.ID] = struct{}{}
-		}
+	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, true)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to get tenants: %s", err)
 	}
 
-	for tenantID := range tenantIDs {
-		for _, feature := range allFeatures {
-			tenantWithAccounts, err := azure.Wrap(a.client).CloudAccountTenant(ctx, tenantID, feature, "")
-			if err != nil {
-				return uuid.Nil, fmt.Errorf("failed to get tenant: %v", err)
-			}
-			for _, account := range tenantWithAccounts.Accounts {
-				if account.ID == uid {
-					return account.ID, nil
-				}
-			}
+	for _, account := range toSubscriptions(rawTenants) {
+		if account.ID == uid {
+			return account.NativeID, nil
 		}
 	}
 
 	return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotFound)
 }
 
-// subscriptions return all subscriptions for the given feature and filter.
-func (a API) subscriptions(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
+// Tenant returns the tenant with the specified ID.
+func (a API) Tenant(ctx context.Context, tenantID uuid.UUID) (CloudAccountTenant, error) {
 	a.log.Print(log.Trace)
 
-	tenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, feature, false)
+	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get tenants: %v", err)
+		return CloudAccountTenant{}, fmt.Errorf("failed to get tenants: %s", err)
 	}
 
-	var accounts []CloudAccount
-	for _, tenant := range tenants {
-		tenantWithAccounts, err := azure.Wrap(a.client).CloudAccountTenant(ctx, tenant.ID, feature, filter)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get tenant: %v", err)
-		}
-
-		for _, account := range tenantWithAccounts.Accounts {
-			accounts = append(accounts, CloudAccount{
-				ID:           account.ID,
-				NativeID:     account.NativeID,
-				Name:         account.Name,
-				TenantDomain: tenantWithAccounts.DomainName,
-				Features: []Feature{{
-					Feature: core.Feature{Name: account.Feature.Feature},
-					Regions: azure.FormatRegions(account.Feature.Regions),
-					Status:  account.Feature.Status,
-				}},
-			})
+	for _, tenant := range toTenants(rawTenants) {
+		if tenant.ID == tenantID {
+			return tenant, nil
 		}
 	}
 
-	return accounts, nil
+	return CloudAccountTenant{}, fmt.Errorf("tenant %w", graphql.ErrNotFound)
 }
 
-// subscriptionsAllFeatures return all subscriptions with all features for
-// the given filter. Note that the organization name of the cloud account is
-// not set.
-func (a API) subscriptionsAllFeatures(ctx context.Context, filter string) ([]CloudAccount, error) {
+// TenantFromAppID returns the tenant with the specified app registration
+// application ID.
+func (a API) TenantFromAppID(ctx context.Context, appID uuid.UUID) (CloudAccountTenant, error) {
 	a.log.Print(log.Trace)
 
-	accountMap := make(map[uuid.UUID]*CloudAccount)
-	for _, feature := range allFeatures {
-		accounts, err := a.subscriptions(ctx, feature, filter)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get subscriptions: %v", err)
-		}
+	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, false)
+	if err != nil {
+		return CloudAccountTenant{}, fmt.Errorf("failed to get tenants: %s", err)
+	}
 
-		for i := range accounts {
-			// We need to create a copy of the account here since we use it as a
-			// pointer further down.
-			account := accounts[i]
-
-			if mapped, ok := accountMap[account.ID]; ok {
-				mapped.Features = append(mapped.Features, account.Features...)
-			} else {
-				accountMap[account.ID] = &account
-			}
+	for _, tenant := range toTenants(rawTenants) {
+		if tenant.ClientID == appID {
+			return tenant, nil
 		}
 	}
 
-	accounts := make([]CloudAccount, 0, len(accountMap))
-	for _, account := range accountMap {
-		accounts = append(accounts, *account)
-	}
-
-	return accounts, nil
+	return CloudAccountTenant{}, fmt.Errorf("tenant %w", graphql.ErrNotFound)
 }
 
-// Subscription returns the subscription with specified id and feature.
+// Tenants returns all tenants with the specified feature. This function accepts
+// the FeatureAll feature. The filter can be used to search for application ID
+// and tenant domain.
+func (a API) Tenants(ctx context.Context, filter string) ([]CloudAccountTenant, error) {
+	a.log.Print(log.Trace)
+
+	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tenants: %s", err)
+	}
+
+	// Filter tenants.
+	tenants := make([]CloudAccountTenant, 0, len(rawTenants))
+	for _, tenant := range toTenants(rawTenants) {
+		if filter == "" || strings.HasPrefix(tenant.DomainName, filter) || strings.HasPrefix(tenant.ClientID.String(), filter) {
+			tenants = append(tenants, tenant)
+		}
+	}
+
+	return tenants, nil
+}
+
+// Subscription returns the subscription with specified ID and feature.
 func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Feature) (CloudAccount, error) {
 	a.log.Print(log.Trace)
 
@@ -288,28 +266,20 @@ func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Fea
 		return CloudAccount{}, fmt.Errorf("failed to parse identity: %v", err)
 	}
 
-	if identity.internal {
-		accounts, err := a.Subscriptions(ctx, feature, "")
-		if err != nil {
-			return CloudAccount{}, fmt.Errorf("failed to get subscriptions: %v", err)
-		}
+	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, feature, true)
+	if err != nil {
+		return CloudAccount{}, fmt.Errorf("failed to get tenants: %s", err)
+	}
 
-		// Find the exact match.
-		for _, account := range accounts {
-			if account.ID == uid {
-				return account, nil
+	// Find the exact match.
+	for _, subscription := range toSubscriptions(rawTenants) {
+		if identity.internal {
+			if subscription.ID == uid {
+				return subscription, nil
 			}
-		}
-	} else {
-		accounts, err := a.Subscriptions(ctx, feature, identity.id)
-		if err != nil {
-			return CloudAccount{}, fmt.Errorf("failed to get subscriptions: %v", err)
-		}
-
-		// Find the exact match.
-		for _, account := range accounts {
-			if account.NativeID == uid {
-				return account, nil
+		} else {
+			if subscription.NativeID == uid {
+				return subscription, nil
 			}
 		}
 	}
@@ -318,28 +288,30 @@ func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Fea
 }
 
 // Subscriptions return all subscriptions with the specified feature matching
-// the filter. The filter can be used to search for subscription name and
-// subscription id.
+// the filter. The filter can be used to search for subscription name and native
+// subscription ID.
 func (a API) Subscriptions(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
 	a.log.Print(log.Trace)
 
-	var accounts []CloudAccount
-	var err error
-	if feature.Equal(core.FeatureAll) {
-		accounts, err = a.subscriptionsAllFeatures(ctx, filter)
-	} else {
-		accounts, err = a.subscriptions(ctx, feature, filter)
-	}
+	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, feature, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get subscriptions: %v", err)
+		return nil, fmt.Errorf("failed to get tenants: %s", err)
+	}
+
+	// Filter subscriptions.
+	accounts := make([]CloudAccount, 0, len(rawTenants))
+	for _, subscription := range toSubscriptions(rawTenants) {
+		if filter == "" || strings.HasPrefix(subscription.Name, filter) || strings.HasPrefix(subscription.NativeID.String(), filter) {
+			accounts = append(accounts, subscription)
+		}
 	}
 
 	return accounts, nil
 }
 
-// AddSubscription adds the specified subscription to RSC. If name isn't given
-// as an option it's derived from the tenant name. Returns the RSC cloud account
-// id of the added subscription.
+// AddSubscription adds the specified subscription to RSC. If a name isn't given
+// as an option, it's derived from the tenant name. Returns the RSC cloud
+// account ID of the added subscription.
 func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc, feature core.Feature, opts ...OptionFunc) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
@@ -357,16 +329,12 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 			return uuid.Nil, fmt.Errorf("failed to lookup option: %v", err)
 		}
 	}
-	err = verifyOptionsForFeature(options, feature)
-	if err != nil {
-		return uuid.Nil, err
-	}
 	if options.name != "" {
 		config.name = options.name
 	}
 
-	// If there already is an RSC cloud account for the given Azure subscription
-	// we use the same name when adding the new feature.
+	// If there already is an RSC cloud account for the given Azure
+	// subscription, we use the same name when adding the new feature.
 	account, err := a.Subscription(ctx, SubscriptionID(config.id), core.FeatureAll)
 	if err == nil {
 		config.name = account.Name
@@ -393,7 +361,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		return uuid.Nil, fmt.Errorf("failed to add subscription: %v", err)
 	}
 
-	// If the RSC cloud account did not exist prior we retrieve the RSC cloud
+	// If the RSC cloud account did not exist prior, we retrieve the RSC cloud
 	// account id.
 	if account.ID == uuid.Nil {
 		account, err = a.Subscription(ctx, SubscriptionID(config.id), feature)
@@ -405,8 +373,9 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 	return account.ID, nil
 }
 
-// RemoveSubscription removes the subscription with the specified id from RSC.
-// If deleteSnapshots is true the snapshots are deleted otherwise they are kept.
+// RemoveSubscription removes the subscription with the specified ID from RSC.
+// If deleteSnapshots is true, the snapshots are deleted otherwise they are
+// kept.
 func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature core.Feature, deleteSnapshots bool) error {
 	a.log.Print(log.Trace)
 
@@ -415,33 +384,8 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 		return fmt.Errorf("failed to get subscription: %w", err)
 	}
 
-	switch {
-	case account.Features[0].Equal(core.FeatureCloudNativeProtection) && account.Features[0].Status != core.StatusDisabled:
-		// Lookup the RSC native account id from the RSC subscription name and
-		// the Azure subscription id. The RSC native account id is needed to
-		// delete the RSC native account subscription.
-		nativeSubscriptions, err := azure.Wrap(a.client).NativeSubscriptions(ctx, account.Name)
-		if err != nil {
-			return fmt.Errorf("failed to get native subscriptions: %v", err)
-		}
-		nativeID, err := findNativeID(nativeSubscriptions, account.NativeID)
-		if err != nil {
-			return fmt.Errorf("failed to find native subscription: %w", err)
-		}
-
-		jobID, err := azure.Wrap(a.client).StartDisableNativeSubscriptionProtectionJob(ctx, nativeID, azure.VM, deleteSnapshots)
-		if err != nil {
-			return fmt.Errorf("failed to disable native subscription: %v", err)
-		}
-		state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
-		if err != nil {
-			return fmt.Errorf("failed to wait for task chain: %v", err)
-		}
-		if state != core.TaskChainSucceeded {
-			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
-		}
-	case account.Features[0].Equal(core.FeatureExocompute) && account.Features[0].Status != core.StatusDisabled:
-		jobID, err := azure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, account.Features[0].Feature)
+	if account.Features[0].Status != core.StatusDisabled {
+		jobID, err := azure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, feature)
 		if err != nil {
 			return fmt.Errorf("failed to disable subscription feature %q: %v", feature, err)
 		}
@@ -462,20 +406,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 	return nil
 }
 
-// findNativeID returns the RSC native subscription id for the given cloud
-// account native subscription id. The cloud account subscription id is the
-// same as the Azure subscription id.
-func findNativeID(nativeSubscriptions []azure.NativeSubscription, nativeID uuid.UUID) (uuid.UUID, error) {
-	for _, subscription := range nativeSubscriptions {
-		if subscription.NativeID == nativeID {
-			return subscription.ID, nil
-		}
-	}
-
-	return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotFound)
-}
-
-// UpdateSubscription updates the subscription with the specified id and feature.
+// UpdateSubscription updates the subscription with the specified ID and feature.
 func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature core.Feature, opts ...OptionFunc) error {
 	a.log.Print(log.Trace)
 
@@ -520,10 +451,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 
 		var remove []azure.Region
 		for _, region := range accountFeature.Regions {
-			reg, err := azure.ParseRegion(region)
-			if err != nil {
-				return fmt.Errorf("failed to parse region: %v", err)
-			}
+			reg := azure.ParseRegionNoValidation(region)
 			if _, ok := regions[reg]; ok {
 				delete(regions, reg)
 			} else {
@@ -548,7 +476,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 // AddServicePrincipal adds the service principal for the app. If shouldReplace
 // is true and the app already has a service principal, it will be replaced.
 // Note that it's not possible to remove a service principal once it has been
-// set. Returns the application id of the service principal set.
+// set. Returns the application ID of the service principal set.
 func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipalFunc, shouldReplace bool) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
@@ -569,9 +497,109 @@ func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipal
 // SetServicePrincipal sets the service principal for the app. If the app
 // already has a service principal, it will be replaced. Note that it's not
 // possible to remove a service principal once it has been set. Returns the
-// application id of the service principal set.
+// application ID of the service principal set.
 func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipalFunc) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
 	return a.AddServicePrincipal(ctx, principal, true)
+}
+
+// toSubscriptions returns the unique subscriptions found in the rawTenants
+// slice. This function requires that the tenants include subscription details.
+func toSubscriptions(rawTenants []azure.CloudAccountTenant) []CloudAccount {
+	type tenantAccounts struct {
+		tenant   CloudAccountTenant
+		accounts map[uuid.UUID]*CloudAccount
+	}
+
+	tenantSet := make(map[uuid.UUID]*tenantAccounts)
+	for _, rawTenant := range rawTenants {
+		tenant, ok := tenantSet[rawTenant.ID]
+		if !ok {
+			tenantSet[rawTenant.ID] = &tenantAccounts{
+				tenant: CloudAccountTenant{
+					Cloud:             string(rawTenant.Cloud),
+					ID:                rawTenant.ID,
+					ClientID:          rawTenant.ClientID,
+					AppName:           rawTenant.AppName,
+					DomainName:        rawTenant.DomainName,
+					SubscriptionCount: rawTenant.SubscriptionCount,
+				},
+				accounts: make(map[uuid.UUID]*CloudAccount),
+			}
+			tenant = tenantSet[rawTenant.ID]
+		}
+
+		for _, rawAccount := range rawTenant.Accounts {
+			account, ok := tenant.accounts[rawAccount.ID]
+			if !ok {
+				tenant.accounts[rawAccount.ID] = &CloudAccount{
+					ID:           rawAccount.ID,
+					NativeID:     rawAccount.NativeID,
+					Name:         rawAccount.Name,
+					TenantID:     rawTenant.ID,
+					TenantDomain: rawTenant.DomainName,
+				}
+				account = tenant.accounts[rawAccount.ID]
+			}
+
+			feature := core.Feature{Name: rawAccount.Feature.Feature}
+			if _, ok := account.Feature(feature); !ok {
+				tags := make(map[string]string, len(rawAccount.Feature.ResourceGroup.Tags))
+				for _, tag := range rawAccount.Feature.ResourceGroup.Tags {
+					tags[tag.Key] = tag.Value
+				}
+				account.Features = append(account.Features, Feature{
+					Feature: feature,
+					ResourceGroup: FeatureResourceGroup{
+						Name:     rawAccount.Feature.ResourceGroup.Name,
+						NativeID: rawAccount.Feature.ResourceGroup.NativeID,
+						Tags:     tags,
+						Region:   azure.FormatRegion(rawAccount.Feature.ResourceGroup.Region),
+					},
+					Regions: azure.FormatRegions(rawAccount.Feature.Regions),
+					Status:  rawAccount.Feature.Status,
+				})
+			}
+		}
+	}
+
+	var accounts []CloudAccount
+	for _, tenant := range tenantSet {
+		for _, account := range tenant.accounts {
+			accounts = append(accounts, *account)
+		}
+	}
+	slices.SortFunc(accounts, func(i, j CloudAccount) int {
+		return cmp.Compare(i.Name, j.Name)
+	})
+
+	return accounts
+}
+
+// toTenants returns the unique tenants found in the rawTenants slice.
+func toTenants(rawTenants []azure.CloudAccountTenant) []CloudAccountTenant {
+	tenantSet := make(map[uuid.UUID]CloudAccountTenant)
+	for _, rawTenant := range rawTenants {
+		if _, ok := tenantSet[rawTenant.ID]; !ok {
+			tenantSet[rawTenant.ID] = CloudAccountTenant{
+				Cloud:             string(rawTenant.Cloud),
+				ID:                rawTenant.ID,
+				ClientID:          rawTenant.ClientID,
+				AppName:           rawTenant.AppName,
+				DomainName:        rawTenant.DomainName,
+				SubscriptionCount: rawTenant.SubscriptionCount,
+			}
+		}
+	}
+
+	tenants := make([]CloudAccountTenant, 0, len(tenantSet))
+	for _, tenant := range tenantSet {
+		tenants = append(tenants, tenant)
+	}
+	slices.SortFunc(tenants, func(i, j CloudAccountTenant) int {
+		return cmp.Compare(i.DomainName, j.DomainName)
+	})
+
+	return tenants
 }

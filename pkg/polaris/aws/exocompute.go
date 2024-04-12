@@ -108,10 +108,7 @@ func findSubnet(vpc aws.VPC, subnetID string) (aws.Subnet, error) {
 // security groups managed by RSC using the specified values.
 func Managed(region, vpcID string, subnetIDs []string) ExoConfigFunc {
 	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
-		reg, err := aws.ParseRegion(region)
-		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
-		}
+		reg := aws.ParseRegionNoValidation(region)
 
 		// Validate VPC.
 		vpcs, err := aws.Wrap(gql).AllVpcsByRegion(ctx, id, reg)
@@ -149,10 +146,7 @@ func Managed(region, vpcID string, subnetIDs []string) ExoConfigFunc {
 // with security groups managed by the user using the specified values.
 func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID, nodeSecurityGroupID string) ExoConfigFunc {
 	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
-		reg, err := aws.ParseRegion(region)
-		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
-		}
+		reg := aws.ParseRegionNoValidation(region)
 
 		// Validate VPC.
 		vpcs, err := aws.Wrap(gql).AllVpcsByRegion(ctx, id, reg)

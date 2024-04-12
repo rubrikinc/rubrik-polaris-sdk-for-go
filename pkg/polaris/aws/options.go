@@ -22,7 +22,6 @@ package aws
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 )
@@ -49,17 +48,12 @@ func Name(name string) OptionFunc {
 // instance.
 func Region(region string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
-		r, err := aws.ParseRegion(region)
-		if err != nil {
-			return fmt.Errorf("failed to parse region: %v", err)
-		}
-
-		opts.regions = append(opts.regions, r)
+		opts.regions = append(opts.regions, aws.ParseRegionNoValidation(region))
 		return nil
 	}
 }
 
-// Regions returns an OptionFunc that gives the specified regions to the
+// Regions return an OptionFunc that gives the specified regions to the
 // options instance.
 func Regions(regions ...string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
@@ -69,11 +63,7 @@ func Regions(regions ...string) OptionFunc {
 		}
 
 		for _, r := range regions {
-			region, err := aws.ParseRegion(r)
-			if err != nil {
-				return fmt.Errorf("failed to parse region: %v", err)
-			}
-
+			region := aws.ParseRegionNoValidation(r)
 			if _, ok := set[region]; !ok {
 				opts.regions = append(opts.regions, region)
 				set[region] = struct{}{}
