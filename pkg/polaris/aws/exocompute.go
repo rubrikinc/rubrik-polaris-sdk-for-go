@@ -194,12 +194,7 @@ func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID,
 
 func BYOKCluster(region string) ExoConfigFunc {
 	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
-		reg, err := aws.ParseRegion(region)
-		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
-		}
-
-		return aws.ExocomputeConfigCreate{Region: reg}, nil
+		return aws.ExocomputeConfigCreate{Region: aws.ParseRegionNoValidation(region)}, nil
 	}
 }
 
