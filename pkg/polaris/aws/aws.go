@@ -716,7 +716,7 @@ func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features 
 }
 
 // TrustPolicies returns the trust policies required by RSC for the specified
-// features. If the external ID is the empty, RSC will generate an external ID.
+// features. If the external ID is empty, RSC will generate an external ID.
 func (a API) TrustPolicies(ctx context.Context, id IdentityFunc, features []core.Feature, externalID string) (map[string]string, error) {
 	a.log.Print(log.Trace)
 

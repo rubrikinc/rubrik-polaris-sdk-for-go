@@ -24,6 +24,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -114,7 +116,7 @@ func Managed(region, vpcID string, subnetIDs []string) ExoConfigFunc {
 		}
 
 		// Validate VPC.
-		vpcs, err := aws.Wrap(gql).AllVpcsByRegion(ctx, id, reg)
+		vpcs, err := allVpcsByRegionWithRetry(ctx, gql, id, reg)
 		if err != nil {
 			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to get vpcs: %v", err)
 		}
@@ -155,7 +157,7 @@ func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID,
 		}
 
 		// Validate VPC.
-		vpcs, err := aws.Wrap(gql).AllVpcsByRegion(ctx, id, reg)
+		vpcs, err := allVpcsByRegionWithRetry(ctx, gql, id, reg)
 		if err != nil {
 			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to get vpcs: %v", err)
 		}
@@ -198,6 +200,36 @@ func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID,
 	}
 }
 
+const allVpcsByRegionAttempts = 10
+
+// allVpcsByRegionWithRetry returns all VPCs for the specified account and
+// region. If the request fails due to the connection being closed while
+// performing TLS negotiation, it will be retried.
+func allVpcsByRegionWithRetry(ctx context.Context, gql *graphql.Client, id uuid.UUID, region aws.Region) ([]aws.VPC, error) {
+	attempt := 0
+	for {
+		vpcs, err := aws.Wrap(gql).AllVpcsByRegion(ctx, id, region)
+		if attempt++; err != nil && attempt > allVpcsByRegionAttempts {
+			return nil, fmt.Errorf("failed to get vpcs after %d attempts", allVpcsByRegionAttempts)
+		}
+
+		var gqlErr graphql.GQLError
+		if errors.As(err, &gqlErr) {
+			if strings.HasPrefix(gqlErr.Error(), "UNAVAILABLE: Connection closed while performing TLS negotiation") {
+				gql.Log().Printf(log.Debug, "Endpoint temporarily unavailable (attempt: %d)", attempt)
+				select {
+				case <-time.After(10 * time.Second):
+					continue
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+			}
+		}
+
+		return vpcs, err
+	}
+}
+
 func BYOKCluster(region string) ExoConfigFunc {
 	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
 		reg, err := aws.ParseRegion(region)
@@ -209,7 +241,7 @@ func BYOKCluster(region string) ExoConfigFunc {
 	}
 }
 
-// toExocomputeConfig converts an polaris/graphql/aws exocompute config to a
+// toExocomputeConfig converts a polaris/graphql/aws exocompute config to a
 // polaris/aws exocompute config.
 func toExocomputeConfig(config aws.ExocomputeConfig) (ExocomputeConfig, error) {
 	id, err := uuid.Parse(config.ID)
