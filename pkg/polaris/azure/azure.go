@@ -384,7 +384,8 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 		return fmt.Errorf("failed to get subscription: %w", err)
 	}
 
-	if account.Features[0].Status != core.StatusDisabled {
+	// Cloud Native Archival should not be disabled, just removed.
+	if !feature.Equal(core.FeatureCloudNativeArchival) && account.Features[0].Status != core.StatusDisabled {
 		jobID, err := azure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, feature)
 		if err != nil {
 			return fmt.Errorf("failed to disable subscription feature %q: %v", feature, err)
