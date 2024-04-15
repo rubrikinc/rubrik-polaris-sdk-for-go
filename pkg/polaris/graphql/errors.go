@@ -23,6 +23,7 @@ package graphql
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var (
@@ -56,6 +57,19 @@ type GQLError struct {
 // represents an error or not.
 func (e GQLError) isError() bool {
 	return len(e.Errors) > 0
+}
+
+func (e GQLError) isTemporary() bool {
+	if len(e.Errors) > 0 {
+		switch err := e.Errors[0]; {
+		case strings.HasPrefix(err.Message, "Error checking account flags to determine access. Please try again."):
+			return true
+		case strings.HasPrefix(err.Message, "UNAVAILABLE: Connection closed while performing TLS negotiation"):
+			return true
+		}
+	}
+
+	return false
 }
 
 func (e GQLError) Error() string {
