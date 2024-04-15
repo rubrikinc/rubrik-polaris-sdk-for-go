@@ -187,8 +187,8 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 	if err != nil {
 		return "", fmt.Errorf("failed to request addAzureCloudAccountWithoutOauth: %w", err)
 	}
-	a.log.Printf(log.Debug, "addAzureCloudAccountWithoutOauth(%q, %q, %q, %q, %q, %q, %d): %s", cloud, id, feature, name,
-		tenantDomain, regions, feature.PolicyVersion, string(buf))
+	a.log.Printf(log.Debug, "addAzureCloudAccountWithoutOauth(%q, %q, %q, %q, %q, %q, %d): %s", cloud, id,
+		feature.FeatureType, name, tenantDomain, regions, feature.PolicyVersion, string(buf))
 
 	var payload struct {
 		Data struct {

@@ -404,17 +404,17 @@ type VPC struct {
 
 // AllVpcsByRegion returns all VPCs including their subnets for the specified
 // RSC cloud account id.
-func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, regions Region) ([]VPC, error) {
+func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, region Region) ([]VPC, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, allVpcsByRegionFromAwsQuery, struct {
 		ID     uuid.UUID `json:"awsAccountRubrikId"`
 		Region Region    `json:"region"`
-	}{ID: id, Region: regions})
+	}{ID: id, Region: region})
 	if err != nil {
 		return nil, fmt.Errorf("failed to request allVpcsByRegionFromAws: %w", err)
 	}
-	a.log.Printf(log.Debug, "allVpcsByRegionFromAws(%q, %q): %s", id, regions, string(buf))
+	a.log.Printf(log.Debug, "allVpcsByRegionFromAws(%q, %q): %s", id, region, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -422,7 +422,7 @@ func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, regions Region) 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal allVpcsByRegionFromAws: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal allVpcsByRegionFromAws: %s", err)
 	}
 
 	return payload.Data.VPCs, nil
