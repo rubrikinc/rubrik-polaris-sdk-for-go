@@ -31,7 +31,7 @@ import (
 	"strings"
 	"time"
 
-	internal_errors "github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/errors"
+	internalerrors "github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/errors"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -95,7 +95,7 @@ func requestToken(ctx context.Context, client *http.Client, tokenURL string, req
 
 	// Remote responded with a JSON document. Try to parse it as an error
 	// message.
-	var jsonErr internal_errors.JSONError
+	var jsonErr internalerrors.JSONError
 	if err := json.Unmarshal(respBody, &jsonErr); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal token response body as an error (status code %d): %v",
 			res.StatusCode, err)

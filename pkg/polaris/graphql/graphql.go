@@ -19,8 +19,8 @@
 // DEALINGS IN THE SOFTWARE.
 
 // Package graphql provides direct access to the RSC GraphQL API. Can be used
-// to execute both raw queries and prepared low-level queries used by the high-
-// level part of the SDK.
+// to execute both raw queries and prepared low-level queries used by the
+// high-level part of the SDK.
 //
 // The graphql package tries to stay as close as possible to the GraphQL API:
 //
@@ -38,12 +38,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/errors"
+	internalerrors "github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/errors"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testnet"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/token"
@@ -140,6 +142,122 @@ func (c *Client) SetLogger(logger log.Logger) {
 	c.log = logger
 }
 
+const requestRetryAttempts = 10
+
+// Request posts the specified GraphQL query with the given variables to the
+// Polaris platform. Returns the response JSON text as is. If the request fails
+// due to a temporary error, it will be retried automatically.
+func (c *Client) Request(ctx context.Context, query string, variables interface{}) ([]byte, error) {
+	c.log.Print(log.Trace)
+
+	retryAttempt := 0
+	for {
+		buf, err := c.RequestWithoutRetry(ctx, query, variables)
+
+		var gqlErr GQLError
+		if errors.As(err, &gqlErr) && gqlErr.isTemporary() {
+			if retryAttempt++; retryAttempt > requestRetryAttempts {
+				return nil, fmt.Errorf("request failed after %d retries: %w", retryAttempt-1, err)
+			}
+
+			c.log.Printf(log.Debug, "Endpoint temporarily unavailable (retry attempt: %d/%d): %s", retryAttempt,
+				requestRetryAttempts, err)
+			select {
+			case <-time.After(10 * time.Second):
+				continue
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+
+		return buf, err
+	}
+}
+
+// RequestWithoutRetry posts the specified GraphQL query with the given
+// variables to the Polaris platform. Returns the response JSON text as is.
+func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variables interface{}) ([]byte, error) {
+	c.log.Print(log.Trace)
+
+	// Extract operation name from query to pass in the body of the request for
+	// metrics.
+	operation := operationName(query)
+
+	// Prepare the query request body.
+	buf, err := json.Marshal(struct {
+		Query     string      `json:"query"`
+		Variables interface{} `json:"variables,omitempty"`
+		Operation string      `json:"operationName,omitempty"`
+	}{Query: query, Variables: variables, Operation: operation})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal graphql request body: %v", err)
+	}
+
+	// Send the query to the remote API endpoint.
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.gqlURL, bytes.NewReader(buf))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create graphql request: %v", err)
+	}
+	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Add("Accept", "application/json")
+	res, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to request graphql field: %v", err)
+	}
+	defer res.Body.Close()
+
+	// Remote responded without a body. For status code 200, this means we
+	// are missing the GraphQL response. For an error, we have no additional
+	// details.
+	if res.ContentLength == 0 {
+		return nil, fmt.Errorf("graphql response has no body (status code %d)", res.StatusCode)
+	}
+
+	buf, err = io.ReadAll(res.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read graphql response body (status code %d): %v", res.StatusCode, err)
+	}
+
+	// Verify that the content type of the body is JSON. For status code 200,
+	// this means we received something that isn't a GraphQL response. For an
+	// error, we have no additional JSON details.
+	contentType := res.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "application/json") {
+		snippet := string(buf)
+		if len(snippet) > 512 {
+			snippet = snippet[:512]
+		}
+		return nil, fmt.Errorf("graphql response has Content-Type %s (status code %d): %q",
+			contentType, res.StatusCode, snippet)
+	}
+
+	// Remote responded with a JSON document. Try to parse it as both known
+	// error message formats.
+	var jsonErr internalerrors.JSONError
+	if err := json.Unmarshal(buf, &jsonErr); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
+			res.StatusCode, err)
+	}
+	if jsonErr.IsError() {
+		return nil, fmt.Errorf("graphql response body is an error (status code %d): %w", res.StatusCode, jsonErr)
+	}
+
+	var gqlErr GQLError
+	if err := json.Unmarshal(buf, &gqlErr); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
+			res.StatusCode, err)
+	}
+	if gqlErr.isError() {
+		return nil, fmt.Errorf("graphql response body is an error (status code %d): %w", res.StatusCode, gqlErr)
+	}
+
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf("graphql response has status code: %s", res.Status)
+	}
+
+	return buf, nil
+}
+
 // operationName tries to extract the operation name from a query
 // e.g.:
 //
@@ -172,87 +290,4 @@ func operationName(query string) string {
 	}
 
 	return strings.TrimSpace(query[i:j])
-}
-
-// Request posts the specified GraphQL query with the given variables to the
-// Polaris platform. Returns the response JSON text as is.
-func (c *Client) Request(ctx context.Context, query string, variables interface{}) ([]byte, error) {
-	c.log.Print(log.Trace)
-
-	// Extract operation name from query to pass in the body of the request for
-	// metrics.
-	operation := operationName(query)
-
-	// Prepare the query request body.
-	buf, err := json.Marshal(struct {
-		Query     string      `json:"query"`
-		Variables interface{} `json:"variables,omitempty"`
-		Operation string      `json:"operationName,omitempty"`
-	}{Query: query, Variables: variables, Operation: operation})
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal graphql request body: %v", err)
-	}
-
-	// Send the query to the remote API endpoint.
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.gqlURL, bytes.NewReader(buf))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create graphql request: %v", err)
-	}
-	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Add("Accept", "application/json")
-	res, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to request graphql field: %v", err)
-	}
-	defer res.Body.Close()
-
-	// Remote responded without a body. For status code 200, this means we are
-	// missing the GraphQL response. For an error, we have no additional details.
-	if res.ContentLength == 0 {
-		return nil, fmt.Errorf("graphql response has no body (status code %d)", res.StatusCode)
-	}
-
-	buf, err = io.ReadAll(res.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read graphql response body (status code %d): %v", res.StatusCode, err)
-	}
-
-	// Verify that the content type of the body is JSON. For status code 200,
-	// this means we received something that isn't a GraphQL response. For an
-	// error, we have no additional JSON details.
-	contentType := res.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "application/json") {
-		snippet := string(buf)
-		if len(snippet) > 512 {
-			snippet = snippet[:512]
-		}
-		return nil, fmt.Errorf("graphql response has Content-Type %s (status code %d): %q",
-			contentType, res.StatusCode, snippet)
-	}
-
-	// Remote responded with a JSON document. Try to parse it as both known
-	// error message formats.
-	var jsonErr errors.JSONError
-	if err := json.Unmarshal(buf, &jsonErr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
-			res.StatusCode, err)
-	}
-	if jsonErr.IsError() {
-		return nil, fmt.Errorf("graphql response body is an error (status code %d): %w", res.StatusCode, jsonErr)
-	}
-
-	var gqlErr GQLError
-	if err := json.Unmarshal(buf, &gqlErr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
-			res.StatusCode, err)
-	}
-	if gqlErr.isError() {
-		return nil, fmt.Errorf("graphql response body is an error (status code %d): %w", res.StatusCode, gqlErr)
-	}
-
-	if res.StatusCode != 200 {
-		return nil, fmt.Errorf("graphql response has status code: %s", res.Status)
-	}
-
-	return buf, nil
 }
