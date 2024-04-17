@@ -316,8 +316,8 @@ func userAccountFromFile(file, name string) (UserAccount, error) {
 	return account, nil
 }
 
-// initUserAccount validates the user account fields and derives the account
-// name and FQDN fields.
+// initUserAccount validates the user account data and initializes the
+// additional fields.
 func initUserAccount(account *UserAccount) error {
 	if account.Name == "" {
 		return errors.New("invalid user account name")
@@ -540,8 +540,8 @@ func serviceAccountFromFile(file string) (ServiceAccount, error) {
 	return account, nil
 }
 
-// initServiceAccount validates the service account and derives the additional
-// fields.
+// initServiceAccount validates the service account data and initializes the
+// additional fields.
 func initServiceAccount(account *ServiceAccount) error {
 	if account.Name == "" {
 		return errors.New("invalid service account name")
