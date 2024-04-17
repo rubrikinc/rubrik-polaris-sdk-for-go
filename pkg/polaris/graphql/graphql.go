@@ -97,7 +97,7 @@ func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSe
 // NewTestClient returns a new Client intended to be used by unit tests.
 func NewTestClient(username, password string, logger log.Logger) (*Client, *testnet.TestListener) {
 	testClient, listener := testnet.NewPipeNet()
-	tokenSource := token.NewUserSourceWithLogger(testClient, "http://test/api", username, password, logger)
+	tokenSource := token.NewUserSourceWithLogger(testClient, "http://test/api/session", username, password, logger)
 
 	client := &Client{
 		gqlURL: "http://test/api/graphql",

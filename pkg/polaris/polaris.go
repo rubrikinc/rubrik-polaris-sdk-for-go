@@ -19,14 +19,13 @@
 // DEALINGS IN THE SOFTWARE.
 
 // Package polaris contains code to interact with the RSC platform on a high
-// level. Relies on the graphql package for low level queries.
+// level. Relies on the graphql package for low-level queries.
 package polaris
 
 import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -44,21 +43,38 @@ const (
 	DefaultServiceAccountFile = "~/.rubrik/polaris-service-account.json"
 )
 
-// Client is used to make calls to the RSC platform.
-type Client struct {
-	GQL *graphql.Client
-}
-
 // Account represents a Polaris account. Implemented by UserAccount and
 // ServiceAccount.
 type Account interface {
+	// AccountName returns the RSC account name.
+	AccountName() string
+
+	// AccountFQDN returns the fully qualified domain name of the RSC account.
+	AccountFQDN() string
+
+	// APIURL returns the RSC account API URL.
+	APIURL() string
+
+	// TokenURL returns the RSC account token URL.
+	TokenURL() string
+
 	allowEnvOverride() bool
+
+	// Cryptographic material for encrypting cached access tokens.
+	cacheKeyMaterial() string
+	cacheSuffixMaterial() string
+}
+
+// Client is used to make calls to the RSC platform.
+type Client struct {
+	Account Account
+	GQL     *graphql.Client
 }
 
 // NewClient returns a new Client for the specified Account.
 //
 // The client will cache authentication tokens by default, this behavior can be
-// overriden by setting the environment variable RUBRIK_POLARIS_TOKEN_CACHE to
+// overridden by setting the environment variable RUBRIK_POLARIS_TOKEN_CACHE to
 // false, given that the account specified allows environment variable
 // overrides.
 func NewClient(account Account) (*Client, error) {
@@ -68,7 +84,7 @@ func NewClient(account Account) (*Client, error) {
 // NewClientWithLogger returns a new Client for the specified Account.
 //
 // The client will cache authentication tokens by default, this behavior can be
-// overriden by setting the environment variable RUBRIK_POLARIS_TOKEN_CACHE to
+// overridden by setting the environment variable RUBRIK_POLARIS_TOKEN_CACHE to
 // false, given that the account specified allows environment variable
 // overrides.
 func NewClientWithLogger(account Account, logger log.Logger) (*Client, error) {
@@ -81,21 +97,31 @@ func NewClientWithLogger(account Account, logger log.Logger) (*Client, error) {
 		}
 	}
 
-	var client *Client
-	var err error
+	var tokenSource token.Source
 	switch account := account.(type) {
 	case *UserAccount:
-		client, err = newClientFromUserAccount(account, logger, cacheToken)
+		tokenSource = token.NewUserSourceWithLogger(
+			http.DefaultClient, account.TokenURL(), account.Username, account.Password, logger)
 	case *ServiceAccount:
-		client, err = newClientFromServiceAccount(account, logger, cacheToken)
+		tokenSource = token.NewServiceAccountSourceWithLogger(
+			http.DefaultClient, account.TokenURL(), account.ClientID, account.ClientSecret, logger)
 	default:
-		err = errors.New("invalid account type")
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client: %s", err)
+		return nil, errors.New("failed to create client: invalid account type")
 	}
 
-	return client, nil
+	if cacheToken {
+		var err error
+		tokenSource, err = token.NewCache(
+			tokenSource, account.cacheKeyMaterial(), account.cacheSuffixMaterial(), account.allowEnvOverride())
+		if err != nil {
+			return nil, fmt.Errorf("failed to create token cache: %s", err)
+		}
+	}
+
+	return &Client{
+		Account: account,
+		GQL:     graphql.NewClientWithLogger(account.APIURL(), tokenSource, logger),
+	}, nil
 }
 
 // SetLogger sets the logger to use.
@@ -121,78 +147,4 @@ func SetLogLevelFromEnv(logger log.Logger) error {
 	logger.SetLogLevel(l)
 
 	return nil
-}
-
-// newClientFromUserAccount returns a new Client from the specified UserAccount.
-func newClientFromUserAccount(account *UserAccount, logger log.Logger, cacheToken bool) (*Client, error) {
-	apiURL := account.URL
-	if apiURL == "" {
-		apiURL = fmt.Sprintf("https://%s.my.rubrik.com/api", account.Name)
-	}
-	if _, err := url.ParseRequestURI(apiURL); err != nil {
-		return nil, fmt.Errorf("invalid url: %s", err)
-	}
-	if account.Username == "" {
-		return nil, errors.New("invalid username")
-	}
-	if account.Password == "" {
-		return nil, errors.New("invalid password")
-	}
-
-	var tokenSource token.Source = token.NewUserSourceWithLogger(http.DefaultClient, apiURL, account.Username, account.Password, logger)
-	if cacheToken {
-		var err error
-		tokenSource, err = token.NewCache(tokenSource,
-			account.Name+account.URL+account.Username+account.Password, account.Name+account.Username, account.allowEnvOverride())
-		if err != nil {
-			return nil, fmt.Errorf("failed to create token cache: %s", err)
-		}
-	}
-
-	client := &Client{
-		GQL: graphql.NewClientWithLogger(apiURL, tokenSource, logger),
-	}
-
-	return client, nil
-}
-
-// newClientFromServiceAccount returns a new Client from the specified
-// ServiceAccount.
-func newClientFromServiceAccount(account *ServiceAccount, logger log.Logger, cacheToken bool) (*Client, error) {
-	if account.Name == "" {
-		return nil, errors.New("invalid name")
-	}
-	if account.ClientID == "" {
-		return nil, errors.New("invalid client id")
-	}
-	if account.ClientSecret == "" {
-		return nil, errors.New("invalid client secret")
-	}
-	if _, err := url.ParseRequestURI(account.AccessTokenURI); err != nil {
-		return nil, fmt.Errorf("invalid access token uri: %s", err)
-	}
-
-	// Extract the API URL from the token access URI.
-	i := strings.LastIndex(account.AccessTokenURI, "/")
-	if i < 0 {
-		return nil, errors.New("invalid access token uri")
-	}
-	apiURL := account.AccessTokenURI[:i]
-
-	var tokenSource token.Source = token.NewServiceAccountSourceWithLogger(
-		http.DefaultClient, account.AccessTokenURI, account.ClientID, account.ClientSecret, logger)
-	if cacheToken {
-		var err error
-		tokenSource, err = token.NewCache(tokenSource,
-			account.Name+account.AccessTokenURI+account.ClientID+account.ClientSecret, account.Name+account.ClientID, account.allowEnvOverride())
-		if err != nil {
-			return nil, fmt.Errorf("failed to create token cache: %s", err)
-		}
-	}
-
-	client := &Client{
-		GQL: graphql.NewClientWithLogger(apiURL, tokenSource, logger),
-	}
-
-	return client, nil
 }

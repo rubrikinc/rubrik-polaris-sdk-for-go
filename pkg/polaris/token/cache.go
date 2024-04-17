@@ -52,13 +52,13 @@ type cache struct {
 // NewCache returns a new cache wrapping the specified token source.
 //
 // The cache will store authentication tokens in the OS default directory for
-// temporary files, this behavior can be overriden by setting the environment
+// temporary files. This behavior can be overridden by setting the environment
 // variable RUBRIK_POLARIS_TOKEN_CACHE_DIR to the directory to use, given that
 // the account passed in when creating the client allows environment variable
 // overrides.
 //
 // The cache will also generate a key to encrypt the content of the token cache
-// from the RSC account, this behavior can be overriden by setting the
+// from the RSC account, this behavior can be overridden by setting the
 // environment variable RUBRIK_POLARIS_TOKEN_CACHE_SECRET to the secret used
 // when generating the encryption key, given that the account passed in when
 // creating the client allows environment variable overrides.

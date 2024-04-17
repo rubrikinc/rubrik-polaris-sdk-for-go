@@ -51,11 +51,11 @@ func NewUserSource(client *http.Client, apiURL, username, password string) *User
 
 // NewUserSourceWithLogger returns a new token source that uses the specified
 // client to obtain tokens.
-func NewUserSourceWithLogger(client *http.Client, apiURL, username, password string, logger log.Logger) *UserSource {
+func NewUserSourceWithLogger(client *http.Client, tokenURL, username, password string, logger log.Logger) *UserSource {
 	return &UserSource{
 		log:      logger,
 		client:   client,
-		tokenURL: apiURL + "/session",
+		tokenURL: tokenURL,
 		username: username,
 		password: password,
 	}
