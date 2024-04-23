@@ -66,8 +66,8 @@ func requestToken(ctx context.Context, client *http.Client, tokenURL string, req
 		return nil, fmt.Errorf("failed to request token: %v", err)
 	}
 	defer res.Body.Close()
-	// Remote responded without a body. For status code 200 this means we are
-	// missing the token. For an error we have no additional details.
+	// Remote responded without a body. For status code 200, this means we are
+	// missing the token. For an error, we have no additional details.
 	if res.ContentLength == 0 {
 		return nil, fmt.Errorf("token response has no body (status code %d)", res.StatusCode)
 	}
@@ -80,8 +80,8 @@ func requestToken(ctx context.Context, client *http.Client, tokenURL string, req
 		return nil, fmt.Errorf("failed to read token response body (status code %d): %v", res.StatusCode, err)
 	}
 
-	// Verify that the content type of the body is JSON. For status code 200
-	// this mean we received something that isn't JSON. For an error we have no
+	// Verify that the content type of the body is JSON. For status code 200,
+	// this means we received something that isn't JSON. For an error, we have no
 	// additional JSON details.
 	contentType := res.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
