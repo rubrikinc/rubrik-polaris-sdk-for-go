@@ -34,7 +34,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	// Load configuration and create client.
+	// Load configuration and create a client.
 	polAccount, err := polaris.DefaultServiceAccount(true)
 	if err != nil {
 		log.Fatal(err)

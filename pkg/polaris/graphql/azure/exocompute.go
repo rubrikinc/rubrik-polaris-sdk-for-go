@@ -21,129 +21,96 @@
 package azure
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
-
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// ExocomputeConfig represents a single exocompute config.
-type ExocomputeConfig struct {
+// ExoConfigsForAccount holds all exocompute configurations for a specific
+// account.
+type ExoConfigsForAccount struct {
+	Account         CloudAccount          `json:"azureCloudAccount"`
+	Configs         []ExoConfig           `json:"configs"`
+	EligibleRegions []string              `json:"exocomputeEligibleRegions"`
+	Feature         Feature               `json:"featureDetails"`
+	MappedAccounts  []CloudAccountDetails `json:"mappedCloudAccounts"`
+}
+
+func (r ExoConfigsForAccount) ListQuery(filter string) (string, any) {
+	return allAzureExocomputeConfigsInAccountQuery, struct {
+		Filter string `json:"azureExocomputeSearchQuery"`
+	}{Filter: filter}
+}
+
+// ExoConfig represents a single exocompute configuration.
+type ExoConfig struct {
 	ID       uuid.UUID `json:"configUuid"`
 	Region   Region    `json:"region"`
 	SubnetID string    `json:"subnetNativeId"`
 	Message  string    `json:"message"`
 
-	// When true Rubrik will manage the security groups.
-	IsManagedByRubrik bool `json:"isRscManaged"`
+	// When true, Rubrik will manage the security groups.
+	ManagedByRubrik bool `json:"isRscManaged"`
 }
 
-// ExocomputeConfigsForAccount holds all exocompute configs for a specific
-// account.
-type ExocomputeConfigsForAccount struct {
-	Account         CloudAccount       `json:"azureCloudAccount"`
-	Configs         []ExocomputeConfig `json:"configs"`
-	EligibleRegions []string           `json:"exocomputeEligibleRegions"`
-	Feature         Feature            `json:"featureDetails"`
+// CloudAccountDetails holds the details about an exocompute application account
+// mapping.
+type CloudAccountDetails struct {
+	ID       uuid.UUID `json:"id"`
+	NativeID string    `json:"nativeId"`
+	Name     string    `json:"name"`
 }
 
-// ExocomputeConfigs returns all exocompute configs matching the specified
-// filter. The filter can be used to search for account name or account id.
-func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigsForAccount, error) {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(ctx, allAzureExocomputeConfigsInAccountQuery, struct {
-		Filter string `json:"azureExocomputeSearchQuery"`
-	}{Filter: filter})
-	if err != nil {
-		return nil, fmt.Errorf("failed to request allAzureExocomputeConfigsInAccount: %w", err)
-	}
-	a.log.Printf(log.Debug, "allAzureExocomputeConfigsInAccount(%q): %s", filter, string(buf))
-
-	var payload struct {
-		Data struct {
-			Result []ExocomputeConfigsForAccount `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal allAzureExocomputeConfigsInAccount: %v", err)
-	}
-
-	return payload.Data.Result, nil
-}
-
-// ExocomputeConfigCreate represents an exocompute config to be created by RSC.
-type ExocomputeConfigCreate struct {
+// ExoCreateParams holds the parameters for an exocompute configuration to be
+// created by RSC.
+type ExoCreateParams struct {
 	Region   Region `json:"region"`
 	SubnetID string `json:"subnetNativeId"`
 
-	// When true Rubrik will manage the security groups.
+	// When true, Rubrik will manage the security groups.
 	IsManagedByRubrik bool `json:"isRscManaged"`
 }
 
-// AddCloudAccountExocomputeConfigurations creates a new exocompute config for
-// the account with the specified RSC cloud account id. Returns the created
-// exocompute config
-func (a API) AddCloudAccountExocomputeConfigurations(ctx context.Context, id uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(ctx, addAzureCloudAccountExocomputeConfigurationsQuery, struct {
-		ID      uuid.UUID                `json:"cloudAccountId"`
-		Configs []ExocomputeConfigCreate `json:"azureExocomputeRegionConfigs"`
-	}{ID: id, Configs: []ExocomputeConfigCreate{config}})
-	if err != nil {
-		return ExocomputeConfig{}, fmt.Errorf("failed to request addAzureCloudAccountExocomputeConfigurations: %w", err)
-	}
-	a.log.Printf(log.Debug, "addAzureCloudAccountExocomputeConfigurations(%q, %v): %s", id, config, string(buf))
-
-	var payload struct {
-		Data struct {
-			Result struct {
-				Configs []ExocomputeConfig `json:"configs"`
-			} `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return ExocomputeConfig{}, fmt.Errorf("failed to unmarshal addAzureCloudAccountExocomputeConfigurations: %v", err)
-	}
-	if len(payload.Data.Result.Configs) != 1 {
-		return ExocomputeConfig{}, errors.New("expected a single result")
-	}
-
-	return payload.Data.Result.Configs[0], nil
+type ExoCreateResult struct {
+	Configs []ExoConfig `json:"configs"`
 }
 
-// DeleteCloudAccountExocomputeConfigurations deletes the exocompute config
-// with the specified RSC exocompute config id.
-func (a API) DeleteCloudAccountExocomputeConfigurations(ctx context.Context, id uuid.UUID) error {
-	a.log.Print(log.Trace)
+func (r ExoCreateResult) CreateQuery(cloudAccountID uuid.UUID, createParams ExoCreateParams) (string, any) {
+	return addAzureCloudAccountExocomputeConfigurationsQuery, struct {
+		ID      uuid.UUID         `json:"cloudAccountId"`
+		Configs []ExoCreateParams `json:"azureExocomputeRegionConfigs"`
+	}{ID: cloudAccountID, Configs: []ExoCreateParams{createParams}}
+}
 
-	buf, err := a.GQL.Request(ctx, deleteAzureCloudAccountExocomputeConfigurationsQuery, struct {
+func (r ExoCreateResult) Validate() (uuid.UUID, error) {
+	if len(r.Configs) != 1 {
+		return uuid.Nil, errors.New("expected a single create result")
+	}
+	if msg := r.Configs[0].Message; msg != "" {
+		return uuid.Nil, errors.New(msg)
+	}
+
+	return r.Configs[0].ID, nil
+}
+
+type ExoDeleteResult struct {
+	FailIDs    []uuid.UUID `json:"deletionFailedIds"`
+	SuccessIDs []uuid.UUID `json:"deletionSuccessIds"`
+}
+
+func (r ExoDeleteResult) DeleteQuery(configID uuid.UUID) (string, any) {
+	return deleteAzureCloudAccountExocomputeConfigurationsQuery, struct {
 		IDs []uuid.UUID `json:"cloudAccountIds"`
-	}{IDs: []uuid.UUID{id}})
-	if err != nil {
-		return fmt.Errorf("failed to request deleteAzureCloudAccountExocomputeConfigurations: %w", err)
-	}
-	a.log.Printf(log.Debug, "deleteAzureCloudAccountExocomputeConfigurations(%q): %s", id, string(buf))
+	}{IDs: []uuid.UUID{configID}}
+}
 
-	var payload struct {
-		Data struct {
-			Result struct {
-				FailIDs    []uuid.UUID `json:"deletionFailedIds"`
-				SuccessIDs []uuid.UUID `json:"deletionSuccessIds"`
-			} `json:"result"`
-		} `json:"data"`
+func (r ExoDeleteResult) Validate() (uuid.UUID, error) {
+	if len(r.FailIDs) > 0 {
+		return uuid.Nil, errors.New("expected no delete failures")
 	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal deleteAzureCloudAccountExocomputeConfigurations: %v", err)
-	}
-	if ids := payload.Data.Result.SuccessIDs; len(ids) == 1 && ids[0] == id {
-		return nil
+	if len(r.SuccessIDs) != 1 {
+		return uuid.Nil, errors.New("expected a single delete result")
 	}
 
-	return errors.New("delete exocompute config failed")
+	return r.SuccessIDs[0], nil
 }

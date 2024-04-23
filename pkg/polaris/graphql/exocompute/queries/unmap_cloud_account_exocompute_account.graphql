@@ -1,0 +1,8 @@
+mutation RubrikPolarisSDKRequest($cloudAccountIds: [UUID!]!) {
+    result: unmapCloudAccountExocomputeAccount(input: {
+        cloudAccountIds: $cloudAccountIds,
+        cloudVendor:     AWS,
+    }) {
+        isSuccess
+    }
+}
