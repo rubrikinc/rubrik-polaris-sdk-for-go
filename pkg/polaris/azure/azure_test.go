@@ -430,7 +430,7 @@ func TestToSubscription(t *testing.T) {
 
 	subs := toSubscriptions(rawTenants)
 	if n := len(subs); n != 3 {
-		t.Errorf("invalid number of subscriptions: %v", n)
+		t.Fatalf("invalid number of subscriptions: %v", n)
 	}
 
 	// Subscription 1.

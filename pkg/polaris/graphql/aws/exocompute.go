@@ -179,6 +179,43 @@ func (r ExoDeleteResult) Validate() (uuid.UUID, error) {
 	return r.Status[0].ID, nil
 }
 
+type ExoMapResult struct {
+	Success bool `json:"isSuccess"`
+}
+
+func (r ExoMapResult) MapQuery(hostCloudAccountID, appCloudAccountID uuid.UUID) (string, any) {
+	return mapCloudAccountExocomputeAccountQuery, struct {
+		HostCloudAccountID uuid.UUID   `json:"exocomputeCloudAccountId"`
+		AppCloudAccountIDs []uuid.UUID `json:"cloudAccountIds"`
+	}{HostCloudAccountID: hostCloudAccountID, AppCloudAccountIDs: []uuid.UUID{appCloudAccountID}}
+}
+
+func (r ExoMapResult) Validate() error {
+	if !r.Success {
+		return errors.New("failed to map application cloud account")
+	}
+
+	return nil
+}
+
+type ExoUnmapResult struct {
+	Success bool `json:"isSuccess"`
+}
+
+func (r ExoUnmapResult) UnmapQuery(appCloudAccountID uuid.UUID) (string, any) {
+	return unmapCloudAccountExocomputeAccountQuery, struct {
+		AppCloudAccountIDs []uuid.UUID `json:"cloudAccountIds"`
+	}{AppCloudAccountIDs: []uuid.UUID{appCloudAccountID}}
+}
+
+func (r ExoUnmapResult) Validate() error {
+	if !r.Success {
+		return errors.New("failed to unmap application cloud account")
+	}
+
+	return nil
+}
+
 // StartExocomputeDisableJob starts a task chain job to disable the Exocompute
 // feature for the account with the specified RSC native account id. Returns the
 // RSC task chain id.

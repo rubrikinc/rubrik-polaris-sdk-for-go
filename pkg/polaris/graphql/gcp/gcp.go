@@ -75,7 +75,7 @@ func (a API) DefaultCredentialsServiceAccount(ctx context.Context) (name string,
 func (a API) SetDefaultServiceAccount(ctx context.Context, name, jwtConfig string) error {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, gcpSetDefaultServiceAccountJwtConfigQuery, struct {
+	buf, err := a.GQL.RequestWithoutLogging(ctx, gcpSetDefaultServiceAccountJwtConfigQuery, struct {
 		Name      string `json:"serviceAccountName"`
 		JwtConfig string `json:"serviceAccountJwtConfig"`
 	}{Name: name, JwtConfig: jwtConfig})

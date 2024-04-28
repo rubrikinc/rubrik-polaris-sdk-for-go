@@ -45,21 +45,6 @@ const (
 	PublicCloud Cloud = "AZUREPUBLICCLOUD"
 )
 
-// ProtectionFeature represents the protection features of an Azure cloud
-// account.
-type ProtectionFeature string
-
-const (
-	// SQLDB Azure SQL Database.
-	SQLDB ProtectionFeature = "SQL_DB"
-
-	// SQLMI Azure SQL Managed Instance.
-	SQLMI ProtectionFeature = "SQL_MI"
-
-	// VM Azure Virtual Machine.
-	VM ProtectionFeature = "VM"
-)
-
 // Region represents an Azure region in Polaris.
 type Region string
 
@@ -246,7 +231,8 @@ func Wrap(gql *graphql.Client) API {
 func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cloud, appID, appTenantID uuid.UUID, appName, appTenantDomain, appSecretKey string, shouldReplace bool) error {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, setAzureCloudAccountCustomerAppCredentialsQuery, struct {
+	query := setAzureCloudAccountCustomerAppCredentialsQuery
+	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
 		Cloud         Cloud     `json:"azureCloudType"`
 		ID            uuid.UUID `json:"appId"`
 		Name          string    `json:"appName"`
@@ -256,10 +242,10 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 		ShouldReplace bool      `json:"shouldReplace"`
 	}{Cloud: cloud, ID: appID, Name: appName, TenantID: appTenantID, TenantDomain: appTenantDomain, SecretKey: appSecretKey, ShouldReplace: shouldReplace})
 	if err != nil {
-		return fmt.Errorf("failed to request setAzureCloudAccountCustomerAppCredentials: %w", err)
+		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "setAzureCloudAccountCustomerAppCredentials(%q, %q, %q, <REDACTED>, %q, %q, %t): %s", cloud,
-		appID, appName, appTenantID, appTenantDomain, shouldReplace, string(buf))
+	a.log.Printf(log.Debug, "%s(%q, %q, %q, <REDACTED>, %q, %q, %t): %s", graphql.QueryName(query), cloud, appID,
+		appName, appTenantID, appTenantDomain, shouldReplace, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -267,10 +253,10 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal setAzureCloudAccountCustomerAppCredentials: %s", err)
+		return graphql.UnmarshalError(query, err)
 	}
 	if !payload.Data.Result {
-		return errors.New("set app credentials failed")
+		return graphql.ResponseError(query, errors.New("set app credentials failed"))
 	}
 
 	return nil

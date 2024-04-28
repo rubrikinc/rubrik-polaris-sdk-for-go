@@ -117,7 +117,7 @@ func ManagedIdentity(name, resourceGroup, principalID, region string) OptionFunc
 		if opts.featureSpecificInfo == nil {
 			opts.featureSpecificInfo = &azure.FeatureSpecificInfo{}
 		}
-		opts.featureSpecificInfo.UserAssignedManagedIdentity = azure.UserAssignedManagedIdentity{
+		opts.featureSpecificInfo.UserAssignedManagedIdentity = &azure.UserAssignedManagedIdentity{
 			Name:              name,
 			ResourceGroupName: resourceGroup,
 			PrincipalID:       principalID,

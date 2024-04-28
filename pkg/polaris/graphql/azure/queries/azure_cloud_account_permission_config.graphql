@@ -1,6 +1,16 @@
 query RubrikPolarisSDKRequest($feature: CloudAccountFeature!) {
-    azureCloudAccountPermissionConfig(feature: $feature) {
+    result: azureCloudAccountPermissionConfig(feature: $feature) {
         permissionVersion
+        permissionsGroupVersions {
+            permissionsGroup
+            version
+        }
+        resourceGroupRolePermissions {
+            excludedActions
+            excludedDataActions
+            includedActions
+            includedDataActions
+        }
         rolePermissions {
             excludedActions
             excludedDataActions

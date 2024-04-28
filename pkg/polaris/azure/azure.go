@@ -56,7 +56,7 @@ func Wrap(client *polaris.Client) API {
 	return API{client: client.GQL, log: client.GQL.Log()}
 }
 
-// CloudAccountTenant
+// CloudAccountTenant represents an Azure tenant in RSC.
 type CloudAccountTenant struct {
 	Cloud             string
 	ID                uuid.UUID // Rubrik tenant ID.
@@ -66,7 +66,7 @@ type CloudAccountTenant struct {
 	SubscriptionCount int
 }
 
-// CloudAccount for Microsoft Azure subscriptions.
+// CloudAccount for Azure subscriptions.
 type CloudAccount struct {
 	ID           uuid.UUID // Rubrik cloud account ID.
 	NativeID     uuid.UUID // Azure subscription ID.
@@ -87,12 +87,13 @@ func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 	return Feature{}, false
 }
 
-// Feature for Microsoft Azure subscriptions.
+// Feature for Azure cloud account.
 type Feature struct {
 	core.Feature
-	ResourceGroup FeatureResourceGroup
-	Regions       []string
-	Status        core.Status
+	ResourceGroup               FeatureResourceGroup
+	Regions                     []string
+	Status                      core.Status
+	UserAssignedManagedIdentity FeatureUserAssignedManagedIdentity
 }
 
 // HasRegion returns true if the feature is enabled for the specified region.
@@ -106,18 +107,29 @@ func (f Feature) HasRegion(region string) bool {
 	return false
 }
 
-// SupportResourceGroup returns true if the feature supports being added with
-// a resource group.
+// SupportResourceGroup returns true if the feature supports being onboarded
+// with a resource group.
 func (f Feature) SupportResourceGroup() bool {
 	return !f.Equal(core.FeatureAzureSQLDBProtection) && !f.Equal(core.FeatureAzureSQLMIProtection)
 }
 
-// FeatureResourceGroup for Microsoft Azure subscriptions.
+// SupportUserAssignedManagedIdentity returns true if the feature supports
+// being onboarded with user-assigned managed identity.
+func (f Feature) SupportUserAssignedManagedIdentity() bool {
+	return f.Equal(core.FeatureCloudNativeArchivalEncryption)
+}
+
 type FeatureResourceGroup struct {
 	Name     string
 	NativeID string
 	Tags     map[string]string
 	Region   string
+}
+
+type FeatureUserAssignedManagedIdentity struct {
+	Name        string
+	NativeID    string
+	PrincipalID string
 }
 
 // toCloudAccountID returns the RSC cloud account ID for the specified identity.
@@ -560,6 +572,11 @@ func toSubscriptions(rawTenants []azure.CloudAccountTenant) []CloudAccount {
 					},
 					Regions: azure.FormatRegions(rawAccount.Feature.Regions),
 					Status:  rawAccount.Feature.Status,
+					UserAssignedManagedIdentity: FeatureUserAssignedManagedIdentity{
+						Name:        rawAccount.Feature.UserAssignedManagedIdentity.Name,
+						NativeID:    rawAccount.Feature.UserAssignedManagedIdentity.NativeId,
+						PrincipalID: rawAccount.Feature.UserAssignedManagedIdentity.PrincipalID,
+					},
 				})
 			}
 		}

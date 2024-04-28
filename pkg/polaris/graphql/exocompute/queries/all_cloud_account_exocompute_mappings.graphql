@@ -1,0 +1,6 @@
+query RubrikPolarisSDKRequest($cloudVendor: CloudVendor!) {
+    result: allCloudAccountExocomputeMappings(cloudVendor: $cloudVendor) {
+        applicationCloudAccountId
+        exocomputeCloudAccountId
+    }
+}

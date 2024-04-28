@@ -24,22 +24,30 @@
 
 package exocompute
 
+// allCloudAccountExocomputeMappings GraphQL query
+var allCloudAccountExocomputeMappingsQuery = `query SdkGolangAllCloudAccountExocomputeMappings($cloudVendor: CloudVendor!) {
+    result: allCloudAccountExocomputeMappings(cloudVendor: $cloudVendor) {
+        applicationCloudAccountId
+        exocomputeCloudAccountId
+    }
+}`
+
 // mapCloudAccountExocomputeAccount GraphQL query
-var mapCloudAccountExocomputeAccountQuery = `mutation SdkGolangMapCloudAccountExocomputeAccount($exocomputeCloudAccountId: UUID!, $cloudAccountIds: [UUID!]!) {
+var mapCloudAccountExocomputeAccountQuery = `mutation SdkGolangMapCloudAccountExocomputeAccount($cloudVendor: CloudVendor!, $exocomputeCloudAccountId: UUID!, $cloudAccountIds: [UUID!]!) {
     result: mapCloudAccountExocomputeAccount(input: {
         exocomputeCloudAccountId: $exocomputeCloudAccountId,
         cloudAccountIds:          $cloudAccountIds,
-        cloudVendor:              AWS
+        cloudVendor:              $cloudVendor
     }) {
         isSuccess
     }
 }`
 
 // unmapCloudAccountExocomputeAccount GraphQL query
-var unmapCloudAccountExocomputeAccountQuery = `mutation SdkGolangUnmapCloudAccountExocomputeAccount($cloudAccountIds: [UUID!]!) {
+var unmapCloudAccountExocomputeAccountQuery = `mutation SdkGolangUnmapCloudAccountExocomputeAccount($cloudVendor: CloudVendor!, $cloudAccountIds: [UUID!]!) {
     result: unmapCloudAccountExocomputeAccount(input: {
         cloudAccountIds: $cloudAccountIds,
-        cloudVendor:     AWS,
+        cloudVendor:     $cloudVendor,
     }) {
         isSuccess
     }

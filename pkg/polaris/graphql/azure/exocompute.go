@@ -29,11 +29,10 @@ import (
 // ExoConfigsForAccount holds all exocompute configurations for a specific
 // account.
 type ExoConfigsForAccount struct {
-	Account         CloudAccount          `json:"azureCloudAccount"`
-	Configs         []ExoConfig           `json:"configs"`
-	EligibleRegions []string              `json:"exocomputeEligibleRegions"`
-	Feature         Feature               `json:"featureDetails"`
-	MappedAccounts  []CloudAccountDetails `json:"mappedCloudAccounts"`
+	Account         CloudAccount `json:"azureCloudAccount"`
+	Configs         []ExoConfig  `json:"configs"`
+	EligibleRegions []string     `json:"exocomputeEligibleRegions"`
+	Feature         Feature      `json:"featureDetails"`
 }
 
 func (r ExoConfigsForAccount) ListQuery(filter string) (string, any) {
@@ -44,38 +43,38 @@ func (r ExoConfigsForAccount) ListQuery(filter string) (string, any) {
 
 // ExoConfig represents a single exocompute configuration.
 type ExoConfig struct {
-	ID       uuid.UUID `json:"configUuid"`
-	Region   Region    `json:"region"`
-	SubnetID string    `json:"subnetNativeId"`
-	Message  string    `json:"message"`
+	ID                    string `json:"configUuid"`
+	Region                Region `json:"region"`
+	SubnetID              string `json:"subnetNativeId"`
+	Message               string `json:"message"`
+	ManagedByRubrik       bool   `json:"isRscManaged"` // When true, Rubrik will manage the security groups.
+	PodOverlayNetworkCIDR string `json:"podOverlayNetworkCidr"`
+	PodSubnetID           string `json:"podSubnetNativeId"`
 
-	// When true, Rubrik will manage the security groups.
-	ManagedByRubrik bool `json:"isRscManaged"`
-}
-
-// CloudAccountDetails holds the details about an exocompute application account
-// mapping.
-type CloudAccountDetails struct {
-	ID       uuid.UUID `json:"id"`
-	NativeID string    `json:"nativeId"`
-	Name     string    `json:"name"`
+	// HealthCheckStatus represents the health status of an exocompute cluster.
+	HealthCheckStatus struct {
+		Status        string `json:"status"`
+		FailureReason string `json:"failureReason"`
+		LastUpdatedAt string `json:"lastUpdatedAt"`
+		TaskchainID   string `json:"taskchainId"`
+	} `json:"healthCheckStatus"`
 }
 
 // ExoCreateParams holds the parameters for an exocompute configuration to be
 // created by RSC.
 type ExoCreateParams struct {
-	Region   Region `json:"region"`
-	SubnetID string `json:"subnetNativeId"`
-
-	// When true, Rubrik will manage the security groups.
-	IsManagedByRubrik bool `json:"isRscManaged"`
+	Region                Region `json:"region"`
+	SubnetID              string `json:"subnetNativeId"`
+	IsManagedByRubrik     bool   `json:"isRscManaged"` // When true, Rubrik will manage the security groups.
+	PodOverlayNetworkCIDR string `json:"podOverlayNetworkCidr,omitempty"`
+	PodSubnetID           string `json:"podSubnetNativeId,omitempty"`
 }
 
 type ExoCreateResult struct {
 	Configs []ExoConfig `json:"configs"`
 }
 
-func (r ExoCreateResult) CreateQuery(cloudAccountID uuid.UUID, createParams ExoCreateParams) (string, any) {
+func (ExoCreateResult) CreateQuery(cloudAccountID uuid.UUID, createParams ExoCreateParams) (string, any) {
 	return addAzureCloudAccountExocomputeConfigurationsQuery, struct {
 		ID      uuid.UUID         `json:"cloudAccountId"`
 		Configs []ExoCreateParams `json:"azureExocomputeRegionConfigs"`
@@ -89,8 +88,12 @@ func (r ExoCreateResult) Validate() (uuid.UUID, error) {
 	if msg := r.Configs[0].Message; msg != "" {
 		return uuid.Nil, errors.New(msg)
 	}
+	id, err := uuid.Parse(r.Configs[0].ID)
+	if err != nil {
+		return uuid.Nil, err
+	}
 
-	return r.Configs[0].ID, nil
+	return id, nil
 }
 
 type ExoDeleteResult struct {
@@ -98,7 +101,7 @@ type ExoDeleteResult struct {
 	SuccessIDs []uuid.UUID `json:"deletionSuccessIds"`
 }
 
-func (r ExoDeleteResult) DeleteQuery(configID uuid.UUID) (string, any) {
+func (ExoDeleteResult) DeleteQuery(configID uuid.UUID) (string, any) {
 	return deleteAzureCloudAccountExocomputeConfigurationsQuery, struct {
 		IDs []uuid.UUID `json:"cloudAccountIds"`
 	}{IDs: []uuid.UUID{configID}}
@@ -113,4 +116,41 @@ func (r ExoDeleteResult) Validate() (uuid.UUID, error) {
 	}
 
 	return r.SuccessIDs[0], nil
+}
+
+type ExoMapResult struct {
+	Success bool `json:"isSuccess"`
+}
+
+func (ExoMapResult) MapQuery(hostCloudAccountID, appCloudAccountID uuid.UUID) (string, any) {
+	return mapAzureCloudAccountExocomputeSubscriptionQuery, struct {
+		HostCloudAccountID uuid.UUID   `json:"exocomputeCloudAccountId"`
+		AppCloudAccountIDs []uuid.UUID `json:"cloudAccountIds"`
+	}{HostCloudAccountID: hostCloudAccountID, AppCloudAccountIDs: []uuid.UUID{appCloudAccountID}}
+}
+
+func (r ExoMapResult) Validate() error {
+	if !r.Success {
+		return errors.New("failed to map application cloud account")
+	}
+
+	return nil
+}
+
+type ExoUnmapResult struct {
+	Success bool `json:"isSuccess"`
+}
+
+func (ExoUnmapResult) UnmapQuery(appCloudAccountID uuid.UUID) (string, any) {
+	return unmapAzureCloudAccountExocomputeSubscriptionQuery, struct {
+		AppCloudAccountIDs []uuid.UUID `json:"cloudAccountIds"`
+	}{AppCloudAccountIDs: []uuid.UUID{appCloudAccountID}}
+}
+
+func (r ExoUnmapResult) Validate() error {
+	if !r.Success {
+		return errors.New("failed to unmap application cloud account")
+	}
+
+	return nil
 }

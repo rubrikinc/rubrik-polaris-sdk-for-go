@@ -25,13 +25,14 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Note: This example requires an existing AWS account with exocompute
+// Note: This example requires an existing Azure account with exocompute
 // configured in RSC.
 func main() {
 	ctx := context.Background()
@@ -50,43 +51,44 @@ func main() {
 		log.Fatal(err)
 	}
 
-	awsClient := aws.Wrap(client)
+	azureClient := azure.Wrap(client)
 
 	// The AWS account ID of the existing AWS account with exocompute
 	// configured.
-	hostAccountID := aws.AccountID("123456789012")
+	hostAccountID := azure.SubscriptionID(uuid.MustParse("3cad3091-a1b3-4e0e-823d-84589568983e"))
 
 	// Add the AWS default account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	accountID, err := awsClient.AddAccount(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection},
-		aws.Regions("us-east-2"))
+	subscription := azure.Subscription(uuid.MustParse("e4b247e7-66c5-4f10-9042-1eeac424c7a4"),
+		"my-domain.onmicrosoft.com")
+	accountID, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection, azure.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("Account ID: %v\n", accountID)
 
 	// Map the application account to an existing exocompute host account.
-	err = awsClient.MapExocompute(ctx, hostAccountID, aws.CloudAccountID(accountID))
+	err = azureClient.MapExocompute(ctx, hostAccountID, azure.CloudAccountID(accountID))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Retrieve the exocompute host account for the application account.
-	hostID, err := awsClient.ExocomputeHostAccount(ctx, aws.CloudAccountID(accountID))
+	hostID, err := azureClient.ExocomputeHostAccount(ctx, azure.CloudAccountID(accountID))
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("Exocompute Host Account: %v\n", hostID)
 
 	// Unmap the application account from the shared exocompute host account.
-	err = awsClient.UnmapExocompute(ctx, aws.CloudAccountID(accountID))
+	err = azureClient.UnmapExocompute(ctx, azure.CloudAccountID(accountID))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Remove the AWS account from Polaris.
-	err = awsClient.RemoveAccount(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection}, false)
+	err = azureClient.RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		log.Fatal(err)
 	}

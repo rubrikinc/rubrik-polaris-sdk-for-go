@@ -39,6 +39,7 @@ type Subnet struct {
 	AvailabilityZone string
 }
 
+// HealthCheckStatus represents the health status of an exocompute cluster.
 type HealthCheckStatus struct {
 	Status        string
 	FailureReason string
@@ -367,36 +368,6 @@ func (a API) ExocomputeHostAccount(ctx context.Context, appID IdentityFunc) (uui
 	return uuid.Nil, fmt.Errorf("exocompute account %w", graphql.ErrNotFound)
 }
 
-// ExocomputeApplicationAccounts returns the exocompute application cloud
-// account IDs for the specified host cloud account.
-func (a API) ExocomputeApplicationAccounts(ctx context.Context, hostID IdentityFunc) ([]uuid.UUID, error) {
-	a.log.Print(log.Trace)
-
-	nativeID, err := a.toNativeID(ctx, hostID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get native id: %s", err)
-	}
-
-	configsForAccounts, err := exocompute.ListConfigurations[aws.ExoConfigsForAccount](ctx, a.client, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get exocompute configs for account: %s", err)
-	}
-
-	var mappedAccounts []uuid.UUID
-	for _, configsForAccount := range configsForAccounts {
-		if configsForAccount.Account.NativeID == nativeID {
-			for _, mappedAccount := range configsForAccount.MappedAccounts {
-				mappedAccounts = append(mappedAccounts, mappedAccount.ID)
-			}
-		}
-	}
-	if len(mappedAccounts) == 0 {
-		return nil, fmt.Errorf("exocompute mapped accounts %w", graphql.ErrNotFound)
-	}
-
-	return mappedAccounts, nil
-}
-
 // MapExocompute maps the exocompute application cloud account to the specified
 // host cloud account.
 func (a API) MapExocompute(ctx context.Context, hostID IdentityFunc, appID IdentityFunc) error {
@@ -412,7 +383,7 @@ func (a API) MapExocompute(ctx context.Context, hostID IdentityFunc, appID Ident
 		return fmt.Errorf("failed to get cloud account id: %s", err)
 	}
 
-	if err := exocompute.MapCloudAccount(ctx, a.client, appCloudAccountID, hostCloudAccountID); err != nil {
+	if err := exocompute.MapCloudAccount[aws.ExoMapResult](ctx, a.client, hostCloudAccountID, appCloudAccountID); err != nil {
 		return fmt.Errorf("failed to map exocompute config: %s", err)
 	}
 
@@ -429,7 +400,7 @@ func (a API) UnmapExocompute(ctx context.Context, appID IdentityFunc) error {
 		return fmt.Errorf("failed to get cloud account id: %s", err)
 	}
 
-	if err := exocompute.UnmapCloudAccount(ctx, a.client, appCloudAccountID); err != nil {
+	if err := exocompute.UnmapCloudAccount[aws.ExoUnmapResult](ctx, a.client, appCloudAccountID); err != nil {
 		return fmt.Errorf("failed to unmap exocompute config: %s", err)
 	}
 

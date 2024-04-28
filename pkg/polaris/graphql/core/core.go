@@ -38,6 +38,15 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+type CloudVendor string
+
+const (
+	CloudVendorAWS   CloudVendor = "AWS"
+	CloudVendorAzure CloudVendor = "AZURE"
+	CloudVendorGCP   CloudVendor = "GCP"
+	CloudVendorAll   CloudVendor = "ALL_VENDORS"
+)
+
 // CloudAccountAction represents a Polaris cloud account action.
 type CloudAccountAction string
 

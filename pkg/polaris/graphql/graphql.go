@@ -144,10 +144,27 @@ func (c *Client) SetLogger(logger log.Logger) {
 
 const requestRetryAttempts = 10
 
-// Request posts the specified GraphQL query with the given variables to the
-// Polaris platform. Returns the response JSON text as is. If the request fails
-// due to a temporary error, it will be retried automatically.
+// Request posts the specified GraphQL query/mutation with the given variables
+// to the Polaris platform. Returns the response JSON text as is. If the request
+// fails due to temporary error, it will be retried automatically.
 func (c *Client) Request(ctx context.Context, query string, variables interface{}) ([]byte, error) {
+	c.log.Print(log.Trace)
+
+	// Log variables before calling the query/mutation.
+	buf, err := json.Marshal(variables)
+	if err != nil {
+		buf = []byte(fmt.Sprintf("marshaling of variables failed: %s", err))
+	}
+	c.log.Printf(log.Debug, "%s params: %s", QueryName(query), string(buf))
+
+	return c.RequestWithoutLogging(ctx, query, variables)
+}
+
+// RequestWithoutLogging posts the specified GraphQL query/mutation with the
+// given variables to the Polaris platform. Returns the response JSON text as
+// is. The variables are not logged before the request is made. Certain
+// temporary errors will be retried.
+func (c *Client) RequestWithoutLogging(ctx context.Context, query string, variables interface{}) ([]byte, error) {
 	c.log.Print(log.Trace)
 
 	retryAttempt := 0
@@ -174,7 +191,7 @@ func (c *Client) Request(ctx context.Context, query string, variables interface{
 	}
 }
 
-// RequestWithoutRetry posts the specified GraphQL query with the given
+// RequestWithoutRetry posts the specified GraphQL query/mutation with the given
 // variables to the Polaris platform. Returns the response JSON text as is.
 func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variables interface{}) ([]byte, error) {
 	c.log.Print(log.Trace)
@@ -256,6 +273,29 @@ func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variable
 	}
 
 	return buf, nil
+}
+
+// LogResponse logs the response from a GraphQL query/mutation.
+func LogResponse(logger log.Logger, query string, response []byte) {
+	logger.Printf(log.Debug, "%s response: %s", query, string(response))
+}
+
+// RequestError returns a standard formatted error detailing the failure when
+// calling a query/mutation.
+func RequestError(query string, err error) error {
+	return fmt.Errorf("failed to request %s: %w", QueryName(query), err)
+}
+
+// UnmarshalError returns a standard formatted error detailing the failure to
+// unmarshal the response from a GraphQL query/mutation.
+func UnmarshalError(query string, err error) error {
+	return fmt.Errorf("failed to unmarshal %s: %s", QueryName(query), err)
+}
+
+// ResponseError returns a standard formatted error detailing the error received
+// in response to a query/mutation.
+func ResponseError(query string, err error) error {
+	return fmt.Errorf("%s response is an error: %s", QueryName(query), err)
 }
 
 // operationName tries to extract the operation name from a query

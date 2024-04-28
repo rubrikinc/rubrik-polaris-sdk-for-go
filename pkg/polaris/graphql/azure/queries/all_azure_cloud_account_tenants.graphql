@@ -23,6 +23,11 @@ query RubrikPolarisSDKRequest($feature: CloudAccountFeature!, $includeSubscripti
                         value
                     }
                 }
+                userAssignedManagedIdentity {
+                    name
+                    nativeId
+                    principalId
+                }
             }
         }
     }

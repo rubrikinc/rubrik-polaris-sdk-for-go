@@ -26,12 +26,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -47,13 +47,11 @@ func ListConfigurations[Result ListResult](ctx context.Context, gql *graphql.Cli
 
 	var result Result
 	query, params := result.ListQuery(filter)
-	logParams(gql.Log(), query, params)
-
 	buf, err := gql.Request(ctx, query, params)
 	if err != nil {
-		return nil, requestError(query, err)
+		return nil, graphql.RequestError(query, err)
 	}
-	logResponse(gql.Log(), query, buf)
+	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -61,7 +59,7 @@ func ListConfigurations[Result ListResult](ctx context.Context, gql *graphql.Cli
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, unmarshalError(query, err)
+		return nil, graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Result, nil
@@ -86,13 +84,11 @@ func CreateConfiguration[Result CreateResult[Params], Params CreateParams](ctx c
 
 	var result Result
 	query, queryParams := result.CreateQuery(cloudAccountID, createParams)
-	logParams(gql.Log(), query, queryParams)
-
 	buf, err := gql.Request(ctx, query, queryParams)
 	if err != nil {
-		return uuid.Nil, requestError(query, err)
+		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	logResponse(gql.Log(), query, buf)
+	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -100,11 +96,11 @@ func CreateConfiguration[Result CreateResult[Params], Params CreateParams](ctx c
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, unmarshalError(query, err)
+		return uuid.Nil, graphql.UnmarshalError(query, err)
 	}
 	id, err := payload.Data.Result.Validate()
 	if err != nil {
-		return uuid.Nil, responseError(query, err)
+		return uuid.Nil, graphql.ResponseError(query, err)
 	}
 
 	return id, nil
@@ -128,13 +124,11 @@ func UpdateConfiguration[Result UpdateResult[Params], Params UpdateParams](ctx c
 
 	var result Result
 	query, queryParams := result.UpdateQuery(cloudAccountID, updateParams)
-	logParams(gql.Log(), query, queryParams)
-
 	buf, err := gql.Request(ctx, query, queryParams)
 	if err != nil {
-		return uuid.Nil, requestError(query, err)
+		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	logResponse(gql.Log(), query, buf)
+	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -142,11 +136,11 @@ func UpdateConfiguration[Result UpdateResult[Params], Params UpdateParams](ctx c
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, unmarshalError(query, err)
+		return uuid.Nil, graphql.UnmarshalError(query, err)
 	}
 	id, err := payload.Data.Result.Validate()
 	if err != nil {
-		return uuid.Nil, responseError(query, err)
+		return uuid.Nil, graphql.ResponseError(query, err)
 	}
 
 	return id, nil
@@ -165,13 +159,11 @@ func DeleteConfiguration[Result DeleteResult](ctx context.Context, gql *graphql.
 
 	var result Result
 	query, params := result.DeleteQuery(configID)
-	logParams(gql.Log(), query, params)
-
 	buf, err := gql.Request(ctx, query, params)
 	if err != nil {
-		return requestError(query, err)
+		return graphql.RequestError(query, err)
 	}
-	logResponse(gql.Log(), query, buf)
+	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -179,105 +171,115 @@ func DeleteConfiguration[Result DeleteResult](ctx context.Context, gql *graphql.
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return unmarshalError(query, err)
+		return graphql.UnmarshalError(query, err)
 	}
 	id, err := payload.Data.Result.Validate()
 	if err != nil {
-		return responseError(query, err)
+		return graphql.ResponseError(query, err)
 	}
 	if id != configID {
-		return responseError(query, errors.New("deleted config ID does not match requested"))
+		return graphql.ResponseError(query, errors.New("deleted config ID does not match requested"))
 	}
 
 	return nil
 }
 
-// MapCloudAccount maps exocompute for the application cloud account to the
-// host cloud account.
-func MapCloudAccount(ctx context.Context, gql *graphql.Client, appCloudAccountID, hostCloudAccountID uuid.UUID) error {
+// MapResult represents the result of a map operation.
+type MapResult interface {
+	MapQuery(hostCloudAccountID, appCloudAccountIDs uuid.UUID) (string, any)
+	Validate() error
+}
+
+// MapCloudAccount maps the application cloud account to the host cloud account.
+func MapCloudAccount[Result MapResult](ctx context.Context, gql *graphql.Client, hostCloudAccountID, appCloudAccountID uuid.UUID) error {
 	gql.Log().Print(log.Trace)
 
-	params := struct {
-		AppIDs []uuid.UUID `json:"cloudAccountIds"`
-		HostID uuid.UUID   `json:"exocomputeCloudAccountId"`
-	}{AppIDs: []uuid.UUID{appCloudAccountID}, HostID: hostCloudAccountID}
-	logParams(gql.Log(), mapCloudAccountExocomputeAccountQuery, params)
-
-	buf, err := gql.Request(ctx, mapCloudAccountExocomputeAccountQuery, params)
+	var result Result
+	query, params := result.MapQuery(hostCloudAccountID, appCloudAccountID)
+	buf, err := gql.Request(ctx, query, params)
 	if err != nil {
-		return requestError(mapCloudAccountExocomputeAccountQuery, err)
+		return graphql.RequestError(query, err)
 	}
-	logResponse(gql.Log(), mapCloudAccountExocomputeAccountQuery, buf)
+	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
-			Result struct {
-				Success bool `json:"isSuccess"`
-			} `json:"result"`
+			Result Result `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return unmarshalError(mapCloudAccountExocomputeAccountQuery, err)
+		return graphql.UnmarshalError(query, err)
 	}
-	if !payload.Data.Result.Success {
-		return responseError(mapCloudAccountExocomputeAccountQuery, errors.New("failed to map cloud account"))
+	if err := payload.Data.Result.Validate(); err != nil {
+		return graphql.ResponseError(query, err)
 	}
 
 	return nil
 }
 
-// UnmapCloudAccount unmaps exocompute for the application cloud account.
-func UnmapCloudAccount(ctx context.Context, gql *graphql.Client, appID uuid.UUID) error {
+// UnmapResult represents the result of an unmap operation.
+type UnmapResult interface {
+	UnmapQuery(appCloudAccountIDs uuid.UUID) (string, any)
+	Validate() error
+}
+
+// UnmapCloudAccount unmaps the application cloud account.
+func UnmapCloudAccount[Result UnmapResult](ctx context.Context, gql *graphql.Client, appCloudAccountID uuid.UUID) error {
 	gql.Log().Print(log.Trace)
 
-	params := struct {
-		AppIDs []uuid.UUID `json:"cloudAccountIds"`
-	}{AppIDs: []uuid.UUID{appID}}
-	logParams(gql.Log(), mapCloudAccountExocomputeAccountQuery, params)
-
-	buf, err := gql.Request(ctx, unmapCloudAccountExocomputeAccountQuery, params)
+	var result Result
+	query, params := result.UnmapQuery(appCloudAccountID)
+	buf, err := gql.Request(ctx, query, params)
 	if err != nil {
-		return requestError(unmapCloudAccountExocomputeAccountQuery, err)
+		return graphql.RequestError(query, err)
 	}
-	logResponse(gql.Log(), unmapCloudAccountExocomputeAccountQuery, buf)
+	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
-			Result struct {
-				Success bool `json:"isSuccess"`
-			} `json:"result"`
+			Result Result `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return unmarshalError(unmapCloudAccountExocomputeAccountQuery, err)
+		return graphql.UnmarshalError(query, err)
 	}
-	if !payload.Data.Result.Success {
-		return responseError(unmapCloudAccountExocomputeAccountQuery, errors.New("failed to unmap cloud account"))
+	if err := payload.Data.Result.Validate(); err != nil {
+		return graphql.ResponseError(query, err)
 	}
 
 	return nil
 }
 
-func logParams(logger log.Logger, query string, params any) {
-	buf, err := json.Marshal(params)
+// CloudAccountMapping represents a mapping between an exocompute application
+// cloud account and a host cloud account.
+type CloudAccountMapping struct {
+	AppCloudAccountID  uuid.UUID `json:"applicationCloudAccountId"`
+	HostCloudAccountID uuid.UUID `json:"exocomputeCloudAccountId"`
+}
+
+// AllCloudAccountMappings returns all exocompute cloud account mappings for
+// the specified cloud vendor. Note that only AWS and Azure are supported by
+// RSC.
+func AllCloudAccountMappings(ctx context.Context, gql *graphql.Client, cloudVendor core.CloudVendor) ([]CloudAccountMapping, error) {
+	gql.Log().Print(log.Trace)
+
+	query := allCloudAccountExocomputeMappingsQuery
+	buf, err := gql.Request(ctx, query, struct {
+		CloudVendor core.CloudVendor `json:"cloudVendor"`
+	}{CloudVendor: cloudVendor})
 	if err != nil {
-		buf = []byte(fmt.Sprintf("marshaling of params failed: %s", err))
+		return nil, graphql.RequestError(query, err)
 	}
-	logger.Printf(log.Debug, "%s params: %s", graphql.QueryName(query), string(buf))
-}
+	graphql.LogResponse(gql.Log(), query, buf)
 
-func logResponse(logger log.Logger, query string, response []byte) {
-	logger.Printf(log.Debug, "%s response: %s", query, string(response))
-}
+	var payload struct {
+		Data struct {
+			Result []CloudAccountMapping `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, graphql.UnmarshalError(query, err)
+	}
 
-func requestError(query string, err error) error {
-	return fmt.Errorf("failed to request %s: %w", graphql.QueryName(query), err)
-}
-
-func unmarshalError(query string, err error) error {
-	return fmt.Errorf("failed to unmarshal %s: %s", graphql.QueryName(query), err)
-}
-
-func responseError(query string, err error) error {
-	return fmt.Errorf("%s response is an error: %s", graphql.QueryName(query), err)
+	return payload.Data.Result, nil
 }

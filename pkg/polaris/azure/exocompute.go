@@ -25,6 +25,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -34,12 +35,21 @@ import (
 
 // ExocomputeConfig represents a single exocompute configuration.
 type ExocomputeConfig struct {
-	ID       uuid.UUID
-	Region   string
-	SubnetID string
+	ID                    uuid.UUID // Rubrik exocompute configuration ID.
+	Region                string
+	SubnetID              string // Azure subnet ID.
+	ManagedByRubrik       bool   // When true, Rubrik will manage the security groups.
+	PodOverlayNetworkCIDR string
+	PodSubnetID           string            // Azure subnet ID.
+	HealthCheckStatus     HealthCheckStatus // Health status of the exocompute cluster.
+}
 
-	// When true, Rubrik will manage the security groups.
-	ManagedByRubrik bool
+// HealthCheckStatus represents the health status of an exocompute cluster.
+type HealthCheckStatus struct {
+	Status        string
+	FailureReason string
+	LastUpdatedAt string
+	TaskchainID   string
 }
 
 // ExoConfigFunc returns an ExoCreateParams object initialized from the values
@@ -51,38 +61,62 @@ type ExoConfigFunc func(ctx context.Context) (azure.ExoCreateParams, error)
 func Managed(region, subnetID string) ExoConfigFunc {
 	return func(ctx context.Context) (azure.ExoCreateParams, error) {
 		return azure.ExoCreateParams{
+			IsManagedByRubrik: true,
 			Region:            azure.ParseRegionNoValidation(region),
 			SubnetID:          subnetID,
-			IsManagedByRubrik: true,
+		}, nil
+	}
+}
+
+// ManagedWithOverlayNetwork returns an ExoConfigFunc that initializes an
+// ExoCreateParams object with the specified values.
+func ManagedWithOverlayNetwork(region, subnetID, podOverlayNetworkCIDR string) ExoConfigFunc {
+	return func(ctx context.Context) (azure.ExoCreateParams, error) {
+		return azure.ExoCreateParams{
+			IsManagedByRubrik:     true,
+			Region:                azure.ParseRegionNoValidation(region),
+			SubnetID:              subnetID,
+			PodOverlayNetworkCIDR: podOverlayNetworkCIDR,
 		}, nil
 	}
 }
 
 // toExocomputeConfig converts an polaris/graphql/azure exocompute config to an
 // polaris/azure exocompute config.
-func toExocomputeConfig(config azure.ExoConfig) ExocomputeConfig {
+func toExocomputeConfig(configID uuid.UUID, config azure.ExoConfig) ExocomputeConfig {
 	return ExocomputeConfig{
-		ID:              config.ID,
-		Region:          azure.FormatRegion(config.Region),
-		SubnetID:        config.SubnetID,
-		ManagedByRubrik: config.ManagedByRubrik,
+		ID:                    configID,
+		Region:                azure.FormatRegion(config.Region),
+		SubnetID:              config.SubnetID,
+		ManagedByRubrik:       config.ManagedByRubrik,
+		PodOverlayNetworkCIDR: config.PodOverlayNetworkCIDR,
+		PodSubnetID:           config.PodSubnetID,
+		HealthCheckStatus: HealthCheckStatus{
+			Status:        config.HealthCheckStatus.Status,
+			FailureReason: config.HealthCheckStatus.FailureReason,
+			LastUpdatedAt: config.HealthCheckStatus.LastUpdatedAt,
+			TaskchainID:   config.HealthCheckStatus.TaskchainID,
+		},
 	}
 }
 
 // ExocomputeConfig returns the exocompute config with the specified exocompute
-// config id.
-func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConfig, error) {
+// config ID.
+func (a API) ExocomputeConfig(ctx context.Context, configID uuid.UUID) (ExocomputeConfig, error) {
 	a.log.Print(log.Trace)
 
 	configsForAccounts, err := exocompute.ListConfigurations[azure.ExoConfigsForAccount](ctx, a.client, "")
 	if err != nil {
 		return ExocomputeConfig{}, fmt.Errorf("failed to get exocompute configs: %s", err)
 	}
-
 	for _, configsForAccount := range configsForAccounts {
 		for _, config := range configsForAccount.Configs {
-			if config.ID == id {
-				return toExocomputeConfig(config), nil
+			id, err := uuid.Parse(config.ID)
+			if err != nil {
+				return ExocomputeConfig{}, fmt.Errorf("failed to parse exocompute config id: %s", err)
+			}
+			if id == configID {
+				return toExocomputeConfig(id, config), nil
 			}
 		}
 	}
@@ -91,7 +125,7 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 }
 
 // ExocomputeConfigs returns all exocompute configs for the account with the
-// specified id.
+// specified ID.
 func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]ExocomputeConfig, error) {
 	a.log.Print(log.Trace)
 
@@ -104,11 +138,14 @@ func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]Exocompu
 	if err != nil {
 		return nil, fmt.Errorf("failed to get exocompute configs: %s", err)
 	}
-
 	var exoConfigs []ExocomputeConfig
 	for _, configsForAccount := range configsForAccounts {
 		for _, config := range configsForAccount.Configs {
-			exoConfigs = append(exoConfigs, toExocomputeConfig(config))
+			id, err := uuid.Parse(config.ID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse exocompute configuration id: %s", err)
+			}
+			exoConfigs = append(exoConfigs, toExocomputeConfig(id, config))
 		}
 	}
 
@@ -161,50 +198,17 @@ func (a API) ExocomputeHostAccount(ctx context.Context, appID IdentityFunc) (uui
 		return uuid.Nil, fmt.Errorf("failed to get cloud account id: %s", err)
 	}
 
-	configsForAccounts, err := exocompute.ListConfigurations[azure.ExoConfigsForAccount](ctx, a.client, "")
+	mappings, err := exocompute.AllCloudAccountMappings(ctx, a.client, core.CloudVendorAzure)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get exocompute configs for account: %s", err)
+		return uuid.Nil, fmt.Errorf("failed to get cloud account exocompute mappings: %s", err)
 	}
-
-	for _, configsForAccount := range configsForAccounts {
-		for _, mappedAccount := range configsForAccount.MappedAccounts {
-			if mappedAccount.ID == appCloudAccountID {
-				return configsForAccount.Account.ID, nil
-			}
+	for _, mapping := range mappings {
+		if mapping.AppCloudAccountID == appCloudAccountID {
+			return mapping.HostCloudAccountID, nil
 		}
 	}
 
 	return uuid.Nil, fmt.Errorf("exocompute account %w", graphql.ErrNotFound)
-}
-
-// ExocomputeApplicationAccounts returns the exocompute application cloud
-// account IDs for the specified host cloud account.
-func (a API) ExocomputeApplicationAccounts(ctx context.Context, hostID IdentityFunc) ([]uuid.UUID, error) {
-	a.log.Print(log.Trace)
-
-	hostCloudAccountID, err := a.toCloudAccountID(ctx, hostID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get cloud account id: %s", err)
-	}
-
-	configsForAccounts, err := exocompute.ListConfigurations[azure.ExoConfigsForAccount](ctx, a.client, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get exocompute configs for account: %s", err)
-	}
-
-	var mappedAccounts []uuid.UUID
-	for _, configsForAccount := range configsForAccounts {
-		if configsForAccount.Account.ID == hostCloudAccountID {
-			for _, mappedAccount := range configsForAccount.MappedAccounts {
-				mappedAccounts = append(mappedAccounts, mappedAccount.ID)
-			}
-		}
-	}
-	if len(mappedAccounts) == 0 {
-		return nil, fmt.Errorf("exocompute mapped accounts %w", graphql.ErrNotFound)
-	}
-
-	return mappedAccounts, nil
 }
 
 // MapExocompute maps the exocompute application cloud account to the specified
@@ -222,7 +226,7 @@ func (a API) MapExocompute(ctx context.Context, hostID IdentityFunc, appID Ident
 		return fmt.Errorf("failed to get cloud account id: %s", err)
 	}
 
-	if err := exocompute.MapCloudAccount(ctx, a.client, appCloudAccountID, hostCloudAccountID); err != nil {
+	if err := exocompute.MapCloudAccount[azure.ExoMapResult](ctx, a.client, hostCloudAccountID, appCloudAccountID); err != nil {
 		return fmt.Errorf("failed to map exocompute config: %s", err)
 	}
 
@@ -239,7 +243,7 @@ func (a API) UnmapExocompute(ctx context.Context, appID IdentityFunc) error {
 		return fmt.Errorf("failed to get cloud account id: %s", err)
 	}
 
-	if err := exocompute.UnmapCloudAccount(ctx, a.client, appCloudAccountID); err != nil {
+	if err := exocompute.UnmapCloudAccount[azure.ExoUnmapResult](ctx, a.client, appCloudAccountID); err != nil {
 		return fmt.Errorf("failed to unmap exocompute config: %s", err)
 	}
 
