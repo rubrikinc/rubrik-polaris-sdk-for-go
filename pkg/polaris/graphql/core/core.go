@@ -409,7 +409,7 @@ func (a API) EnabledFeaturesForAccount(ctx context.Context) ([]Feature, error) {
 	var payload struct {
 		Data struct {
 			Result struct {
-				Features []Feature `json:"features"`
+				Features []string `json:"features"`
 			} `json:"result"`
 		} `json:"data"`
 	}
@@ -417,5 +417,10 @@ func (a API) EnabledFeaturesForAccount(ctx context.Context) ([]Feature, error) {
 		return nil, fmt.Errorf("failed to unmarshal allEnabledFeaturesForAccount: %v", err)
 	}
 
-	return payload.Data.Result.Features, nil
+	var features []Feature
+	for _, feature := range payload.Data.Result.Features {
+		features = append(features, Feature{Name: feature})
+	}
+
+	return features, nil
 }
