@@ -27,18 +27,27 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Subnet represents an AWS subnet.
-type Subnet struct {
-	ID               string `json:"subnetId"`
-	AvailabilityZone string `json:"availabilityZone"`
+// ExoConfigsForAccount holds all exocompute configurations for a specific
+// account.
+type ExoConfigsForAccount struct {
+	Account         CloudAccount          `json:"awsCloudAccount"`
+	Configs         []ExoConfig           `json:"exocomputeConfigs"`
+	EligibleRegions []string              `json:"exocomputeEligibleRegions"`
+	Feature         Feature               `json:"featureDetail"`
+	MappedAccounts  []CloudAccountDetails `json:"mappedCloudAccounts"`
 }
 
-// ExocomputeConfig represents a single exocompute config.
-type ExocomputeConfig struct {
+func (r ExoConfigsForAccount) ListQuery(filter string) (string, any) {
+	return allAwsExocomputeConfigsQuery, struct {
+		Filter string `json:"awsNativeAccountIdOrNamePrefix"`
+	}{Filter: filter}
+}
+
+// ExoConfig represents a single exocompute configuration.
+type ExoConfig struct {
 	ID      string `json:"configUuid"`
 	Region  Region `json:"region"`
 	VPCID   string `json:"vpcId"`
@@ -46,11 +55,11 @@ type ExocomputeConfig struct {
 	Subnet2 Subnet `json:"subnet2"`
 	Message string `json:"message"`
 
-	// When true Polaris manages the security groups.
+	// When true, Polaris manages the security groups.
 	IsManagedByRubrik bool `json:"areSecurityGroupsRscManaged"`
 
-	// Security group ids of cluster control plane and worker node. Only needs
-	// to be specified if IsPolarisManaged is false.
+	// The security group IDs of the cluster control plane and worker nodes.
+	// Only needs to be specified if IsPolarisManaged is false.
 	ClusterSecurityGroupID string `json:"clusterSecurityGroupId"`
 	NodeSecurityGroupID    string `json:"nodeSecurityGroupId"`
 
@@ -62,16 +71,6 @@ type ExocomputeConfig struct {
 	}
 }
 
-// ExocomputeConfigsForAccount holds all exocompute configs for a specific
-// account.
-type ExocomputeConfigsForAccount struct {
-	Account         CloudAccount          `json:"awsCloudAccount"`
-	Configs         []ExocomputeConfig    `json:"exocomputeConfigs"`
-	EligibleRegions []string              `json:"exocomputeEligibleRegions"`
-	Feature         Feature               `json:"featureDetail"`
-	MappedAccounts  []CloudAccountDetails `json:"mappedCloudAccounts"`
-}
-
 // CloudAccountDetails holds the details about an exocompute application account
 // mapping.
 type CloudAccountDetails struct {
@@ -80,148 +79,138 @@ type CloudAccountDetails struct {
 	Name     string    `json:"name"`
 }
 
-// ExocomputeConfigs returns all exocompute configs matching the specified
-// filter. The filter can be used to search for account name or account id.
-func (a API) ExocomputeConfigs(ctx context.Context, filter string) ([]ExocomputeConfigsForAccount, error) {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(ctx, allAwsExocomputeConfigsQuery, struct {
-		Filter string `json:"awsNativeAccountIdOrNamePrefix"`
-	}{Filter: filter})
-	if err != nil {
-		return nil, fmt.Errorf("failed to request allAwsExocomputeConfigs: %w", err)
-	}
-	a.log.Printf(log.Debug, "allAwsExocomputeConfigs(%q): %s", filter, string(buf))
-
-	var payload struct {
-		Data struct {
-			Result []ExocomputeConfigsForAccount `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal allAwsExocomputeConfigs: %v", err)
-	}
-
-	return payload.Data.Result, nil
+// Subnet represents an AWS subnet.
+type Subnet struct {
+	ID               string `json:"subnetId"`
+	AvailabilityZone string `json:"availabilityZone"`
 }
 
-// ExocomputeConfigCreate represents an exocompute config to be created by
-// Polaris.
-type ExocomputeConfigCreate struct {
+// ExoCreateParams holds the parameters for an exocompute config to be created
+// by Polaris.
+type ExoCreateParams struct {
 	Region Region `json:"region"`
 
 	// Only required for RSC managed clusters
 	VPCID   string   `json:"vpcId,omitempty"`
 	Subnets []Subnet `json:"subnets,omitempty"`
 
-	// When true Rubrik will manage the security groups.
+	// When true, Rubrik will manage the security groups.
 	IsManagedByRubrik bool `json:"isRscManaged"`
 
-	// Security group ids of cluster control plane and worker node. Only needs
-	// to be specified if IsPolarisManaged is false.
-	ClusterSecurityGroupId string `json:"clusterSecurityGroupId"`
-	NodeSecurityGroupId    string `json:"nodeSecurityGroupId"`
+	// The security group IDs of the cluster control plane and worker nodes.
+	// Only needs to be specified if IsPolarisManaged is false.
+	ClusterSecurityGroupId string `json:"clusterSecurityGroupId,omitempty"`
+	NodeSecurityGroupId    string `json:"nodeSecurityGroupId,omitempty"`
 }
 
-// CreateExocomputeConfig creates a new exocompute config for the account with
-// the specified RSC cloud account id. Returns the created exocompute config
-func (a API) CreateExocomputeConfig(ctx context.Context, cloudAccountID uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
-	a.log.Print(log.Trace)
+type ExoCreateResult struct {
+	Configs []ExoConfig `json:"exocomputeConfigs"`
+}
 
-	buf, err := a.GQL.Request(ctx, createAwsExocomputeConfigsQuery, struct {
-		ID      uuid.UUID                `json:"cloudAccountId"`
-		Configs []ExocomputeConfigCreate `json:"configs"`
-	}{ID: cloudAccountID, Configs: []ExocomputeConfigCreate{config}})
+func (r ExoCreateResult) CreateQuery(cloudAccountID uuid.UUID, createParams ExoCreateParams) (string, any) {
+	return createAwsExocomputeConfigsQuery, struct {
+		ID      uuid.UUID         `json:"cloudAccountId"`
+		Configs []ExoCreateParams `json:"configs"`
+	}{ID: cloudAccountID, Configs: []ExoCreateParams{createParams}}
+}
+
+func (r ExoCreateResult) Validate() (uuid.UUID, error) {
+	if len(r.Configs) != 1 {
+		return uuid.Nil, errors.New("expected a single create result")
+	}
+	if msg := r.Configs[0].Message; msg != "" {
+		return uuid.Nil, errors.New(msg)
+	}
+	id, err := uuid.Parse(r.Configs[0].ID)
 	if err != nil {
-		return ExocomputeConfig{}, fmt.Errorf("failed to request createAwsExocomputeConfigs: %w", err)
-	}
-	a.log.Printf(log.Debug, "createAwsExocomputeConfigs(%q, %v): %s", cloudAccountID, config, string(buf))
-
-	var payload struct {
-		Data struct {
-			Query struct {
-				Configs []ExocomputeConfig `json:"configs"`
-			} `json:"createAwsExocomputeConfigs"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return ExocomputeConfig{}, fmt.Errorf("failed to unmarshal createAwsExocomputeConfigs: %v", err)
-	}
-	if len(payload.Data.Query.Configs) != 1 {
-		return ExocomputeConfig{}, errors.New("expected a single result")
-	}
-	if payload.Data.Query.Configs[0].Message != "" {
-		return ExocomputeConfig{}, errors.New(payload.Data.Query.Configs[0].Message)
+		return uuid.Nil, err
 	}
 
-	return payload.Data.Query.Configs[0], nil
+	return id, nil
 }
 
-// UpdateExocomputeConfig updates an exocompute config for the account with
-// the specified RSC cloud account id. Returns the updated exocompute config.
-func (a API) UpdateExocomputeConfig(ctx context.Context, cloudAccountID uuid.UUID, config ExocomputeConfigCreate) (ExocomputeConfig, error) {
-	a.log.Print(log.Trace)
+type ExoUpdateParams ExoCreateParams
 
-	buf, err := a.GQL.Request(ctx, updateAwsExocomputeConfigsQuery, struct {
-		ID      uuid.UUID                `json:"cloudAccountId"`
-		Configs []ExocomputeConfigCreate `json:"configs"`
-	}{ID: cloudAccountID, Configs: []ExocomputeConfigCreate{config}})
+type ExoUpdateResult ExoCreateResult
+
+func (r ExoUpdateResult) UpdateQuery(cloudAccountID uuid.UUID, updateParams ExoUpdateParams) (string, any) {
+	return updateAwsExocomputeConfigsQuery, struct {
+		ID     uuid.UUID       `json:"cloudAccountId"`
+		Config ExoUpdateParams `json:"configs"`
+	}{ID: cloudAccountID, Config: updateParams}
+}
+
+func (r ExoUpdateResult) Validate() (uuid.UUID, error) {
+	if len(r.Configs) != 1 {
+		return uuid.Nil, errors.New("expected a single update result")
+	}
+	if msg := r.Configs[0].Message; msg != "" {
+		return uuid.Nil, errors.New(msg)
+	}
+	id, err := uuid.Parse(r.Configs[0].ID)
 	if err != nil {
-		return ExocomputeConfig{}, fmt.Errorf("failed to request updateAwsExocomputeConfigs: %w", err)
-	}
-	a.log.Printf(log.Debug, "updateAwsExocomputeConfigs(%q, %v): %s", cloudAccountID, config, string(buf))
-
-	var payload struct {
-		Data struct {
-			Query struct {
-				Configs []ExocomputeConfig `json:"configs"`
-			} `json:"updateAwsExocomputeConfigs"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return ExocomputeConfig{}, fmt.Errorf("failed to unmarshal updateAwsExocomputeConfigs: %v", err)
-	}
-	if len(payload.Data.Query.Configs) != 1 {
-		return ExocomputeConfig{}, errors.New("expected a single result")
-	}
-	if payload.Data.Query.Configs[0].Message != "" {
-		return ExocomputeConfig{}, errors.New(payload.Data.Query.Configs[0].Message)
+		return uuid.Nil, err
 	}
 
-	return payload.Data.Query.Configs[0], nil
+	return id, nil
 }
 
-// DeleteExocomputeConfig deletes the exocompute config with the specified RSC
-// exocompute config id.
-func (a API) DeleteExocomputeConfig(ctx context.Context, configID uuid.UUID) error {
-	a.log.Print(log.Trace)
+type ExoDeleteResult struct {
+	Status []struct {
+		ID      uuid.UUID `json:"exocomputeConfigId"`
+		Success bool      `json:"success"`
+	} `json:"deletionStatus"`
+}
 
-	buf, err := a.GQL.Request(ctx, deleteAwsExocomputeConfigsQuery, struct {
+func (r ExoDeleteResult) DeleteQuery(configID uuid.UUID) (string, any) {
+	return deleteAwsExocomputeConfigsQuery, struct {
 		IDs []uuid.UUID `json:"configIdsToBeDeleted"`
-	}{IDs: []uuid.UUID{configID}})
-	if err != nil {
-		return fmt.Errorf("failed to request deleteAwsExocomputeConfigs: %w", err)
-	}
-	a.log.Printf(log.Debug, "deleteAwsExocomputeConfigs(%q): %s", configID, string(buf))
+	}{IDs: []uuid.UUID{configID}}
+}
 
-	var payload struct {
-		Data struct {
-			Query struct {
-				Status []struct {
-					ID      uuid.UUID `json:"exocomputeConfigId"`
-					Success bool      `json:"success"`
-				} `json:"deletionStatus"`
-			} `json:"deleteAwsExocomputeConfigs"`
-		} `json:"data"`
+func (r ExoDeleteResult) Validate() (uuid.UUID, error) {
+	if len(r.Status) != 1 {
+		return uuid.Nil, errors.New("expected a single delete result")
 	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal deleteAwsExocomputeConfigs: %v", err)
+	if !r.Status[0].Success {
+		return uuid.Nil, errors.New("failed to delete exocompute config")
 	}
-	if len(payload.Data.Query.Status) != 1 {
-		return errors.New("expected a single result")
+
+	return r.Status[0].ID, nil
+}
+
+type ExoMapResult struct {
+	Success bool `json:"isSuccess"`
+}
+
+func (r ExoMapResult) MapQuery(hostCloudAccountID, appCloudAccountID uuid.UUID) (string, any) {
+	return mapCloudAccountExocomputeAccountQuery, struct {
+		HostCloudAccountID uuid.UUID   `json:"exocomputeCloudAccountId"`
+		AppCloudAccountIDs []uuid.UUID `json:"cloudAccountIds"`
+	}{HostCloudAccountID: hostCloudAccountID, AppCloudAccountIDs: []uuid.UUID{appCloudAccountID}}
+}
+
+func (r ExoMapResult) Validate() error {
+	if !r.Success {
+		return errors.New("failed to map application cloud account")
 	}
-	if !payload.Data.Query.Status[0].Success {
-		return errors.New("delete exocompute config failed")
+
+	return nil
+}
+
+type ExoUnmapResult struct {
+	Success bool `json:"isSuccess"`
+}
+
+func (r ExoUnmapResult) UnmapQuery(appCloudAccountID uuid.UUID) (string, any) {
+	return unmapCloudAccountExocomputeAccountQuery, struct {
+		AppCloudAccountIDs []uuid.UUID `json:"cloudAccountIds"`
+	}{AppCloudAccountIDs: []uuid.UUID{appCloudAccountID}}
+}
+
+func (r ExoUnmapResult) Validate() error {
+	if !r.Success {
+		return errors.New("failed to unmap application cloud account")
 	}
 
 	return nil
@@ -259,69 +248,8 @@ func (a API) StartExocomputeDisableJob(ctx context.Context, nativeID uuid.UUID) 
 	return payload.Data.Result.JobID, nil
 }
 
-// MapCloudAccountExocomputeAccount maps the slice of exocompute application
-// accounts to the specified exocompute host account.
-func (a API) MapCloudAccountExocomputeAccount(ctx context.Context, hostID uuid.UUID, appIDs []uuid.UUID) error {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(ctx, mapCloudAccountExocomputeAccountQuery, struct {
-		HostID uuid.UUID   `json:"exocomputeCloudAccountId"`
-		AppIDs []uuid.UUID `json:"cloudAccountIds"`
-	}{HostID: hostID, AppIDs: appIDs})
-	if err != nil {
-		return fmt.Errorf("failed to request mapCloudAccountExocomputeAccount: %w", err)
-	}
-	a.log.Printf(log.Debug, "mapCloudAccountExocomputeAccount(%q, %v): %s", hostID, appIDs, string(buf))
-
-	var payload struct {
-		Data struct {
-			Result struct {
-				Success bool `json:"isSuccess"`
-			} `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal mapCloudAccountExocomputeAccount: %v", err)
-	}
-	if !payload.Data.Result.Success {
-		return errors.New("")
-	}
-
-	return nil
-}
-
-// UnmapCloudAccountExocomputeAccount unmaps the slice of exocompute application
-// accounts.
-func (a API) UnmapCloudAccountExocomputeAccount(ctx context.Context, appIDs []uuid.UUID) error {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(ctx, unmapCloudAccountExocomputeAccountQuery, struct {
-		AppIDs []uuid.UUID `json:"cloudAccountIds"`
-	}{AppIDs: appIDs})
-	if err != nil {
-		return fmt.Errorf("failed to request unmapCloudAccountExocomputeAccount: %w", err)
-	}
-	a.log.Printf(log.Debug, "unmapCloudAccountExocomputeAccount(%v): %s", appIDs, string(buf))
-
-	var payload struct {
-		Data struct {
-			Result struct {
-				Success bool `json:"isSuccess"`
-			} `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal unmapCloudAccountExocomputeAccount: %v", err)
-	}
-	if !payload.Data.Result.Success {
-		return errors.New("")
-	}
-
-	return nil
-}
-
 // ConnectExocomputeCluster connects the named cluster to specified exocompute
-// configration. The cluster ID and connection command are returned.
+// configuration. The cluster ID and connection command are returned.
 func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, error) {
 	a.log.Print(log.Trace)
 
@@ -349,7 +277,7 @@ func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, c
 	return payload.Data.Result.ID, payload.Data.Result.Command, nil
 }
 
-// DisconnectExocomputeCluster disconnects the exocomptue cluster with the
+// DisconnectExocomputeCluster disconnects the exocompute cluster with the
 // specified ID from RSC.
 func (a API) DisconnectExocomputeCluster(ctx context.Context, clusterID uuid.UUID) error {
 	a.log.Print(log.Trace)

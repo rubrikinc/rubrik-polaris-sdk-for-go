@@ -200,7 +200,7 @@ func ParseRegionsNoValidation(regions []string) []Region {
 	return regs
 }
 
-// API wraps around GraphQL clients to give them the RCS AWS API.
+// API wraps around GraphQL client to give it the RSC AWS API.
 type API struct {
 	Version string // Deprecated: use GQL.DeploymentVersion
 	GQL     *graphql.Client

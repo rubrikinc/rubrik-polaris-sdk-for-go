@@ -1,4 +1,4 @@
-// Copyright 2021 Rubrik, Inc.
+// Copyright 2024 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -36,13 +36,15 @@ import (
 func main() {
 	ctx := context.Background()
 
-	// Load configuration and create client.
+	// Load configuration and create a client.
 	polAccount, err := polaris.DefaultServiceAccount(true)
 	if err != nil {
 		log.Fatal(err)
 	}
 	logger := polaris_log.NewStandardLogger()
-	polaris.SetLogLevelFromEnv(logger)
+	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
+		log.Fatal(err)
+	}
 	client, err := polaris.NewClientWithLogger(polAccount, logger)
 	if err != nil {
 		log.Fatal(err)
@@ -57,12 +59,11 @@ func main() {
 	// Add the AWS default account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	accountID, err := awsClient.AddAccount(ctx, aws.Default(),
-		[]core.Feature{core.FeatureCloudNativeProtection, core.FeatureExocompute}, aws.Regions("us-east-2"))
+	accountID, err := awsClient.AddAccount(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection},
+		aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	fmt.Printf("Account ID: %v\n", accountID)
 
 	// Map the application account to an existing exocompute host account.
@@ -76,20 +77,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	fmt.Printf("Exocompute Host Account: %v\n", hostID)
-
-	// Retrieve the exocompute application accounts for the exocompute host
-	// account.
-	appIDs, err := awsClient.ExocomputeApplicationAccounts(ctx, hostAccountID)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("Exocompute Application Accounts:")
-	for _, appID := range appIDs {
-		fmt.Println(appID)
-	}
 
 	// Unmap the application account from the shared exocompute host account.
 	err = awsClient.UnmapExocompute(ctx, aws.CloudAccountID(accountID))
@@ -98,8 +86,7 @@ func main() {
 	}
 
 	// Remove the AWS account from Polaris.
-	err = awsClient.RemoveAccount(ctx, aws.Default(),
-		[]core.Feature{core.FeatureCloudNativeProtection, core.FeatureExocompute}, false)
+	err = awsClient.RemoveAccount(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection}, false)
 	if err != nil {
 		log.Fatal(err)
 	}

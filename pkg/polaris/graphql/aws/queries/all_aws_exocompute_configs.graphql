@@ -28,9 +28,7 @@ query RubrikPolarisSDKRequest($awsNativeAccountIdOrNamePrefix: String!) {
                 taskchainId
             }
             region
-            ... on AwsCustomerManagedExocomputeConfig {
-                clusterName
-            }
+            message
             ... on AwsRscManagedExocomputeConfig {
                 vpcId
                 clusterSecurityGroupId

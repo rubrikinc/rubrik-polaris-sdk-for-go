@@ -25,63 +25,98 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// ExocomputeConfig represents a single exocompute config.
+// ExocomputeConfig represents a single exocompute configuration.
 type ExocomputeConfig struct {
-	ID       uuid.UUID
-	Region   string
-	SubnetID string
-
-	// When true, Rubrik will manage the security groups.
-	ManagedByRubrik bool
+	ID                    uuid.UUID // Rubrik exocompute configuration ID.
+	Region                string
+	SubnetID              string // Azure subnet ID.
+	ManagedByRubrik       bool   // When true, Rubrik will manage the security groups.
+	PodOverlayNetworkCIDR string
+	PodSubnetID           string            // Azure subnet ID.
+	HealthCheckStatus     HealthCheckStatus // Health status of the exocompute cluster.
 }
 
-// ExoConfigFunc returns an exocompute config initialized from the values
-// passed to the function creating the ExoConfigFunc.
-type ExoConfigFunc func(ctx context.Context) (azure.ExocomputeConfigCreate, error)
+// HealthCheckStatus represents the health status of an exocompute cluster.
+type HealthCheckStatus struct {
+	Status        string
+	FailureReason string
+	LastUpdatedAt string
+	TaskchainID   string
+}
 
-// Managed returns an ExoConfigFunc that initializes an exocompute config with
-// security groups managed by Rubrik using the specified values.
+// ExoConfigFunc returns an ExoCreateParams object initialized from the values
+// passed to the function when creating the ExoConfigFunc.
+type ExoConfigFunc func(ctx context.Context) (azure.ExoCreateParams, error)
+
+// Managed returns an ExoConfigFunc that initializes an ExoCreateParams object
+// with the specified values.
 func Managed(region, subnetID string) ExoConfigFunc {
-	return func(ctx context.Context) (azure.ExocomputeConfigCreate, error) {
-		return azure.ExocomputeConfigCreate{
+	return func(ctx context.Context) (azure.ExoCreateParams, error) {
+		return azure.ExoCreateParams{
+			IsManagedByRubrik: true,
 			Region:            azure.ParseRegionNoValidation(region),
 			SubnetID:          subnetID,
-			IsManagedByRubrik: true,
+		}, nil
+	}
+}
+
+// ManagedWithOverlayNetwork returns an ExoConfigFunc that initializes an
+// ExoCreateParams object with the specified values.
+func ManagedWithOverlayNetwork(region, subnetID, podOverlayNetworkCIDR string) ExoConfigFunc {
+	return func(ctx context.Context) (azure.ExoCreateParams, error) {
+		return azure.ExoCreateParams{
+			IsManagedByRubrik:     true,
+			Region:                azure.ParseRegionNoValidation(region),
+			SubnetID:              subnetID,
+			PodOverlayNetworkCIDR: podOverlayNetworkCIDR,
 		}, nil
 	}
 }
 
 // toExocomputeConfig converts an polaris/graphql/azure exocompute config to an
 // polaris/azure exocompute config.
-func toExocomputeConfig(config azure.ExocomputeConfig) ExocomputeConfig {
+func toExocomputeConfig(configID uuid.UUID, config azure.ExoConfig) ExocomputeConfig {
 	return ExocomputeConfig{
-		ID:              config.ID,
-		Region:          azure.FormatRegion(config.Region),
-		SubnetID:        config.SubnetID,
-		ManagedByRubrik: config.IsManagedByRubrik,
+		ID:                    configID,
+		Region:                azure.FormatRegion(config.Region),
+		SubnetID:              config.SubnetID,
+		ManagedByRubrik:       config.ManagedByRubrik,
+		PodOverlayNetworkCIDR: config.PodOverlayNetworkCIDR,
+		PodSubnetID:           config.PodSubnetID,
+		HealthCheckStatus: HealthCheckStatus{
+			Status:        config.HealthCheckStatus.Status,
+			FailureReason: config.HealthCheckStatus.FailureReason,
+			LastUpdatedAt: config.HealthCheckStatus.LastUpdatedAt,
+			TaskchainID:   config.HealthCheckStatus.TaskchainID,
+		},
 	}
 }
 
 // ExocomputeConfig returns the exocompute config with the specified exocompute
-// config id.
-func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConfig, error) {
+// config ID.
+func (a API) ExocomputeConfig(ctx context.Context, configID uuid.UUID) (ExocomputeConfig, error) {
 	a.log.Print(log.Trace)
 
-	configsForAccounts, err := azure.Wrap(a.client).ExocomputeConfigs(ctx, "")
+	configsForAccounts, err := exocompute.ListConfigurations[azure.ExoConfigsForAccount](ctx, a.client, "")
 	if err != nil {
-		return ExocomputeConfig{}, fmt.Errorf("failed to get exocompute configs: %v", err)
+		return ExocomputeConfig{}, fmt.Errorf("failed to get exocompute configs: %s", err)
 	}
-
 	for _, configsForAccount := range configsForAccounts {
 		for _, config := range configsForAccount.Configs {
-			if config.ID == id {
-				return toExocomputeConfig(config), nil
+			id, err := uuid.Parse(config.ID)
+			if err != nil {
+				return ExocomputeConfig{}, fmt.Errorf("failed to parse exocompute config id: %s", err)
+			}
+			if id == configID {
+				return toExocomputeConfig(id, config), nil
 			}
 		}
 	}
@@ -90,24 +125,27 @@ func (a API) ExocomputeConfig(ctx context.Context, id uuid.UUID) (ExocomputeConf
 }
 
 // ExocomputeConfigs returns all exocompute configs for the account with the
-// specified id.
+// specified ID.
 func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]ExocomputeConfig, error) {
 	a.log.Print(log.Trace)
 
 	nativeID, err := a.toNativeID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get native id: %v", err)
+		return nil, fmt.Errorf("failed to get native id: %s", err)
 	}
 
-	configsForAccounts, err := azure.Wrap(a.client).ExocomputeConfigs(ctx, nativeID.String())
+	configsForAccounts, err := exocompute.ListConfigurations[azure.ExoConfigsForAccount](ctx, a.client, nativeID.String())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get exocompute configs: %v", err)
+		return nil, fmt.Errorf("failed to get exocompute configs: %s", err)
 	}
-
 	var exoConfigs []ExocomputeConfig
 	for _, configsForAccount := range configsForAccounts {
 		for _, config := range configsForAccount.Configs {
-			exoConfigs = append(exoConfigs, toExocomputeConfig(config))
+			id, err := uuid.Parse(config.ID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse exocompute configuration id: %s", err)
+			}
+			exoConfigs = append(exoConfigs, toExocomputeConfig(id, config))
 		}
 	}
 
@@ -121,30 +159,92 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 
 	exoConfig, err := config(ctx)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to lookup exocompute config: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to lookup exocompute config: %s", err)
 	}
 
 	accountID, err := a.toCloudAccountID(ctx, id)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get cloud account id: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to get cloud account id: %s", err)
 	}
 
-	exo, err := azure.Wrap(a.client).AddCloudAccountExocomputeConfigurations(ctx, accountID, exoConfig)
+	exoID, err := exocompute.CreateConfiguration[azure.ExoCreateResult](ctx, a.client, accountID, exoConfig)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to create exocompute config: %v", err)
+		return uuid.Nil, fmt.Errorf("failed to create exocompute config: %s", err)
 	}
 
-	return exo.ID, nil
+	return exoID, nil
 }
 
 // RemoveExocomputeConfig removes the exocompute config with the specified
 // exocompute config id.
-func (a API) RemoveExocomputeConfig(ctx context.Context, id uuid.UUID) error {
+func (a API) RemoveExocomputeConfig(ctx context.Context, configID uuid.UUID) error {
 	a.log.Print(log.Trace)
 
-	err := azure.Wrap(a.client).DeleteCloudAccountExocomputeConfigurations(ctx, id)
+	err := exocompute.DeleteConfiguration[azure.ExoDeleteResult](ctx, a.client, configID)
 	if err != nil {
-		return fmt.Errorf("failed to remove exocompute config: %v", err)
+		return fmt.Errorf("failed to remove exocompute config: %s", err)
+	}
+
+	return nil
+}
+
+// ExocomputeHostAccount returns the exocompute host cloud account ID for the
+// specified application cloud account.
+func (a API) ExocomputeHostAccount(ctx context.Context, appID IdentityFunc) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	appCloudAccountID, err := a.toCloudAccountID(ctx, appID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to get cloud account id: %s", err)
+	}
+
+	mappings, err := exocompute.AllCloudAccountMappings(ctx, a.client, core.CloudVendorAzure)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to get cloud account exocompute mappings: %s", err)
+	}
+	for _, mapping := range mappings {
+		if mapping.AppCloudAccountID == appCloudAccountID {
+			return mapping.HostCloudAccountID, nil
+		}
+	}
+
+	return uuid.Nil, fmt.Errorf("exocompute account %w", graphql.ErrNotFound)
+}
+
+// MapExocompute maps the exocompute application cloud account to the specified
+// host cloud account.
+func (a API) MapExocompute(ctx context.Context, hostID IdentityFunc, appID IdentityFunc) error {
+	a.log.Print(log.Trace)
+
+	hostCloudAccountID, err := a.toCloudAccountID(ctx, hostID)
+	if err != nil {
+		return fmt.Errorf("failed to get cloud account id: %s", err)
+	}
+
+	appCloudAccountID, err := a.toCloudAccountID(ctx, appID)
+	if err != nil {
+		return fmt.Errorf("failed to get cloud account id: %s", err)
+	}
+
+	if err := exocompute.MapCloudAccount[azure.ExoMapResult](ctx, a.client, hostCloudAccountID, appCloudAccountID); err != nil {
+		return fmt.Errorf("failed to map exocompute config: %s", err)
+	}
+
+	return nil
+}
+
+// UnmapExocompute unmaps the exocompute application cloud account with the
+// specified cloud account ID.
+func (a API) UnmapExocompute(ctx context.Context, appID IdentityFunc) error {
+	a.log.Print(log.Trace)
+
+	appCloudAccountID, err := a.toCloudAccountID(ctx, appID)
+	if err != nil {
+		return fmt.Errorf("failed to get cloud account id: %s", err)
+	}
+
+	if err := exocompute.UnmapCloudAccount[azure.ExoUnmapResult](ctx, a.client, appCloudAccountID); err != nil {
+		return fmt.Errorf("failed to unmap exocompute config: %s", err)
 	}
 
 	return nil
