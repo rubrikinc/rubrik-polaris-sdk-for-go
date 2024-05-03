@@ -178,11 +178,11 @@ func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID,
 		}
 
 		// Validate security groups.
-		if hasSecurityGroup(vpc, clusterSecurityGroupID) {
+		if !hasSecurityGroup(vpc, clusterSecurityGroupID) {
 			return aws.ExocomputeConfigCreate{},
 				fmt.Errorf("invalid cluster security group id: %v", clusterSecurityGroupID)
 		}
-		if hasSecurityGroup(vpc, nodeSecurityGroupID) {
+		if !hasSecurityGroup(vpc, nodeSecurityGroupID) {
 			return aws.ExocomputeConfigCreate{},
 				fmt.Errorf("invalid node security group id: %v", nodeSecurityGroupID)
 		}
