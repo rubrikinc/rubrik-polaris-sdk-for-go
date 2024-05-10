@@ -53,7 +53,7 @@ func main() {
 	azureClient := azure.Wrap(client)
 
 	// List Azure permissions needed for the Cloud Native Protection feature.
-	perms, err := azureClient.ScopedPermissions(ctx, core.FeatureCloudNativeProtection)
+	perms, permGroups, err := azureClient.ScopedPermissions(ctx, core.FeatureCloudNativeProtection)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -84,5 +84,10 @@ func main() {
 	}
 	for _, perm := range perms[azure.ScopeResourceGroup].NotDataActions {
 		fmt.Println(perm)
+	}
+
+	fmt.Println("Permission groups available for Cloud Native Protection:")
+	for _, permGroup := range permGroups {
+		fmt.Printf("Permission group %s: %d\n", permGroup.Name, permGroup.Version)
 	}
 }
