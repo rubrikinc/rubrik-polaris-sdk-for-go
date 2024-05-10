@@ -1,6 +1,6 @@
 //go:generate go run ../queries_gen.go exocompute
 
-// Copyright 2021 Rubrik, Inc.
+// Copyright 2024 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -65,8 +65,7 @@ func ListConfigurations[Result ListResult](ctx context.Context, gql *graphql.Cli
 	return payload.Data.Result, nil
 }
 
-// CreateParams represents the valid type parameters for a CreateConfiguration
-// call.
+// CreateParams represents the valid type parameters for a create operation.
 type CreateParams interface {
 	aws.ExoCreateParams | azure.ExoCreateParams
 }
@@ -106,12 +105,12 @@ func CreateConfiguration[Result CreateResult[Params], Params CreateParams](ctx c
 	return id, nil
 }
 
-// UpdateParams represents the valid type parameters for an UpdateConfiguration
-// call.
+// UpdateParams represents the valid type parameters for an update operation.
 type UpdateParams interface {
 	aws.ExoUpdateParams
 }
 
+// UpdateResult represents the result of an update operation.
 type UpdateResult[Params UpdateParams] interface {
 	UpdateQuery(cloudAccountID uuid.UUID, updateParams Params) (string, any)
 	Validate() (uuid.UUID, error)
@@ -178,7 +177,7 @@ func DeleteConfiguration[Result DeleteResult](ctx context.Context, gql *graphql.
 		return graphql.ResponseError(query, err)
 	}
 	if id != configID {
-		return graphql.ResponseError(query, errors.New("deleted config ID does not match requested"))
+		return graphql.ResponseError(query, errors.New("response ID does not match request ID"))
 	}
 
 	return nil

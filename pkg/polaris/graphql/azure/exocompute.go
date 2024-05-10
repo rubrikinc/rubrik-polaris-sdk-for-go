@@ -60,8 +60,8 @@ type ExoConfig struct {
 	} `json:"healthCheckStatus"`
 }
 
-// ExoCreateParams holds the parameters for an exocompute configuration to be
-// created by RSC.
+// ExoCreateParams represents the parameters required to create an Azure
+// exocompute configuration.
 type ExoCreateParams struct {
 	Region                Region `json:"region"`
 	SubnetID              string `json:"subnetNativeId"`
@@ -70,6 +70,8 @@ type ExoCreateParams struct {
 	PodSubnetID           string `json:"podSubnetNativeId,omitempty"`
 }
 
+// ExoCreateResult represents the result of creating an Azure exocompute
+// configuration.
 type ExoCreateResult struct {
 	Configs []ExoConfig `json:"configs"`
 }
@@ -96,6 +98,8 @@ func (r ExoCreateResult) Validate() (uuid.UUID, error) {
 	return id, nil
 }
 
+// ExoDeleteResult represents the result of deleting an Azure exocompute
+// configuration.
 type ExoDeleteResult struct {
 	FailIDs    []uuid.UUID `json:"deletionFailedIds"`
 	SuccessIDs []uuid.UUID `json:"deletionSuccessIds"`
@@ -118,6 +122,8 @@ func (r ExoDeleteResult) Validate() (uuid.UUID, error) {
 	return r.SuccessIDs[0], nil
 }
 
+// ExoMapResult represents the result of mapping an Azure application cloud
+// account to an Azure host cloud account.
 type ExoMapResult struct {
 	Success bool `json:"isSuccess"`
 }
@@ -137,6 +143,8 @@ func (r ExoMapResult) Validate() error {
 	return nil
 }
 
+// ExoUnmapResult represents the result of unmapping an Azure application cloud
+// account.
 type ExoUnmapResult struct {
 	Success bool `json:"isSuccess"`
 }

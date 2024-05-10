@@ -85,8 +85,8 @@ type Subnet struct {
 	AvailabilityZone string `json:"availabilityZone"`
 }
 
-// ExoCreateParams holds the parameters for an exocompute config to be created
-// by Polaris.
+// ExoCreateParams represents the parameters required to create an AWS
+// exocompute configuration.
 type ExoCreateParams struct {
 	Region Region `json:"region"`
 
@@ -103,6 +103,8 @@ type ExoCreateParams struct {
 	NodeSecurityGroupId    string `json:"nodeSecurityGroupId,omitempty"`
 }
 
+// ExoCreateResult represents the result of creating an AWS exocompute
+// configuration.
 type ExoCreateResult struct {
 	Configs []ExoConfig `json:"exocomputeConfigs"`
 }
@@ -129,8 +131,12 @@ func (r ExoCreateResult) Validate() (uuid.UUID, error) {
 	return id, nil
 }
 
+// ExoUpdateParams represents the parameters required to update an AWS
+// exocompute configuration.
 type ExoUpdateParams ExoCreateParams
 
+// ExoUpdateResult represents the result of updating an AWS exocompute
+// configuration.
 type ExoUpdateResult ExoCreateResult
 
 func (r ExoUpdateResult) UpdateQuery(cloudAccountID uuid.UUID, updateParams ExoUpdateParams) (string, any) {
@@ -155,6 +161,8 @@ func (r ExoUpdateResult) Validate() (uuid.UUID, error) {
 	return id, nil
 }
 
+// ExoDeleteResult represents the result of deleting an AWS exocompute
+// configuration.
 type ExoDeleteResult struct {
 	Status []struct {
 		ID      uuid.UUID `json:"exocomputeConfigId"`
@@ -179,6 +187,8 @@ func (r ExoDeleteResult) Validate() (uuid.UUID, error) {
 	return r.Status[0].ID, nil
 }
 
+// ExoMapResult represents the result of mapping an AWS application cloud
+// account to an AWS host cloud account.
 type ExoMapResult struct {
 	Success bool `json:"isSuccess"`
 }
@@ -198,6 +208,8 @@ func (r ExoMapResult) Validate() error {
 	return nil
 }
 
+// ExoUnmapResult represents the result of unmapping an AWS application cloud
+// account.
 type ExoUnmapResult struct {
 	Success bool `json:"isSuccess"`
 }
@@ -248,7 +260,7 @@ func (a API) StartExocomputeDisableJob(ctx context.Context, nativeID uuid.UUID) 
 	return payload.Data.Result.JobID, nil
 }
 
-// ConnectExocomputeCluster connects the named cluster to specified exocompute
+// ConnectExocomputeCluster connects the named cluster to a specified exocompute
 // configuration. The cluster ID and connection command are returned.
 func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, error) {
 	a.log.Print(log.Trace)
