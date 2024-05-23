@@ -51,7 +51,7 @@ func Name(name string) OptionFunc {
 // instance.
 func Region(region string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
-		opts.regions = append(opts.regions, azure.ParseRegionNoValidation(region))
+		opts.regions = append(opts.regions, azure.RegionFromName(region))
 		return nil
 	}
 }
@@ -66,7 +66,7 @@ func Regions(regions ...string) OptionFunc {
 		}
 
 		for _, r := range regions {
-			region := azure.ParseRegionNoValidation(r)
+			region := azure.RegionFromName(r)
 			if _, ok := set[region]; !ok {
 				opts.regions = append(opts.regions, region)
 				set[region] = struct{}{}
@@ -93,7 +93,7 @@ func ResourceGroup(name, region string, tags map[string]string) OptionFunc {
 		opts.resourceGroup = &azure.ResourceGroup{
 			Name:    name,
 			TagList: azure.TagList{Tags: tagList},
-			Region:  azure.ParseRegionNoValidation(region),
+			Region:  azure.RegionFromName(region).ToCloudAccountRegionEnum(),
 		}
 		return nil
 	}
@@ -121,7 +121,7 @@ func ManagedIdentity(name, resourceGroup, principalID, region string) OptionFunc
 			Name:              name,
 			ResourceGroupName: resourceGroup,
 			PrincipalID:       principalID,
-			Region:            azure.ParseRegionNoValidation(region),
+			Region:            azure.RegionFromName(region).ToCloudAccountRegionEnum(),
 		}
 		return nil
 	}

@@ -148,9 +148,15 @@ func (a API) CreateStorageSetting(ctx context.Context, id IdentityFunc, name, re
 		return uuid.Nil, err
 	}
 
-	saRegion := azure.RegionUnknown
-	if storageAccountRegion != "" && storageAccountRegion != "UNKNOWN_AZURE_REGION" {
-		saRegion = azure.ParseRegionNoValidation(storageAccountRegion)
+	var storageAccountRegionEnum *azure.RegionEnum
+	saRegion := azure.RegionFromName(storageAccountRegion)
+	if saRegion != azure.RegionUnknown {
+		regionEnum := saRegion.ToRegionEnum()
+		storageAccountRegionEnum = &regionEnum
+	}
+	locTemplate := "SPECIFIC_REGION"
+	if storageAccountRegionEnum == nil {
+		locTemplate = "SOURCE_REGION"
 	}
 
 	var tags *struct {
@@ -165,17 +171,12 @@ func (a API) CreateStorageSetting(ctx context.Context, id IdentityFunc, name, re
 		}
 	}
 
-	locTemplate := "SPECIFIC_REGION"
-	if saRegion == azure.RegionUnknown {
-		locTemplate = "SOURCE_REGION"
-	}
-
 	keys := make([]azure.CustomerKey, 0, len(customerKeys))
 	for _, key := range customerKeys {
 		keys = append(keys, azure.CustomerKey{
 			KeyName:      key.Name,
 			KeyVaultName: key.VaultName,
-			Region:       azure.ParseRegionNoValidation(key.Region),
+			Region:       azure.RegionFromName(key.Region).ToRegionEnum(),
 		})
 	}
 
@@ -187,7 +188,7 @@ func (a API) CreateStorageSetting(ctx context.Context, id IdentityFunc, name, re
 			StorageTier:          storageTier,
 			NativeID:             cloudAccountID,
 			StorageAccountName:   storageAccountName,
-			StorageAccountRegion: saRegion,
+			StorageAccountRegion: storageAccountRegionEnum,
 			StorageAccountTags:   tags,
 			CMKInfo:              keys,
 		})
@@ -214,7 +215,7 @@ func (a API) UpdateStorageSetting(ctx context.Context, targetMappingID uuid.UUID
 		keys = append(keys, azure.CustomerKey{
 			KeyName:      key.Name,
 			KeyVaultName: key.VaultName,
-			Region:       azure.ParseRegionNoValidation(key.Region),
+			Region:       azure.RegionFromName(key.Region).ToRegionEnum(),
 		})
 	}
 
@@ -241,16 +242,11 @@ func toTargetMapping(target azure.TargetMapping) TargetMapping {
 		tags[tag.Key] = tag.Value
 	}
 
-	region := ""
-	if target.TargetTemplate.CloudNativeCompanion.StorageAccountRegion != azure.RegionUnknown {
-		region = azure.FormatRegion(target.TargetTemplate.CloudNativeCompanion.StorageAccountRegion)
-	}
-
 	keys := make([]CustomerKey, 0, len(target.TargetTemplate.CloudNativeCompanion.CMKInfo))
 	for _, key := range target.TargetTemplate.CloudNativeCompanion.CMKInfo {
 		keys = append(keys, CustomerKey{
 			Name:      key.KeyName,
-			Region:    azure.FormatRegion(key.Region),
+			Region:    key.Region.Name(),
 			VaultName: key.KeyVaultName,
 		})
 	}
@@ -263,7 +259,7 @@ func toTargetMapping(target azure.TargetMapping) TargetMapping {
 		ConnectionStatus:     target.ConnectionStatus.Status,
 		ContainerName:        target.TargetTemplate.ContainerNamePrefix,
 		StorageAccountName:   target.TargetTemplate.StorageAccountName,
-		StorageAccountRegion: region,
+		StorageAccountRegion: target.TargetTemplate.CloudNativeCompanion.StorageAccountRegion.Name(),
 		StorageAccountTags:   tags,
 		LocTemplate:          target.TargetTemplate.CloudNativeCompanion.LocTemplate,
 		Redundancy:           target.TargetTemplate.CloudNativeCompanion.Redundancy,

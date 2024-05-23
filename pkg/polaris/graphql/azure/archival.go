@@ -63,7 +63,7 @@ type TargetMapping struct {
 			Redundancy           string        `json:"redundancy"`
 			StorageTier          string        `json:"storageTier"`
 			NativeID             uuid.UUID     `json:"subscriptionNativeId"`
-			StorageAccountRegion Region        `json:"storageAccountRegion"`
+			StorageAccountRegion RegionEnum    `json:"storageAccountRegion"`
 			StorageAccountTags   []Tag         `json:"storageAccountTags"`
 			CMKInfo              []CustomerKey `json:"cmkInfo"`
 		} `json:"cloudNativeCompanion"`
@@ -81,14 +81,14 @@ func (TargetMapping) ListQuery(filters []TargetMappingFilter) (string, any) {
 // Azure storage setting. Note, the API ignores the ContainerName field and
 // generates its own name.
 type StorageSettingCreateParams struct {
-	LocTemplate          string    `json:"cloudNativeLocTemplateType"`
-	ContainerName        string    `json:"containerName"`
-	Name                 string    `json:"name"`
-	Redundancy           string    `json:"redundancy"`
-	StorageTier          string    `json:"storageTier"`
-	NativeID             uuid.UUID `json:"subscriptionNativeId"`
-	StorageAccountName   string    `json:"storageAccountName"`
-	StorageAccountRegion Region    `json:"storageAccountRegion,omitempty"`
+	LocTemplate          string      `json:"cloudNativeLocTemplateType"`
+	ContainerName        string      `json:"containerName"`
+	Name                 string      `json:"name"`
+	Redundancy           string      `json:"redundancy"`
+	StorageTier          string      `json:"storageTier"`
+	NativeID             uuid.UUID   `json:"subscriptionNativeId"`
+	StorageAccountName   string      `json:"storageAccountName"`
+	StorageAccountRegion *RegionEnum `json:"storageAccountRegion,omitempty"`
 	StorageAccountTags   *struct {
 		TagList []Tag `json:"tagList"`
 	} `json:"storageAccountTags,omitempty"`
@@ -143,7 +143,7 @@ func (r StorageSettingUpdateResult) Validate() (uuid.UUID, error) {
 // CustomerKey represents the customer managed key information required for
 // encryption of Azure storage.
 type CustomerKey struct {
-	KeyName      string `json:"keyName"`
-	KeyVaultName string `json:"keyVaultName"`
-	Region       Region `json:"region"`
+	KeyName      string     `json:"keyName"`
+	KeyVaultName string     `json:"keyVaultName"`
+	Region       RegionEnum `json:"region"`
 }

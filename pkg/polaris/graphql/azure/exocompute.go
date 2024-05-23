@@ -29,10 +29,10 @@ import (
 // ExoConfigsForAccount holds all exocompute configurations for a specific
 // account.
 type ExoConfigsForAccount struct {
-	Account         CloudAccount `json:"azureCloudAccount"`
-	Configs         []ExoConfig  `json:"configs"`
-	EligibleRegions []string     `json:"exocomputeEligibleRegions"`
-	Feature         Feature      `json:"featureDetails"`
+	Account         CloudAccount             `json:"azureCloudAccount"`
+	Configs         []ExoConfig              `json:"configs"`
+	EligibleRegions []CloudAccountRegionEnum `json:"exocomputeEligibleRegions"`
+	Feature         Feature                  `json:"featureDetails"`
 }
 
 func (r ExoConfigsForAccount) ListQuery(filter string) (string, any) {
@@ -43,13 +43,13 @@ func (r ExoConfigsForAccount) ListQuery(filter string) (string, any) {
 
 // ExoConfig represents a single exocompute configuration.
 type ExoConfig struct {
-	ID                    string `json:"configUuid"`
-	Region                Region `json:"region"`
-	SubnetID              string `json:"subnetNativeId"`
-	Message               string `json:"message"`
-	ManagedByRubrik       bool   `json:"isRscManaged"` // When true, Rubrik will manage the security groups.
-	PodOverlayNetworkCIDR string `json:"podOverlayNetworkCidr"`
-	PodSubnetID           string `json:"podSubnetNativeId"`
+	ID                    string                 `json:"configUuid"`
+	Region                CloudAccountRegionEnum `json:"region"`
+	SubnetID              string                 `json:"subnetNativeId"`
+	Message               string                 `json:"message"`
+	ManagedByRubrik       bool                   `json:"isRscManaged"` // When true, Rubrik will manage the security groups.
+	PodOverlayNetworkCIDR string                 `json:"podOverlayNetworkCidr"`
+	PodSubnetID           string                 `json:"podSubnetNativeId"`
 
 	// HealthCheckStatus represents the health status of an exocompute cluster.
 	HealthCheckStatus struct {
@@ -63,11 +63,11 @@ type ExoConfig struct {
 // ExoCreateParams represents the parameters required to create an Azure
 // exocompute configuration.
 type ExoCreateParams struct {
-	Region                Region `json:"region"`
-	SubnetID              string `json:"subnetNativeId"`
-	IsManagedByRubrik     bool   `json:"isRscManaged"` // When true, Rubrik will manage the security groups.
-	PodOverlayNetworkCIDR string `json:"podOverlayNetworkCidr,omitempty"`
-	PodSubnetID           string `json:"podSubnetNativeId,omitempty"`
+	Region                CloudAccountRegionEnum `json:"region"`
+	SubnetID              string                 `json:"subnetNativeId"`
+	IsManagedByRubrik     bool                   `json:"isRscManaged"` // When true, Rubrik will manage the security groups.
+	PodOverlayNetworkCIDR string                 `json:"podOverlayNetworkCidr,omitempty"`
+	PodSubnetID           string                 `json:"podSubnetNativeId,omitempty"`
 }
 
 // ExoCreateResult represents the result of creating an Azure exocompute

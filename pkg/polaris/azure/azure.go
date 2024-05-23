@@ -397,7 +397,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 	}
 
 	// Cloud Native Archival should not be disabled, just removed.
-	if !feature.Equal(core.FeatureCloudNativeArchival) && account.Features[0].Status != core.StatusDisabled {
+	if !feature.Equal(core.FeatureCloudNativeArchival) && !feature.Equal(core.FeatureCloudNativeArchivalEncryption) && account.Features[0].Status != core.StatusDisabled {
 		jobID, err := azure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, feature)
 		if err != nil {
 			return fmt.Errorf("failed to disable subscription feature %q: %v", feature, err)
@@ -464,7 +464,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 
 		var remove []azure.Region
 		for _, region := range accountFeature.Regions {
-			reg := azure.ParseRegionNoValidation(region)
+			reg := azure.RegionFromName(region)
 			if _, ok := regions[reg]; ok {
 				delete(regions, reg)
 			} else {
@@ -562,15 +562,19 @@ func toSubscriptions(rawTenants []azure.CloudAccountTenant) []CloudAccount {
 				for _, tag := range rawAccount.Feature.ResourceGroup.Tags {
 					tags[tag.Key] = tag.Value
 				}
+				regions := make([]string, 0, len(rawAccount.Feature.Regions))
+				for _, region := range rawAccount.Feature.Regions {
+					regions = append(regions, region.Name())
+				}
 				account.Features = append(account.Features, Feature{
 					Feature: feature,
 					ResourceGroup: FeatureResourceGroup{
 						Name:     rawAccount.Feature.ResourceGroup.Name,
 						NativeID: rawAccount.Feature.ResourceGroup.NativeID,
 						Tags:     tags,
-						Region:   azure.FormatRegion(rawAccount.Feature.ResourceGroup.Region),
+						Region:   rawAccount.Feature.ResourceGroup.Region.Name(),
 					},
-					Regions: azure.FormatRegions(rawAccount.Feature.Regions),
+					Regions: regions,
 					Status:  rawAccount.Feature.Status,
 					UserAssignedManagedIdentity: FeatureUserAssignedManagedIdentity{
 						Name:        rawAccount.Feature.UserAssignedManagedIdentity.Name,
