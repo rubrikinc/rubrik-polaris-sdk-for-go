@@ -21,6 +21,7 @@
 package azure
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -52,6 +53,14 @@ type Permissions struct {
 	NotDataActions []string
 }
 
+// PermissionGroupWithVersion represents a permission group with a specific
+// version.
+type PermissionGroupWithVersion struct {
+	Name    string
+	Version int
+}
+
+// Note, permissions must be sorted in alphabetical order.
 func (p *Permissions) addPermissions(perm Permissions) {
 	p.Actions = append(p.Actions, perm.Actions...)
 	slices.Sort(p.Actions)
@@ -82,14 +91,16 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 	return scopedPerms[ScopeLegacy], nil
 }
 
-// ScopedPermissions returns the legacy, the subscription and the resource group
-// permissions required for specified RSC feature.
-func (a API) ScopedPermissions(ctx context.Context, feature core.Feature) ([]Permissions, error) {
+// ScopedPermissions returns the permissions and permission groups for the
+// specified RSC feature. The Permissions return value always contains three
+// items representing the different permission scopes: legacy, subscription and
+// resource group.
+func (a API) ScopedPermissions(ctx context.Context, feature core.Feature) ([]Permissions, []PermissionGroupWithVersion, error) {
 	a.client.Log().Print(log.Trace)
 
 	permConfig, err := azure.Wrap(a.client).CloudAccountPermissionConfig(ctx, feature)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get permissions: %s", err)
+		return nil, nil, fmt.Errorf("failed to get permissions: %s", err)
 	}
 
 	scopedPerms := make([]Permissions, 3)
@@ -119,7 +130,20 @@ func (a API) ScopedPermissions(ctx context.Context, feature core.Feature) ([]Per
 	scopedPerms[ScopeLegacy].addPermissions(scopedPerms[ScopeSubscription])
 	scopedPerms[ScopeLegacy].addPermissions(scopedPerms[ScopeResourceGroup])
 
-	return scopedPerms, nil
+	// Permission groups. Note, permissions groups must be sorted in
+	// alphabetical order.
+	permGroups := make([]PermissionGroupWithVersion, 0, len(permConfig.PermissionGroupVersions))
+	for _, permissionGroup := range permConfig.PermissionGroupVersions {
+		permGroups = append(permGroups, PermissionGroupWithVersion{
+			Name:    permissionGroup.PermissionGroup,
+			Version: permissionGroup.Version,
+		})
+	}
+	slices.SortFunc(permGroups, func(i, j PermissionGroupWithVersion) int {
+		return cmp.Compare(i.Name, j.Name)
+	})
+
+	return scopedPerms, permGroups, nil
 }
 
 // ScopedPermissionsForFeatures returns the scoped permissions for a feature
@@ -130,7 +154,7 @@ func (a API) ScopedPermissionsForFeatures(ctx context.Context, features []core.F
 
 	scopedPerms := make([]Permissions, 3)
 	for _, feature := range features {
-		scopedPermsForFeature, err := a.ScopedPermissions(ctx, feature)
+		scopedPermsForFeature, _, err := a.ScopedPermissions(ctx, feature)
 		if err != nil {
 			return nil, err
 		}

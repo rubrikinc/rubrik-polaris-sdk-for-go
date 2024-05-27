@@ -362,6 +362,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 
 	cloudAccountFeature := azure.CloudAccountFeature{
 		PolicyVersion:       perms.PermissionVersion,
+		PermissionGroups:    perms.PermissionGroupVersions,
 		FeatureType:         feature.Name,
 		ResourceGroup:       options.resourceGroup,
 		FeatureSpecificInfo: options.featureSpecificInfo,

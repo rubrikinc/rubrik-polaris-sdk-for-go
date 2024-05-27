@@ -108,10 +108,18 @@ type UserAssignedManagedIdentity struct {
 // CloudAccountFeature holds the information for a particular feature when it's
 // onboarded.
 type CloudAccountFeature struct {
-	PolicyVersion       int                  `json:"policyVersion"`
-	ResourceGroup       *ResourceGroup       `json:"resourceGroup,omitempty"`
-	FeatureType         string               `json:"featureType"`
-	FeatureSpecificInfo *FeatureSpecificInfo `json:"specificFeatureInput,omitempty"`
+	PolicyVersion       int                          `json:"policyVersion"`
+	PermissionGroups    []PermissionGroupWithVersion `json:"permissionsGroups,omitempty"`
+	ResourceGroup       *ResourceGroup               `json:"resourceGroup,omitempty"`
+	FeatureType         string                       `json:"featureType"`
+	FeatureSpecificInfo *FeatureSpecificInfo         `json:"specificFeatureInput,omitempty"`
+}
+
+// PermissionGroupWithVersion represents a permission group, and its version
+// for a particular feature.
+type PermissionGroupWithVersion struct {
+	PermissionGroup string `json:"permissionsGroup"`
+	Version         int    `json:"version"`
 }
 
 // FeatureSpecificInfo represents feature specific information.
@@ -296,11 +304,8 @@ func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.
 // the Azure role for the subscription. ExcludedActions refers to actions which
 // should be explicitly disallowed on the Azure role for the subscription.
 type PermissionConfig struct {
-	PermissionVersion       int `json:"permissionVersion"`
-	PermissionGroupVersions []struct {
-		PermissionGroup string `json:"permissionsGroup"`
-		Version         int    `json:"version"`
-	} `json:"permissionsGroupVersions"`
+	PermissionVersion            int                          `json:"permissionVersion"`
+	PermissionGroupVersions      []PermissionGroupWithVersion `json:"permissionsGroupVersions"`
 	ResourceGroupRolePermissions []struct {
 		ExcludedActions     []string `json:"excludedActions"`
 		ExcludedDataActions []string `json:"excludedDataActions"`
