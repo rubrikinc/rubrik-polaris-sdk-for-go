@@ -21,6 +21,7 @@
 package azure
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -59,6 +60,7 @@ type PermissionGroupWithVersion struct {
 	Version int
 }
 
+// Note, permissions must be sorted in alphabetical order.
 func (p *Permissions) addPermissions(perm Permissions) {
 	p.Actions = append(p.Actions, perm.Actions...)
 	slices.Sort(p.Actions)
@@ -128,6 +130,8 @@ func (a API) ScopedPermissions(ctx context.Context, feature core.Feature) ([]Per
 	scopedPerms[ScopeLegacy].addPermissions(scopedPerms[ScopeSubscription])
 	scopedPerms[ScopeLegacy].addPermissions(scopedPerms[ScopeResourceGroup])
 
+	// Permission groups. Note, permissions groups must be sorted in
+	// alphabetical order.
 	permGroups := make([]PermissionGroupWithVersion, 0, len(permConfig.PermissionGroupVersions))
 	for _, permissionGroup := range permConfig.PermissionGroupVersions {
 		permGroups = append(permGroups, PermissionGroupWithVersion{
@@ -135,6 +139,9 @@ func (a API) ScopedPermissions(ctx context.Context, feature core.Feature) ([]Per
 			Version: permissionGroup.Version,
 		})
 	}
+	slices.SortFunc(permGroups, func(i, j PermissionGroupWithVersion) int {
+		return cmp.Compare(i.Name, j.Name)
+	})
 
 	return scopedPerms, permGroups, nil
 }
