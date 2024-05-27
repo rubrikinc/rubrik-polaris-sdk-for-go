@@ -29,10 +29,10 @@ import (
 // ExoConfigsForAccount holds all exocompute configurations for a specific
 // account.
 type ExoConfigsForAccount struct {
-	Account         CloudAccount `json:"azureCloudAccount"`
-	Configs         []ExoConfig  `json:"configs"`
-	EligibleRegions []string     `json:"exocomputeEligibleRegions"`
-	Feature         Feature      `json:"featureDetails"`
+	Account         CloudAccount             `json:"azureCloudAccount"`
+	Configs         []ExoConfig              `json:"configs"`
+	EligibleRegions []CloudAccountRegionEnum `json:"exocomputeEligibleRegions"`
+	Feature         Feature                  `json:"featureDetails"`
 }
 
 func (r ExoConfigsForAccount) ListQuery(filter string) (string, any) {
@@ -43,13 +43,13 @@ func (r ExoConfigsForAccount) ListQuery(filter string) (string, any) {
 
 // ExoConfig represents a single exocompute configuration.
 type ExoConfig struct {
-	ID                    string `json:"configUuid"`
-	Region                Region `json:"region"`
-	SubnetID              string `json:"subnetNativeId"`
-	Message               string `json:"message"`
-	ManagedByRubrik       bool   `json:"isRscManaged"` // When true, Rubrik will manage the security groups.
-	PodOverlayNetworkCIDR string `json:"podOverlayNetworkCidr"`
-	PodSubnetID           string `json:"podSubnetNativeId"`
+	ID                    string                 `json:"configUuid"`
+	Region                CloudAccountRegionEnum `json:"region"`
+	SubnetID              string                 `json:"subnetNativeId"`
+	Message               string                 `json:"message"`
+	ManagedByRubrik       bool                   `json:"isRscManaged"` // When true, Rubrik will manage the security groups.
+	PodOverlayNetworkCIDR string                 `json:"podOverlayNetworkCidr"`
+	PodSubnetID           string                 `json:"podSubnetNativeId"`
 
 	// HealthCheckStatus represents the health status of an exocompute cluster.
 	HealthCheckStatus struct {
@@ -60,16 +60,18 @@ type ExoConfig struct {
 	} `json:"healthCheckStatus"`
 }
 
-// ExoCreateParams holds the parameters for an exocompute configuration to be
-// created by RSC.
+// ExoCreateParams represents the parameters required to create an Azure
+// exocompute configuration.
 type ExoCreateParams struct {
-	Region                Region `json:"region"`
-	SubnetID              string `json:"subnetNativeId"`
-	IsManagedByRubrik     bool   `json:"isRscManaged"` // When true, Rubrik will manage the security groups.
-	PodOverlayNetworkCIDR string `json:"podOverlayNetworkCidr,omitempty"`
-	PodSubnetID           string `json:"podSubnetNativeId,omitempty"`
+	Region                CloudAccountRegionEnum `json:"region"`
+	SubnetID              string                 `json:"subnetNativeId"`
+	IsManagedByRubrik     bool                   `json:"isRscManaged"` // When true, Rubrik will manage the security groups.
+	PodOverlayNetworkCIDR string                 `json:"podOverlayNetworkCidr,omitempty"`
+	PodSubnetID           string                 `json:"podSubnetNativeId,omitempty"`
 }
 
+// ExoCreateResult represents the result of creating an Azure exocompute
+// configuration.
 type ExoCreateResult struct {
 	Configs []ExoConfig `json:"configs"`
 }
@@ -96,6 +98,8 @@ func (r ExoCreateResult) Validate() (uuid.UUID, error) {
 	return id, nil
 }
 
+// ExoDeleteResult represents the result of deleting an Azure exocompute
+// configuration.
 type ExoDeleteResult struct {
 	FailIDs    []uuid.UUID `json:"deletionFailedIds"`
 	SuccessIDs []uuid.UUID `json:"deletionSuccessIds"`
@@ -118,6 +122,8 @@ func (r ExoDeleteResult) Validate() (uuid.UUID, error) {
 	return r.SuccessIDs[0], nil
 }
 
+// ExoMapResult represents the result of mapping an Azure application cloud
+// account to an Azure host cloud account.
 type ExoMapResult struct {
 	Success bool `json:"isSuccess"`
 }
@@ -137,6 +143,8 @@ func (r ExoMapResult) Validate() error {
 	return nil
 }
 
+// ExoUnmapResult represents the result of unmapping an Azure application cloud
+// account.
 type ExoUnmapResult struct {
 	Success bool `json:"isSuccess"`
 }

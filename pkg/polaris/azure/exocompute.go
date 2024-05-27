@@ -62,7 +62,7 @@ func Managed(region, subnetID string) ExoConfigFunc {
 	return func(ctx context.Context) (azure.ExoCreateParams, error) {
 		return azure.ExoCreateParams{
 			IsManagedByRubrik: true,
-			Region:            azure.ParseRegionNoValidation(region),
+			Region:            azure.RegionFromName(region).ToCloudAccountRegionEnum(),
 			SubnetID:          subnetID,
 		}, nil
 	}
@@ -74,7 +74,7 @@ func ManagedWithOverlayNetwork(region, subnetID, podOverlayNetworkCIDR string) E
 	return func(ctx context.Context) (azure.ExoCreateParams, error) {
 		return azure.ExoCreateParams{
 			IsManagedByRubrik:     true,
-			Region:                azure.ParseRegionNoValidation(region),
+			Region:                azure.RegionFromName(region).ToCloudAccountRegionEnum(),
 			SubnetID:              subnetID,
 			PodOverlayNetworkCIDR: podOverlayNetworkCIDR,
 		}, nil
@@ -86,7 +86,7 @@ func ManagedWithOverlayNetwork(region, subnetID, podOverlayNetworkCIDR string) E
 func toExocomputeConfig(configID uuid.UUID, config azure.ExoConfig) ExocomputeConfig {
 	return ExocomputeConfig{
 		ID:                    configID,
-		Region:                azure.FormatRegion(config.Region),
+		Region:                config.Region.Name(),
 		SubnetID:              config.SubnetID,
 		ManagedByRubrik:       config.ManagedByRubrik,
 		PodOverlayNetworkCIDR: config.PodOverlayNetworkCIDR,
