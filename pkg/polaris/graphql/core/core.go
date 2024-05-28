@@ -220,7 +220,7 @@ func ParseFeatureNoValidation(feature string) Feature {
 const (
 	// The number of attempts before failing to wait for the Korg job when the
 	// error returned is a 403, objects not authorized.
-	waitAttempts = 20
+	waitAttempts = 50
 )
 
 // Status represents a Polaris cloud account status.
