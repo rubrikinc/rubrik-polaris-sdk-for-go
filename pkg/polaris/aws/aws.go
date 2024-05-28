@@ -399,6 +399,12 @@ func (a API) removeAccount(ctx context.Context, account CloudAccount, features [
 	a.log.Print(log.Trace)
 
 	for _, feature := range features {
+		// For non-CFT onboarded accounts, the Exocompute feature should not be
+		// disabled. It will result in an objects not authorized error.
+		if feature.Equal(core.FeatureExocompute) {
+			continue
+		}
+
 		if err := a.disableFeature(ctx, account, feature, deleteSnapshots); err != nil {
 			return fmt.Errorf("failed to disable native account: %s", err)
 		}
