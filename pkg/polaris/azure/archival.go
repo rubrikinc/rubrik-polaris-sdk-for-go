@@ -28,6 +28,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -143,7 +144,7 @@ func (a API) DeleteTargetMapping(ctx context.Context, id uuid.UUID) error {
 func (a API) CreateStorageSetting(ctx context.Context, id IdentityFunc, name, redundancy, storageTier, storageAccountName, storageAccountRegion string, storageAccountTags map[string]string, customerKeys []CustomerKey) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	cloudAccountID, err := a.toCloudAccountID(ctx, id)
+	cloudAccount, err := a.Subscription(ctx, id, core.FeatureAll)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -181,12 +182,12 @@ func (a API) CreateStorageSetting(ctx context.Context, id IdentityFunc, name, re
 	}
 
 	targetMappingID, err := archival.CreateCloudNativeStorageSetting[azure.StorageSettingCreateResult](ctx, a.client,
-		cloudAccountID, azure.StorageSettingCreateParams{
+		cloudAccount.ID, azure.StorageSettingCreateParams{
 			LocTemplate:          locTemplate,
 			Name:                 name,
 			Redundancy:           redundancy,
 			StorageTier:          storageTier,
-			NativeID:             cloudAccountID,
+			NativeID:             cloudAccount.NativeID,
 			StorageAccountName:   storageAccountName,
 			StorageAccountRegion: storageAccountRegionEnum,
 			StorageAccountTags:   tags,
