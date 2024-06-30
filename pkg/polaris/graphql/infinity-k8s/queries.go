@@ -46,6 +46,26 @@ var activitySeriesQuery = `query SdkGolangActivitySeries(
     }
 }`
 
+// addK8sCluster GraphQL query
+var addK8sClusterQuery = `mutation AddK8sCluster($clusterUuid: String!, $config: K8sClusterAddInput!) {
+  addK8sCluster(input: {clusterUuid: $clusterUuid, config: $config}) {
+    id
+    name
+    registry
+    distribution
+    kuprServerProxyConfig {
+      cert
+      port
+      ipAddress
+    }
+    transport
+    lastRefreshTime
+    region
+    onboardingType
+    status
+  }
+}`
+
 // addK8sProtectionSet GraphQL query
 var addK8sProtectionSetQuery = `mutation SdkGolangAddK8sProtectionSet($config: K8sProtectionSetAddInput!) {
   addK8sProtectionSet(input: {config: $config}) {
@@ -216,6 +236,13 @@ var restoreK8sProtectionSetSnapshotQuery = `mutation SdkGolangRestoreK8sProtecti
     progress
     startTime
     status
+  }
+}`
+
+// updateK8sCluster GraphQL query
+var updateK8sClusterQuery = `mutation UpdateK8sCluster($id: String!, $config: K8sClusterUpdateConfigInput!) {
+  updateK8sCluster(input: {id: $id, config: $config}) {
+    success
   }
 }`
 

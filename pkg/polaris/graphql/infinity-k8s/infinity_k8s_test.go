@@ -19,12 +19,22 @@ import (
 // client is the common RSC client used for tests. By reusing the same client
 // we reduce the risk of hitting rate limits when access tokens are created.
 var (
-	cdmID      = uuid.MustParse("22950e27-9a7d-4ac1-b32d-0d858de01f9e")
-	k8sFID     = uuid.MustParse("ea176753-d4ee-59b0-b770-54f77335abe3")
-	goldSLAFID = uuid.MustParse("34d1f3c4-3521-5747-836e-4345b363175d")
+	cdmID      = uuid.MustParse("e257be55-ebbc-4870-8d84-b57aa61445f3")
+	goldSLAFID = uuid.MustParse("ff5a4d4d-1da0-58c3-a2a9-6aecbcc5c60d")
 	client     *polaris.Client
 	trueValue  = true
 	falseValue = false
+
+	k8sClusterAddWithKubeconfig = infinityk8s.K8sClusterAddInput{
+		Name:         "test-k8s-cluster",
+		Distribution: "vanilla",
+		Kubeconfig:   "<kubeconfig>",
+		Transport:    "loadbalancer",
+	}
+
+	k8sUpdateTransportConfig = infinityk8s.K8sClusterUpdateConfigInput{
+		Transport: "nodeport",
+	}
 )
 
 func TestMain(m *testing.M) {
@@ -69,7 +79,7 @@ func TestMain(m *testing.M) {
 // Needs
 // - RSC service account setup in ~/.rubrik/polaris-service-account.json
 // - CDM onboarded onto above account and its ID.
-// - Onboarded K8s Cluster and its FID.
+// - A valid kubeconfig set in k8sClusterAddWithKubeconfig.Kubeconfig.
 // - Gold SLA fid from RSC cluster. The SLA should be owned by CDM.
 func TestIntegration(t *testing.T) {
 	ctx := context.Background()
@@ -81,6 +91,35 @@ func TestIntegration(t *testing.T) {
 	infinityK8sClient := infinityk8s.Wrap(client)
 	logger := infinityK8sClient.GQL.Log()
 	logger.SetLogLevel(log.Debug)
+
+	// 0. Add K8s Cluster.
+	addK8sResponse, err := infinityK8sClient.AddK8sCluster(
+		ctx,
+		cdmID,
+		k8sClusterAddWithKubeconfig,
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	k8sFID := uuid.MustParse(addK8sResponse.ID)
+	logger.Printf(log.Info, "add k8s cluster succeeded, %+v", addK8sResponse)
+
+	// 0.1 Update K8s Cluster.
+	updateK8sResponse, err := infinityK8sClient.UpdateK8sCluster(
+		ctx,
+		k8sFID,
+		k8sUpdateTransportConfig,
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !updateK8sResponse {
+		t.Error("update k8s cluster failed")
+		return
+	}
+	logger.Printf(log.Info, "update k8s cluster succeeded, %+v", updateK8sResponse)
 
 	// 1. Add ProtectionSet.
 	config := infinityk8s.AddK8sProtectionSetConfig{
@@ -98,10 +137,10 @@ func TestIntegration(t *testing.T) {
 	}
 
 	if addResp.ID == "" {
-		t.Errorf("add failed, %+v", addResp)
+		t.Errorf("add protection set failed, %+v", addResp)
 	}
 
-	logger.Printf(log.Info, "add succeeded, %+v", addResp)
+	logger.Printf(log.Info, "add protection set succeeded, %+v", addResp)
 
 	// 2. Get ProtectionSet.
 	// If we get to this point, addResp.ID should be a valid uuid.
@@ -111,7 +150,7 @@ func TestIntegration(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	logger.Printf(log.Info, "get succeeded, %+v", getResp)
+	logger.Printf(log.Info, "get protection set succeeded, %+v", getResp)
 
 	defer func() {
 		// N + 1. Delete ProtectionSet.
@@ -125,9 +164,9 @@ func TestIntegration(t *testing.T) {
 			return
 		}
 		if delResp != true {
-			t.Errorf("delete failed, %v", delResp)
+			t.Errorf("delete protection set failed, %v", delResp)
 		}
-		logger.Printf(log.Info, "del succeeded, %+v", delResp)
+		logger.Printf(log.Info, "del protection set succeeded, %+v", delResp)
 	}()
 
 	// 2.1 update ProtectionSet.
@@ -143,9 +182,9 @@ func TestIntegration(t *testing.T) {
 		return
 	}
 	if updateResp != true {
-		t.Errorf("update failed, %v", updateResp)
+		t.Errorf("update protection set failed, %v", updateResp)
 	}
-	logger.Printf(log.Info, "update succeeded, %+v", updateResp)
+	logger.Printf(log.Info, "update protection set succeeded, %+v", updateResp)
 
 	// 3. Assign SLA to resource set
 	slaClient := core.Wrap(client.GQL)
@@ -173,7 +212,7 @@ func TestIntegration(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	logger.Printf(log.Info, "get succeeded, %+v", getResp)
+	logger.Printf(log.Info, "get protection set succeeded, %+v", getResp)
 
 	if getResp.EffectiveSLADomain.ID != goldSLAFID.String() {
 		logger.Printf(
