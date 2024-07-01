@@ -26,10 +26,9 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
-
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -408,13 +407,15 @@ func (a API) UnmapExocompute(ctx context.Context, appID IdentityFunc) error {
 }
 
 // AddClusterToExocomputeConfig adds the named cluster to specified exocompute
-// configuration. The cluster ID and connection command are returned.
-func (a API) AddClusterToExocomputeConfig(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, error) {
+// configuration. The cluster ID and two different ways to connect the cluster
+// are returned. The first way to connect the cluster is the kubectl connection
+// command, and the second way is the k8s spec (YAML).
+func (a API) AddClusterToExocomputeConfig(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, []string, error) {
 	a.log.Print(log.Trace)
 
 	clusterID, cmd, err := aws.Wrap(a.client).ConnectExocomputeCluster(ctx, configID, clusterName)
 	if err != nil {
-		return uuid.Nil, "", fmt.Errorf("failed to connect exocompute cluster: %s", err)
+		return uuid.Nil, nil, fmt.Errorf("failed to connect exocompute cluster: %s", err)
 	}
 
 	return clusterID, cmd, nil
