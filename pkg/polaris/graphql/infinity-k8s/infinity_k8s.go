@@ -218,7 +218,68 @@ type ActivitySeries struct {
 	Severity EventSeverity `json:"severity"`
 }
 
-// API wraps around GraphQL clients to give them the RSC Infinity K8s API.
+// EksConfigInput is the input for the EKS config.
+type EksConfigInput struct {
+	CloudAccountId string `json:"cloudAccountId"`
+	EKSClusterArn  string `json:"eksClusterArn"`
+}
+
+// KuprServerProxyConfigInput is the input for the KUPR server proxy config.
+type KuprServerProxyConfigInput struct {
+	Cert      string `json:"cert"`
+	IPAddress string `json:"ipAddress"`
+	Port      int    `json:"port,omitempty"`
+}
+
+// K8sClusterAddInput is the input for adding a K8s cluster.
+type K8sClusterAddInput struct {
+	ID                      string                     `json:"id,omitempty"`
+	Name                    string                     `json:"name"`
+	Distribution            string                     `json:"distribution"`
+	Kubeconfig              string                     `json:"kubeconfig,omitempty"`
+	Transport               string                     `json:"transport,omitempty"`
+	Registry                string                     `json:"registry,omitempty"`
+	PullSecret              string                     `json:"pullSecret,omitempty"`
+	Region                  string                     `json:"region,omitempty"`
+	EKSConfig               EksConfigInput             `json:"eksConfig,omitempty"`
+	ServiceAccountName      string                     `json:"serviceAccountName,omitempty"`
+	AccessToken             string                     `json:"accessToken,omitempty"`
+	ClientId                string                     `json:"clientId,omitempty"`
+	ClientSecret            string                     `json:"clientSecret,omitempty"`
+	IsAutoPsCreationEnabled bool                       `json:"isAutoPsCreationEnabled,omitempty"`
+	OnboardingType          string                     `json:"onboardingType,omitempty"`
+	KuprServerProxyConfig   KuprServerProxyConfigInput `json:"kuprServerProxyConfig,omitempty"`
+}
+
+// K8sClusterSummary is the response for the addK8sCluster query.
+type K8sClusterSummary struct {
+	ID                    string                     `json:"id"`
+	Name                  string                     `json:"name"`
+	Registry              string                     `json:"registry,omitempty"`
+	Distribution          string                     `json:"distribution,omitempty"`
+	KuprServerProxyConfig KuprServerProxyConfigInput `json:"kuprServerProxyConfig,omitempty"`
+	Transport             string                     `json:"transport,omitempty"`
+	LastRefreshTime       time.Time                  `json:"lastRefreshTime,omitempty"`
+	Region                string                     `json:"region,omitempty"`
+	OnboardingType        string                     `json:"onboardingType,omitempty"`
+	Status                string                     `json:"status"`
+}
+
+// K8sClusterUpdateConfigInput is the input for updating a K8s cluster.
+type K8sClusterUpdateConfigInput struct {
+	Kubeconfig              string                     `json:"kubeconfig,omitempty"`
+	Transport               string                     `json:"transport,omitempty"`
+	Registry                string                     `json:"registry,omitempty"`
+	PullSecret              string                     `json:"pullSecret,omitempty"`
+	CloudAccountId          string                     `json:"cloudAccountId,omitempty"`
+	IsAutoPsCreationEnabled bool                       `json:"isAutoPsCreationEnabled,omitempty"`
+	ServiceAccountName      string                     `json:"serviceAccountName,omitempty"`
+	AccessToken             string                     `json:"accessToken,omitempty"`
+	ClientId                string                     `json:"clientId,omitempty"`
+	ClientSecret            string                     `json:"clientSecret,omitempty"`
+	KuprServerProxyConfig   KuprServerProxyConfigInput `json:"kuprServerProxyConfig,omitempty"`
+}
+
 type API struct {
 	GQL *graphql.Client
 	log log.Logger
@@ -703,9 +764,8 @@ func (a API) GetActivitySeries(
 	var ret []ActivitySeries
 	// Currently the pagination is handled within the call, but we may want to
 	// expose that outside the API.
-	for true {
-		var cursor string
-
+	var cursor string
+	for {
 		a.GQL.Log().Print(log.Info, "polaris/graphql/k8s.getActivitySeries")
 		buf, err := a.GQL.Request(
 			ctx,
@@ -802,5 +862,99 @@ func (a API) UpdateK8sProtectionSet(
 		)
 	}
 
+	return payload.Data.ResponseSuccess.Success, nil
+}
+
+// AddK8sCluster adds the K8s cluster for the given config.
+func (a API) AddK8sCluster(
+	ctx context.Context,
+	cdmClusterID uuid.UUID,
+	config K8sClusterAddInput,
+) (K8sClusterSummary, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		addK8sClusterQuery,
+		struct {
+			ClusterUUID string             `json:"clusterUuid"`
+			Config      K8sClusterAddInput `json:"config"`
+		}{
+			ClusterUUID: cdmClusterID.String(),
+			Config:      config,
+		},
+	)
+	if err != nil {
+		return K8sClusterSummary{}, fmt.Errorf(
+			"failed to request addK8sCluster: %w",
+			err,
+		)
+	}
+	a.log.Printf(
+		log.Debug,
+		"addK8sCluster(%s, %q): %s",
+		cdmClusterID.String(),
+		config,
+		string(buf),
+	)
+	var payload struct {
+		Data struct {
+			Response K8sClusterSummary `json:"addK8sCluster"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return K8sClusterSummary{}, fmt.Errorf(
+			"failed to unmarshal addK8sCluster: %v",
+			err,
+		)
+	}
+	return payload.Data.Response, nil
+}
+
+// UpdateK8sCluster updates the K8s cluster for the given config.
+func (a API) UpdateK8sCluster(
+	ctx context.Context,
+	k8sClusterFID uuid.UUID,
+	config K8sClusterUpdateConfigInput,
+) (bool, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		updateK8sClusterQuery,
+		struct {
+			ID     string                      `json:"id"`
+			Config K8sClusterUpdateConfigInput `json:"config"`
+		}{
+			ID:     k8sClusterFID.String(),
+			Config: config,
+		},
+	)
+	if err != nil {
+		return false, fmt.Errorf(
+			"failed to request updateK8sCluster: %w",
+			err,
+		)
+	}
+	a.log.Printf(
+		log.Debug,
+		"updateK8sCluster(%s, %q): %s",
+		k8sClusterFID.String(),
+		config,
+		string(buf),
+	)
+	var payload struct {
+		Data struct {
+			ResponseSuccess struct {
+				Success bool `json:"success"`
+			} `json:"updateK8sCluster"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return false, fmt.Errorf(
+			"failed to unmarshal updateK8sCluster: %v",
+			err,
+		)
+	}
 	return payload.Data.ResponseSuccess.Success, nil
 }
