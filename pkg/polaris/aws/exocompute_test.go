@@ -68,7 +68,8 @@ func TestAwsExocompute(t *testing.T) {
 	}
 
 	// Enable the exocompute feature for the account.
-	exoAccountID, err := awsClient.AddAccount(ctx, Profile(testAccount.Profile), []core.Feature{core.FeatureExocompute},
+	exoAccountID, err := awsClient.AddAccount(ctx, Profile(testAccount.Profile),
+		[]core.Feature{core.FeatureExocompute.WithPermissionGroups(core.PermissionGroupBasic, core.PermissionGroupRSCManagedCluster)},
 		Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
