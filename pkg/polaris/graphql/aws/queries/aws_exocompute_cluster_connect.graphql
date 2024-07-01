@@ -3,6 +3,7 @@ mutation RubrikPolarisSDKRequest($clusterName: String!, $exocomputeConfigId: UUI
         clusterName:        $clusterName,
         exocomputeConfigId: $exocomputeConfigId
     }) {
+        clusterSetupYaml
         clusterUuid
         connectionCommand
     }
