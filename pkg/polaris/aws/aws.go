@@ -496,10 +496,10 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 	switch {
 	case rmFeature.Equal(core.FeatureCloudNativeProtection):
 		return a.disableNativeAccount(ctx, account.ID, aws.EC2, deleteSnapshots)
-
 	case rmFeature.Equal(core.FeatureRDSProtection):
 		return a.disableNativeAccount(ctx, account.ID, aws.RDS, deleteSnapshots)
-
+	case rmFeature.Equal(core.FeatureCloudNativeS3Protection):
+		return a.disableNativeAccount(ctx, account.ID, aws.S3, deleteSnapshots)
 	case rmFeature.Equal(core.FeatureExocompute):
 		jobID, err := aws.Wrap(a.client).StartExocomputeDisableJob(ctx, account.ID)
 		if err != nil {
@@ -513,6 +513,7 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 		if state != core.TaskChainSucceeded {
 			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
 		}
+
 	}
 
 	return nil
