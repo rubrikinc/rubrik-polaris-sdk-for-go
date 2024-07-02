@@ -290,19 +290,19 @@ type TaskChain struct {
 }
 
 // KorgTaskChainStatus returns the task chain for the specified task chain id.
-// If the task chain id refers to a task chain that was just created its state
+// If the task chain id refers to a task chain that was just created, its state
 // might not have reached ready yet. This can be detected by state being
 // TaskChainInvalid and error is nil.
-func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, error) {
+func (a API) KorgTaskChainStatus(ctx context.Context, taskChainID uuid.UUID) (TaskChain, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, getKorgTaskchainStatusQuery, struct {
 		TaskChainID uuid.UUID `json:"taskchainId,omitempty"`
-	}{TaskChainID: id})
+	}{TaskChainID: taskChainID})
 	if err != nil {
 		return TaskChain{}, fmt.Errorf("failed to request getKorgTaskchainStatus: %w", err)
 	}
-	a.log.Printf(log.Debug, "getKorgTaskchainStatus(%q): %s", id, string(buf))
+	a.log.Printf(log.Debug, "getKorgTaskchainStatus(%q): %s", taskChainID, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -312,7 +312,7 @@ func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return TaskChain{}, fmt.Errorf("failed to unmarshal getKorgTaskchainStatus: %v", err)
+		return TaskChain{}, fmt.Errorf("failed to unmarshal getKorgTaskchainStatus: %s", err)
 	}
 
 	return payload.Data.Query.TaskChain, nil
@@ -322,19 +322,19 @@ func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, 
 // chain id has completed. When the task chain completes, the final state of the
 // task chain is returned. The wait parameter specifies the amount of time to
 // wait before requesting another task status update.
-func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Duration) (TaskChainState, error) {
+func (a API) WaitForTaskChain(ctx context.Context, taskChainID uuid.UUID, wait time.Duration) (TaskChainState, error) {
 	a.log.Print(log.Trace)
 
 	attempt := 0
 	for {
-		taskChain, err := a.KorgTaskChainStatus(ctx, id)
+		taskChain, err := a.KorgTaskChainStatus(ctx, taskChainID)
 		if err != nil {
 			var gqlErr graphql.GQLError
 			if !errors.As(err, &gqlErr) || len(gqlErr.Errors) < 1 || gqlErr.Errors[0].Extensions.Code != 403 {
-				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %q: %v", id, err)
+				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %s: %s", taskChainID, err)
 			}
 			if attempt++; attempt > waitAttempts {
-				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %q after %d attempts: %v", id, attempt, err)
+				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %s after %d attempts: %s", taskChainID, attempt, err)
 			}
 			a.log.Printf(log.Debug, "RBAC not ready (attempt: %d)", attempt)
 		}
@@ -343,12 +343,55 @@ func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Durat
 			return taskChain.State, nil
 		}
 
-		a.log.Printf(log.Debug, "Waiting for Polaris task chain: %v", id)
+		a.log.Printf(log.Debug, "Waiting for Polaris task chain: %s", taskChainID)
 
 		select {
 		case <-time.After(wait):
 		case <-ctx.Done():
 			return TaskChainInvalid, ctx.Err()
+		}
+	}
+}
+
+// WaitForFeatureDisableTaskChain waits for the feature disable task chain to
+// finish. If an error occurs while waiting for the task chain or the task chain
+// ends in a failed state, an error is returned.
+func (a API) WaitForFeatureDisableTaskChain(ctx context.Context, taskChainID uuid.UUID, featureStatus func(ctx context.Context) (bool, error)) error {
+	a.log.Print(log.Trace)
+
+	ctx, cancel := context.WithTimeout(ctx, 9*60*time.Second)
+	defer cancel()
+	for {
+		// Check the status of the task chain.
+		taskChain, err := a.KorgTaskChainStatus(ctx, taskChainID)
+		if err != nil {
+			// If the error isn't a 403, objects not authorized, we abort the wait.
+			var gqlErr graphql.GQLError
+			if !errors.As(err, &gqlErr) || len(gqlErr.Errors) < 1 || gqlErr.Errors[0].Extensions.Code != 403 {
+				return fmt.Errorf("failed to retrieve taskchain status: %s", err)
+			}
+
+			// If the task chain RBAC is not yet ready, we fall back to checking
+			// the status of the account feature.
+			if disabled, err := featureStatus(ctx); disabled || err != nil {
+				return err
+			}
+
+			a.log.Printf(log.Debug, "Task chain RBAC not ready")
+		} else {
+			if taskChain.State == TaskChainSucceeded {
+				return nil
+			}
+			if taskChain.State == TaskChainCanceled || taskChain.State == TaskChainFailed {
+				return fmt.Errorf("taskchain failed: task chain state is %s", taskChain.State)
+			}
+		}
+
+		a.log.Printf(log.Debug, "Waiting for task chain: %s", taskChainID)
+		select {
+		case <-time.After(10 * time.Second):
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
 }

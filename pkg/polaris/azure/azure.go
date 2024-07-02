@@ -29,7 +29,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
@@ -386,35 +385,70 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 	return account.ID, nil
 }
 
-// RemoveSubscription removes the subscription with the specified ID from RSC.
-// If deleteSnapshots is true, the snapshots are deleted otherwise they are
-// kept.
+// RemoveSubscription removes the RSC feature from the subscription with the
+// specified id.
+//
+// If a cloud native protection feature is being removed and deleteSnapshots is
+// true, the snapshots are deleted otherwise they are kept.
 func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature core.Feature, deleteSnapshots bool) error {
 	a.log.Print(log.Trace)
 
 	account, err := a.Subscription(ctx, id, feature)
 	if err != nil {
-		return fmt.Errorf("failed to get subscription: %w", err)
+		return fmt.Errorf("failed to retrieve subscription: %w", err)
 	}
 
-	// Cloud Native Archival should not be disabled, just removed.
-	if !feature.Equal(core.FeatureCloudNativeArchival) && !feature.Equal(core.FeatureCloudNativeArchivalEncryption) && account.Features[0].Status != core.StatusDisabled {
-		jobID, err := azure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, feature)
-		if err != nil {
-			return fmt.Errorf("failed to disable subscription feature %q: %v", feature, err)
-		}
-		state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
-		if err != nil {
-			return fmt.Errorf("failed to wait for task chain: %v", err)
-		}
-		if state != core.TaskChainSucceeded {
-			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
-		}
+	if err := a.disableFeature(ctx, account, feature, deleteSnapshots); err != nil {
+		return fmt.Errorf("failed to disable subscripition feature %s: %s", feature, err)
 	}
 
 	err = azure.Wrap(a.client).DeleteCloudAccountWithoutOAuth(ctx, account.ID, feature)
 	if err != nil {
-		return fmt.Errorf("failed to delete subscription feature %q: %v", feature, err)
+		return fmt.Errorf("failed to delete subscription feature %s: %s", feature, err)
+	}
+
+	return nil
+}
+
+// disableFeature disables the specified subscription feature.
+func (a API) disableFeature(ctx context.Context, account CloudAccount, feature core.Feature, deleteSnapshots bool) error {
+	a.log.Print(log.Trace)
+
+	// If the feature has not been onboarded or the feature is in the disabled
+	// or connecting state, there is no need to disable the feature.
+	if feature, ok := account.Feature(feature); ok {
+		if feature.Status == core.StatusDisabled || feature.Status == core.StatusConnecting {
+			return nil
+		}
+	} else {
+		return nil
+	}
+
+	// The Cloud Native Archival and Cloud Native Archival Encryption features
+	// should not be disabled.
+	if feature.Equal(core.FeatureCloudNativeArchival) || feature.Equal(core.FeatureCloudNativeArchivalEncryption) {
+		return nil
+	}
+
+	jobID, err := azure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, feature)
+	if err != nil {
+		return fmt.Errorf("failed to disable feature %s: %s", feature, err)
+	}
+
+	err = core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
+		account, err := a.Subscription(ctx, CloudAccountID(account.ID), feature)
+		if err != nil {
+			return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
+		}
+
+		feature, ok := account.Feature(feature)
+		if !ok {
+			return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
+		}
+		return feature.Status == core.StatusDisabled, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
 	}
 
 	return nil
