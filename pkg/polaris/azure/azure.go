@@ -435,7 +435,7 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 		return fmt.Errorf("failed to disable feature %s: %s", feature, err)
 	}
 
-	err = core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
+	if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
 		account, err := a.Subscription(ctx, CloudAccountID(account.ID), feature)
 		if err != nil {
 			return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
@@ -446,8 +446,7 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 			return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
 		}
 		return feature.Status == core.StatusDisabled, nil
-	})
-	if err != nil {
+	}); err != nil {
 		return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
 	}
 

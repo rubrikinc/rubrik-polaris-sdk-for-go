@@ -392,7 +392,7 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, features []
 			continue
 		}
 		if err := a.disableFeature(ctx, cloudAccount, feature, deleteSnapshots); err != nil {
-			return fmt.Errorf("failed to disable feature: %s", err)
+			return fmt.Errorf("failed to disable feature %s: %s", feature, err)
 		}
 	}
 
@@ -511,7 +511,7 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 			return fmt.Errorf("failed to disable exocompute feature: %s", err)
 		}
 
-		err = core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
+		if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
 			account, err := a.Account(ctx, CloudAccountID(account.ID), feature)
 			if err != nil {
 				return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
@@ -522,8 +522,7 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 				return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
 			}
 			return feature.Status == core.StatusDisabled, nil
-		})
-		if err != nil {
+		}); err != nil {
 			return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
 		}
 	}
@@ -553,7 +552,7 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 		return fmt.Errorf("failed to disable protection feature %s: %s", protectionFeature, err)
 	}
 
-	err = core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
+	if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
 		account, err := a.Account(ctx, CloudAccountID(cloudAccountID), feature)
 		if err != nil {
 			return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
@@ -564,8 +563,7 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 			return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
 		}
 		return feature.Status == core.StatusDisabled, nil
-	})
-	if err != nil {
+	}); err != nil {
 		return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
 	}
 
