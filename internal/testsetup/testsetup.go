@@ -59,17 +59,28 @@ type testAzureSubscription struct {
 	PrincipalName    string    `json:"principalName"`
 	PrincipalSecret  string    `json:"principalSecret"`
 
-	Exocompute struct {
-		SubnetID string `json:"subnetId"`
-	} `json:"exocompute"`
-
 	// Should be in EastUS2 region for integration test as the region is
 	// hardcoded there.
 	Archival struct {
-		ManagedIdentityName string `json:"managedIdentityName"`
-		PrincipalID         string `json:"managedIdentityPrincipalId"`
-		ResourceGroupName   string `json:"resourceGroupName"`
+		Regions             []string `json:"regions"`
+		ManagedIdentityName string   `json:"managedIdentityName"`
+		PrincipalID         string   `json:"managedIdentityPrincipalId"`
+		ResourceGroupName   string   `json:"resourceGroupName"`
+		ResourceGroupRegion string   `json:"resourceGroupRegion"`
 	} `json:"archival"`
+
+	CloudNativeProtection struct {
+		Regions             []string `json:"regions"`
+		ResourceGroupName   string   `json:"resourceGroupName"`
+		ResourceGroupRegion string   `json:"resourceGroupRegion"`
+	} `json:"cloudNativeProtection"`
+
+	Exocompute struct {
+		Regions             []string `json:"regions"`
+		ResourceGroupName   string   `json:"resourceGroupName"`
+		ResourceGroupRegion string   `json:"resourceGroupRegion"`
+		SubnetID            string   `json:"subnetId"`
+	} `json:"exocompute"`
 }
 
 // AzureSubscription loads test project information from the file pointed to by

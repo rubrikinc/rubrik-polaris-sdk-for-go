@@ -34,8 +34,8 @@ import (
 // TestAzureExocompute verifies that the SDK can perform basic Exocompute
 // operations on a real RSC instance.
 //
-// To run this test against an RSC instance the following environment variables
-// needs to be set:
+// To run this test against an RSC instance, the following environment variables
+// need to be set:
 //   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
 //   - TEST_INTEGRATION=1
 //   - TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
@@ -64,16 +64,23 @@ func TestAzureExocompute(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Add default Azure subscription to RSC.
+	// Add Azure subscription to RSC.
 	subscription := Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
+	cnpRegions := Regions(testSubscription.CloudNativeProtection.Regions...)
+	cnpResourceGroup := ResourceGroup(testSubscription.CloudNativeProtection.ResourceGroupName,
+		testSubscription.CloudNativeProtection.ResourceGroupRegion, nil)
 	accountID, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection,
-		Regions("eastus2"), Name(testSubscription.SubscriptionName))
+		Name(testSubscription.SubscriptionName), cnpRegions, cnpResourceGroup)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Enable the exocompute feature for the account.
-	exoAccountID, err := azureClient.AddSubscription(ctx, subscription, core.FeatureExocompute, Regions("eastus2"))
+	exoRegions := Regions(testSubscription.Exocompute.Regions...)
+	exoResourceGroup := ResourceGroup(testSubscription.Exocompute.ResourceGroupName,
+		testSubscription.Exocompute.ResourceGroupRegion, nil)
+	exoAccountID, err := azureClient.AddSubscription(ctx, subscription, core.FeatureExocompute, exoRegions,
+		exoResourceGroup)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,78 +90,94 @@ func TestAzureExocompute(t *testing.T) {
 
 	account, err := azureClient.Subscription(ctx, CloudAccountID(accountID), core.FeatureExocompute)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-	if account.Name != testSubscription.SubscriptionName {
-		t.Errorf("invalid name: %v", account.Name)
+	if name := account.Name; name != testSubscription.SubscriptionName {
+		t.Fatalf("invalid name: %v", name)
 	}
-	if account.NativeID != testSubscription.SubscriptionID {
-		t.Errorf("invalid native id: %v", account.NativeID)
+	if id := account.NativeID; id != testSubscription.SubscriptionID {
+		t.Fatalf("invalid native id: %v", id)
 	}
-	if account.TenantDomain != testSubscription.TenantDomain {
-		t.Errorf("invalid tenant domain: %v", account.TenantDomain)
+	if domain := account.TenantDomain; domain != testSubscription.TenantDomain {
+		t.Fatalf("invalid tenant domain: %v", domain)
 	}
-	if n := len(account.Features); n == 1 {
-		if feature := account.Features[0].Feature; !feature.Equal(core.FeatureExocompute) {
-			t.Errorf("invalid feature name: %v", feature)
-		}
-		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"eastus2"}) {
-			t.Errorf("invalid feature regions: %v", regions)
-		}
-		if account.Features[0].Status != core.StatusConnected {
-			t.Errorf("invalid feature status: %v", account.Features[0].Status)
-		}
-	} else {
-		t.Errorf("invalid number of features: %v", n)
+	if n := len(account.Features); n != 1 {
+		t.Fatalf("invalid number of features: %v", n)
+	}
+	feature, ok := account.Feature(core.FeatureExocompute)
+	if !ok {
+		t.Fatalf("%s feature not found", core.FeatureExocompute)
+	}
+	if name := feature.Name; name != core.FeatureExocompute.Name {
+		t.Fatalf("invalid feature name: %v", name)
+	}
+	if regions := feature.Regions; !reflect.DeepEqual(regions, testSubscription.Exocompute.Regions) {
+		t.Fatalf("invalid feature regions: %v", regions)
+	}
+	if status := feature.Status; status != "CONNECTED" {
+		t.Fatalf("invalid feature status: %v", status)
+	}
+	if name := feature.ResourceGroup.Name; name != testSubscription.Exocompute.ResourceGroupName {
+		t.Fatalf("invalid feature resource group name: %v", name)
+	}
+	if region := feature.ResourceGroup.Region; region != testSubscription.Exocompute.ResourceGroupRegion {
+		t.Fatalf("invalid feature resource group region: %v", region)
+	}
+	if tags := feature.ResourceGroup.Tags; !reflect.DeepEqual(tags, map[string]string{}) {
+		t.Fatalf("invalid feature resource group tags: %v", tags)
 	}
 
 	// Add exocompute config for the account.
+	if len(testSubscription.Exocompute.Regions) == 0 {
+		t.Fatalf("exocompute test data must contain at least one region")
+	}
+	exoConfigRegion := testSubscription.Exocompute.Regions[0]
 	exoID, err := azureClient.AddExocomputeConfig(ctx, CloudAccountID(accountID),
-		Managed("eastus2", testSubscription.Exocompute.SubnetID))
+		Managed(exoConfigRegion, testSubscription.Exocompute.SubnetID))
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// Retrieve the exocompute config added.
 	exoConfig, err := azureClient.ExocomputeConfig(ctx, exoID)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-	if exoConfig.ID != exoID {
-		t.Errorf("invalid id: %v", exoConfig.ID)
+	if id := exoConfig.ID; id != exoID {
+		t.Fatalf("invalid exocompute config id: %v", id)
 	}
-	if exoConfig.Region != "eastus2" {
-		t.Errorf("invalid region: %v", exoConfig.Region)
+	if region := exoConfig.Region; region != exoConfigRegion {
+		t.Fatalf("invalid exocompute config region: %v", region)
 	}
-	if exoConfig.SubnetID != testSubscription.Exocompute.SubnetID {
-		t.Errorf("invalid subnet id: %v", exoConfig.SubnetID)
+	if id := exoConfig.SubnetID; id != testSubscription.Exocompute.SubnetID {
+		t.Fatalf("invalid exocompute config subnet id: %v", id)
 	}
 	if !exoConfig.ManagedByRubrik {
-		t.Errorf("invalid polaris managed state: %t", exoConfig.ManagedByRubrik)
+		t.Fatalf("invalid exocompute config managed state: %t", exoConfig.ManagedByRubrik)
 	}
 
 	// Remove the exocompute config.
 	err = azureClient.RemoveExocomputeConfig(ctx, exoID)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// Verify that the exocompute config was successfully removed.
 	exoConfig, err = azureClient.ExocomputeConfig(ctx, exoID)
 	if !errors.Is(err, graphql.ErrNotFound) {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// Remove exocompute feature.
 	err = azureClient.RemoveSubscription(ctx, CloudAccountID(accountID), core.FeatureExocompute, false)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// Verify that the feature was successfully removed.
 	_, err = azureClient.Subscription(ctx, CloudAccountID(accountID), core.FeatureExocompute)
 	if !errors.Is(err, graphql.ErrNotFound) {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// Remove subscription.
