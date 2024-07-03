@@ -355,7 +355,7 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	arcRegions := Regions(testSubscription.Archival.Regions...)
 	arcResourceGroup := ResourceGroup(testSubscription.Archival.ResourceGroupName,
 		testSubscription.Archival.ResourceGroupRegion, nil)
-	id, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeArchival,
+	_, err = azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeArchival,
 		Name(testSubscription.SubscriptionName), arcRegions, arcResourceGroup)
 	if err != nil {
 		t.Fatal(err)
@@ -365,7 +365,7 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	encManagedIdentity := ManagedIdentity(testSubscription.Archival.ManagedIdentityName,
 		testSubscription.Archival.ResourceGroupName, testSubscription.Archival.PrincipalID,
 		testSubscription.Archival.ResourceGroupRegion)
-	id, err = azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeArchivalEncryption,
+	id, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeArchivalEncryption,
 		Name(testSubscription.SubscriptionName), arcRegions, arcResourceGroup, encManagedIdentity)
 	if err != nil {
 		t.Fatal(err)
