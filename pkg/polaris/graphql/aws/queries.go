@@ -201,6 +201,7 @@ var awsExocomputeClusterConnectQuery = `mutation SdkGolangAwsExocomputeClusterCo
         clusterName:        $clusterName,
         exocomputeConfigId: $exocomputeConfigId
     }) {
+        clusterSetupYaml
         clusterUuid
         connectionCommand
     }
