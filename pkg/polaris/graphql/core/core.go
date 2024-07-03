@@ -359,7 +359,7 @@ func (a API) WaitForTaskChain(ctx context.Context, taskChainID uuid.UUID, wait t
 func (a API) WaitForFeatureDisableTaskChain(ctx context.Context, taskChainID uuid.UUID, featureStatus func(ctx context.Context) (bool, error)) error {
 	a.log.Print(log.Trace)
 
-	ctx, cancel := context.WithTimeout(ctx, 9*60*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 9*time.Minute)
 	defer cancel()
 	for {
 		// Check the status of the task chain.
