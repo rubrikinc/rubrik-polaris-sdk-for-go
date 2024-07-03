@@ -382,21 +382,7 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, features []
 		}
 	}
 
-	// Used to differentiate between the CFT workflow and the non-CFT workflow.
-	cftWorkflow := config.config != nil
-
-	// Disable the features that are going to be removed. In the non-CFT
-	// workflow, there is no need to disable the Exocompute feature.
-	for _, feature := range features {
-		if !cftWorkflow && feature.Equal(core.FeatureExocompute) {
-			continue
-		}
-		if err := a.disableFeature(ctx, cloudAccount, feature, deleteSnapshots); err != nil {
-			return fmt.Errorf("failed to disable feature %s: %s", feature, err)
-		}
-	}
-
-	if cftWorkflow {
+	if config.config != nil {
 		for _, feature := range features {
 			if err := a.removeAccountWithCFT(ctx, config, cloudAccount, feature, deleteSnapshots); err != nil {
 				return err
@@ -410,6 +396,15 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, features []
 
 func (a API) removeAccount(ctx context.Context, account CloudAccount, features []core.Feature, deleteSnapshots bool) error {
 	a.log.Print(log.Trace)
+
+	for _, feature := range features {
+		if feature.Equal(core.FeatureExocompute) {
+			continue
+		}
+		if err := a.disableFeature(ctx, account, feature, deleteSnapshots); err != nil {
+			return fmt.Errorf("failed to disable feature %s: %s", feature, err)
+		}
+	}
 
 	results, err := aws.Wrap(a.client).DeleteCloudAccountWithoutCft(ctx, account.NativeID, features)
 	if err != nil {
@@ -431,6 +426,10 @@ func (a API) removeAccount(ctx context.Context, account CloudAccount, features [
 
 func (a API) removeAccountWithCFT(ctx context.Context, config account, account CloudAccount, feature core.Feature, deleteSnapshots bool) error {
 	a.log.Print(log.Trace)
+
+	if err := a.disableFeature(ctx, account, feature, deleteSnapshots); err != nil {
+		return fmt.Errorf("failed to disable feature %s: %s", feature, err)
+	}
 
 	cfmURL, err := aws.Wrap(a.client).PrepareCloudAccountDeletion(ctx, account.ID, feature)
 	if err != nil {
