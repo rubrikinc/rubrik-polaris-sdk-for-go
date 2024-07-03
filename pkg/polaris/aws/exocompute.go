@@ -410,15 +410,15 @@ func (a API) UnmapExocompute(ctx context.Context, appID IdentityFunc) error {
 // configuration. The cluster ID and two different ways to connect the cluster
 // are returned. The first way to connect the cluster is the kubectl connection
 // command, and the second way is the k8s spec (YAML).
-func (a API) AddClusterToExocomputeConfig(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, []string, error) {
+func (a API) AddClusterToExocomputeConfig(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, string, error) {
 	a.log.Print(log.Trace)
 
-	clusterID, cmd, err := aws.Wrap(a.client).ConnectExocomputeCluster(ctx, configID, clusterName)
+	clusterID, kubectlCmd, setupYAML, err := aws.Wrap(a.client).ConnectExocomputeCluster(ctx, configID, clusterName)
 	if err != nil {
-		return uuid.Nil, nil, fmt.Errorf("failed to connect exocompute cluster: %s", err)
+		return uuid.Nil, "", "", fmt.Errorf("failed to connect exocompute cluster: %s", err)
 	}
 
-	return clusterID, cmd, nil
+	return clusterID, kubectlCmd, setupYAML, nil
 }
 
 // RemoveExocomputeCluster removes the exocompute cluster with the specified ID.

@@ -264,7 +264,7 @@ func (a API) StartExocomputeDisableJob(ctx context.Context, nativeID uuid.UUID) 
 // configuration. The cluster ID and two different ways to connect the cluster
 // are returned. The first way to connect the cluster is the kubectl connection
 // command, and the second way is the k8s spec (YAML).
-func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, []string, error) {
+func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, string, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, awsExocomputeClusterConnectQuery, struct {
@@ -272,7 +272,7 @@ func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, c
 		ClusterName string    `json:"clusterName"`
 	}{ConfigID: configID, ClusterName: clusterName})
 	if err != nil {
-		return uuid.Nil, nil, fmt.Errorf("failed to request awsExocomputeClusterConnect: %w", err)
+		return uuid.Nil, "", "", fmt.Errorf("failed to request awsExocomputeClusterConnect: %w", err)
 	}
 	a.log.Printf(log.Debug, "awsExocomputeClusterConnect(%q, %q): %s", configID, clusterName, string(buf))
 
@@ -286,10 +286,10 @@ func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, c
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, nil, fmt.Errorf("failed to unmarshal awsExocomputeClusterConnect: %v", err)
+		return uuid.Nil, "", "", fmt.Errorf("failed to unmarshal awsExocomputeClusterConnect: %v", err)
 	}
 
-	return payload.Data.Result.ID, []string{payload.Data.Result.Command, payload.Data.Result.SetupYAML}, nil
+	return payload.Data.Result.ID, payload.Data.Result.Command, payload.Data.Result.SetupYAML, nil
 }
 
 // DisconnectExocomputeCluster disconnects the exocompute cluster with the
