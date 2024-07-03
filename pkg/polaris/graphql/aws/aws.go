@@ -67,6 +67,7 @@ type ProtectionFeature string
 const (
 	EC2 ProtectionFeature = "EC2"
 	RDS ProtectionFeature = "RDS"
+	S3  ProtectionFeature = "S3"
 )
 
 // Region represents an AWS region in Polaris.
