@@ -25,8 +25,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -111,10 +113,13 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Add default Azure subscription to RSC.
+	// Add Azure subscription to RSC.
 	subscription := Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
+	cnpRegions := Regions(testSubscription.CloudNativeProtection.Regions...)
+	cnpResourceGroup := ResourceGroup(testSubscription.CloudNativeProtection.ResourceGroupName,
+		testSubscription.CloudNativeProtection.ResourceGroupRegion, nil)
 	id, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection,
-		Regions("eastus2"), Name(testSubscription.SubscriptionName))
+		Name(testSubscription.SubscriptionName), cnpRegions, cnpResourceGroup)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,29 +129,44 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if account.Name != testSubscription.SubscriptionName {
-		t.Fatalf("invalid name: %v", account.Name)
+	if name := account.Name; name != testSubscription.SubscriptionName {
+		t.Fatalf("invalid name: %v", name)
 	}
-	if account.NativeID != testSubscription.SubscriptionID {
-		t.Fatalf("invalid native id: %v", account.NativeID)
+	if id := account.NativeID; id != testSubscription.SubscriptionID {
+		t.Fatalf("invalid native id: %v", id)
 	}
-	if account.TenantDomain != testSubscription.TenantDomain {
-		t.Fatalf("invalid tenant domain: %v", account.TenantDomain)
+	if domain := account.TenantDomain; domain != testSubscription.TenantDomain {
+		t.Fatalf("invalid tenant domain: %v", domain)
 	}
 	if n := len(account.Features); n != 1 {
 		t.Fatalf("invalid number of features: %v", n)
 	}
-	if !account.Features[0].Equal(core.FeatureCloudNativeProtection) {
-		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
+	feature, ok := account.Feature(core.FeatureCloudNativeProtection)
+	if !ok {
+		t.Fatalf("%s feature not found", core.FeatureCloudNativeProtection)
 	}
-	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"eastus2"}) {
+	if name := feature.Name; name != core.FeatureCloudNativeProtection.Name {
+		t.Fatalf("invalid feature name: %v", name)
+	}
+	slices.Sort(feature.Regions)
+	slices.Sort(testSubscription.CloudNativeProtection.Regions)
+	if regions := feature.Regions; !slices.Equal(regions, testSubscription.CloudNativeProtection.Regions) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
-	if account.Features[0].Status != "CONNECTED" {
-		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
+	if status := feature.Status; status != "CONNECTED" {
+		t.Fatalf("invalid feature status: %v", status)
+	}
+	if name := feature.ResourceGroup.Name; name != testSubscription.CloudNativeProtection.ResourceGroupName {
+		t.Fatalf("invalid feature resource group name: %v", name)
+	}
+	if region := feature.ResourceGroup.Region; region != testSubscription.CloudNativeProtection.ResourceGroupRegion {
+		t.Fatalf("invalid feature resource group region: %v", region)
+	}
+	if tags := feature.ResourceGroup.Tags; !maps.Equal(tags, map[string]string{}) {
+		t.Fatalf("invalid feature resource group tags: %v", tags)
 	}
 
-	// Update and verify regions for the Azure account.
+	// Update and verify regions for the Azure subscription.
 	err = azureClient.UpdateSubscription(ctx, ID(subscription), core.FeatureCloudNativeProtection,
 		Regions("westus2"))
 	if err != nil {
@@ -159,8 +179,13 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	if n := len(account.Features); n != 1 {
 		t.Fatalf("invalid number of features: %v", n)
 	}
-	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"westus2"}) {
-		t.Errorf("invalid feature regions: %v", regions)
+	feature, ok = account.Feature(core.FeatureCloudNativeProtection)
+	if !ok {
+		t.Fatalf("%s feature not found", core.FeatureCloudNativeProtection)
+	}
+	slices.Sort(feature.Regions)
+	if regions := feature.Regions; !slices.Equal(regions, []string{"westus2"}) {
+		t.Fatalf("invalid feature regions: %v", regions)
 	}
 
 	// Remove the Azure subscription from RSC keeping the snapshots.
@@ -210,67 +235,79 @@ func TestAzureArchivalSubscriptionAddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Add default Azure subscription to RSC.
+	// Add Azure subscription to RSC.
 	subscription := Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
-	id, err := azureClient.AddSubscription(
-		ctx,
-		subscription,
-		core.FeatureCloudNativeArchival,
-		Regions("eastus2"),
-		Name(testSubscription.SubscriptionName),
-		ResourceGroup(testSubscription.Archival.ResourceGroupName, "eastus2", make(map[string]string)),
-	)
+	arcRegions := Regions(testSubscription.Archival.Regions...)
+	arcResourceGroup := ResourceGroup(testSubscription.Archival.ResourceGroupName,
+		testSubscription.Archival.ResourceGroupRegion, nil)
+	id, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeArchival,
+		Name(testSubscription.SubscriptionName), arcRegions, arcResourceGroup)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the subscription was successfully added.
-	account, err := azureClient.Subscription(
-		ctx,
-		CloudAccountID(id),
-		core.FeatureCloudNativeArchival,
-	)
+	account, err := azureClient.Subscription(ctx, CloudAccountID(id), core.FeatureCloudNativeArchival)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if account.Name != testSubscription.SubscriptionName {
-		t.Fatalf("invalid name: %v", account.Name)
+	if name := account.Name; name != testSubscription.SubscriptionName {
+		t.Fatalf("invalid name: %v", name)
 	}
-	if account.NativeID != testSubscription.SubscriptionID {
-		t.Fatalf("invalid native id: %v", account.NativeID)
+	if id := account.NativeID; id != testSubscription.SubscriptionID {
+		t.Fatalf("invalid native id: %v", id)
 	}
-	if account.TenantDomain != testSubscription.TenantDomain {
-		t.Fatalf("invalid tenant domain: %v", account.TenantDomain)
+	if domain := account.TenantDomain; domain != testSubscription.TenantDomain {
+		t.Fatalf("invalid tenant domain: %v", domain)
 	}
 	if n := len(account.Features); n != 1 {
 		t.Fatalf("invalid number of features: %v", n)
 	}
-	if !account.Features[0].Equal(core.FeatureCloudNativeArchival) {
-		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
+	feature, ok := account.Feature(core.FeatureCloudNativeArchival)
+	if !ok {
+		t.Fatalf("%s feature not found", core.FeatureCloudNativeArchival)
 	}
-	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"eastus2"}) {
+	if name := feature.Name; name != core.FeatureCloudNativeArchival.Name {
+		t.Fatalf("invalid feature name: %v", name)
+	}
+	slices.Sort(feature.Regions)
+	slices.Sort(testSubscription.Archival.Regions)
+	if regions := feature.Regions; !slices.Equal(regions, testSubscription.Archival.Regions) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
-	if account.Features[0].Status != core.StatusConnected {
-		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
+	if status := feature.Status; status != "CONNECTED" {
+		t.Fatalf("invalid feature status: %v", status)
+	}
+	if name := feature.ResourceGroup.Name; name != testSubscription.Archival.ResourceGroupName {
+		t.Fatalf("invalid feature resource group name: %v", name)
+	}
+	if region := feature.ResourceGroup.Region; region != testSubscription.Archival.ResourceGroupRegion {
+		t.Fatalf("invalid feature resource group region: %v", region)
+	}
+	if tags := feature.ResourceGroup.Tags; !maps.Equal(tags, map[string]string{}) {
+		t.Fatalf("invalid feature resource group tags: %v", tags)
 	}
 
-	// Update and verify regions for Azure account.
+	// Update and verify regions for Azure subscription.
 	err = azureClient.UpdateSubscription(ctx, ID(subscription), core.FeatureCloudNativeArchival,
 		Regions("westus2"))
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	account, err = azureClient.Subscription(ctx, ID(subscription), core.FeatureCloudNativeArchival)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-	if n := len(account.Features); n == 1 {
-		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"westus2"}) {
-			t.Fatalf("invalid feature regions: %v", regions)
-		}
-	} else {
+	if n := len(account.Features); n != 1 {
 		t.Fatalf("invalid number of features: %v", n)
+	}
+	feature, ok = account.Feature(core.FeatureCloudNativeArchival)
+	if !ok {
+		t.Fatalf("%s feature not found", core.FeatureCloudNativeArchival)
+	}
+	slices.Sort(feature.Regions)
+	if regions := feature.Regions; !slices.Equal(regions, []string{"westus2"}) {
+		t.Fatalf("invalid feature regions: %v", regions)
 	}
 
 	// Remove the Azure subscription from RSC keeping the snapshots.
@@ -323,71 +360,66 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	// Add subscription with archival feature as archival encryption is a child
 	// feature and cannot be added without that.
 	subscription := Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
-	_, err = azureClient.AddSubscription(
-		ctx,
-		subscription,
-		core.FeatureCloudNativeArchival,
-		Regions("eastus2"),
-		Name(testSubscription.SubscriptionName),
-		ResourceGroup(testSubscription.Archival.ResourceGroupName, "eastus2", make(map[string]string)),
-	)
+	arcRegions := Regions(testSubscription.Archival.Regions...)
+	arcResourceGroup := ResourceGroup(testSubscription.Archival.ResourceGroupName,
+		testSubscription.Archival.ResourceGroupRegion, nil)
+	_, err = azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeArchival,
+		Name(testSubscription.SubscriptionName), arcRegions, arcResourceGroup)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Add archival encryption feature.
-	subscription = Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
-	id, err := azureClient.AddSubscription(
-		ctx,
-		subscription,
-		core.FeatureCloudNativeArchivalEncryption,
-		Regions("eastus2"),
-		Name(testSubscription.SubscriptionName),
-		ManagedIdentity(
-			testSubscription.Archival.ManagedIdentityName,
-			testSubscription.Archival.ResourceGroupName,
-			testSubscription.Archival.PrincipalID,
-			"eastus2",
-		),
-		ResourceGroup(
-			testSubscription.Archival.ResourceGroupName,
-			"eastus2",
-			make(map[string]string),
-		),
-	)
+	encManagedIdentity := ManagedIdentity(testSubscription.Archival.ManagedIdentityName,
+		testSubscription.Archival.ResourceGroupName, testSubscription.Archival.PrincipalID,
+		testSubscription.Archival.ResourceGroupRegion)
+	id, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeArchivalEncryption,
+		Name(testSubscription.SubscriptionName), arcRegions, arcResourceGroup, encManagedIdentity)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the subscription was successfully added.
-	account, err := azureClient.Subscription(
-		ctx,
-		CloudAccountID(id),
-		core.FeatureCloudNativeArchivalEncryption,
-	)
+	account, err := azureClient.Subscription(ctx, CloudAccountID(id), core.FeatureCloudNativeArchivalEncryption)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if account.Name != testSubscription.SubscriptionName {
-		t.Fatalf("invalid name: %v", account.Name)
+
+	if name := account.Name; name != testSubscription.SubscriptionName {
+		t.Fatalf("invalid name: %v", name)
 	}
-	if account.NativeID != testSubscription.SubscriptionID {
-		t.Fatalf("invalid native id: %v", account.NativeID)
+	if id := account.NativeID; id != testSubscription.SubscriptionID {
+		t.Fatalf("invalid native id: %v", id)
 	}
-	if account.TenantDomain != testSubscription.TenantDomain {
-		t.Fatalf("invalid tenant domain: %v", account.TenantDomain)
+	if domain := account.TenantDomain; domain != testSubscription.TenantDomain {
+		t.Fatalf("invalid tenant domain: %v", domain)
 	}
 	if n := len(account.Features); n != 1 {
 		t.Fatalf("invalid number of features: %v", n)
 	}
-	if !account.Features[0].Equal(core.FeatureCloudNativeArchivalEncryption) {
-		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
+	feature, ok := account.Feature(core.FeatureCloudNativeArchivalEncryption)
+	if !ok {
+		t.Fatalf("%s feature not found", core.FeatureCloudNativeArchivalEncryption)
 	}
-	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"eastus2"}) {
+	if name := feature.Name; name != core.FeatureCloudNativeArchivalEncryption.Name {
+		t.Fatalf("invalid feature name: %v", name)
+	}
+	slices.Sort(feature.Regions)
+	slices.Sort(testSubscription.Archival.Regions)
+	if regions := feature.Regions; !slices.Equal(regions, testSubscription.Archival.Regions) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
-	if account.Features[0].Status != core.StatusConnected {
-		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
+	if status := feature.Status; status != "CONNECTED" {
+		t.Fatalf("invalid feature status: %v", status)
+	}
+	if name := feature.ResourceGroup.Name; name != testSubscription.Archival.ResourceGroupName {
+		t.Fatalf("invalid feature resource group name: %v", name)
+	}
+	if region := feature.ResourceGroup.Region; region != testSubscription.Archival.ResourceGroupRegion {
+		t.Fatalf("invalid feature resource group region: %v", region)
+	}
+	if tags := feature.ResourceGroup.Tags; !maps.Equal(tags, map[string]string{}) {
+		t.Fatalf("invalid feature resource group tags: %v", tags)
 	}
 
 	// Update and verify regions for the Azure account.
@@ -400,12 +432,16 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n := len(account.Features); n == 1 {
-		if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"westus2"}) {
-			t.Fatalf("invalid feature regions: %v", regions)
-		}
-	} else {
+	if n := len(account.Features); n != 1 {
 		t.Fatalf("invalid number of features: %v", n)
+	}
+	feature, ok = account.Feature(core.FeatureCloudNativeArchivalEncryption)
+	if !ok {
+		t.Fatalf("%s feature not found", core.FeatureCloudNativeArchivalEncryption)
+	}
+	slices.Sort(feature.Regions)
+	if regions := feature.Regions; !slices.Equal(regions, []string{"westus2"}) {
+		t.Fatalf("invalid feature regions: %v", regions)
 	}
 
 	// Remove the Azure subscription from RSC keeping the snapshots. Removing
