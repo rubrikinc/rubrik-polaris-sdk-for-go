@@ -261,8 +261,10 @@ func (a API) StartExocomputeDisableJob(ctx context.Context, nativeID uuid.UUID) 
 }
 
 // ConnectExocomputeCluster connects the named cluster to a specified exocompute
-// configuration. The cluster ID and connection command are returned.
-func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, error) {
+// configuration. The cluster ID and two different ways to connect the cluster
+// are returned. The first way to connect the cluster is the kubectl connection
+// command, and the second way is the k8s spec (YAML).
+func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, string, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, awsExocomputeClusterConnectQuery, struct {
@@ -270,23 +272,24 @@ func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, c
 		ClusterName string    `json:"clusterName"`
 	}{ConfigID: configID, ClusterName: clusterName})
 	if err != nil {
-		return uuid.Nil, "", fmt.Errorf("failed to request awsExocomputeClusterConnect: %w", err)
+		return uuid.Nil, "", "", fmt.Errorf("failed to request awsExocomputeClusterConnect: %w", err)
 	}
 	a.log.Printf(log.Debug, "awsExocomputeClusterConnect(%q, %q): %s", configID, clusterName, string(buf))
 
 	var payload struct {
 		Data struct {
 			Result struct {
-				ID      uuid.UUID `json:"clusterUuid"`
-				Command string    `json:"connectionCommand"`
+				ID        uuid.UUID `json:"clusterUuid"`
+				Command   string    `json:"connectionCommand"`
+				SetupYAML string    `json:"clusterSetupYaml"`
 			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, "", fmt.Errorf("failed to unmarshal awsExocomputeClusterConnect: %v", err)
+		return uuid.Nil, "", "", fmt.Errorf("failed to unmarshal awsExocomputeClusterConnect: %v", err)
 	}
 
-	return payload.Data.Result.ID, payload.Data.Result.Command, nil
+	return payload.Data.Result.ID, payload.Data.Result.Command, payload.Data.Result.SetupYAML, nil
 }
 
 // DisconnectExocomputeCluster disconnects the exocompute cluster with the
