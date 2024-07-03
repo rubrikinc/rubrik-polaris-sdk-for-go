@@ -25,8 +25,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -146,7 +148,9 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	if name := feature.Name; name != core.FeatureCloudNativeProtection.Name {
 		t.Fatalf("invalid feature name: %v", name)
 	}
-	if regions := feature.Regions; !reflect.DeepEqual(regions, testSubscription.CloudNativeProtection.Regions) {
+	slices.Sort(feature.Regions)
+	slices.Sort(testSubscription.CloudNativeProtection.Regions)
+	if regions := feature.Regions; !slices.Equal(regions, testSubscription.CloudNativeProtection.Regions) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
 	if status := feature.Status; status != "CONNECTED" {
@@ -158,7 +162,7 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	if region := feature.ResourceGroup.Region; region != testSubscription.CloudNativeProtection.ResourceGroupRegion {
 		t.Fatalf("invalid feature resource group region: %v", region)
 	}
-	if tags := feature.ResourceGroup.Tags; !reflect.DeepEqual(tags, map[string]string{}) {
+	if tags := feature.ResourceGroup.Tags; !maps.Equal(tags, map[string]string{}) {
 		t.Fatalf("invalid feature resource group tags: %v", tags)
 	}
 
@@ -179,7 +183,8 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	if !ok {
 		t.Fatalf("%s feature not found", core.FeatureCloudNativeProtection)
 	}
-	if regions := feature.Regions; !reflect.DeepEqual(regions, []string{"westus2"}) {
+	slices.Sort(feature.Regions)
+	if regions := feature.Regions; !slices.Equal(regions, []string{"westus2"}) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
 
@@ -265,7 +270,9 @@ func TestAzureArchivalSubscriptionAddAndRemove(t *testing.T) {
 	if name := feature.Name; name != core.FeatureCloudNativeArchival.Name {
 		t.Fatalf("invalid feature name: %v", name)
 	}
-	if regions := feature.Regions; !reflect.DeepEqual(regions, testSubscription.Archival.Regions) {
+	slices.Sort(feature.Regions)
+	slices.Sort(testSubscription.Archival.Regions)
+	if regions := feature.Regions; !slices.Equal(regions, testSubscription.Archival.Regions) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
 	if status := feature.Status; status != "CONNECTED" {
@@ -277,7 +284,7 @@ func TestAzureArchivalSubscriptionAddAndRemove(t *testing.T) {
 	if region := feature.ResourceGroup.Region; region != testSubscription.Archival.ResourceGroupRegion {
 		t.Fatalf("invalid feature resource group region: %v", region)
 	}
-	if tags := feature.ResourceGroup.Tags; !reflect.DeepEqual(tags, map[string]string{}) {
+	if tags := feature.ResourceGroup.Tags; !maps.Equal(tags, map[string]string{}) {
 		t.Fatalf("invalid feature resource group tags: %v", tags)
 	}
 
@@ -298,7 +305,8 @@ func TestAzureArchivalSubscriptionAddAndRemove(t *testing.T) {
 	if !ok {
 		t.Fatalf("%s feature not found", core.FeatureCloudNativeArchival)
 	}
-	if regions := feature.Regions; !reflect.DeepEqual(regions, []string{"westus2"}) {
+	slices.Sort(feature.Regions)
+	if regions := feature.Regions; !slices.Equal(regions, []string{"westus2"}) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
 
@@ -396,7 +404,9 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	if name := feature.Name; name != core.FeatureCloudNativeArchivalEncryption.Name {
 		t.Fatalf("invalid feature name: %v", name)
 	}
-	if regions := feature.Regions; !reflect.DeepEqual(regions, testSubscription.Archival.Regions) {
+	slices.Sort(feature.Regions)
+	slices.Sort(testSubscription.Archival.Regions)
+	if regions := feature.Regions; !slices.Equal(regions, testSubscription.Archival.Regions) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
 	if status := feature.Status; status != "CONNECTED" {
@@ -408,7 +418,7 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	if region := feature.ResourceGroup.Region; region != testSubscription.Archival.ResourceGroupRegion {
 		t.Fatalf("invalid feature resource group region: %v", region)
 	}
-	if tags := feature.ResourceGroup.Tags; !reflect.DeepEqual(tags, map[string]string{}) {
+	if tags := feature.ResourceGroup.Tags; !maps.Equal(tags, map[string]string{}) {
 		t.Fatalf("invalid feature resource group tags: %v", tags)
 	}
 
@@ -429,7 +439,8 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	if !ok {
 		t.Fatalf("%s feature not found", core.FeatureCloudNativeArchivalEncryption)
 	}
-	if regions := feature.Regions; !reflect.DeepEqual(regions, []string{"westus2"}) {
+	slices.Sort(feature.Regions)
+	if regions := feature.Regions; !slices.Equal(regions, []string{"westus2"}) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
 

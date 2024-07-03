@@ -23,7 +23,8 @@ package azure
 import (
 	"context"
 	"errors"
-	"reflect"
+	"maps"
+	"slices"
 	"testing"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
@@ -111,7 +112,9 @@ func TestAzureExocompute(t *testing.T) {
 	if name := feature.Name; name != core.FeatureExocompute.Name {
 		t.Fatalf("invalid feature name: %v", name)
 	}
-	if regions := feature.Regions; !reflect.DeepEqual(regions, testSubscription.Exocompute.Regions) {
+	slices.Sort(feature.Regions)
+	slices.Sort(testSubscription.Exocompute.Regions)
+	if regions := feature.Regions; !slices.Equal(regions, testSubscription.Exocompute.Regions) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
 	if status := feature.Status; status != "CONNECTED" {
@@ -123,7 +126,7 @@ func TestAzureExocompute(t *testing.T) {
 	if region := feature.ResourceGroup.Region; region != testSubscription.Exocompute.ResourceGroupRegion {
 		t.Fatalf("invalid feature resource group region: %v", region)
 	}
-	if tags := feature.ResourceGroup.Tags; !reflect.DeepEqual(tags, map[string]string{}) {
+	if tags := feature.ResourceGroup.Tags; !maps.Equal(tags, map[string]string{}) {
 		t.Fatalf("invalid feature resource group tags: %v", tags)
 	}
 
