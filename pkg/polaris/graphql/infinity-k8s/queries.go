@@ -161,9 +161,19 @@ var k8sObjectFidQuery = `query SdkGolangK8sObjectFid($k8SObjectInternalIdArg: UU
   k8sObjectFid(K8sObjectInternalIDArg: $k8SObjectInternalIdArg, clusterUuid: $clusterUuid)
 }`
 
+// k8sObjectFidByType GraphQL query
+var k8sObjectFidByTypeQuery = `query SdkGolangK8sObjectFidByType($clusterUuid: UUID!, $k8SObjectInternalIdArg: UUID!, $kubernetesObjectType: KubernetesObjectType!) {
+    k8sObjectFidByType(clusterUuid: $clusterUuid, K8sObjectInternalIDArg: $k8SObjectInternalIdArg, kubernetesObjectType: $kubernetesObjectType)
+}`
+
 // k8sObjectInternalId GraphQL query
 var k8sObjectInternalIdQuery = `query SdkGolangK8sObjectInternalId($fid: UUID!) {
   k8sObjectInternalId(fid: $fid)
+}`
+
+// k8sObjectInternalIdByType GraphQL query
+var k8sObjectInternalIdByTypeQuery = `query SdkGolangK8sObjectInternalIdByType($fid: UUID!,$clusterUuid: UUID!,  $kubernetesObjectType: KubernetesObjectType!) {
+    k8sObjectInternalIdByType(fid: $fid, clusterUuid:$clusterUuid, kubernetesObjectType: $kubernetesObjectType)
 }`
 
 // k8sProtectionSet GraphQL query

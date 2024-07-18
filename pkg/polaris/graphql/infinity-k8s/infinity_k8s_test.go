@@ -119,7 +119,11 @@ func TestIntegration(t *testing.T) {
 		t.Error("update k8s cluster failed")
 		return
 	}
-	logger.Printf(log.Info, "update k8s cluster succeeded, %+v", updateK8sResponse)
+	logger.Printf(
+		log.Info,
+		"update k8s cluster succeeded, %+v",
+		updateK8sResponse,
+	)
 
 	// 1. Add ProtectionSet.
 	config := infinityk8s.AddK8sProtectionSetConfig{
@@ -415,7 +419,7 @@ func TestIntegrationTemp(t *testing.T) {
 	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
-
+	slaFID := uuid.MustParse("95475fd9-070f-49ae-800d-6e8631ebf8a3")
 	infinityK8sClient := infinityk8s.Wrap(client)
 	logger := infinityK8sClient.GQL.Log()
 	logger.SetLogLevel(log.Debug)
@@ -424,9 +428,9 @@ func TestIntegrationTemp(t *testing.T) {
 	retention := core.RetainSnapshots
 	slaResp, err := slaClient.AssignSLAForSnappableHierarchies(
 		ctx,
-		nil,
-		core.DoNotProtect,
-		[]uuid.UUID{uuid.MustParse("ffcafccd-0712-5c09-9e98-f71d035d7866")},
+		&slaFID,
+		core.ProtectWithSLAID,
+		[]uuid.UUID{uuid.MustParse("288e8033-9d6b-5a58-850b-62c53579dd3d")},
 		nil,
 		nil,         // shouldApplyToExistingSnapshots
 		&falseValue, // shouldApplyToNonPolicySnapshots
@@ -438,4 +442,89 @@ func TestIntegrationTemp(t *testing.T) {
 		return
 	}
 	logger.Printf(log.Info, "Assign SLA response %v\n", slaResp)
+}
+
+func TestIntegrationTranslation(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	infinityK8sClient := infinityk8s.Wrap(client)
+	logger := infinityK8sClient.GQL.Log()
+	logger.SetLogLevel(log.Debug)
+
+	// 1. Translate Global SLA FID to internal_id and back.
+	silverFID := uuid.MustParse("313297f1-0b9d-4a1f-826c-ccc607dae06a")
+	clusterUUID := uuid.MustParse("10ae4970-e22f-4d92-a04f-cbf241103190")
+	internalID, err := infinityK8sClient.GetK8sObjectInternalIDByType(
+		ctx,
+		silverFID,
+		clusterUUID,
+		infinityk8s.K8sObjectTypeSLA,
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	logger.Printf(log.Info, "get internal id response: %v", internalID)
+
+	// Get the object FID from RSC
+	fid, err := infinityK8sClient.GetK8sObjectFIDByType(
+		ctx,
+		internalID,
+		clusterUUID,
+		infinityk8s.K8sObjectTypeSLA,
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	logger.Printf(log.Info, "get fid response: %v", fid)
+	if silverFID != fid {
+		t.Errorf(
+			"internal id %s doesn't match expectation %s",
+			fid.String(),
+			silverFID.String(),
+		)
+	}
+
+	// 2. Translate internal_id to Global SLA FID and back.
+	slaInternalID := uuid.MustParse("ff8be367-25c4-43bf-bd56-e16d66984aef")
+	fid, err = infinityK8sClient.GetK8sObjectFIDByType(
+		ctx,
+		slaInternalID,
+		clusterUUID,
+		infinityk8s.K8sObjectTypeSLA,
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	logger.Printf(log.Info, "get fid response: %v", fid)
+
+	// Get the object internal_id from RSC
+	internalID, err = infinityK8sClient.GetK8sObjectInternalIDByType(
+		ctx,
+		fid,
+		clusterUUID,
+		infinityk8s.K8sObjectTypeSLA,
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	logger.Printf(log.Info, "get internal id response: %v", internalID)
+	if internalID != slaInternalID {
+		t.Errorf(
+			"internal id %s doesn't match expectation %s",
+			internalID.String(),
+			slaInternalID.String(),
+		)
+	}
 }
