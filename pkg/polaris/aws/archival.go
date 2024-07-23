@@ -137,18 +137,6 @@ func (a API) CreateStorageSetting(ctx context.Context, id IdentityFunc, name, bu
 		return uuid.Nil, err
 	}
 
-	var tags *struct {
-		TagList []aws.Tag `json:"tagList"`
-	}
-	if len(bucketTags) > 0 {
-		tags = &struct {
-			TagList []aws.Tag `json:"tagList"`
-		}{TagList: make([]aws.Tag, 0, len(bucketTags))}
-		for key, value := range bucketTags {
-			tags.TagList = append(tags.TagList, aws.Tag{Key: key, Value: value})
-		}
-	}
-
 	reg := aws.RegionUnknown
 	if region != "" && region != "UNKNOWN_AWS_REGION" {
 		reg = aws.ParseRegionNoValidation(region)
@@ -166,7 +154,7 @@ func (a API) CreateStorageSetting(ctx context.Context, id IdentityFunc, name, bu
 		Region:       reg,
 		KmsMasterKey: kmsMasterKey,
 		LocTemplate:  locTemplate,
-		BucketTags:   tags,
+		BucketTags:   toTagsInput(bucketTags),
 	})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create cloud native storage setting: %s", err)
@@ -183,27 +171,13 @@ func (a API) CreateStorageSetting(ctx context.Context, id IdentityFunc, name, bu
 func (a API) UpdateStorageSetting(ctx context.Context, targetMappingID uuid.UUID, name, storageClass, kmsMasterKey string, bucketTags map[string]string) error {
 	a.log.Print(log.Trace)
 
-	var deleteTags bool
-	var tags *struct {
-		TagList []aws.Tag `json:"tagList"`
-	}
-	if len(bucketTags) > 0 {
-		tags = &struct {
-			TagList []aws.Tag `json:"tagList"`
-		}{TagList: make([]aws.Tag, 0, len(bucketTags))}
-		for key, value := range bucketTags {
-			tags.TagList = append(tags.TagList, aws.Tag{Key: key, Value: value})
-		}
-	} else {
-		deleteTags = true
-	}
-
+	tagsInput := toTagsInput(bucketTags)
 	err := archival.UpdateCloudNativeStorageSetting[aws.StorageSettingUpdateResult](ctx, a.client, targetMappingID, aws.StorageSettingUpdateParams{
 		Name:                name,
 		StorageClass:        storageClass,
 		KmsMasterKey:        kmsMasterKey,
-		DeleteAllBucketTags: deleteTags,
-		BucketTags:          tags,
+		DeleteAllBucketTags: len(tagsInput.TagList) == 0,
+		BucketTags:          tagsInput,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update cloud native storage setting: %s", err)
@@ -212,7 +186,19 @@ func (a API) UpdateStorageSetting(ctx context.Context, targetMappingID uuid.UUID
 	return nil
 }
 
-// toTargetMapping converts an aws.TargetMapping to a TargetMapping.
+func toTagsInput(bucketTags map[string]string) *aws.TagsInput {
+	if len(bucketTags) == 0 {
+		return nil
+	}
+
+	tags := make([]aws.Tag, 0, len(bucketTags))
+	for key, value := range bucketTags {
+		tags = append(tags, aws.Tag{Key: key, Value: value})
+	}
+
+	return &aws.TagsInput{TagList: tags}
+}
+
 func toTargetMapping(target aws.TargetMapping) TargetMapping {
 	bucketTags := make(map[string]string, len(target.TargetTemplate.BucketTags))
 	for _, tag := range target.TargetTemplate.BucketTags {
