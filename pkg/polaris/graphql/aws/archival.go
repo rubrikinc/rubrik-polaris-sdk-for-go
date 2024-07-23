@@ -106,9 +106,13 @@ func (r StorageSettingCreateResult) Validate() (uuid.UUID, error) {
 // StorageSettingUpdateParams represents the parameters required to update an
 // AWS storage setting.
 type StorageSettingUpdateParams struct {
-	Name         string `json:"name,omitempty"`
-	StorageClass string `json:"storageClass,omitempty"`
-	KmsMasterKey string `json:"kmsMasterKeyId,omitempty"`
+	Name                string `json:"name,omitempty"`
+	StorageClass        string `json:"storageClass,omitempty"`
+	KmsMasterKey        string `json:"kmsMasterKeyId,omitempty"`
+	DeleteAllBucketTags bool   `json:"deleteAllBucketTags,omitempty"`
+	BucketTags          *struct {
+		TagList []Tag `json:"tagList"`
+	} `json:"bucketTags,omitempty"`
 }
 
 // StorageSettingUpdateResult represents the result of updating an AWS storage

@@ -176,16 +176,34 @@ func (a API) CreateStorageSetting(ctx context.Context, id IdentityFunc, name, bu
 }
 
 // UpdateStorageSetting updates the cloud native archival location with the
-// specified ID. The KMS master key can be either a key alias or a key ID.
-// Note that not all properties can be updated, only the name, storage and KMS
-// master key.
-func (a API) UpdateStorageSetting(ctx context.Context, targetMappingID uuid.UUID, name, storageClass, kmsMasterKey string) error {
+// specified ID. The KMS master key can be either a key alias or a key ID. The
+// bucket tags replace all existing tags. Note that not all properties can be
+// updated, only the name, storage class, KMS master key and bucket tags can be
+// updated.
+func (a API) UpdateStorageSetting(ctx context.Context, targetMappingID uuid.UUID, name, storageClass, kmsMasterKey string, bucketTags map[string]string) error {
 	a.log.Print(log.Trace)
 
+	var deleteTags bool
+	var tags *struct {
+		TagList []aws.Tag `json:"tagList"`
+	}
+	if len(bucketTags) > 0 {
+		tags = &struct {
+			TagList []aws.Tag `json:"tagList"`
+		}{TagList: make([]aws.Tag, 0, len(bucketTags))}
+		for key, value := range bucketTags {
+			tags.TagList = append(tags.TagList, aws.Tag{Key: key, Value: value})
+		}
+	} else {
+		deleteTags = true
+	}
+
 	err := archival.UpdateCloudNativeStorageSetting[aws.StorageSettingUpdateResult](ctx, a.client, targetMappingID, aws.StorageSettingUpdateParams{
-		Name:         name,
-		StorageClass: storageClass,
-		KmsMasterKey: kmsMasterKey,
+		Name:                name,
+		StorageClass:        storageClass,
+		KmsMasterKey:        kmsMasterKey,
+		DeleteAllBucketTags: deleteTags,
+		BucketTags:          tags,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update cloud native storage setting: %s", err)
