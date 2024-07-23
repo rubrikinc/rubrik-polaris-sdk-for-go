@@ -176,7 +176,7 @@ func (a API) UpdateStorageSetting(ctx context.Context, targetMappingID uuid.UUID
 		Name:                name,
 		StorageClass:        storageClass,
 		KmsMasterKey:        kmsMasterKey,
-		DeleteAllBucketTags: len(tagsInput.TagList) == 0,
+		DeleteAllBucketTags: tagsInput == nil,
 		BucketTags:          tagsInput,
 	})
 	if err != nil {
