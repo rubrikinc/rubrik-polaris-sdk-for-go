@@ -290,6 +290,19 @@ func Wrap(client *polaris.Client) API {
 	return API{GQL: client.GQL, log: client.GQL.Log()}
 }
 
+// K8sObjectType is the type of the Kubernetes object. One between SLA,
+// INVENTORY or SNAPSHOTS.
+type K8sObjectType string
+
+const (
+	// K8sObjectTypeSLA is the SLA type.
+	K8sObjectTypeSLA K8sObjectType = "SLA"
+	// K8sObjectTypeInventory is the Inventory type.
+	K8sObjectTypeInventory K8sObjectType = "INVENTORY"
+	// K8sObjectTypeSnapshot is the Snapshots type.
+	K8sObjectTypeSnapshot K8sObjectType = "SNAPSHOT"
+)
+
 // AddK8sProtectionSet adds the K8s protection set for the given config.
 func (a API) AddK8sProtectionSet(
 	ctx context.Context,
@@ -699,6 +712,109 @@ func (a API) GetK8sObjectInternalID(
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return uuid.Nil, fmt.Errorf(
 			"failed to unmarshal k8sObjectInternalId: %v",
+			err,
+		)
+	}
+
+	return payload.Data.ObjectInternalID, nil
+}
+
+// GetK8sObjectFIDByType fetches the RSC FID for the object corresponding to the
+// provided internal id, CDM cluster id and object type.
+func (a API) GetK8sObjectFIDByType(
+	ctx context.Context,
+	internalID uuid.UUID,
+	cdmClusterID uuid.UUID,
+	objectType K8sObjectType,
+) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		k8sObjectFidByTypeQuery,
+		struct {
+			InternalID    uuid.UUID     `json:"k8SObjectInternalIdArg"`
+			ClusterUUID   uuid.UUID     `json:"clusterUuid"`
+			K8sObjectType K8sObjectType `json:"kubernetesObjectType"`
+		}{
+			InternalID:    internalID,
+			ClusterUUID:   cdmClusterID,
+			K8sObjectType: objectType,
+		},
+	)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to request k8sObjectFidByType: %w", err)
+	}
+	a.log.Printf(
+		log.Debug,
+		"k8sObjectFidByType(%v, %v, %v): %s",
+		internalID,
+		cdmClusterID,
+		objectType,
+		string(buf),
+	)
+
+	var payload struct {
+		Data struct {
+			ObjectFID uuid.UUID `json:"k8sObjectFidByType"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, fmt.Errorf(
+			"failed to unmarshal k8sObjectFidByType: %v",
+			err,
+		)
+	}
+
+	return payload.Data.ObjectFID, nil
+}
+
+// GetK8sObjectInternalIDByType fetches the object Internal ID on CDM for the
+// given RSC FID by type.
+func (a API) GetK8sObjectInternalIDByType(
+	ctx context.Context,
+	fid uuid.UUID,
+	clusterUUID uuid.UUID,
+	objectType K8sObjectType,
+) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		k8sObjectInternalIdByTypeQuery,
+		struct {
+			ClusterUUID          uuid.UUID     `json:"clusterUuid"`
+			FID                  uuid.UUID     `json:"fid"`
+			KubernetesObjectType K8sObjectType `json:"kubernetesObjectType"`
+		}{
+			FID:                  fid,
+			ClusterUUID:          clusterUUID,
+			KubernetesObjectType: objectType,
+		},
+	)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf(
+			"failed to request k8sObjectInternalIdByType: %w",
+			err,
+		)
+	}
+	a.log.Printf(
+		log.Debug,
+		"k8sObjectInternalIdByType(%v, %v, %v): %s",
+		fid,
+		clusterUUID,
+		objectType,
+		string(buf),
+	)
+
+	var payload struct {
+		Data struct {
+			ObjectInternalID uuid.UUID `json:"k8sObjectInternalIdByType"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, fmt.Errorf(
+			"failed to unmarshal k8sObjectInternalIdByType: %v",
 			err,
 		)
 	}
