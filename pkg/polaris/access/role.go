@@ -90,7 +90,7 @@ func (a API) RoleByName(ctx context.Context, name string) (Role, error) {
 
 	role, err := findRoleByName(roles, name)
 	if err != nil {
-		return Role{}, fmt.Errorf("failed to find role: %w", err)
+		return Role{}, err
 	}
 
 	return role, nil
@@ -105,7 +105,7 @@ func findRoleByName(roles []Role, name string) (Role, error) {
 		}
 	}
 
-	return Role{}, fmt.Errorf("role with name %q %w", name, graphql.ErrNotFound)
+	return Role{}, fmt.Errorf("role %q %w", name, graphql.ErrNotFound)
 }
 
 // Roles returns the roles matching the specified role name filter. The name
@@ -188,7 +188,7 @@ func (a API) RoleTemplateByName(ctx context.Context, name string) (RoleTemplate,
 
 	roleTemplate, err := findRoleTemplateByName(roleTemplates, name)
 	if err != nil {
-		return RoleTemplate{}, fmt.Errorf("failed to find role template: %v", err)
+		return RoleTemplate{}, err
 	}
 
 	return roleTemplate, nil
@@ -203,7 +203,7 @@ func findRoleTemplateByName(roleTemplates []RoleTemplate, name string) (RoleTemp
 		}
 	}
 
-	return RoleTemplate{}, fmt.Errorf("role template with name %q %w", name, graphql.ErrNotFound)
+	return RoleTemplate{}, fmt.Errorf("role template %q %w", name, graphql.ErrNotFound)
 }
 
 // RoleTemplates returns the role templates matching the specified role template
