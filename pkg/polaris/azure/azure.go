@@ -298,6 +298,51 @@ func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Fea
 	return CloudAccount{}, fmt.Errorf("subscription %w", graphql.ErrNotFound)
 }
 
+// SubscriptionByNativeID returns the subscription with the specified feature
+// and native ID.
+func (a API) SubscriptionByNativeID(ctx context.Context, feature core.Feature, nativeID uuid.UUID) (CloudAccount, error) {
+	a.log.Print(log.Trace)
+
+	subscriptions, err := a.Subscriptions(ctx, feature, nativeID.String())
+	if err != nil {
+		return CloudAccount{}, err
+	}
+
+	for _, subscription := range subscriptions {
+		if subscription.NativeID == nativeID {
+			return subscription, nil
+		}
+	}
+
+	return CloudAccount{}, fmt.Errorf("subscription %q %w", nativeID, graphql.ErrNotFound)
+}
+
+// SubscriptionByName returns the subscription with the specified feature and
+// name. Tenant domain is optional and ignored if an empty string is passed in.
+func (a API) SubscriptionByName(ctx context.Context, feature core.Feature, name, tenantDomain string) (CloudAccount, error) {
+	a.log.Print(log.Trace)
+
+	subscriptions, err := a.Subscriptions(ctx, feature, name)
+	if err != nil {
+		return CloudAccount{}, err
+	}
+
+	// Sort the subscriptions ascending on tenant domain and name.
+	slices.SortFunc(subscriptions, func(i, j CloudAccount) int {
+		return cmp.Compare(i.TenantDomain+i.Name, j.TenantDomain+i.Name)
+	})
+	for _, subscription := range subscriptions {
+		if subscription.Name == name && (tenantDomain == "" || subscription.TenantDomain == tenantDomain) {
+			return subscription, nil
+		}
+	}
+
+	if tenantDomain != "" {
+		name = tenantDomain + "/" + name
+	}
+	return CloudAccount{}, fmt.Errorf("subscription %q %w", name, graphql.ErrNotFound)
+}
+
 // Subscriptions return all subscriptions with the specified feature matching
 // the filter. The filter can be used to search for subscription name and native
 // subscription ID.

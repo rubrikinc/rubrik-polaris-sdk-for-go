@@ -236,6 +236,43 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 	return CloudAccount{}, fmt.Errorf("account %w", graphql.ErrNotFound)
 }
 
+// AccountByNativeID returns the account with the specified feature and native
+// ID.
+func (a API) AccountByNativeID(ctx context.Context, feature core.Feature, nativeID string) (CloudAccount, error) {
+	a.log.Print(log.Trace)
+
+	accounts, err := a.Accounts(ctx, feature, nativeID)
+	if err != nil {
+		return CloudAccount{}, fmt.Errorf("failed to get account by native id: %s", err)
+	}
+
+	for _, account := range accounts {
+		if account.NativeID == nativeID {
+			return account, nil
+		}
+	}
+
+	return CloudAccount{}, fmt.Errorf("account %q %w", nativeID, graphql.ErrNotFound)
+}
+
+// AccountByName returns the account with the specified feature and name.
+func (a API) AccountByName(ctx context.Context, feature core.Feature, name string) (CloudAccount, error) {
+	a.log.Print(log.Trace)
+
+	accounts, err := a.Accounts(ctx, feature, name)
+	if err != nil {
+		return CloudAccount{}, fmt.Errorf("failed to get account by name: %s", err)
+	}
+
+	for _, account := range accounts {
+		if account.Name == name {
+			return account, nil
+		}
+	}
+
+	return CloudAccount{}, fmt.Errorf("account %q %w", name, graphql.ErrNotFound)
+}
+
 // Accounts return all accounts with the specified feature matching the filter.
 // The filter can be used to search for account id, account name and role arn.
 func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
