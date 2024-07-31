@@ -19,7 +19,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 // Package polaris contains code to interact with the RSC platform on a high
-// level. Relies on the graphql package for low-level queries.
+// level. Relies on the graphql package for low level queries.
 package polaris
 
 import (
@@ -36,33 +36,21 @@ import (
 )
 
 const (
-	// DefaultLocalUserFile path to the default local users file.
-	DefaultLocalUserFile = "~/.rubrik/polaris-accounts.json"
-
-	// DefaultServiceAccountFile path to the default service account file.
-	DefaultServiceAccountFile = "~/.rubrik/polaris-service-account.json"
+	// Client environmental variables.
+	keyLogLevel         = "RUBRIK_POLARIS_LOGLEVEL"
+	keyTokenCache       = "RUBRIK_POLARIS_TOKEN_CACHE"
+	keyTokenCacheDir    = "RUBRIK_POLARIS_TOKEN_CACHE_DIR"
+	keyTokenCacheSecret = "RUBRIK_POLARIS_TOKEN_CACHE_SECRET"
 )
 
-// Account represents a Polaris account. Implemented by UserAccount and
-// ServiceAccount.
-type Account interface {
-	// AccountName returns the RSC account name.
-	AccountName() string
-
-	// AccountFQDN returns the fully qualified domain name of the RSC account.
-	AccountFQDN() string
-
-	// APIURL returns the RSC account API URL.
-	APIURL() string
-
-	// TokenURL returns the RSC account token URL.
-	TokenURL() string
-
-	allowEnvOverride() bool
-
-	// Cryptographic material for encrypting cached access tokens.
-	cacheKeyMaterial() string
-	cacheSuffixMaterial() string
+// CacheParams is used to configure the token cache.
+//
+// Note, if the user account or service account has environment variable
+// override enabled, the cache param values can be overridden.
+type CacheParams struct {
+	Enable bool   // Enable the token cache.
+	Dir    string // Directory to store the cached tokens in.
+	Secret string // Secret to encrypt the cached tokens with.
 }
 
 // Client is used to make calls to the RSC platform.
@@ -78,7 +66,15 @@ type Client struct {
 // false, given that the account specified allows environment variable
 // overrides.
 func NewClient(account Account) (*Client, error) {
-	return NewClientWithLogger(account, log.DiscardLogger{})
+	return NewClientWithLoggerAndCacheParams(account, CacheParams{Enable: true}, log.DiscardLogger{})
+}
+
+// NewClientWithCacheParams returns a new Client for the specified Account.
+//
+// Note, the cache parameters specified can be overridden by environmental
+// variables if the specified account allows environment variable overrides.
+func NewClientWithCacheParams(account Account, cacheParams CacheParams) (*Client, error) {
+	return NewClientWithLoggerAndCacheParams(account, cacheParams, log.DiscardLogger{})
 }
 
 // NewClientWithLogger returns a new Client for the specified Account.
@@ -88,31 +84,59 @@ func NewClient(account Account) (*Client, error) {
 // false, given that the account specified allows environment variable
 // overrides.
 func NewClientWithLogger(account Account, logger log.Logger) (*Client, error) {
-	cacheToken := true
+	return NewClientWithLoggerAndCacheParams(account, CacheParams{Enable: true}, logger)
+}
+
+// NewClientWithLoggerAndCacheParams returns a new Client for the specified
+// Account.
+//
+// Note, the cache parameters specified can be overridden by environmental
+// variables if the specified account allows environment variable overrides.
+func NewClientWithLoggerAndCacheParams(account Account, cacheParams CacheParams, logger log.Logger) (*Client, error) {
 	if account.allowEnvOverride() {
-		if tcUse := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE"); tcUse != "" {
-			if b, err := strconv.ParseBool(tcUse); err != nil {
-				cacheToken = b
+		if val := os.Getenv(keyTokenCache); val != "" {
+			if b, err := strconv.ParseBool(val); err != nil {
+				cacheParams.Enable = b
 			}
+		}
+		if val := os.Getenv(keyTokenCacheDir); val != "" {
+			cacheParams.Dir = val
+		}
+		if val := os.Getenv(keyTokenCacheSecret); val != "" {
+			cacheParams.Secret = val
 		}
 	}
 
 	var tokenSource token.Source
 	switch account := account.(type) {
-	case *UserAccount:
-		tokenSource = token.NewUserSourceWithLogger(
-			http.DefaultClient, account.TokenURL(), account.Username, account.Password, logger)
 	case *ServiceAccount:
 		tokenSource = token.NewServiceAccountSourceWithLogger(
 			http.DefaultClient, account.TokenURL(), account.ClientID, account.ClientSecret, logger)
+	case *UserAccount:
+		tokenSource = token.NewUserSourceWithLogger(
+			http.DefaultClient, account.TokenURL(), account.Username, account.Password, logger)
 	default:
-		return nil, errors.New("failed to create client: invalid account type")
+		return nil, errors.New("invalid account type")
 	}
 
-	if cacheToken {
+	if cacheParams.Enable {
+		cacheDir := os.TempDir()
+		if cacheParams.Dir != "" {
+			cacheDir = cacheParams.Dir
+		}
+
+		// When a custom secret is used, we append the custom secret to the
+		// suffix material to ensure the token is written to separate file,
+		// since it/ will be encrypted with the custom secret.
+		keyMaterial := account.cacheKeyMaterial()
+		suffixMaterial := account.cacheSuffixMaterial()
+		if cacheParams.Secret != "" {
+			keyMaterial = cacheParams.Secret
+			suffixMaterial += cacheParams.Secret
+		}
+
 		var err error
-		tokenSource, err = token.NewCache(
-			tokenSource, account.cacheKeyMaterial(), account.cacheSuffixMaterial(), account.allowEnvOverride())
+		tokenSource, err = token.NewCacheWithDir(tokenSource, cacheDir, keyMaterial, suffixMaterial)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create token cache: %s", err)
 		}
@@ -132,7 +156,7 @@ func (c *Client) SetLogger(logger log.Logger) {
 // SetLogLevelFromEnv sets the log level of the logger to the log level
 // specified in the RUBRIK_POLARIS_LOGLEVEL environment variable.
 func SetLogLevelFromEnv(logger log.Logger) error {
-	level := os.Getenv("RUBRIK_POLARIS_LOGLEVEL")
+	level := os.Getenv(keyLogLevel)
 	if level == "" {
 		return nil
 	}
