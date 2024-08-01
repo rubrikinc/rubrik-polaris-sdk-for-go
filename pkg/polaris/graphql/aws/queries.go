@@ -536,16 +536,20 @@ var updateAwsExocomputeConfigsQuery = `mutation SdkGolangUpdateAwsExocomputeConf
 
 // updateCloudNativeAwsStorageSetting GraphQL query
 var updateCloudNativeAwsStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeAwsStorageSetting(
-    $id:             UUID!,
-    $name:           String,
-    $storageClass:   AwsStorageClass,
-    $kmsMasterKeyId: String
+    $id:                  UUID!,
+    $name:                String,
+    $storageClass:        AwsStorageClass,
+    $kmsMasterKeyId:      String,
+    $deleteAllBucketTags: Boolean
+    $bucketTags:          TagsInput,
 ) {
     result: updateCloudNativeAwsStorageSetting(input: {
-        id:             $id,
-        name:           $name,
-        storageClass:   $storageClass,
-        kmsMasterKeyId: $kmsMasterKeyId
+        id:                  $id,
+        name:                $name,
+        storageClass:        $storageClass,
+        kmsMasterKeyId:      $kmsMasterKeyId,
+        deleteAllBucketTags: $deleteAllBucketTags
+        bucketTags:          $bucketTags,
     }) {
         targetMapping {
             id

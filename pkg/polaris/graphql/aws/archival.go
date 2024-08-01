@@ -70,18 +70,21 @@ func (TargetMapping) ListQuery(filters []TargetMappingFilter) (string, any) {
 	})
 }
 
+// TagsInput holds a list of tags where each tag is a key-value pair.
+type TagsInput struct {
+	TagList []Tag `json:"tagList"`
+}
+
 // StorageSettingCreateParams represents the parameters required to create an
 // AWS storage setting.
 type StorageSettingCreateParams struct {
-	Name         string `json:"name"`
-	BucketPrefix string `json:"bucketPrefix"`
-	StorageClass string `json:"storageClass"`
-	Region       Region `json:"region,omitempty"`
-	KmsMasterKey string `json:"kmsMasterKeyId"`
-	LocTemplate  string `json:"locTemplateType"`
-	BucketTags   *struct {
-		TagList []Tag `json:"tagList"`
-	} `json:"bucketTags,omitempty"`
+	Name         string     `json:"name"`
+	BucketPrefix string     `json:"bucketPrefix"`
+	StorageClass string     `json:"storageClass"`
+	Region       Region     `json:"region,omitempty"`
+	KmsMasterKey string     `json:"kmsMasterKeyId"`
+	LocTemplate  string     `json:"locTemplateType"`
+	BucketTags   *TagsInput `json:"bucketTags,omitempty"`
 }
 
 // StorageSettingCreateResult represents the result of creating an AWS storage
@@ -106,9 +109,11 @@ func (r StorageSettingCreateResult) Validate() (uuid.UUID, error) {
 // StorageSettingUpdateParams represents the parameters required to update an
 // AWS storage setting.
 type StorageSettingUpdateParams struct {
-	Name         string `json:"name,omitempty"`
-	StorageClass string `json:"storageClass,omitempty"`
-	KmsMasterKey string `json:"kmsMasterKeyId,omitempty"`
+	Name                string     `json:"name,omitempty"`
+	StorageClass        string     `json:"storageClass,omitempty"`
+	KmsMasterKey        string     `json:"kmsMasterKeyId,omitempty"`
+	DeleteAllBucketTags bool       `json:"deleteAllBucketTags,omitempty"`
+	BucketTags          *TagsInput `json:"bucketTags,omitempty"`
 }
 
 // StorageSettingUpdateResult represents the result of updating an AWS storage
