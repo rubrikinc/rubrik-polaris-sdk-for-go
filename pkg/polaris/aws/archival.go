@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -46,7 +47,7 @@ type TargetMapping struct {
 }
 
 // TargetMappingByID returns the AWS target mapping with the specified ID.
-// If no target mapping with the specified ID is found graphql.ErrNotFound is
+// If no target mapping with the specified ID is found, graphql.ErrNotFound is
 // returned.
 func (a API) TargetMappingByID(ctx context.Context, id uuid.UUID) (TargetMapping, error) {
 	a.log.Print(log.Trace)
@@ -55,7 +56,7 @@ func (a API) TargetMappingByID(ctx context.Context, id uuid.UUID) (TargetMapping
 		Field: "ARCHIVAL_GROUP_ID",
 		Text:  id.String(),
 	}}
-	targets, err := aws.Wrap(a.client).AllTargetMappings(ctx, filter)
+	targets, err := archival.ListTargetMappings[aws.TargetMapping](ctx, a.client, filter)
 	if err != nil {
 		return TargetMapping{}, fmt.Errorf("failed to get target mappings: %s", err)
 	}
@@ -70,7 +71,7 @@ func (a API) TargetMappingByID(ctx context.Context, id uuid.UUID) (TargetMapping
 }
 
 // TargetMappingByName returns the AWS target mapping with the specified name.
-// If no target mapping with the specified ID is found graphql.ErrNotFound is
+// If no target mapping with the specified ID is found, graphql.ErrNotFound is
 // returned.
 func (a API) TargetMappingByName(ctx context.Context, name string) (TargetMapping, error) {
 	a.log.Print(log.Trace)
@@ -79,7 +80,7 @@ func (a API) TargetMappingByName(ctx context.Context, name string) (TargetMappin
 		Field: "NAME",
 		Text:  name,
 	}}
-	targets, err := aws.Wrap(a.client).AllTargetMappings(ctx, filter)
+	targets, err := archival.ListTargetMappings[aws.TargetMapping](ctx, a.client, filter)
 	if err != nil {
 		return TargetMapping{}, fmt.Errorf("failed to get target mappings: %s", err)
 	}
@@ -95,8 +96,8 @@ func (a API) TargetMappingByName(ctx context.Context, name string) (TargetMappin
 
 // TargetMappings returns all AWS target mappings that match the specified
 // archival group and name filter. The name filter can be used to search for
-// prefixes of a name. If the name filter is empty is will match all names.
-// In RSC cloud archival locations are also referred to as target mappings.
+// prefixes of a name. If the name filter is empty, is will match all names.
+// In RSC cloud, archival locations are also referred to as target mappings.
 func (a API) TargetMappings(ctx context.Context, nameFilter string) ([]TargetMapping, error) {
 	a.log.Print(log.Trace)
 
@@ -104,7 +105,7 @@ func (a API) TargetMappings(ctx context.Context, nameFilter string) ([]TargetMap
 		Field: "NAME",
 		Text:  nameFilter,
 	}}
-	targets, err := aws.Wrap(a.client).AllTargetMappings(ctx, filter)
+	targets, err := archival.ListTargetMappings[aws.TargetMapping](ctx, a.client, filter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get target mappings: %s", err)
 	}
@@ -122,7 +123,7 @@ func (a API) TargetMappings(ctx context.Context, nameFilter string) ([]TargetMap
 func (a API) DeleteTargetMapping(ctx context.Context, id uuid.UUID) error {
 	a.log.Print(log.Trace)
 
-	return aws.Wrap(a.client).DeleteTargetMapping(ctx, id)
+	return archival.DeleteTargetMapping(ctx, a.client, id)
 }
 
 // CreateStorageSetting creates a cloud native archival location.
@@ -136,17 +137,9 @@ func (a API) CreateStorageSetting(ctx context.Context, id IdentityFunc, name, bu
 		return uuid.Nil, err
 	}
 
-	tags := make([]aws.Tag, 0, len(bucketTags))
-	for key, value := range bucketTags {
-		tags = append(tags, aws.Tag{Key: key, Value: value})
-	}
-
 	reg := aws.RegionUnknown
 	if region != "" && region != "UNKNOWN_AWS_REGION" {
-		reg, err = aws.ParseRegion(region)
-		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to parse region: %s", err)
-		}
+		reg = aws.ParseRegionNoValidation(region)
 	}
 
 	locTemplate := "SPECIFIC_REGION"
@@ -154,7 +147,15 @@ func (a API) CreateStorageSetting(ctx context.Context, id IdentityFunc, name, bu
 		locTemplate = "SOURCE_REGION"
 	}
 
-	targetMappingID, err := aws.Wrap(a.client).CreateCloudNativeStorageSetting(ctx, cloudAccountID, name, bucketPrefix, storageClass, reg, kmsMasterKey, locTemplate, tags)
+	targetMappingID, err := archival.CreateCloudNativeStorageSetting[aws.StorageSettingCreateResult](ctx, a.client, cloudAccountID, aws.StorageSettingCreateParams{
+		Name:         name,
+		BucketPrefix: bucketPrefix,
+		StorageClass: storageClass,
+		Region:       reg,
+		KmsMasterKey: kmsMasterKey,
+		LocTemplate:  locTemplate,
+		BucketTags:   toTagsInput(bucketTags),
+	})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create cloud native storage setting: %s", err)
 	}
@@ -163,20 +164,41 @@ func (a API) CreateStorageSetting(ctx context.Context, id IdentityFunc, name, bu
 }
 
 // UpdateStorageSetting updates the cloud native archival location with the
-// specified ID. The KMS master key can be either a key alias or a key ID.
-// Note that not all properties can be updated, only the name, storage and KMS
-// master key.
-func (a API) UpdateStorageSetting(ctx context.Context, id uuid.UUID, name, storageClass, kmsMasterKey string) error {
+// specified ID. The KMS master key can be either a key alias or a key ID. The
+// bucket tags replace all existing tags. Note that not all properties can be
+// updated, only the name, storage class, KMS master key and bucket tags can be
+// updated.
+func (a API) UpdateStorageSetting(ctx context.Context, targetMappingID uuid.UUID, name, storageClass, kmsMasterKey string, bucketTags map[string]string) error {
 	a.log.Print(log.Trace)
 
-	if err := aws.Wrap(a.client).UpdateCloudNativeStorageSetting(ctx, id, name, storageClass, kmsMasterKey); err != nil {
+	tagsInput := toTagsInput(bucketTags)
+	err := archival.UpdateCloudNativeStorageSetting[aws.StorageSettingUpdateResult](ctx, a.client, targetMappingID, aws.StorageSettingUpdateParams{
+		Name:                name,
+		StorageClass:        storageClass,
+		KmsMasterKey:        kmsMasterKey,
+		DeleteAllBucketTags: tagsInput == nil,
+		BucketTags:          tagsInput,
+	})
+	if err != nil {
 		return fmt.Errorf("failed to update cloud native storage setting: %s", err)
 	}
 
 	return nil
 }
 
-// toTargetMapping converts an aws.TargetMapping to a TargetMapping.
+func toTagsInput(bucketTags map[string]string) *aws.TagsInput {
+	if len(bucketTags) == 0 {
+		return nil
+	}
+
+	tags := make([]aws.Tag, 0, len(bucketTags))
+	for key, value := range bucketTags {
+		tags = append(tags, aws.Tag{Key: key, Value: value})
+	}
+
+	return &aws.TagsInput{TagList: tags}
+}
+
 func toTargetMapping(target aws.TargetMapping) TargetMapping {
 	bucketTags := make(map[string]string, len(target.TargetTemplate.BucketTags))
 	for _, tag := range target.TargetTemplate.BucketTags {

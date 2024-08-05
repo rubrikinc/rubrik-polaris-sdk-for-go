@@ -72,7 +72,7 @@ func main() {
 	fmt.Printf("ID: %v, Name: %s\n", targetMapping.ID, targetMapping.Name)
 
 	// Update the AWS archival location.
-	err = awsClient.UpdateStorageSetting(ctx, targetMappingID, "TestUpdated", "", "")
+	err = awsClient.UpdateStorageSetting(ctx, targetMappingID, "TestUpdated", "", "", nil)
 	if err != nil {
 		log.Fatal(err)
 	}

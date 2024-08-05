@@ -9,7 +9,7 @@ import (
 )
 
 // testAwsAccount hold AWS account information used in the integration tests.
-// Normally used to assert that the information read from Polaris is correct.
+// Normally used to assert that the information read from RSC is correct.
 type testAwsAccount struct {
 	Profile          string `json:"profile"`
 	AccountID        string `json:"accountId"`
@@ -49,24 +49,38 @@ func AWSAccount() (testAwsAccount, error) {
 
 // testAzureSubscription hold Azure subscription information used in the
 // integration tests. Normally used to assert that the information read from
-// Polaris is correct.
+// RSC is correct.
 type testAzureSubscription struct {
 	SubscriptionID   uuid.UUID `json:"subscriptionId"`
 	SubscriptionName string    `json:"subscriptionName"`
+	TenantID         uuid.UUID `json:"tenantId"`
 	TenantDomain     string    `json:"tenantDomain"`
+	PrincipalID      uuid.UUID `json:"principalId"`
+	PrincipalName    string    `json:"principalName"`
+	PrincipalSecret  string    `json:"principalSecret"`
+
+	// Should be in EastUS2 region for integration test as the region is
+	// hardcoded there.
+	Archival struct {
+		Regions             []string `json:"regions"`
+		ManagedIdentityName string   `json:"managedIdentityName"`
+		PrincipalID         string   `json:"managedIdentityPrincipalId"`
+		ResourceGroupName   string   `json:"resourceGroupName"`
+		ResourceGroupRegion string   `json:"resourceGroupRegion"`
+	} `json:"archival"`
+
+	CloudNativeProtection struct {
+		Regions             []string `json:"regions"`
+		ResourceGroupName   string   `json:"resourceGroupName"`
+		ResourceGroupRegion string   `json:"resourceGroupRegion"`
+	} `json:"cloudNativeProtection"`
 
 	Exocompute struct {
-		SubnetID string `json:"subnetId"`
+		Regions             []string `json:"regions"`
+		ResourceGroupName   string   `json:"resourceGroupName"`
+		ResourceGroupRegion string   `json:"resourceGroupRegion"`
+		SubnetID            string   `json:"subnetId"`
 	} `json:"exocompute"`
-
-	// should be in EastUS2 region
-	// for integration test
-	// as region is hardcoded there.
-	Archival struct {
-		ManagedIdentityName string `json:"managedIdentityName"`
-		PrincipalID         string `json:"managedIdentityPrincipalId"`
-		ResourceGroupName   string `json:"resourceGroupName"`
-	} `json:"archival"`
 }
 
 // AzureSubscription loads test project information from the file pointed to by
@@ -86,7 +100,7 @@ func AzureSubscription() (testAzureSubscription, error) {
 }
 
 // testGcpProject hold GCP project information used in the integration tests.
-// Normally used to assert that the information read from Polaris is correct.
+// Normally used to assert that the information read from RSC is correct.
 type testGcpProject struct {
 	ProjectName      string `json:"projectName"`
 	ProjectID        string `json:"projectId"`
@@ -109,7 +123,7 @@ func GCPProject() (testGcpProject, error) {
 }
 
 // testRSCConfig hold configuration information used in the integration tests.
-// Normally used to assert that the information read from Polaris is correct.
+// Normally used to assert that the information read from RSC is correct.
 type testRSCConfig struct {
 	ExistingUserEmail string `json:"existingUserEmail"`
 	NewUserEmail      string `json:"newUserEmail"`

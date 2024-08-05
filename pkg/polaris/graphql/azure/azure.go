@@ -20,7 +20,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package azure provides a low level interface to the Azure GraphQL queries
+// Package azure provides a low-level interface to the Azure GraphQL queries
 // provided by the Polaris platform.
 package azure
 
@@ -28,8 +28,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 
@@ -44,173 +42,6 @@ const (
 	ChinaCloud  Cloud = "AZURECHINACLOUD"
 	PublicCloud Cloud = "AZUREPUBLICCLOUD"
 )
-
-// ProtectionFeature represents the protection features of an Azure cloud
-// account.
-type ProtectionFeature string
-
-const (
-	// SQLDB Azure SQL Database.
-	SQLDB ProtectionFeature = "SQL_DB"
-
-	// SQLMI Azure SQL Managed Instance.
-	SQLMI ProtectionFeature = "SQL_MI"
-
-	// VM Azure Virtual Machine.
-	VM ProtectionFeature = "VM"
-)
-
-// Region represents an Azure region in Polaris.
-type Region string
-
-const (
-	RegionUnknown            Region = "UNKNOWN_AZURE_REGION"
-	RegionAustraliaCentral   Region = "AUSTRALIACENTRAL"
-	RegionAustraliaCentral2  Region = "AUSTRALIACENTRAL2"
-	RegionAustraliaEast      Region = "AUSTRALIAEAST"
-	RegionAustraliaSouthEast Region = "AUSTRALIASOUTHEAST"
-	RegionBrazilSouth        Region = "BRAZILSOUTH"
-	RegionCanadaCentral      Region = "CANADACENTRAL"
-	RegionCanadaEast         Region = "CANADAEAST"
-	RegionCentralIndia       Region = "CENTRALINDIA"
-	RegionCentralUS          Region = "CENTRALUS"
-	RegionChinaEast          Region = "CHINAEAST"
-	RegionChinaEast2         Region = "CHINAEAST2"
-	RegionChinaNorth         Region = "CHINANORTH"
-	RegionChinaNorth2        Region = "CHINANORTH2"
-	RegionEastAsia           Region = "EASTASIA"
-	RegionEastUS             Region = "EASTUS"
-	RegionEastUS2            Region = "EASTUS2"
-	RegionFranceCentral      Region = "FRANCECENTRAL"
-	RegionFranceSouth        Region = "FRANCESOUTH"
-	RegionGermanyNorth       Region = "GERMANYNORTH"
-	RegionGermanyWestCentral Region = "GERMANYWESTCENTRAL"
-	RegionJapanEast          Region = "JAPANEAST"
-	RegionJapanWest          Region = "JAPANWEST"
-	RegionKoreaCentral       Region = "KOREACENTRAL"
-	RegionKoreaSouth         Region = "KOREASOUTH"
-	RegionNorthCentralUS     Region = "NORTHCENTRALUS"
-	RegionNorthEurope        Region = "NORTHEUROPE"
-	RegionNorwayEast         Region = "NORWAYEAST"
-	RegionNorwayWest         Region = "NORWAYWEST"
-	RegionSouthAfricaNorth   Region = "SOUTHAFRICANORTH"
-	RegionSouthAfricaWest    Region = "SOUTHAFRICAWEST"
-	RegionSouthCentralUS     Region = "SOUTHCENTRALUS"
-	RegionSouthEastAsia      Region = "SOUTHEASTASIA"
-	RegionSouthIndia         Region = "SOUTHINDIA"
-	RegionSwitzerlandNorth   Region = "SWITZERLANDNORTH"
-	RegionSwitzerlandWest    Region = "SWITZERLANDWEST"
-	RegionUAECentral         Region = "UAECENTRAL"
-	RegionUAENorth           Region = "UAENORTH"
-	RegionUKSouth            Region = "UKSOUTH"
-	RegionUKWest             Region = "UKWEST"
-	RegionWestCentralUS      Region = "WESTCENTRALUS"
-	RegionWestEurope         Region = "WESTEUROPE"
-	RegionWestIndia          Region = "WESTINDIA"
-	RegionWestUS             Region = "WESTUS"
-	RegionWestUS2            Region = "WESTUS2"
-	RegionWestUS3            Region = "WESTUS3"
-)
-
-// FormatRegion returns the Region as a string formatted in Azure's style, i.e.
-// lower case.
-func FormatRegion(region Region) string {
-	return strings.ToLower(string(region))
-}
-
-// FormatRegions returns the Regions as a slice of strings formatted in Azure's
-// style, i.e. lower case.
-func FormatRegions(regions []Region) []string {
-	regs := make([]string, 0, len(regions))
-	for _, region := range regions {
-		regs = append(regs, FormatRegion(region))
-	}
-
-	return regs
-}
-
-var validRegions = map[Region]struct{}{
-	RegionAustraliaCentral:   {},
-	RegionAustraliaCentral2:  {},
-	RegionAustraliaEast:      {},
-	RegionAustraliaSouthEast: {},
-	RegionBrazilSouth:        {},
-	RegionCanadaCentral:      {},
-	RegionCanadaEast:         {},
-	RegionCentralIndia:       {},
-	RegionCentralUS:          {},
-	RegionChinaEast:          {},
-	RegionChinaEast2:         {},
-	RegionChinaNorth:         {},
-	RegionChinaNorth2:        {},
-	RegionEastAsia:           {},
-	RegionEastUS:             {},
-	RegionEastUS2:            {},
-	RegionFranceCentral:      {},
-	RegionFranceSouth:        {},
-	RegionGermanyNorth:       {},
-	RegionGermanyWestCentral: {},
-	RegionJapanEast:          {},
-	RegionJapanWest:          {},
-	RegionKoreaCentral:       {},
-	RegionKoreaSouth:         {},
-	RegionNorthCentralUS:     {},
-	RegionNorthEurope:        {},
-	RegionNorwayEast:         {},
-	RegionNorwayWest:         {},
-	RegionSouthAfricaNorth:   {},
-	RegionSouthAfricaWest:    {},
-	RegionSouthCentralUS:     {},
-	RegionSouthEastAsia:      {},
-	RegionSouthIndia:         {},
-	RegionSwitzerlandNorth:   {},
-	RegionSwitzerlandWest:    {},
-	RegionUAECentral:         {},
-	RegionUAENorth:           {},
-	RegionUKSouth:            {},
-	RegionUKWest:             {},
-	RegionWestCentralUS:      {},
-	RegionWestEurope:         {},
-	RegionWestIndia:          {},
-	RegionWestUS:             {},
-	RegionWestUS2:            {},
-	RegionWestUS3:            {},
-}
-
-// ParseRegion returns the Region matching the given region. Accepts both
-// Polaris and Azure style region names.
-func ParseRegion(region string) (Region, error) {
-	// Polaris region name.
-	r := Region(region)
-	if _, ok := validRegions[r]; ok {
-		return r, nil
-	}
-
-	// Azure region name.
-	r = Region(strings.ToUpper(region))
-	if _, ok := validRegions[r]; ok {
-		return r, nil
-	}
-
-	return RegionUnknown, errors.New("invalid azure region")
-}
-
-// ParseRegions returns the Regions matching the given regions. Accepts both
-// Polaris and Azure style region names.
-func ParseRegions(regions []string) ([]Region, error) {
-	regs := make([]Region, 0, len(regions))
-
-	for _, r := range regions {
-		region, err := ParseRegion(r)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse region: %v", err)
-		}
-
-		regs = append(regs, region)
-	}
-
-	return regs, nil
-}
 
 // API wraps around GraphQL clients to give them the RSC Azure API.
 type API struct {
@@ -231,7 +62,8 @@ func Wrap(gql *graphql.Client) API {
 func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cloud, appID, appTenantID uuid.UUID, appName, appTenantDomain, appSecretKey string, shouldReplace bool) error {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, setAzureCloudAccountCustomerAppCredentialsQuery, struct {
+	query := setAzureCloudAccountCustomerAppCredentialsQuery
+	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
 		Cloud         Cloud     `json:"azureCloudType"`
 		ID            uuid.UUID `json:"appId"`
 		Name          string    `json:"appName"`
@@ -241,10 +73,10 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 		ShouldReplace bool      `json:"shouldReplace"`
 	}{Cloud: cloud, ID: appID, Name: appName, TenantID: appTenantID, TenantDomain: appTenantDomain, SecretKey: appSecretKey, ShouldReplace: shouldReplace})
 	if err != nil {
-		return fmt.Errorf("failed to request setAzureCloudAccountCustomerAppCredentialsQuery: %w", err)
+		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "setAzureCloudAccountCustomerAppCredentialsQuery(%v, %v, %v, \"<REDACTED>\", %v, %v, %v): %s", cloud,
-		appID, appName, appTenantID, appTenantDomain, shouldReplace, string(buf))
+	a.log.Printf(log.Debug, "%s(%q, %q, %q, <REDACTED>, %q, %q, %t): %s", graphql.QueryName(query), cloud, appID,
+		appName, appTenantID, appTenantDomain, shouldReplace, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -252,10 +84,10 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal setAzureCloudAccountCustomerAppCredentialsQuery: %v", err)
+		return graphql.UnmarshalError(query, err)
 	}
 	if !payload.Data.Result {
-		return errors.New("set app credentials failed")
+		return graphql.ResponseError(query, errors.New("set app credentials failed"))
 	}
 
 	return nil

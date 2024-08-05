@@ -1,0 +1,19 @@
+mutation RubrikPolarisSDKRequest(
+    $id:                 UUID!,
+    $name:               String!,
+    $storageTier:        AzureStorageTier!,
+    $storageAccountTags: TagsInput!,
+    $cmkInfo:            [AzureCmkInput!],
+) {
+    result: updateCloudNativeAzureStorageSetting(input: {
+        id:                 $id,
+        name:               $name,
+        storageTier:        $storageTier,
+        storageAccountTags: $storageAccountTags,
+        cmkInfo:            $cmkInfo,
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}

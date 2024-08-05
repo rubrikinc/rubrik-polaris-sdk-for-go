@@ -25,7 +25,6 @@ import (
 	"fmt"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 type options struct {
@@ -39,7 +38,7 @@ type options struct {
 // to the specified options instance.
 type OptionFunc func(ctx context.Context, opts *options) error
 
-// Name returns an OptionFunc that gives the specified name to the options
+// Name returns an OptionFunc that gives the specified name to the option
 // instance.
 func Name(name string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
@@ -48,22 +47,17 @@ func Name(name string) OptionFunc {
 	}
 }
 
-// Region returns an OptionFunc that gives the specified region to the options
+// Region returns an OptionFunc that gives the specified region to the option
 // instance.
 func Region(region string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
-		r, err := azure.ParseRegion(region)
-		if err != nil {
-			return fmt.Errorf("failed to parse region: %v", err)
-		}
-
-		opts.regions = append(opts.regions, r)
+		opts.regions = append(opts.regions, azure.RegionFromName(region))
 		return nil
 	}
 }
 
-// Regions returns an OptionFunc that gives the specified regions to the
-// options instance.
+// Regions return an OptionFunc that gives the specified regions to the option
+// instance.
 func Regions(regions ...string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
 		set := make(map[azure.Region]struct{}, len(regions)+len(opts.regions))
@@ -72,11 +66,7 @@ func Regions(regions ...string) OptionFunc {
 		}
 
 		for _, r := range regions {
-			region, err := azure.ParseRegion(r)
-			if err != nil {
-				return fmt.Errorf("failed to parse region: %v", err)
-			}
-
+			region := azure.RegionFromName(r)
 			if _, ok := set[region]; !ok {
 				opts.regions = append(opts.regions, region)
 				set[region] = struct{}{}
@@ -88,16 +78,11 @@ func Regions(regions ...string) OptionFunc {
 }
 
 // ResourceGroup returns an OptionFunc that gives the specified resource group
-// to the options instance. This is currently only needed for archival feature.
-// Support will be added for other features soon.
+// to the option instance.
 func ResourceGroup(name, region string, tags map[string]string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
 		if name == "" {
 			return fmt.Errorf("invalid name for resource group")
-		}
-		r, err := azure.ParseRegion(region)
-		if err != nil {
-			return fmt.Errorf("failed to parse region: %v", err)
 		}
 
 		tagList := make([]azure.Tag, 0, len(tags))
@@ -107,15 +92,15 @@ func ResourceGroup(name, region string, tags map[string]string) OptionFunc {
 
 		opts.resourceGroup = &azure.ResourceGroup{
 			Name:    name,
-			TagList: &azure.TagList{Tags: tagList},
-			Region:  r,
+			TagList: azure.TagList{Tags: tagList},
+			Region:  azure.RegionFromName(region).ToCloudAccountRegionEnum(),
 		}
 		return nil
 	}
 }
 
 // ManagedIdentity returns an OptionFunc that gives the specified managed
-// identity to the options instance. This is currently only needed for archival
+// identity to the option instance. This is currently only needed for archival
 // encryption feature.
 func ManagedIdentity(name, resourceGroup, principalID, region string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
@@ -129,11 +114,6 @@ func ManagedIdentity(name, resourceGroup, principalID, region string) OptionFunc
 			return fmt.Errorf("invalid principal ID for managed identity")
 		}
 
-		r, err := azure.ParseRegion(region)
-		if err != nil {
-			return fmt.Errorf("failed to parse region: %v", err)
-		}
-
 		if opts.featureSpecificInfo == nil {
 			opts.featureSpecificInfo = &azure.FeatureSpecificInfo{}
 		}
@@ -141,26 +121,8 @@ func ManagedIdentity(name, resourceGroup, principalID, region string) OptionFunc
 			Name:              name,
 			ResourceGroupName: resourceGroup,
 			PrincipalID:       principalID,
-			Region:            r,
+			Region:            azure.RegionFromName(region).ToCloudAccountRegionEnum(),
 		}
 		return nil
 	}
-}
-
-func verifyOptionsForFeature(opts options, feature core.Feature) error {
-	switch {
-	case feature.Equal(core.FeatureCloudNativeArchivalEncryption):
-		if opts.featureSpecificInfo == nil ||
-			opts.featureSpecificInfo.UserAssignedManagedIdentity == nil {
-			return fmt.Errorf("managed identity should be added for archival encryption")
-		}
-		if opts.resourceGroup == nil {
-			return fmt.Errorf("resource group should be added for archival encryption")
-		}
-	case feature.Equal(core.FeatureCloudNativeArchival):
-		if opts.resourceGroup == nil {
-			return fmt.Errorf("resource group should be added for archival")
-		}
-	}
-	return nil
 }

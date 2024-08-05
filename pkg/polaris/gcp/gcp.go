@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
@@ -254,7 +253,7 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, feature core.F
 	a.log.Print(log.Trace)
 
 	if !feature.Equal(core.FeatureCloudNativeProtection) {
-		return uuid.Nil, fmt.Errorf("feature not supported on gcp: %v", core.FormatFeature(feature))
+		return uuid.Nil, fmt.Errorf("feature not supported on gcp: %v", feature)
 	}
 
 	if project == nil {
@@ -345,12 +344,19 @@ func (a API) RemoveProject(ctx context.Context, id IdentityFunc, feature core.Fe
 			return fmt.Errorf("failed to disable native project: %v", err)
 		}
 
-		state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
-		if err != nil {
-			return fmt.Errorf("failed to wait for task chain: %v", err)
-		}
-		if state != core.TaskChainSucceeded {
-			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
+		if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
+			account, err := a.Project(ctx, id, feature)
+			if err != nil {
+				return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
+			}
+
+			feature, ok := account.Feature(feature)
+			if !ok {
+				return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
+			}
+			return feature.Status == core.StatusDisabled, nil
+		}); err != nil {
+			return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
 		}
 	}
 

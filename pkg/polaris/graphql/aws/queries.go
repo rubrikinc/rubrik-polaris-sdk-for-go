@@ -76,9 +76,7 @@ var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsN
                 taskchainId
             }
             region
-            ... on AwsCustomerManagedExocomputeConfig {
-                clusterName
-            }
+            message
             ... on AwsRscManagedExocomputeConfig {
                 vpcId
                 clusterSecurityGroupId
@@ -203,6 +201,7 @@ var awsExocomputeClusterConnectQuery = `mutation SdkGolangAwsExocomputeClusterCo
         clusterName:        $clusterName,
         exocomputeConfigId: $exocomputeConfigId
     }) {
+        clusterSetupYaml
         clusterUuid
         connectionCommand
     }
@@ -287,23 +286,31 @@ var bulkDeleteAwsCloudAccountWithoutCftQuery = `mutation SdkGolangBulkDeleteAwsC
 
 // createAwsExocomputeConfigs GraphQL query
 var createAwsExocomputeConfigsQuery = `mutation SdkGolangCreateAwsExocomputeConfigs($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
-    createAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
-        configs {
-            areSecurityGroupsRscManaged
-            clusterSecurityGroupId
+    result: createAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
+        exocomputeConfigs {
             configUuid
-            message
-            nodeSecurityGroupId
+            healthCheckStatus {
+                failureReason
+                lastUpdatedAt
+                status
+                taskchainId
+            }
             region
-            subnet1 {
-                availabilityZone
-                subnetId
+            message
+            ... on AwsRscManagedExocomputeConfig {
+                vpcId
+                clusterSecurityGroupId
+                nodeSecurityGroupId
+                subnet1 {
+                    availabilityZone
+                    subnetId
+                }
+                subnet2 {
+                    availabilityZone
+                    subnetId
+                }
+                areSecurityGroupsRscManaged
             }
-            subnet2 {
-                availabilityZone
-                subnetId
-            }
-            vpcId
         }
     }
 }`
@@ -337,7 +344,7 @@ var createCloudNativeAwsStorageSettingQuery = `mutation SdkGolangCreateCloudNati
 
 // deleteAwsExocomputeConfigs GraphQL query
 var deleteAwsExocomputeConfigsQuery = `mutation SdkGolangDeleteAwsExocomputeConfigs($configIdsToBeDeleted: [UUID!]!) {
-    deleteAwsExocomputeConfigs(input: {configIdsToBeDeleted: $configIdsToBeDeleted}) {
+    result: deleteAwsExocomputeConfigs(input: {configIdsToBeDeleted: $configIdsToBeDeleted}) {
         deletionStatus {
             exocomputeConfigId
             success
@@ -354,7 +361,7 @@ var deleteTargetMappingQuery = `mutation SdkGolangDeleteTargetMapping($id: Strin
 
 // disconnectAwsExocomputeCluster GraphQL query
 var disconnectAwsExocomputeClusterQuery = `mutation SdkGolangDisconnectAwsExocomputeCluster($clusterId: UUID!) {
-    disconnectAwsExocomputeCluster(input: {
+    result: disconnectAwsExocomputeCluster(input: {
         clusterId: $clusterId
     })
 }`
@@ -498,39 +505,51 @@ var updateAwsCloudAccountFeatureQuery = `mutation SdkGolangUpdateAwsCloudAccount
 
 // updateAwsExocomputeConfigs GraphQL query
 var updateAwsExocomputeConfigsQuery = `mutation SdkGolangUpdateAwsExocomputeConfigs($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
-    updateAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
-        configs {
-            areSecurityGroupsRscManaged
-            clusterSecurityGroupId
+    result: updateAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
+        exocomputeConfigs {
             configUuid
-            message
-            nodeSecurityGroupId
+            healthCheckStatus {
+                failureReason
+                lastUpdatedAt
+                status
+                taskchainId
+            }
             region
-            subnet1 {
-                availabilityZone
-                subnetId
+            message
+            ... on AwsRscManagedExocomputeConfig {
+                vpcId
+                clusterSecurityGroupId
+                nodeSecurityGroupId
+                subnet1 {
+                    availabilityZone
+                    subnetId
+                }
+                subnet2 {
+                    availabilityZone
+                    subnetId
+                }
+                areSecurityGroupsRscManaged
             }
-            subnet2 {
-                availabilityZone
-                subnetId
-            }
-            vpcId
         }
     }
 }`
 
 // updateCloudNativeAwsStorageSetting GraphQL query
 var updateCloudNativeAwsStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeAwsStorageSetting(
-    $id:             UUID!,
-    $name:           String,
-    $storageClass:   AwsStorageClass,
-    $kmsMasterKeyId: String
+    $id:                  UUID!,
+    $name:                String,
+    $storageClass:        AwsStorageClass,
+    $kmsMasterKeyId:      String,
+    $deleteAllBucketTags: Boolean
+    $bucketTags:          TagsInput,
 ) {
     result: updateCloudNativeAwsStorageSetting(input: {
-        id:             $id,
-        name:           $name,
-        storageClass:   $storageClass,
-        kmsMasterKeyId: $kmsMasterKeyId
+        id:                  $id,
+        name:                $name,
+        storageClass:        $storageClass,
+        kmsMasterKeyId:      $kmsMasterKeyId,
+        deleteAllBucketTags: $deleteAllBucketTags
+        bucketTags:          $bucketTags,
     }) {
         targetMapping {
             id

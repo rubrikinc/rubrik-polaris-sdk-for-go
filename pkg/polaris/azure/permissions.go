@@ -21,12 +21,28 @@
 package azure
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+)
+
+type Scope int
+
+const (
+	// ScopeLegacy provides backwards compatibility with how permissions worked
+	// before scoped permissions were introduced.
+	ScopeLegacy Scope = iota
+
+	// ScopeSubscription represents the subscription level permissions.
+	ScopeSubscription
+
+	// ScopeResourceGroup represents the resource group level permissions.
+	ScopeResourceGroup
 )
 
 // Permissions for Azure.
@@ -37,54 +53,124 @@ type Permissions struct {
 	NotDataActions []string
 }
 
-// stringsDiff returns the difference between lhs and rhs, i.e. rhs subtracted
-// from lhs.
-func stringsDiff(lhs, rhs []string) []string {
-	set := make(map[string]struct{})
-	for _, s := range lhs {
-		set[s] = struct{}{}
-	}
-
-	for _, s := range rhs {
-		delete(set, s)
-	}
-
-	diff := make([]string, 0, len(set))
-	for s := range set {
-		diff = append(diff, s)
-	}
-
-	return diff
+// PermissionGroupWithVersion represents a permission group with a specific
+// version.
+type PermissionGroupWithVersion struct {
+	Name    string
+	Version int
 }
 
-// Permissions returns all Azure permissions required to use the specified RSC
-// features.
+// Note, permissions must be sorted in alphabetical order.
+func (p *Permissions) addPermissions(perm Permissions) {
+	p.Actions = append(p.Actions, perm.Actions...)
+	slices.Sort(p.Actions)
+	p.Actions = slices.Compact(p.Actions)
+
+	p.DataActions = append(p.DataActions, perm.DataActions...)
+	slices.Sort(p.DataActions)
+	p.DataActions = slices.Compact(p.DataActions)
+
+	p.NotActions = append(p.NotActions, perm.NotActions...)
+	slices.Sort(p.NotActions)
+	p.NotActions = slices.Compact(p.NotActions)
+
+	p.NotDataActions = append(p.NotDataActions, perm.NotDataActions...)
+	slices.Sort(p.NotDataActions)
+	p.NotDataActions = slices.Compact(p.NotDataActions)
+}
+
+// Deprecated: Use ScopedPermissions with ScopeLegacy instead.
 func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissions, error) {
 	a.client.Log().Print(log.Trace)
 
-	perms := Permissions{}
-	for _, feature := range features {
-		permConfig, err := azure.Wrap(a.client).CloudAccountPermissionConfig(ctx, feature)
-		if err != nil {
-			return Permissions{}, fmt.Errorf("failed to get permissions: %v", err)
-		}
+	scopedPerms, err := a.ScopedPermissionsForFeatures(ctx, features)
+	if err != nil {
+		return Permissions{}, err
+	}
 
-		for _, perm := range permConfig.RolePermissions {
-			perms.Actions = append(perms.Actions, stringsDiff(perm.IncludedActions, perms.Actions)...)
-			perms.DataActions = append(perms.DataActions, stringsDiff(perm.IncludedDataActions, perms.DataActions)...)
-			perms.NotActions = append(perms.NotActions, stringsDiff(perm.ExcludedActions, perms.NotActions)...)
-			perms.NotDataActions = append(perms.NotDataActions, stringsDiff(perm.ExcludedDataActions, perms.NotDataActions)...)
+	return scopedPerms[ScopeLegacy], nil
+}
+
+// ScopedPermissions returns the permissions and permission groups for the
+// specified RSC feature. The Permissions return value always contains three
+// items representing the different permission scopes: legacy, subscription and
+// resource group.
+func (a API) ScopedPermissions(ctx context.Context, feature core.Feature) ([]Permissions, []PermissionGroupWithVersion, error) {
+	a.client.Log().Print(log.Trace)
+
+	permConfig, err := azure.Wrap(a.client).CloudAccountPermissionConfig(ctx, feature)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get permissions: %s", err)
+	}
+
+	scopedPerms := make([]Permissions, 3)
+
+	// Subscription scope.
+	for _, perm := range permConfig.RolePermissions {
+		scopedPerms[ScopeSubscription].addPermissions(Permissions{
+			Actions:        perm.IncludedActions,
+			DataActions:    perm.IncludedDataActions,
+			NotActions:     perm.ExcludedActions,
+			NotDataActions: perm.ExcludedDataActions,
+		})
+	}
+
+	// Resource group scope.
+	for _, perm := range permConfig.ResourceGroupRolePermissions {
+		scopedPerms[ScopeResourceGroup].addPermissions(Permissions{
+			Actions:        perm.IncludedActions,
+			DataActions:    perm.IncludedDataActions,
+			NotActions:     perm.ExcludedActions,
+			NotDataActions: perm.ExcludedDataActions,
+		})
+	}
+
+	// Legacy scope, provides backwards compatibility with how permissions
+	// worked before scoped permissions were introduced.
+	scopedPerms[ScopeLegacy].addPermissions(scopedPerms[ScopeSubscription])
+	scopedPerms[ScopeLegacy].addPermissions(scopedPerms[ScopeResourceGroup])
+
+	// Permission groups. Note, permissions groups must be sorted in
+	// alphabetical order.
+	permGroups := make([]PermissionGroupWithVersion, 0, len(permConfig.PermissionGroupVersions))
+	for _, permissionGroup := range permConfig.PermissionGroupVersions {
+		permGroups = append(permGroups, PermissionGroupWithVersion{
+			Name:    permissionGroup.PermissionGroup,
+			Version: permissionGroup.Version,
+		})
+	}
+	slices.SortFunc(permGroups, func(i, j PermissionGroupWithVersion) int {
+		return cmp.Compare(i.Name, j.Name)
+	})
+
+	return scopedPerms, permGroups, nil
+}
+
+// ScopedPermissionsForFeatures returns the scoped permissions for a feature
+// set. This function violates the RSC Azure permission model and will be
+// removed in a future release, use ScopedPermissions instead.
+func (a API) ScopedPermissionsForFeatures(ctx context.Context, features []core.Feature) ([]Permissions, error) {
+	a.client.Log().Print(log.Trace)
+
+	scopedPerms := make([]Permissions, 3)
+	for _, feature := range features {
+		scopedPermsForFeature, _, err := a.ScopedPermissions(ctx, feature)
+		if err != nil {
+			return nil, err
+		}
+		for i := range scopedPerms {
+			scopedPerms[i].addPermissions(scopedPermsForFeature[i])
 		}
 	}
 
-	return perms, nil
+	return scopedPerms, nil
 }
 
 // PermissionsUpdated notifies RSC that the permissions for the Azure service
 // principal for the RSC cloud account with the specified id has been updated.
 // The permissions should be updated when a feature has the status
 // StatusMissingPermissions. Updating the permissions is done outside this SDK.
-// The features parameter is allowed to be nil. When features is nil all
+// The feature parameter is allowed to be nil. When features are nil, all
 // features are updated. Note that RSC is only notified about features with
 // status StatusMissingPermissions.
 func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
@@ -97,7 +183,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 
 	account, err := a.Subscription(ctx, id, core.FeatureAll)
 	if err != nil {
-		return fmt.Errorf("failed to get subscription: %v", err)
+		return fmt.Errorf("failed to get subscription: %s", err)
 	}
 
 	for _, feature := range account.Features {
@@ -106,14 +192,14 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 		}
 
 		// Check that the feature is in the feature set unless the set is
-		// empty which is when all features should be updated.
+		//  empty, which is when all features should be updated.
 		if _, ok := featureSet[feature.Name]; len(featureSet) > 0 && !ok {
 			continue
 		}
 
 		err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Feature)
 		if err != nil {
-			return fmt.Errorf("failed to update permissions: %v", err)
+			return fmt.Errorf("failed to update permissions: %s", err)
 		}
 	}
 
@@ -121,10 +207,10 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 }
 
 // PermissionsUpdatedForTenantDomain notifies RSC that the permissions for the
-// Azure service principal in a tenant domain has been updated. The permissions
+// Azure service principal in a tenant domain have been updated. The permissions
 // should be updated when a feature has the status StatusMissingPermissions.
-// Updating the permissions is done outside the SDK. The features parameter is
-// allowed to be nil. When features is nil all features are updated. Note that
+// Updating the permissions is done outside the SDK. The feature parameter is
+// allowed to be nil. When features are nil, all features are updated. Note that
 // RSC is only notified about features with status StatusMissingPermissions.
 func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain string, features []core.Feature) error {
 	a.client.Log().Print(log.Trace)
@@ -136,7 +222,7 @@ func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain
 
 	accounts, err := a.Subscriptions(ctx, core.FeatureAll, "")
 	if err != nil {
-		return fmt.Errorf("failed to get subscriptions: %v", err)
+		return fmt.Errorf("failed to get subscriptions: %s", err)
 	}
 
 	for _, account := range accounts {
@@ -150,14 +236,14 @@ func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain
 			}
 
 			// Check that the feature is in the feature set unless the set is
-			// empty which is when all features should be updated.
+			// empty, which is when all features should be updated.
 			if _, ok := featureSet[feature.Name]; len(featureSet) > 0 && !ok {
 				continue
 			}
 
 			err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Feature)
 			if err != nil {
-				return fmt.Errorf("failed to update permissions: %v", err)
+				return fmt.Errorf("failed to update permissions: %s", err)
 			}
 		}
 	}

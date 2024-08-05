@@ -67,7 +67,10 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
     result: allAzureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $includeSubscriptionDetails) {
         cloudType
         azureCloudAccountTenantRubrikId
+        clientId
+        appName
         domainName
+        subscriptionCount
         subscriptions {
             id
             name
@@ -76,6 +79,20 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
                 feature
                 status
                 regions
+                resourceGroup {
+                    name
+                    nativeId
+                    region
+                    tags {
+                        key
+                        value
+                    }
+                }
+                userAssignedManagedIdentity {
+                    name
+                    nativeId
+                    principalId
+                }
             }
         }
     }
@@ -96,8 +113,16 @@ var allAzureExocomputeConfigsInAccountQuery = `query SdkGolangAllAzureExocompute
         }
         configs {
             configUuid
+            healthCheckStatus {
+                failureReason
+                lastUpdatedAt
+                status
+                taskchainId
+            }
             isRscManaged
             message
+            podOverlayNetworkCidr
+            podSubnetNativeId
             region
             subnetNativeId
         }
@@ -110,35 +135,63 @@ var allAzureExocomputeConfigsInAccountQuery = `query SdkGolangAllAzureExocompute
     }
 }`
 
+// allTargetMappings GraphQL query
+var allTargetMappingsQuery = `query SdkGolangAllTargetMappings($filter: [TargetMappingFilterInput!]) {
+    result: allTargetMappings(sortBy: NAME, sortOrder: ASC, filter: $filter) {
+        id
+        name
+        groupType
+        targetType
+        connectionStatus {
+            status
+        }
+        targetTemplate {
+            ... on AzureTargetTemplate {
+                cloudAccount {
+                    cloudAccountId
+                }
+                cloudNativeCompanion {
+                    cloudNativeLocTemplateType
+                    cmkInfo {
+                        keyName
+                        keyVaultName
+                        region
+                    }
+                    redundancy
+                    storageAccountRegion
+                    storageAccountTags {
+                        key
+                        value
+                    }
+                    storageTier
+                    subscriptionNativeId
+                }
+                containerNamePrefix
+                storageAccountName
+            }
+        }
+    }
+}`
+
 // azureCloudAccountPermissionConfig GraphQL query
 var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPermissionConfig($feature: CloudAccountFeature!) {
-    azureCloudAccountPermissionConfig(feature: $feature) {
+    result: azureCloudAccountPermissionConfig(feature: $feature) {
         permissionVersion
-        rolePermissions {
+        permissionsGroupVersions {
+            permissionsGroup
+            version
+        }
+        resourceGroupRolePermissions {
             excludedActions
             excludedDataActions
             includedActions
             includedDataActions
         }
-    }
-}`
-
-// azureCloudAccountTenant GraphQL query
-var azureCloudAccountTenantQuery = `query SdkGolangAzureCloudAccountTenant($tenantId: UUID!, $feature: CloudAccountFeature!, $subscriptionSearchText: String!) {
-    result: azureCloudAccountTenant(tenantId: $tenantId, feature: $feature, subscriptionSearchText: $subscriptionSearchText, subscriptionStatusFilters: []) {
-        cloudType
-        azureCloudAccountTenantRubrikId
-        clientId
-        domainName
-        subscriptions {
-            id
-            name
-            nativeId
-            featureDetail {
-                feature
-                regions
-                status
-            }
+        rolePermissions {
+            excludedActions
+            excludedDataActions
+            includedActions
+            includedDataActions
         }
     }
 }`
@@ -175,6 +228,39 @@ var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($af
     }
 }`
 
+// createCloudNativeAzureStorageSetting GraphQL query
+var createCloudNativeAzureStorageSettingQuery = `mutation SdkGolangCreateCloudNativeAzureStorageSetting(
+    $cloudAccountId:             UUID!,
+    $cloudNativeLocTemplateType: CloudNativeLocTemplateType!,
+    $cmkInfo:                    [AzureCmkInput!],
+    $containerName:              String!,
+    $name:                       String!,
+    $redundancy:                 AzureRedundancy!,
+    $storageTier:                AzureStorageTier!,
+    $subscriptionNativeId:       String!
+    $storageAccountName:         String!,
+    $storageAccountRegion:       AzureRegion,
+    $storageAccountTags:         TagsInput,
+) {
+    result: createCloudNativeAzureStorageSetting(input: {
+        cloudAccountId:              $cloudAccountId,
+        cloudNativeLocTemplateType:  $cloudNativeLocTemplateType,
+        cmkInfo:                     $cmkInfo,
+        containerName:               $containerName,
+        name:                        $name,
+        redundancy:                  $redundancy,
+        storageTier:                 $storageTier,
+        subscriptionNativeId:        $subscriptionNativeId
+        storageAccountName:          $storageAccountName,
+        storageAccountRegion:        $storageAccountRegion,
+        storageAccountTags:          $storageAccountTags,
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}`
+
 // deleteAzureCloudAccountExocomputeConfigurations GraphQL query
 var deleteAzureCloudAccountExocomputeConfigurationsQuery = `mutation SdkGolangDeleteAzureCloudAccountExocomputeConfigurations($cloudAccountIds: [UUID!]!) {
     result: deleteAzureCloudAccountExocomputeConfigurations(input: {
@@ -196,6 +282,16 @@ var deleteAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteAzureClo
             isSuccess
             error
         }
+    }
+}`
+
+// mapAzureCloudAccountExocomputeSubscription GraphQL query
+var mapAzureCloudAccountExocomputeSubscriptionQuery = `mutation SdkGolangMapAzureCloudAccountExocomputeSubscription($exocomputeCloudAccountId: UUID!, $cloudAccountIds: [UUID!]!) {
+    result: mapAzureCloudAccountExocomputeSubscription(input: {
+        exocomputeCloudAccountId: $exocomputeCloudAccountId,
+        cloudAccountIds:          $cloudAccountIds
+    }) {
+        isSuccess
     }
 }`
 
@@ -238,6 +334,15 @@ var startDisableAzureNativeSubscriptionProtectionJobQuery = `mutation SdkGolangS
      }
  }`
 
+// unmapAzureCloudAccountExocomputeSubscription GraphQL query
+var unmapAzureCloudAccountExocomputeSubscriptionQuery = `mutation SdkGolangUnmapAzureCloudAccountExocomputeSubscription($cloudAccountIds: [UUID!]!) {
+    result: unmapAzureCloudAccountExocomputeSubscription(input: {
+        cloudAccountIds: $cloudAccountIds
+    }) {
+      isSuccess
+    }
+}`
+
 // updateAzureCloudAccount GraphQL query
 var updateAzureCloudAccountQuery = `mutation SdkGolangUpdateAzureCloudAccount($features: [CloudAccountFeature!]!, $regionsToAdd: [AzureCloudAccountRegion!], $regionsToRemove: [AzureCloudAccountRegion!], $subscriptions: [AzureCloudAccountSubscriptionInput!]!) {
     result: updateAzureCloudAccount(input: {
@@ -249,6 +354,27 @@ var updateAzureCloudAccountQuery = `mutation SdkGolangUpdateAzureCloudAccount($f
         status {
             azureSubscriptionNativeId
             isSuccess
+        }
+    }
+}`
+
+// updateCloudNativeAzureStorageSetting GraphQL query
+var updateCloudNativeAzureStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeAzureStorageSetting(
+    $id:                 UUID!,
+    $name:               String!,
+    $storageTier:        AzureStorageTier!,
+    $storageAccountTags: TagsInput!,
+    $cmkInfo:            [AzureCmkInput!],
+) {
+    result: updateCloudNativeAzureStorageSetting(input: {
+        id:                 $id,
+        name:               $name,
+        storageTier:        $storageTier,
+        storageAccountTags: $storageAccountTags,
+        cmkInfo:            $cmkInfo,
+    }) {
+        targetMapping {
+            id
         }
     }
 }`

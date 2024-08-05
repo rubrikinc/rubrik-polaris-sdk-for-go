@@ -20,8 +20,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package core provides a low level interface to core GraphQL queries provided
-// by the Polaris platform. E.g. task chains and enum definitions.
+// Package core provides a low-level interface to core GraphQL queries provided
+// by the Polaris platform. E.g., task chains and enum definitions.
 package core
 
 import (
@@ -36,6 +36,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+)
+
+type CloudVendor string
+
+const (
+	CloudVendorAWS   CloudVendor = "AWS"
+	CloudVendorAzure CloudVendor = "AZURE"
+	CloudVendorGCP   CloudVendor = "GCP"
+	CloudVendorAll   CloudVendor = "ALL_VENDORS"
 )
 
 // CloudAccountAction represents a Polaris cloud account action.
@@ -141,7 +150,7 @@ var (
 	FeatureArchival                      = Feature{Name: "ARCHIVAL"}
 	FeatureAzureSQLDBProtection          = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
 	FeatureAzureSQLMIProtection          = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
-	FeatureCloudAccounts                 = Feature{Name: "CLOUDACCOUNTS"} // Deprecated, no replacement.
+	FeatureCloudAccounts                 = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
 	FeatureCloudNativeArchival           = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
 	FeatureCloudNativeArchivalEncryption = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
 	FeatureCloudNativeBLOBProtection     = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
@@ -149,9 +158,9 @@ var (
 	FeatureCloudNativeS3Protection       = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
 	FeatureExocompute                    = Feature{Name: "EXOCOMPUTE"}
 	FeatureGCPSharedVPCHost              = Feature{Name: "GCP_SHARED_VPC_HOST"}
-	FeatureServerAndApps                 = Feature{Name: "SERVERS_AND_APPS"}
-	FeatureRDSProtection                 = Feature{Name: "RDS_PROTECTION"}
 	FeatureKubernetesProtection          = Feature{Name: "KUBERNETES_PROTECTION"}
+	FeatureRDSProtection                 = Feature{Name: "RDS_PROTECTION"}
+	FeatureServerAndApps                 = Feature{Name: "SERVERS_AND_APPS"}
 )
 
 var validFeatures = map[string]struct{}{
@@ -160,7 +169,7 @@ var validFeatures = map[string]struct{}{
 	FeatureArchival.Name:                      {},
 	FeatureAzureSQLDBProtection.Name:          {},
 	FeatureAzureSQLMIProtection.Name:          {},
-	FeatureCloudAccounts.Name:                 {},
+	FeatureCloudAccounts.Name:                 {}, // Deprecated: no replacement.
 	FeatureCloudNativeArchival.Name:           {},
 	FeatureCloudNativeArchivalEncryption.Name: {},
 	FeatureCloudNativeBLOBProtection.Name:     {},
@@ -185,29 +194,33 @@ func ContainsFeature(features []Feature, feature Feature) bool {
 	return false
 }
 
-// FormatFeature returns the Feature as a string using lower case and with
-// hyphen as a separator.
+// Deprecated: use Feature.Name instead.
 func FormatFeature(feature Feature) string {
 	return strings.ReplaceAll(strings.ToLower(feature.Name), "_", "-")
 }
 
-// ParseFeature returns the Feature matching the given feature name.
-// Case-insensitive.
+// Deprecated: use Feature{Name: <feature>} instead or ParseFeatureNoValidation
+// if you need to remain backwards compatible with previously accepted feature
+// names.
 func ParseFeature(feature string) (Feature, error) {
-	feature = strings.ReplaceAll(feature, "-", "_")
-
-	name := strings.ToUpper(feature)
-	if _, ok := validFeatures[name]; ok {
-		return Feature{Name: name}, nil
+	f := ParseFeatureNoValidation(feature)
+	if _, ok := validFeatures[f.Name]; ok {
+		return f, nil
 	}
 
 	return FeatureInvalid, fmt.Errorf("invalid feature: %s", feature)
 }
 
+// ParseFeatureNoValidation returns the Feature matching the given feature name.
+// No validation is performed.
+func ParseFeatureNoValidation(feature string) Feature {
+	return Feature{Name: strings.ToUpper(strings.ReplaceAll(feature, "-", "_"))}
+}
+
 const (
-	// Number of attempts before failing to wait for the Korg job when the error
-	// returned is a 403, objects not authorized.
-	waitAttempts = 20
+	// The number of attempts before failing to wait for the Korg job when the
+	// error returned is a 403, objects not authorized.
+	waitAttempts = 50
 )
 
 // Status represents a Polaris cloud account status.
@@ -221,7 +234,7 @@ const (
 	StatusMissingPermissions Status = "MISSING_PERMISSIONS"
 )
 
-// FormatStatus returns the Status as a string using lower case and with hyphen
+// FormatStatus returns the Status as a string using lower-case and with hyphen
 // as a separator.
 func FormatStatus(status Status) string {
 	return strings.ReplaceAll(strings.ToLower(string(status)), "_", "-")
@@ -277,19 +290,19 @@ type TaskChain struct {
 }
 
 // KorgTaskChainStatus returns the task chain for the specified task chain id.
-// If the task chain id refers to a task chain that was just created its state
+// If the task chain id refers to a task chain that was just created, its state
 // might not have reached ready yet. This can be detected by state being
 // TaskChainInvalid and error is nil.
-func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, error) {
+func (a API) KorgTaskChainStatus(ctx context.Context, taskChainID uuid.UUID) (TaskChain, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(ctx, getKorgTaskchainStatusQuery, struct {
 		TaskChainID uuid.UUID `json:"taskchainId,omitempty"`
-	}{TaskChainID: id})
+	}{TaskChainID: taskChainID})
 	if err != nil {
 		return TaskChain{}, fmt.Errorf("failed to request getKorgTaskchainStatus: %w", err)
 	}
-	a.log.Printf(log.Debug, "getKorgTaskchainStatus(%q): %s", id, string(buf))
+	a.log.Printf(log.Debug, "getKorgTaskchainStatus(%q): %s", taskChainID, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -299,29 +312,29 @@ func (a API) KorgTaskChainStatus(ctx context.Context, id uuid.UUID) (TaskChain, 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return TaskChain{}, fmt.Errorf("failed to unmarshal getKorgTaskchainStatus: %v", err)
+		return TaskChain{}, fmt.Errorf("failed to unmarshal getKorgTaskchainStatus: %s", err)
 	}
 
 	return payload.Data.Query.TaskChain, nil
 }
 
 // WaitForTaskChain blocks until the Polaris task chain with the specified task
-// chain id has completed. When the task chain completes the final state of the
+// chain id has completed. When the task chain completes, the final state of the
 // task chain is returned. The wait parameter specifies the amount of time to
 // wait before requesting another task status update.
-func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Duration) (TaskChainState, error) {
+func (a API) WaitForTaskChain(ctx context.Context, taskChainID uuid.UUID, wait time.Duration) (TaskChainState, error) {
 	a.log.Print(log.Trace)
 
 	attempt := 0
 	for {
-		taskChain, err := a.KorgTaskChainStatus(ctx, id)
+		taskChain, err := a.KorgTaskChainStatus(ctx, taskChainID)
 		if err != nil {
 			var gqlErr graphql.GQLError
 			if !errors.As(err, &gqlErr) || len(gqlErr.Errors) < 1 || gqlErr.Errors[0].Extensions.Code != 403 {
-				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %q: %v", id, err)
+				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %s: %s", taskChainID, err)
 			}
 			if attempt++; attempt > waitAttempts {
-				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %q after %d attempts: %v", id, attempt, err)
+				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %s after %d attempts: %s", taskChainID, attempt, err)
 			}
 			a.log.Printf(log.Debug, "RBAC not ready (attempt: %d)", attempt)
 		}
@@ -330,12 +343,55 @@ func (a API) WaitForTaskChain(ctx context.Context, id uuid.UUID, wait time.Durat
 			return taskChain.State, nil
 		}
 
-		a.log.Printf(log.Debug, "Waiting for Polaris task chain: %v", id)
+		a.log.Printf(log.Debug, "Waiting for Polaris task chain: %s", taskChainID)
 
 		select {
 		case <-time.After(wait):
 		case <-ctx.Done():
 			return TaskChainInvalid, ctx.Err()
+		}
+	}
+}
+
+// WaitForFeatureDisableTaskChain waits for the feature disable task chain to
+// finish. If an error occurs while waiting for the task chain or the task chain
+// ends in a failed state, an error is returned.
+func (a API) WaitForFeatureDisableTaskChain(ctx context.Context, taskChainID uuid.UUID, featureStatus func(ctx context.Context) (bool, error)) error {
+	a.log.Print(log.Trace)
+
+	ctx, cancel := context.WithTimeout(ctx, 9*time.Minute)
+	defer cancel()
+	for {
+		// Check the status of the task chain.
+		taskChain, err := a.KorgTaskChainStatus(ctx, taskChainID)
+		if err != nil {
+			// If the error isn't a 403, objects not authorized, we abort the wait.
+			var gqlErr graphql.GQLError
+			if !errors.As(err, &gqlErr) || len(gqlErr.Errors) < 1 || gqlErr.Errors[0].Extensions.Code != 403 {
+				return fmt.Errorf("failed to retrieve taskchain status: %s", err)
+			}
+
+			// If the task chain RBAC is not yet ready, we fall back to checking
+			// the status of the account feature.
+			if disabled, err := featureStatus(ctx); disabled || err != nil {
+				return err
+			}
+
+			a.log.Printf(log.Debug, "Task chain RBAC not ready")
+		} else {
+			if taskChain.State == TaskChainSucceeded {
+				return nil
+			}
+			if taskChain.State == TaskChainCanceled || taskChain.State == TaskChainFailed {
+				return fmt.Errorf("taskchain failed: task chain state is %s", taskChain.State)
+			}
+		}
+
+		a.log.Printf(log.Debug, "Waiting for task chain: %s", taskChainID)
+		select {
+		case <-time.After(10 * time.Second):
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
 }
@@ -396,7 +452,7 @@ func (a API) EnabledFeaturesForAccount(ctx context.Context) ([]Feature, error) {
 	var payload struct {
 		Data struct {
 			Result struct {
-				Features []Feature `json:"features"`
+				Features []string `json:"features"`
 			} `json:"result"`
 		} `json:"data"`
 	}
@@ -404,5 +460,10 @@ func (a API) EnabledFeaturesForAccount(ctx context.Context) ([]Feature, error) {
 		return nil, fmt.Errorf("failed to unmarshal allEnabledFeaturesForAccount: %v", err)
 	}
 
-	return payload.Data.Result.Features, nil
+	var features []Feature
+	for _, feature := range payload.Data.Result.Features {
+		features = append(features, Feature{Name: feature})
+	}
+
+	return features, nil
 }

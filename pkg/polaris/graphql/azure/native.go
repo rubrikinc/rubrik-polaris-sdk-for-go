@@ -91,10 +91,21 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 	return subscriptions, nil
 }
 
-// StartDisableNativeSubscriptionProtectionJob starts a task chain job to
-// disable the native subscription with the specified RSC native subscription
-// id. If deleteSnapshots is true the snapshots are deleted. Returns the RSC
-// task chain id.
+// Deprecated: no replacement.
+type ProtectionFeature string
+
+const (
+	// Deprecated: no replacement.
+	SQLDB ProtectionFeature = "SQL_DB"
+
+	// Deprecated: no replacement.
+	SQLMI ProtectionFeature = "SQL_MI"
+
+	// Deprecated: no replacement.
+	VM ProtectionFeature = "VM"
+)
+
+// Deprecated: use StartDisableCloudAccountJob instead.
 func (a API) StartDisableNativeSubscriptionProtectionJob(ctx context.Context, id uuid.UUID, feature ProtectionFeature, deleteSnapshots bool) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 

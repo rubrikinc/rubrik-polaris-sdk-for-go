@@ -1,21 +1,29 @@
 mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
-    updateAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
-        configs {
-            areSecurityGroupsRscManaged
-            clusterSecurityGroupId
+    result: updateAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
+        exocomputeConfigs {
             configUuid
-            message
-            nodeSecurityGroupId
+            healthCheckStatus {
+                failureReason
+                lastUpdatedAt
+                status
+                taskchainId
+            }
             region
-            subnet1 {
-                availabilityZone
-                subnetId
+            message
+            ... on AwsRscManagedExocomputeConfig {
+                vpcId
+                clusterSecurityGroupId
+                nodeSecurityGroupId
+                subnet1 {
+                    availabilityZone
+                    subnetId
+                }
+                subnet2 {
+                    availabilityZone
+                    subnetId
+                }
+                areSecurityGroupsRscManaged
             }
-            subnet2 {
-                availabilityZone
-                subnetId
-            }
-            vpcId
         }
     }
 }

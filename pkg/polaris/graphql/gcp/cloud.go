@@ -88,7 +88,7 @@ func (a API) CloudAccountProjectsByFeature(ctx context.Context, feature core.Fea
 func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, projectName string, projectNumber int64, orgName, jwtConfig string, feature core.Feature) error {
 	a.log.Print(log.Trace)
 
-	_, err := a.GQL.Request(ctx, gcpCloudAccountAddManualAuthProjectQuery, struct {
+	_, err := a.GQL.RequestWithoutLogging(ctx, gcpCloudAccountAddManualAuthProjectQuery, struct {
 		ID           string `json:"gcpNativeProjectId"`
 		Name         string `json:"gcpProjectName"`
 		Number       int64  `json:"gcpProjectNumber"`

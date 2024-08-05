@@ -12,8 +12,16 @@ query RubrikPolarisSDKRequest($cloudAccountIDs: [UUID!], $azureExocomputeSearchQ
         }
         configs {
             configUuid
+            healthCheckStatus {
+                failureReason
+                lastUpdatedAt
+                status
+                taskchainId
+            }
             isRscManaged
             message
+            podOverlayNetworkCidr
+            podSubnetNativeId
             region
             subnetNativeId
         }

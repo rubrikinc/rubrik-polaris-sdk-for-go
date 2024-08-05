@@ -26,9 +26,9 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -38,6 +38,7 @@ type Subnet struct {
 	AvailabilityZone string
 }
 
+// HealthCheckStatus represents the health status of an exocompute cluster.
 type HealthCheckStatus struct {
 	Status        string
 	FailureReason string
@@ -63,9 +64,9 @@ type ExocomputeConfig struct {
 	HealthCheckStatus HealthCheckStatus
 }
 
-// ExoConfigFunc returns an exocompute config initialized from the values
-// passed to the function creating the ExoConfigFunc.
-type ExoConfigFunc func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error)
+// ExoConfigFunc returns an ExoCreateParams object initialized from the values
+// passed to the function when creating the ExoConfigFunc.
+type ExoConfigFunc func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExoCreateParams, error)
 
 // hasSecurityGroup returns true if a security group with the specified id
 // exists.
@@ -104,39 +105,36 @@ func findSubnet(vpc aws.VPC, subnetID string) (aws.Subnet, error) {
 	return aws.Subnet{}, fmt.Errorf("invalid subnet id: %v", subnetID)
 }
 
-// Managed returns an ExoConfigFunc that initializes an exocompute config with
-// security groups managed by RSC using the specified values.
+// Managed returns an ExoConfigFunc that initializes an ExoCreateParams object
+// with security groups managed by RSC using the specified values.
 func Managed(region, vpcID string, subnetIDs []string) ExoConfigFunc {
-	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
-		reg, err := aws.ParseRegion(region)
-		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
-		}
+	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExoCreateParams, error) {
+		reg := aws.ParseRegionNoValidation(region)
 
 		// Validate VPC.
 		vpcs, err := aws.Wrap(gql).AllVpcsByRegion(ctx, id, reg)
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to get vpcs: %v", err)
+			return aws.ExoCreateParams{}, fmt.Errorf("failed to get vpcs: %v", err)
 		}
 		vpc, err := findVPC(vpcs, vpcID)
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to find vpc: %v", err)
+			return aws.ExoCreateParams{}, fmt.Errorf("failed to find vpc: %v", err)
 		}
 
 		// Validate subnets.
 		if len(subnetIDs) != 2 {
-			return aws.ExocomputeConfigCreate{}, errors.New("there should be exactly 2 subnet ids")
+			return aws.ExoCreateParams{}, errors.New("there should be exactly 2 subnet ids")
 		}
 		subnet1, err := findSubnet(vpc, subnetIDs[0])
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to find subnet: %v", err)
+			return aws.ExoCreateParams{}, fmt.Errorf("failed to find subnet: %v", err)
 		}
 		subnet2, err := findSubnet(vpc, subnetIDs[1])
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to find subnet: %v", err)
+			return aws.ExoCreateParams{}, fmt.Errorf("failed to find subnet: %v", err)
 		}
 
-		return aws.ExocomputeConfigCreate{
+		return aws.ExoCreateParams{
 			Region:            reg,
 			VPCID:             vpcID,
 			Subnets:           []aws.Subnet{subnet1, subnet2},
@@ -145,49 +143,46 @@ func Managed(region, vpcID string, subnetIDs []string) ExoConfigFunc {
 	}
 }
 
-// Unmanaged returns an ExoConfigFunc that initializes an exocompute config
+// Unmanaged returns an ExoConfigFunc that initializes an ExoCreateParams object
 // with security groups managed by the user using the specified values.
 func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID, nodeSecurityGroupID string) ExoConfigFunc {
-	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
-		reg, err := aws.ParseRegion(region)
-		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
-		}
+	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExoCreateParams, error) {
+		reg := aws.ParseRegionNoValidation(region)
 
 		// Validate VPC.
 		vpcs, err := aws.Wrap(gql).AllVpcsByRegion(ctx, id, reg)
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to get vpcs: %v", err)
+			return aws.ExoCreateParams{}, fmt.Errorf("failed to get vpcs: %v", err)
 		}
 		vpc, err := findVPC(vpcs, vpcID)
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to find vpc: %v", err)
+			return aws.ExoCreateParams{}, fmt.Errorf("failed to find vpc: %v", err)
 		}
 
 		// Validate subnets.
 		if len(subnetIDs) != 2 {
-			return aws.ExocomputeConfigCreate{}, errors.New("there should be exactly 2 subnet ids")
+			return aws.ExoCreateParams{}, errors.New("there should be exactly 2 subnet ids")
 		}
 		subnet1, err := findSubnet(vpc, subnetIDs[0])
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to find subnet: %v", err)
+			return aws.ExoCreateParams{}, fmt.Errorf("failed to find subnet: %v", err)
 		}
 		subnet2, err := findSubnet(vpc, subnetIDs[1])
 		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to find subnet: %v", err)
+			return aws.ExoCreateParams{}, fmt.Errorf("failed to find subnet: %v", err)
 		}
 
 		// Validate security groups.
 		if !hasSecurityGroup(vpc, clusterSecurityGroupID) {
-			return aws.ExocomputeConfigCreate{},
+			return aws.ExoCreateParams{},
 				fmt.Errorf("invalid cluster security group id: %v", clusterSecurityGroupID)
 		}
 		if !hasSecurityGroup(vpc, nodeSecurityGroupID) {
-			return aws.ExocomputeConfigCreate{},
+			return aws.ExoCreateParams{},
 				fmt.Errorf("invalid node security group id: %v", nodeSecurityGroupID)
 		}
 
-		return aws.ExocomputeConfigCreate{
+		return aws.ExoCreateParams{
 			Region:                 reg,
 			VPCID:                  vpcID,
 			Subnets:                []aws.Subnet{subnet1, subnet2},
@@ -201,19 +196,14 @@ func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID,
 // BYOKCluster returns an ExoConfigFunc that initializes an exocompute config
 // with a Bring-Your-Own-Kubernetes cluster.
 func BYOKCluster(region string) ExoConfigFunc {
-	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExocomputeConfigCreate, error) {
-		reg, err := aws.ParseRegion(region)
-		if err != nil {
-			return aws.ExocomputeConfigCreate{}, fmt.Errorf("failed to parse region: %v", err)
-		}
-
-		return aws.ExocomputeConfigCreate{Region: reg}, nil
+	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExoCreateParams, error) {
+		return aws.ExoCreateParams{Region: aws.ParseRegionNoValidation(region)}, nil
 	}
 }
 
 // toExocomputeConfig converts a polaris/graphql/aws exocompute config to a
 // polaris/aws exocompute config.
-func toExocomputeConfig(config aws.ExocomputeConfig) (ExocomputeConfig, error) {
+func toExocomputeConfig(config aws.ExoConfig) (ExocomputeConfig, error) {
 	id, err := uuid.Parse(config.ID)
 	if err != nil {
 		return ExocomputeConfig{}, fmt.Errorf("invalid exocompute configuration id: %s", err)
@@ -248,7 +238,7 @@ func toExocomputeConfig(config aws.ExocomputeConfig) (ExocomputeConfig, error) {
 func (a API) ExocomputeConfig(ctx context.Context, configID uuid.UUID) (ExocomputeConfig, error) {
 	a.log.Print(log.Trace)
 
-	configsForAccounts, err := aws.Wrap(a.client).ExocomputeConfigs(ctx, "")
+	configsForAccounts, err := exocompute.ListConfigurations[aws.ExoConfigsForAccount](ctx, a.client, "")
 	if err != nil {
 		return ExocomputeConfig{}, fmt.Errorf("failed to get exocompute configs for account: %s", err)
 	}
@@ -275,7 +265,7 @@ func (a API) ExocomputeConfigs(ctx context.Context, id IdentityFunc) ([]Exocompu
 		return nil, fmt.Errorf("failed to get native id: %s", err)
 	}
 
-	configsForAccounts, err := aws.Wrap(a.client).ExocomputeConfigs(ctx, nativeID)
+	configsForAccounts, err := exocompute.ListConfigurations[aws.ExoConfigsForAccount](ctx, a.client, nativeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get exocompute configs for account: %s", err)
 	}
@@ -309,14 +299,9 @@ func (a API) AddExocomputeConfig(ctx context.Context, id IdentityFunc, config Ex
 		return uuid.Nil, fmt.Errorf("failed to lookup exocompute config: %s", err)
 	}
 
-	exo, err := aws.Wrap(a.client).CreateExocomputeConfig(ctx, accountID, exoConfig)
+	exoID, err := exocompute.CreateConfiguration[aws.ExoCreateResult](ctx, a.client, accountID, exoConfig)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create exocompute config: %s", err)
-	}
-
-	exoID, err := uuid.Parse(exo.ID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("invalid exocompute configuration id: %s", err)
 	}
 
 	return exoID, nil
@@ -335,14 +320,9 @@ func (a API) UpdateExocomputeConfig(ctx context.Context, id IdentityFunc, config
 		return uuid.Nil, fmt.Errorf("failed to lookup exocompute config: %s", err)
 	}
 
-	exo, err := aws.Wrap(a.client).UpdateExocomputeConfig(ctx, accountID, exoConfig)
+	exoID, err := exocompute.UpdateConfiguration[aws.ExoUpdateResult](ctx, a.client, accountID, aws.ExoUpdateParams(exoConfig))
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create exocompute config: %s", err)
-	}
-
-	exoID, err := uuid.Parse(exo.ID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("invalid exocompute configuration id: %s", err)
 	}
 
 	return exoID, nil
@@ -353,16 +333,16 @@ func (a API) UpdateExocomputeConfig(ctx context.Context, id IdentityFunc, config
 func (a API) RemoveExocomputeConfig(ctx context.Context, configID uuid.UUID) error {
 	a.log.Print(log.Trace)
 
-	err := aws.Wrap(a.client).DeleteExocomputeConfig(ctx, configID)
+	err := exocompute.DeleteConfiguration[aws.ExoDeleteResult](ctx, a.client, configID)
 	if err != nil {
-		return fmt.Errorf("failed to remove exocompute config: %v", err)
+		return fmt.Errorf("failed to remove exocompute config: %s", err)
 	}
 
 	return nil
 }
 
-// ExocomputeHostAccount returns the exocompute host account for the exocompute
-// application account with the specified id.
+// ExocomputeHostAccount returns the exocompute host cloud account ID for the
+// specified application cloud account.
 func (a API) ExocomputeHostAccount(ctx context.Context, appID IdentityFunc) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
@@ -371,7 +351,7 @@ func (a API) ExocomputeHostAccount(ctx context.Context, appID IdentityFunc) (uui
 		return uuid.Nil, fmt.Errorf("failed to get cloud account id: %s", err)
 	}
 
-	configsForAccounts, err := aws.Wrap(a.client).ExocomputeConfigs(ctx, "")
+	configsForAccounts, err := exocompute.ListConfigurations[aws.ExoConfigsForAccount](ctx, a.client, "")
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to get exocompute configs for account: %s", err)
 	}
@@ -387,38 +367,8 @@ func (a API) ExocomputeHostAccount(ctx context.Context, appID IdentityFunc) (uui
 	return uuid.Nil, fmt.Errorf("exocompute account %w", graphql.ErrNotFound)
 }
 
-// ExocomputeApplicationAccounts returns the exocompute application accounts for
-// the exocompute host account with the specified id.
-func (a API) ExocomputeApplicationAccounts(ctx context.Context, hostID IdentityFunc) ([]uuid.UUID, error) {
-	a.log.Print(log.Trace)
-
-	nativeID, err := a.toNativeID(ctx, hostID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get native id: %s", err)
-	}
-
-	configsForAccounts, err := aws.Wrap(a.client).ExocomputeConfigs(ctx, nativeID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get exocompute configs for account: %s", err)
-	}
-
-	var mappedAccounts []uuid.UUID
-	for _, configsForAccount := range configsForAccounts {
-		if configsForAccount.Account.NativeID == nativeID {
-			for _, mappedAccount := range configsForAccount.MappedAccounts {
-				mappedAccounts = append(mappedAccounts, mappedAccount.ID)
-			}
-		}
-	}
-	if len(mappedAccounts) == 0 {
-		return nil, fmt.Errorf("exocompute mapped accounts %w", graphql.ErrNotFound)
-	}
-
-	return mappedAccounts, nil
-}
-
-// MapExocompute maps the exocompute application account to the specified
-// exocompute host account.
+// MapExocompute maps the exocompute application cloud account to the specified
+// host cloud account.
 func (a API) MapExocompute(ctx context.Context, hostID IdentityFunc, appID IdentityFunc) error {
 	a.log.Print(log.Trace)
 
@@ -432,41 +382,43 @@ func (a API) MapExocompute(ctx context.Context, hostID IdentityFunc, appID Ident
 		return fmt.Errorf("failed to get cloud account id: %s", err)
 	}
 
-	if err = aws.Wrap(a.client).MapCloudAccountExocomputeAccount(ctx, hostCloudAccountID, []uuid.UUID{appCloudAccountID}); err != nil {
-		return fmt.Errorf("failed to map exocompute config: %v", err)
+	if err := exocompute.MapCloudAccount[aws.ExoMapResult](ctx, a.client, hostCloudAccountID, appCloudAccountID); err != nil {
+		return fmt.Errorf("failed to map exocompute config: %s", err)
 	}
 
 	return nil
 }
 
-// UnmapExocompute unmaps the exocompute application account with the specified
-// id.
+// UnmapExocompute unmaps the exocompute application cloud account with the
+// specified cloud account ID.
 func (a API) UnmapExocompute(ctx context.Context, appID IdentityFunc) error {
 	a.log.Print(log.Trace)
 
-	cloudAccountID, err := a.toCloudAccountID(ctx, appID)
+	appCloudAccountID, err := a.toCloudAccountID(ctx, appID)
 	if err != nil {
 		return fmt.Errorf("failed to get cloud account id: %s", err)
 	}
 
-	if err := aws.Wrap(a.client).UnmapCloudAccountExocomputeAccount(ctx, []uuid.UUID{cloudAccountID}); err != nil {
-		return fmt.Errorf("failed to unmap exocompute config: %v", err)
+	if err := exocompute.UnmapCloudAccount[aws.ExoUnmapResult](ctx, a.client, appCloudAccountID); err != nil {
+		return fmt.Errorf("failed to unmap exocompute config: %s", err)
 	}
 
 	return nil
 }
 
 // AddClusterToExocomputeConfig adds the named cluster to specified exocompute
-// configration. The cluster ID and connection command are returned.
-func (a API) AddClusterToExocomputeConfig(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, error) {
+// configuration. The cluster ID and two different ways to connect the cluster
+// are returned. The first way to connect the cluster is the kubectl connection
+// command, and the second way is the k8s spec (YAML).
+func (a API) AddClusterToExocomputeConfig(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, string, error) {
 	a.log.Print(log.Trace)
 
-	clusterID, cmd, err := aws.Wrap(a.client).ConnectExocomputeCluster(ctx, configID, clusterName)
+	clusterID, kubectlCmd, setupYAML, err := aws.Wrap(a.client).ConnectExocomputeCluster(ctx, configID, clusterName)
 	if err != nil {
-		return uuid.Nil, "", fmt.Errorf("failed to connect exocompute cluster: %v", err)
+		return uuid.Nil, "", "", fmt.Errorf("failed to connect exocompute cluster: %s", err)
 	}
 
-	return clusterID, cmd, nil
+	return clusterID, kubectlCmd, setupYAML, nil
 }
 
 // RemoveExocomputeCluster removes the exocompute cluster with the specified ID.
@@ -474,7 +426,7 @@ func (a API) RemoveExocomputeCluster(ctx context.Context, clusterID uuid.UUID) e
 	a.log.Print(log.Trace)
 
 	if err := aws.Wrap(a.client).DisconnectExocomputeCluster(ctx, clusterID); err != nil {
-		return fmt.Errorf("failed to disconnect exocompute cluster: %v", err)
+		return fmt.Errorf("failed to disconnect exocompute cluster: %s", err)
 	}
 
 	return nil

@@ -1,0 +1,8 @@
+mutation RubrikPolarisSDKRequest($exocomputeCloudAccountId: UUID!, $cloudAccountIds: [UUID!]!) {
+    result: mapAzureCloudAccountExocomputeSubscription(input: {
+        exocomputeCloudAccountId: $exocomputeCloudAccountId,
+        cloudAccountIds:          $cloudAccountIds
+    }) {
+        isSuccess
+    }
+}

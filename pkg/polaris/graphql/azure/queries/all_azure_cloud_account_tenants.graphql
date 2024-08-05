@@ -2,7 +2,10 @@ query RubrikPolarisSDKRequest($feature: CloudAccountFeature!, $includeSubscripti
     result: allAzureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $includeSubscriptionDetails) {
         cloudType
         azureCloudAccountTenantRubrikId
+        clientId
+        appName
         domainName
+        subscriptionCount
         subscriptions {
             id
             name
@@ -11,6 +14,20 @@ query RubrikPolarisSDKRequest($feature: CloudAccountFeature!, $includeSubscripti
                 feature
                 status
                 regions
+                resourceGroup {
+                    name
+                    nativeId
+                    region
+                    tags {
+                        key
+                        value
+                    }
+                }
+                userAssignedManagedIdentity {
+                    name
+                    nativeId
+                    principalId
+                }
             }
         }
     }

@@ -236,6 +236,43 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 	return CloudAccount{}, fmt.Errorf("account %w", graphql.ErrNotFound)
 }
 
+// AccountByNativeID returns the account with the specified feature and native
+// ID.
+func (a API) AccountByNativeID(ctx context.Context, feature core.Feature, nativeID string) (CloudAccount, error) {
+	a.log.Print(log.Trace)
+
+	accounts, err := a.Accounts(ctx, feature, nativeID)
+	if err != nil {
+		return CloudAccount{}, fmt.Errorf("failed to get account by native id: %s", err)
+	}
+
+	for _, account := range accounts {
+		if account.NativeID == nativeID {
+			return account, nil
+		}
+	}
+
+	return CloudAccount{}, fmt.Errorf("account %q %w", nativeID, graphql.ErrNotFound)
+}
+
+// AccountByName returns the account with the specified feature and name.
+func (a API) AccountByName(ctx context.Context, feature core.Feature, name string) (CloudAccount, error) {
+	a.log.Print(log.Trace)
+
+	accounts, err := a.Accounts(ctx, feature, name)
+	if err != nil {
+		return CloudAccount{}, fmt.Errorf("failed to get account by name: %s", err)
+	}
+
+	for _, account := range accounts {
+		if account.Name == name {
+			return account, nil
+		}
+	}
+
+	return CloudAccount{}, fmt.Errorf("account %q %w", name, graphql.ErrNotFound)
+}
+
 // Accounts return all accounts with the specified feature matching the filter.
 // The filter can be used to search for account id, account name and role arn.
 func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
@@ -303,7 +340,7 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 		return uuid.Nil, err
 	}
 
-	// If the RSC cloud account did not exist prior we retrieve the RSC cloud
+	// If the RSC cloud account did not exist prior, we retrieve the RSC cloud
 	// account id.
 	if akkount.ID == uuid.Nil {
 		akkount, err = a.Account(ctx, AccountID(config.id), core.FeatureAll)
@@ -355,11 +392,10 @@ func (a API) addAccountWithCFT(ctx context.Context, features []core.Feature, con
 	return nil
 }
 
-// RemoveAccount removes the account with the specified id from RSC for the
-// given feature. If the Cloud Native Protection feature is being removed and
-// deleteSnapshots is true the snapshots are deleted otherwise they are kept.
-// Note that removing the Cloud Native Protection feature will also remove the
-// Exocompute feature.
+// RemoveAccount removes the RSC feature from the account with the specified id.
+//
+// If a Cloud Native Protection feature is being removed and deleteSnapshots is
+// true, the snapshots are deleted otherwise they are kept.
 func (a API) RemoveAccount(ctx context.Context, account AccountFunc, features []core.Feature, deleteSnapshots bool) error {
 	a.log.Print(log.Trace)
 
@@ -371,36 +407,39 @@ func (a API) RemoveAccount(ctx context.Context, account AccountFunc, features []
 		return fmt.Errorf("failed to lookup account: %s", err)
 	}
 
-	akkount, err := a.Account(ctx, AccountID(config.id), core.FeatureAll)
+	cloudAccount, err := a.Account(ctx, AccountID(config.id), core.FeatureAll)
 	if err != nil {
 		return fmt.Errorf("failed to get account: %s", err)
 	}
 
 	// Check that the account has all the features that are going to be removed.
 	for _, feature := range features {
-		if _, ok := akkount.Feature(feature); !ok {
+		if _, ok := cloudAccount.Feature(feature); !ok {
 			return fmt.Errorf("feature %s %w", feature, graphql.ErrNotFound)
 		}
 	}
 
 	if config.config != nil {
 		for _, feature := range features {
-			if err := a.removeAccountWithCFT(ctx, config, akkount, feature, deleteSnapshots); err != nil {
+			if err := a.removeAccountWithCFT(ctx, config, cloudAccount, feature, deleteSnapshots); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
 
-	return a.removeAccount(ctx, akkount, features, deleteSnapshots)
+	return a.removeAccount(ctx, cloudAccount, features, deleteSnapshots)
 }
 
 func (a API) removeAccount(ctx context.Context, account CloudAccount, features []core.Feature, deleteSnapshots bool) error {
 	a.log.Print(log.Trace)
 
 	for _, feature := range features {
+		if feature.Equal(core.FeatureExocompute) {
+			continue
+		}
 		if err := a.disableFeature(ctx, account, feature, deleteSnapshots); err != nil {
-			return fmt.Errorf("failed to disable native account: %s", err)
+			return fmt.Errorf("failed to disable feature %s: %s", feature, err)
 		}
 	}
 
@@ -426,7 +465,7 @@ func (a API) removeAccountWithCFT(ctx context.Context, config account, account C
 	a.log.Print(log.Trace)
 
 	if err := a.disableFeature(ctx, account, feature, deleteSnapshots); err != nil {
-		return fmt.Errorf("failed to disable native account: %s", err)
+		return fmt.Errorf("failed to disable feature %s: %s", feature, err)
 	}
 
 	cfmURL, err := aws.Wrap(a.client).PrepareCloudAccountDeletion(ctx, account.ID, feature)
@@ -479,65 +518,96 @@ func (a API) removeAccountWithCFT(ctx context.Context, config account, account C
 	return nil
 }
 
+// disableFeature disables the specified account feature.
 func (a API) disableFeature(ctx context.Context, account CloudAccount, feature core.Feature, deleteSnapshots bool) error {
 	a.log.Print(log.Trace)
 
-	rmFeature, _ := account.Feature(feature)
-	if !featureNeedsToBeDisable(rmFeature) {
+	// If the feature has not been onboarded or the feature is in the disabled
+	// or connecting state, there is no need to disable the feature.
+	if feature, ok := account.Feature(feature); ok {
+		if feature.Status == core.StatusDisabled || feature.Status == core.StatusConnecting {
+			return nil
+		}
+	} else {
 		return nil
 	}
 
+	// Only the following features need to be disabled. Note that the Exocompute
+	// feature only needs to be disabled in the CFT workflow.
 	switch {
-	case rmFeature.Equal(core.FeatureCloudNativeProtection):
-		return a.disableNativeAccount(ctx, account.ID, aws.EC2, deleteSnapshots)
-
-	case rmFeature.Equal(core.FeatureRDSProtection):
-		return a.disableNativeAccount(ctx, account.ID, aws.RDS, deleteSnapshots)
-
-	case rmFeature.Equal(core.FeatureExocompute):
+	case feature.Equal(core.FeatureCloudNativeProtection):
+		return a.disableProtectionFeature(ctx, account.ID, aws.EC2, deleteSnapshots)
+	case feature.Equal(core.FeatureRDSProtection):
+		return a.disableProtectionFeature(ctx, account.ID, aws.RDS, deleteSnapshots)
+	case feature.Equal(core.FeatureCloudNativeS3Protection):
+		return a.disableProtectionFeature(ctx, account.ID, aws.S3, deleteSnapshots)
+	case feature.Equal(core.FeatureExocompute):
 		jobID, err := aws.Wrap(a.client).StartExocomputeDisableJob(ctx, account.ID)
 		if err != nil {
-			return fmt.Errorf("failed to disable native account: %s", err)
+			return fmt.Errorf("failed to disable exocompute feature: %s", err)
 		}
 
-		state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
-		if err != nil {
-			return fmt.Errorf("failed to wait for taskchain: %s", err)
-		}
-		if state != core.TaskChainSucceeded {
-			return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
+		if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
+			account, err := a.Account(ctx, CloudAccountID(account.ID), feature)
+			if err != nil {
+				return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
+			}
+
+			feature, ok := account.Feature(feature)
+			if !ok {
+				return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
+			}
+			return feature.Status == core.StatusDisabled, nil
+		}); err != nil {
+			return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
 		}
 	}
 
 	return nil
 }
 
-// featureNeedsToBeDisable returns true if the specified feature needs to be
-// disabled before being removed. Note, a feature in the connecting state can be
-// removed without being disabling first.
-func featureNeedsToBeDisable(feature Feature) bool {
-	return feature.Status != core.StatusDisabled && feature.Status != core.StatusConnecting
-}
+// disableProtectionFeature disables the specific Protection Feature of the
+// cloud native protection feature.
+func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.UUID, protectionFeature aws.ProtectionFeature, deleteSnapshots bool) error {
+	a.log.Print(log.Trace)
 
-func (a API) disableNativeAccount(ctx context.Context, id uuid.UUID, protectionFeature aws.ProtectionFeature, deleteSnapshots bool) error {
-	jobID, err := aws.Wrap(a.client).StartNativeAccountDisableJob(ctx, id, protectionFeature, deleteSnapshots)
-	if err != nil {
-		return fmt.Errorf("failed to disable native account: %s", err)
+	var feature core.Feature
+	switch protectionFeature {
+	case aws.EC2:
+		feature = core.FeatureCloudNativeProtection
+	case aws.RDS:
+		feature = core.FeatureRDSProtection
+	case aws.S3:
+		feature = core.FeatureCloudNativeS3Protection
+	default:
+		return fmt.Errorf("invalid protection feature: %s", protectionFeature)
 	}
 
-	state, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
+	jobID, err := aws.Wrap(a.client).StartNativeAccountDisableJob(ctx, cloudAccountID, protectionFeature, deleteSnapshots)
 	if err != nil {
-		return fmt.Errorf("failed to wait for task chain: %s", err)
+		return fmt.Errorf("failed to disable protection feature %s: %s", protectionFeature, err)
 	}
-	if state != core.TaskChainSucceeded {
-		return fmt.Errorf("taskchain failed: jobID=%v, state=%v", jobID, state)
+
+	if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
+		account, err := a.Account(ctx, CloudAccountID(cloudAccountID), feature)
+		if err != nil {
+			return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
+		}
+
+		feature, ok := account.Feature(feature)
+		if !ok {
+			return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
+		}
+		return feature.Status == core.StatusDisabled, nil
+	}); err != nil {
+		return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
 	}
 
 	return nil
 }
 
 // UpdateAccount updates the account with the specified id and feature. Note
-// that account name is not tied to a specific feature.
+// that the account name is not tied to a specific feature.
 func (a API) UpdateAccount(ctx context.Context, id IdentityFunc, feature core.Feature, opts ...OptionFunc) error {
 	a.log.Print(log.Trace)
 

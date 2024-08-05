@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -41,7 +40,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	// Load configuration and create client.
+	// Load configuration and create a client.
 	polAccount, err := polaris.DefaultServiceAccount(true)
 	if err != nil {
 		log.Fatal(err)
@@ -53,36 +52,42 @@ func main() {
 
 	azureClient := azure.Wrap(client)
 
-	// List Azure permissions needed for features.
-	features := []core.Feature{core.FeatureCloudNativeProtection}
-	perms, err := azureClient.Permissions(ctx, features)
+	// List Azure permissions needed for the Cloud Native Protection feature.
+	perms, permGroups, err := azureClient.ScopedPermissions(ctx, core.FeatureCloudNativeProtection)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Permissions requried for Cloud Native Protection:")
-	for _, perm := range perms.Actions {
+	fmt.Println("Subscription level permissions required for Cloud Native Protection:")
+	for _, perm := range perms[azure.ScopeSubscription].Actions {
 		fmt.Println(perm)
 	}
-	for _, perm := range perms.NotActions {
+	for _, perm := range perms[azure.ScopeSubscription].NotActions {
 		fmt.Println(perm)
 	}
-	for _, perm := range perms.DataActions {
+	for _, perm := range perms[azure.ScopeSubscription].DataActions {
 		fmt.Println(perm)
 	}
-	for _, perm := range perms.NotDataActions {
+	for _, perm := range perms[azure.ScopeSubscription].NotDataActions {
 		fmt.Println(perm)
 	}
 
-	// Notify Polaris about updated permissions for the Cloud Native Protection
-	// feature of the already added subscription.
-	account, err := azureClient.Subscription(ctx,
-		azure.SubscriptionID(uuid.MustParse("27dce22c-1b84-11ec-9992-a3d4a0eb7b90")), core.FeatureCloudNativeProtection)
-	if err != nil {
-		log.Fatal(err)
+	fmt.Println("Resource group level permissions required for Cloud Native Protection:")
+	for _, perm := range perms[azure.ScopeResourceGroup].Actions {
+		fmt.Println(perm)
 	}
-	err = azureClient.PermissionsUpdated(ctx, azure.CloudAccountID(account.ID), features)
-	if err != nil {
-		log.Fatal(err)
+	for _, perm := range perms[azure.ScopeResourceGroup].NotActions {
+		fmt.Println(perm)
+	}
+	for _, perm := range perms[azure.ScopeResourceGroup].DataActions {
+		fmt.Println(perm)
+	}
+	for _, perm := range perms[azure.ScopeResourceGroup].NotDataActions {
+		fmt.Println(perm)
+	}
+
+	fmt.Println("Permission groups available for Cloud Native Protection:")
+	for _, permGroup := range permGroups {
+		fmt.Printf("Permission group %s: %d\n", permGroup.Name, permGroup.Version)
 	}
 }

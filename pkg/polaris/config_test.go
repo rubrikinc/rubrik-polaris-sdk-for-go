@@ -85,7 +85,7 @@ func TestSingleUserAccountFromEnvCredentials(t *testing.T) {
 	if account.Password != "password" {
 		t.Errorf("invalid password: %v", account.Password)
 	}
-	if account.URL != "" {
+	if account.URL != "https://account.my.rubrik.com/api" {
 		t.Errorf("invalid url: %v", account.URL)
 	}
 
@@ -104,7 +104,7 @@ func TestSingleUserAccountFromEnvCredentials(t *testing.T) {
 	if account.Password != "password" {
 		t.Errorf("invalid password: %v", account.Password)
 	}
-	if account.URL != "" {
+	if account.URL != "https://account.my.rubrik.com/api" {
 		t.Errorf("invalid url: %v", account.URL)
 	}
 
@@ -152,7 +152,7 @@ func TestMultipleUserAccountsFromEnvCredentials(t *testing.T) {
 		t.Fatal("name should be required")
 	}
 
-	// With correct name from env.
+	// With the correct name from env.
 	t.Setenv("RUBRIK_POLARIS_ACCOUNT_NAME", "account-2")
 	account, err := UserAccountFromEnv()
 	if err != nil {
@@ -167,11 +167,11 @@ func TestMultipleUserAccountsFromEnvCredentials(t *testing.T) {
 	if account.Password != "password-2" {
 		t.Errorf("invalid password: %v", account.Password)
 	}
-	if account.URL != "" {
+	if account.URL != "https://account-2.my.rubrik.com/api" {
 		t.Errorf("invalid url: %v", account.URL)
 	}
 
-	// With correct name from env and URL.
+	// With the correct name from env and URL.
 	t.Setenv("RUBRIK_POLARIS_ACCOUNT_CREDENTIALS", `{
 		"account-1": {
 			"username": "username-1",
@@ -212,7 +212,7 @@ func TestDefaultUserAccountFromEnv(t *testing.T) {
 	skipOnEnvs(t, "RUBRIK_POLARIS_ACCOUNT_NAME", "RUBRIK_POLARIS_ACCOUNT_USERNAME",
 		"RUBRIK_POLARIS_ACCOUNT_PASSWORD", "RUBRIK_POLARIS_ACCOUNT_URL")
 
-	// If a user account exists in the default location we skip the test.
+	// If a user account exists in the default location, we skip the test.
 	if _, err := DefaultUserAccount("account", false); err == nil {
 		t.Skip("Default user account exists")
 	}
@@ -220,7 +220,7 @@ func TestDefaultUserAccountFromEnv(t *testing.T) {
 	t.Setenv("RUBRIK_POLARIS_ACCOUNT_NAME", "account")
 	t.Setenv("RUBRIK_POLARIS_ACCOUNT_USERNAME", "username")
 	t.Setenv("RUBRIK_POLARIS_ACCOUNT_PASSWORD", "password")
-	t.Setenv("RUBRIK_POLARIS_ACCOUNT_URL", "url")
+	t.Setenv("RUBRIK_POLARIS_ACCOUNT_URL", "https://account.my.rubrik.com/api")
 
 	account, err := DefaultUserAccount("some-account", true)
 	if err != nil {
@@ -235,7 +235,7 @@ func TestDefaultUserAccountFromEnv(t *testing.T) {
 	if account.Password != "password" {
 		t.Errorf("invalid password: %v", account.Password)
 	}
-	if account.URL != "url" {
+	if account.URL != "https://account.my.rubrik.com/api" {
 		t.Errorf("invalid url: %v", account.URL)
 	}
 }
@@ -243,7 +243,7 @@ func TestDefaultUserAccountFromEnv(t *testing.T) {
 func TestDefaultUserAccountFromEnvCredentials(t *testing.T) {
 	skipOnEnvs(t, "RUBRIK_POLARIS_ACCOUNT_CREDENTIALS", "RUBRIK_POLARIS_ACCOUNT_NAME")
 
-	// If a user account exists in the default location we skip the test.
+	// If a user account exists in the default location, we skip the test.
 	if _, err := DefaultUserAccount("account", false); err == nil {
 		t.Skip("Default user account exists")
 	}
@@ -268,7 +268,7 @@ func TestDefaultUserAccountFromEnvCredentials(t *testing.T) {
 	if account.Password != "password" {
 		t.Errorf("invalid password: %v", account.Password)
 	}
-	if account.URL != "" {
+	if account.URL != "https://account.my.rubrik.com/api" {
 		t.Errorf("invalid url: %v", account.URL)
 	}
 
@@ -277,7 +277,7 @@ func TestDefaultUserAccountFromEnvCredentials(t *testing.T) {
 		t.Fatal("no override should require a user account file")
 	}
 
-	// Multiple accounts with correct name from a function.
+	// Multiple accounts with the correct name from a function.
 	t.Setenv("RUBRIK_POLARIS_ACCOUNT_CREDENTIALS", `{
 		"account-1": {
 			"username": "username-1",
@@ -369,7 +369,7 @@ func TestDefaultServiceAccountFromEnv(t *testing.T) {
 	skipOnEnvs(t, "RUBRIK_POLARIS_SERVICEACCOUNT_NAME", "RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID",
 		"RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET", "RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI")
 
-	// If a service account exists in the default location we skip the test.
+	// If a service account exists in the default location, we skip the test.
 	if _, err := DefaultServiceAccount(false); err == nil {
 		t.Skip("Default service account exists")
 	}
@@ -377,7 +377,7 @@ func TestDefaultServiceAccountFromEnv(t *testing.T) {
 	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_NAME", "account")
 	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID", "client|id")
 	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET", "secret")
-	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI", "accesstokenuri")
+	t.Setenv("RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI", "https://account.my.rubrik.com/api/client_token")
 
 	account, err := DefaultServiceAccount(true)
 	if err != nil {
@@ -392,7 +392,7 @@ func TestDefaultServiceAccountFromEnv(t *testing.T) {
 	if account.ClientSecret != "secret" {
 		t.Errorf("invalid client secret: %v", account.ClientSecret)
 	}
-	if account.AccessTokenURI != "accesstokenuri" {
+	if account.AccessTokenURI != "https://account.my.rubrik.com/api/client_token" {
 		t.Errorf("invalid access token uri: %v", account.AccessTokenURI)
 	}
 }
@@ -400,7 +400,7 @@ func TestDefaultServiceAccountFromEnv(t *testing.T) {
 func TestDefaultServiceAccountFromEnvCrendentials(t *testing.T) {
 	skipOnEnvs(t, "RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS")
 
-	// If a service account exists in the default location we skip the test.
+	// If a service account exists in the default location, we skip the test.
 	if _, err := DefaultServiceAccount(false); err == nil {
 		t.Skip("Default service account exists")
 	}

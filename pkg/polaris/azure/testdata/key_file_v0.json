@@ -1,0 +1,7 @@
+{
+  "app_id": "4558e8e8-9493-4ece-89cf-1b9ecc026755",
+  "app_name": "App",
+  "app_secret": "secret",
+  "tenant_id": "ac02265a-440d-42e9-abda-782d8b182d0d",
+  "tenant_domain":"domain.onmicrosoft.com"
+}
