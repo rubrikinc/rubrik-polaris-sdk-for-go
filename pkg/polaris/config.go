@@ -259,7 +259,7 @@ func UserAccountFromEnv() (*UserAccount, error) {
 	account.envOverride = true
 
 	if account.Name == "" && account.Username == "" && account.Password == "" && account.URL == "" {
-		return nil, errAccountNotFound.wrap(fmt.Errorf("user account not found in env"))
+		return nil, fmt.Errorf("%wuser account not found in env", errAccountNotFound)
 	}
 
 	if err := initUserAccount(&account); err != nil {
@@ -394,7 +394,7 @@ func userAccountFromFile(file, name string) (UserAccount, error) {
 		if err == nil {
 			err = fmt.Errorf("user account file is a directory")
 		}
-		return UserAccount{}, errAccountNotFound.wrap(fmt.Errorf("failed to access user account file: %s", err))
+		return UserAccount{}, fmt.Errorf("%wfailed to access user account file: %s", errAccountNotFound, err)
 	}
 	buf, err := os.ReadFile(expFile)
 	if err != nil {
@@ -538,7 +538,7 @@ func ServiceAccountFromEnv() (*ServiceAccount, error) {
 	account.envOverride = true
 
 	if account.Name == "" && account.ClientID == "" && account.ClientSecret == "" && account.AccessTokenURI == "" {
-		return nil, errAccountNotFound.wrap(fmt.Errorf("service account not found in env"))
+		return nil, fmt.Errorf("%wservice account not found in env", errAccountNotFound)
 	}
 
 	if err := initServiceAccount(&account); err != nil {
@@ -645,7 +645,7 @@ func serviceAccountFromFile(file string) (ServiceAccount, error) {
 		if err == nil {
 			err = fmt.Errorf("service account file is a directory")
 		}
-		return ServiceAccount{}, errAccountNotFound.wrap(fmt.Errorf("failed to access service account file: %s", err))
+		return ServiceAccount{}, fmt.Errorf("%wfailed to access service account file: %s", errAccountNotFound, err)
 	}
 	buf, err := os.ReadFile(expFile)
 	if err != nil {
@@ -665,7 +665,7 @@ func serviceAccountFromFile(file string) (ServiceAccount, error) {
 func serviceAccountFromString(s string) (ServiceAccount, error) {
 	var account ServiceAccount
 	if err := json.Unmarshal([]byte(s), &account); err != nil {
-		return ServiceAccount{}, errAccountNotFound.wrap(fmt.Errorf("failed to unmarshal service account text: %s", err))
+		return ServiceAccount{}, fmt.Errorf("%wfailed to unmarshal service account text: %s", errAccountNotFound, err)
 	}
 
 	return account, nil
@@ -726,26 +726,10 @@ func overrideServiceAccount(account *ServiceAccount, other ServiceAccount) {
 }
 
 // accountNotFound is an error type that signals that an account was not found.
-type accountNotFound struct {
-	err error
-}
+type accountNotFound struct{}
 
 func (e accountNotFound) Error() string {
-	return e.Unwrap().Error()
-}
-
-func (e accountNotFound) Is(err error) bool {
-	_, ok := err.(accountNotFound)
-	return ok
-}
-
-func (e accountNotFound) Unwrap() error {
-	return e.err
-}
-
-func (e accountNotFound) wrap(err error) error {
-	e.err = err
-	return e
+	return ""
 }
 
 func expandPath(file string) (string, error) {

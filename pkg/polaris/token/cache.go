@@ -51,17 +51,9 @@ type cache struct {
 
 // NewCacheWithDir returns a new cache wrapping the specified token source.
 //
-// The cache will store authentication tokens in the OS default directory for
-// temporary files. This behavior can be overridden by setting the environment
-// variable RUBRIK_POLARIS_TOKEN_CACHE_DIR to the directory to use, given that
-// the account passed in when creating the client allows environment variable
-// overrides.
-//
-// The cache will also generate a key to encrypt the content of the token cache
-// from the RSC account, this behavior can be overridden by setting the
-// environment variable RUBRIK_POLARIS_TOKEN_CACHE_SECRET to the secret used
-// when generating the encryption key, given that the account passed in when
-// creating the client allows environment variable overrides.
+// The authentication token is stored in the specified directory. The token
+// file name is derived from the suffix material and the encryption key is
+// derived from the key material.
 func NewCacheWithDir(source Source, dir, keyMaterial, suffixMaterial string) (*cache, error) {
 	key := sha256.Sum256([]byte(keyMaterial))
 	block, err := aes.NewCipher(key[:])
