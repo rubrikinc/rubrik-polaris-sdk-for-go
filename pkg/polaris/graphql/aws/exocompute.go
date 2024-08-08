@@ -24,7 +24,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -235,13 +234,14 @@ func (r ExoUnmapResult) Validate() error {
 func (a API) StartExocomputeDisableJob(ctx context.Context, nativeID uuid.UUID) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, startAwsExocomputeDisableJobQuery, struct {
+	query := startAwsExocomputeDisableJobQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID uuid.UUID `json:"cloudAccountId"`
 	}{ID: nativeID})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to request startAwsExocomputeDisableJob: %w", err)
+		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "startAwsExocomputeDisableJob(%q): %s", nativeID, string(buf))
+	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -252,7 +252,7 @@ func (a API) StartExocomputeDisableJob(ctx context.Context, nativeID uuid.UUID) 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to unmarshal startAwsExocomputeDisableJob: %v", err)
+		return uuid.Nil, graphql.UnmarshalError(query, err)
 	}
 	if payload.Data.Result.Error != "" {
 		return uuid.Nil, errors.New(payload.Data.Result.Error)
@@ -268,14 +268,15 @@ func (a API) StartExocomputeDisableJob(ctx context.Context, nativeID uuid.UUID) 
 func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, string, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, awsExocomputeClusterConnectQuery, struct {
+	query := awsExocomputeClusterConnectQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ConfigID    uuid.UUID `json:"exocomputeConfigId"`
 		ClusterName string    `json:"clusterName"`
 	}{ConfigID: configID, ClusterName: clusterName})
 	if err != nil {
-		return uuid.Nil, "", "", fmt.Errorf("failed to request awsExocomputeClusterConnect: %w", err)
+		return uuid.Nil, "", "", graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "awsExocomputeClusterConnect(%q, %q): %s", configID, clusterName, string(buf))
+	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -287,7 +288,7 @@ func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, c
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, "", "", fmt.Errorf("failed to unmarshal awsExocomputeClusterConnect: %v", err)
+		return uuid.Nil, "", "", graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Result.ID, payload.Data.Result.Command, payload.Data.Result.SetupYAML, nil
@@ -298,13 +299,14 @@ func (a API) ConnectExocomputeCluster(ctx context.Context, configID uuid.UUID, c
 func (a API) DisconnectExocomputeCluster(ctx context.Context, clusterID uuid.UUID) error {
 	a.log.Print(log.Trace)
 
-	_, err := a.GQL.Request(ctx, disconnectAwsExocomputeClusterQuery, struct {
+	query := disconnectAwsExocomputeClusterQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ClusterID uuid.UUID `json:"clusterId"`
 	}{ClusterID: clusterID})
 	if err != nil {
-		return fmt.Errorf("failed to request disconnectAwsExocomputeCluster: %w", err)
+		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "disconnectAwsExocomputeCluster(%q)", clusterID)
+	graphql.LogResponse(a.log, query, buf)
 
 	return nil
 }
