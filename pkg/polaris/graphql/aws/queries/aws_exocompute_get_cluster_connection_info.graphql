@@ -1,0 +1,9 @@
+query RubrikPolarisSDKRequest(clusterId: UUID!, $exocomputeConfigId: UUID!) {
+    awsExocomputeGetClusterConnectionInfo(input: {
+        clusterUuid:        $clusterId,
+        exocomputeConfigId: $exocomputeConfigId
+    }) {
+        clusterSetupYaml
+        connectionCommand
+    }
+}
