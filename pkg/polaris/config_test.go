@@ -68,11 +68,11 @@ func TestFindAccount(t *testing.T) {
 		errPrefix: "failed to load service account from text: invalid service account client secret",
 	}, {
 		name:      "NoDefaultAndNoCredentials",
-		errPrefix: "failed to load account, searched: default service account file and env",
+		errPrefix: "account not found, searched: default service account file and env",
 	}, {
 		name:      "NoDefaultAndInvalidCredentials",
 		text:      "Content of a file not containing an RSC service account",
-		errPrefix: "failed to load account, searched: passed in credentials, default service account file and default user account file",
+		errPrefix: "account not found, searched: passed in credentials, default service account file and default user account file",
 	}}
 
 	tempDir := t.TempDir()
@@ -219,7 +219,7 @@ func TestServiceAccountFromEnv(t *testing.T) {
 		},
 	}, {
 		name:      "NoVars",
-		errPrefix: "service account not found in env",
+		errPrefix: "account not found in env",
 	}}
 
 	for _, testCase := range testCases {
@@ -279,7 +279,7 @@ func TestServiceAccountFromFile(t *testing.T) {
 		file:      toText(serviceAccount{}),
 		envs:      map[string]string{keyServiceAccountFile: "/path/to/some/file"},
 		override:  true,
-		errPrefix: "failed to access service account file",
+		errPrefix: "account not found in file",
 	}, {
 		name:      "ClientSecretInEnvNoOverride",
 		file:      toText(serviceAccount{noClientSecret: true}),
@@ -296,7 +296,7 @@ func TestServiceAccountFromFile(t *testing.T) {
 	}, {
 		name:      "NoFileName",
 		noFile:    true,
-		errPrefix: "failed to access service account file",
+		errPrefix: "account not found in file",
 	}, {
 		name:      "NoFileContent",
 		errPrefix: "failed to unmarshal service account file",
@@ -383,11 +383,11 @@ func TestServiceAccountFromText(t *testing.T) {
 		errPrefix: "invalid service account access token uri",
 	}, {
 		name:      "EmptyText",
-		errPrefix: "failed to unmarshal service account text",
+		errPrefix: "account not found in text",
 	}, {
 		name:      "InvalidText",
 		text:      "/path/to/some/file",
-		errPrefix: "failed to unmarshal service account text",
+		errPrefix: "account not found in text",
 	}}
 
 	for _, testCase := range testCases {
@@ -480,7 +480,7 @@ func TestUserAccountFromEnv(t *testing.T) {
 		},
 	}, {
 		name:      "NoVars",
-		errPrefix: "user account not found in env",
+		errPrefix: "account not found in env",
 	}}
 
 	for _, testCase := range testCases {
@@ -582,7 +582,7 @@ func TestUserAccountFromFile(t *testing.T) {
 	}, {
 		name:      "NoFile",
 		noFile:    true,
-		errPrefix: "failed to access user account file",
+		errPrefix: "account not found in file",
 	}, {
 		name:      "InvalidFileContent",
 		file:      "Content of a file not containing an RSC user account",
