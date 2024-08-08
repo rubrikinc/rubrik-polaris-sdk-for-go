@@ -27,6 +27,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -306,4 +307,33 @@ func (a API) DisconnectExocomputeCluster(ctx context.Context, clusterID uuid.UUI
 	a.log.Printf(log.Debug, "disconnectAwsExocomputeCluster(%q)", clusterID)
 
 	return nil
+}
+
+// ClusterConnectionInfo returns information about the connected cluster,
+// specifically the Kubernetes manifest, containing the cluster gateway spec.
+func (a API) ClusterConnectionInfo(ctx context.Context, configID uuid.UUID) (string, string, error) {
+	a.log.Print(log.Trace)
+
+	query := awsExocomputeGetClusterConnectionInfoQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ConfigID uuid.UUID `json:"exocomputeConfigId"`
+	}{ConfigID: configID})
+	if err != nil {
+		return "", "", graphql.RequestError(query, err)
+	}
+	graphql.LogResponse(a.log, query, buf)
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Command   string `json:"connectionCommand"`
+				SetupYAML string `json:"clusterSetupYaml"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return "", "", graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result.Command, payload.Data.Result.SetupYAML, nil
 }
