@@ -208,8 +208,9 @@ var awsExocomputeClusterConnectQuery = `mutation SdkGolangAwsExocomputeClusterCo
 }`
 
 // awsExocomputeGetClusterConnectionInfo GraphQL query
-var awsExocomputeGetClusterConnectionInfoQuery = `query SdkGolangAwsExocomputeGetClusterConnectionInfo($exocomputeConfigId: UUID!) {
+var awsExocomputeGetClusterConnectionInfoQuery = `query SdkGolangAwsExocomputeGetClusterConnectionInfo($clusterName: String!, $exocomputeConfigId: UUID!) {
     result: awsExocomputeGetClusterConnectionInfo(input: {
+        clusterName:        $clusterName,
         exocomputeConfigId: $exocomputeConfigId
     }) {
         clusterSetupYaml

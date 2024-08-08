@@ -313,13 +313,14 @@ func (a API) DisconnectExocomputeCluster(ctx context.Context, clusterID uuid.UUI
 
 // ClusterConnectionInfo returns information about the connected cluster,
 // specifically the Kubernetes manifest, containing the cluster gateway spec.
-func (a API) ClusterConnectionInfo(ctx context.Context, configID uuid.UUID) (string, string, error) {
+func (a API) ClusterConnectionInfo(ctx context.Context, configID uuid.UUID, clusterName string) (string, string, error) {
 	a.log.Print(log.Trace)
 
 	query := awsExocomputeGetClusterConnectionInfoQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		ConfigID uuid.UUID `json:"exocomputeConfigId"`
-	}{ConfigID: configID})
+		ConfigID    uuid.UUID `json:"exocomputeConfigId"`
+		ClusterName string    `json:"clusterName"`
+	}{ConfigID: configID, ClusterName: clusterName})
 	if err != nil {
 		return "", "", graphql.RequestError(query, err)
 	}
