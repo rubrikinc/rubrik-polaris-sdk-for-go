@@ -406,11 +406,23 @@ func (a API) UnmapExocompute(ctx context.Context, appID IdentityFunc) error {
 	return nil
 }
 
-// AddClusterToExocomputeConfig adds the named cluster to specified exocompute
+// ExocomputeCluster returns the kubectl connection command and the k8s spec
+func (a API) ExocomputeCluster(ctx context.Context, configID uuid.UUID, clusterName string) (string, string, error) {
+	a.log.Print(log.Trace)
+
+	kubectlCmd, setupYAML, err := aws.Wrap(a.client).ClusterConnectionInfo(ctx, configID, clusterName)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get cluster connection info: %s", err)
+	}
+
+	return kubectlCmd, setupYAML, nil
+}
+
+// AddExocomputeCluster adds the named cluster to specified exocompute
 // configuration. The cluster ID and two different ways to connect the cluster
 // are returned. The first way to connect the cluster is the kubectl connection
 // command, and the second way is the k8s spec (YAML).
-func (a API) AddClusterToExocomputeConfig(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, string, error) {
+func (a API) AddExocomputeCluster(ctx context.Context, configID uuid.UUID, clusterName string) (uuid.UUID, string, string, error) {
 	a.log.Print(log.Trace)
 
 	clusterID, kubectlCmd, setupYAML, err := aws.Wrap(a.client).ConnectExocomputeCluster(ctx, configID, clusterName)
@@ -421,7 +433,8 @@ func (a API) AddClusterToExocomputeConfig(ctx context.Context, configID uuid.UUI
 	return clusterID, kubectlCmd, setupYAML, nil
 }
 
-// RemoveExocomputeCluster removes the exocompute cluster with the specified ID.
+// RemoveExocomputeCluster removes the exocompute cluster with the specified
+// exocompute cluster ID.
 func (a API) RemoveExocomputeCluster(ctx context.Context, clusterID uuid.UUID) error {
 	a.log.Print(log.Trace)
 

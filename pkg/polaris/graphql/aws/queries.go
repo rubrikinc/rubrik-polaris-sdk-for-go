@@ -207,6 +207,17 @@ var awsExocomputeClusterConnectQuery = `mutation SdkGolangAwsExocomputeClusterCo
     }
 }`
 
+// awsExocomputeGetClusterConnectionInfo GraphQL query
+var awsExocomputeGetClusterConnectionInfoQuery = `query SdkGolangAwsExocomputeGetClusterConnectionInfo($clusterName: String!, $exocomputeConfigId: UUID!) {
+    result: awsExocomputeGetClusterConnectionInfo(input: {
+        clusterName:        $clusterName,
+        exocomputeConfigId: $exocomputeConfigId
+    }) {
+        clusterSetupYaml
+        connectionCommand
+    }
+}`
+
 // awsNativeAccount GraphQL query
 var awsNativeAccountQuery = `query SdkGolangAwsNativeAccount($awsNativeAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeature!) {
 	awsNativeAccount(awsNativeAccountRubrikId: $awsNativeAccountRubrikId, awsNativeProtectionFeature: $awsNativeProtectionFeature) {
