@@ -1,0 +1,10 @@
+mutation RubrikPolarisSDKRequest($name: String!, $description: String, $accessKey: String!, $secretKey: String!) {
+    result: createAwsAccount(input: {
+        name:        $name,
+        description: $description,
+        accessKey:   $accessKey,
+        secretKey:   $secretKey
+    }) {
+        cloudAccountId
+    }
+}

@@ -1,0 +1,35 @@
+mutation RubrikPolarisSDKRequest(
+    $name:                   String!,
+    $cloudAccountId:         UUID!,
+    $storageClass:           AwsStorageClass!,
+    $awsRetrievalTier:       AwsRetrivalTier,
+    $cloudComputeSettings:   AwsCloudComputeSettingsInput,
+    $isConsolidationEnabled: Boolean!,
+    $proxySettings:          ProxySettingsInput,
+    $bypassProxy:            Boolean!,
+    $computeProxySettings:   ProxySettingsInput,
+    $immutabilitySettings:   AwsImmutabilitySettings,
+    $s3Endpoint:             String,
+    $kmsEndpoint:            String,
+    $awsComputeSettingsId:   String,
+    $awsIamPairId:           String,
+) {
+    result: createAwsTarget(input: {
+        name:                   $name,
+        cloudAccountId:         $cloudAccountId,
+        storageClass:           $storageClass,
+        awsRetrievalTier:       $awsRetrievalTier,
+        cloudComputeSettings:   $cloudComputeSettings,
+        isConsolidationEnabled: $isConsolidationEnabled,
+        proxySettings:          $proxySettings,
+        bypassProxy:            $bypassProxy,
+        computeProxySettings:   $computeProxySettings,
+        immutabilitySettings:   $immutabilitySettings
+        s3Endpoint:             $s3Endpoint,
+        kmsEndpoint:            $kmsEndpoint,
+        awsComputeSettingsId:   $awsComputeSettingsId,
+        awsIamPairId:           $awsIamPairId,
+    }) {
+        id
+    }
+}

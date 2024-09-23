@@ -1,0 +1,9 @@
+mutation RubrikPolarisSDKRequest($name: String!, $description: String, $subscriptionId: String!) {
+    result: createAzureAccount(input: {
+        name:           $name,
+        description:    $description,
+        subscriptionId: $subscriptionId,
+    }) {
+        cloudAccountId
+    }
+}

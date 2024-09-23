@@ -1,0 +1,11 @@
+mutation RubrikPolarisSDKRequest($id: String!, $name: String!, $description: String, $accessKey: String!, $secretKey: String!) {
+    result: updateAwsAccount(input: {
+        id:          $id,
+        name:        $name,
+        description: $description,
+        accessKey:   $accessKey,
+        secretKey:   $secretKey
+    }) {
+        cloudAccountId
+    }
+}

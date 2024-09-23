@@ -1,0 +1,16 @@
+query RubrikPolarisSDKRequest($filter: [CloudAccountFilterInput!]) {
+    result: allCloudAccounts(sortBy: NAME, sortOrder: ASC, features: [ARCHIVAL], filter: $filter) {
+        cloudAccountId
+        cloudProvider
+        connectionStatus
+        description
+        name
+        ... on AwsAccount {
+            accessKey
+        }
+        ... on AzureAccount {
+            subscriptionId
+            tenantId
+        }
+    }
+}

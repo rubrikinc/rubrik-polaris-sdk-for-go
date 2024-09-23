@@ -1,4 +1,4 @@
-// Copyright 2023 Rubrik, Inc.
+// Copyright 2024 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -25,11 +25,11 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/archival"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	gqlarchival "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -50,58 +50,54 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Add the AWS account to RSC.
-	id, err := aws.Wrap(client).AddAccount(ctx, aws.Default(),
-		[]core.Feature{core.FeatureCloudNativeProtection, core.FeatureCloudNativeArchival}, aws.Regions("us-east-2"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("RSC cloud account ID: %v\n", id)
-
-	// Create an AWS archival location.
-	targetMappingID, err := archival.Wrap(client).CreateAWSStorageSetting(ctx, gqlarchival.CreateAWSStorageSettingParams{
-		CloudAccountID: id,
-		Name:           "Test",
-		BucketPrefix:   "my-prefix",
-		StorageClass:   "STANDARD",
-		KmsMasterKey:   "aws/s3",
+	id, err := archival.Wrap(client).CreateAWSCloudAccount(ctx, gqlarchival.CreateAWSCloudAccountParams{
+		Name:      "my-aws-account",
+		AccessKey: "AKIAIOSFODNN7EXAMPLE",
+		SecretKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Target mapping ID: %v\n", targetMappingID)
+	fmt.Printf("Cloud Account ID: %v\n", id)
 
-	// Get the AWS archival location by ID.
-	targetMapping, err := archival.Wrap(client).AWSTargetMappingByID(ctx, targetMappingID)
+	cloudAccounts, err := archival.Wrap(client).AWSCloudAccounts(ctx, "")
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("ID: %v, Name: %s\n", targetMapping.ID, targetMapping.Name)
+	fmt.Println("Cloud Accounts:")
+	for _, cloudAccount := range cloudAccounts {
+		fmt.Printf("ID: %v, Name: %v\n", cloudAccount.ID, cloudAccount.Name)
+	}
 
-	// Update the AWS archival location.
-	err = archival.Wrap(client).UpdateAWSStorageSetting(ctx, targetMappingID, gqlarchival.UpdateAWSStorageSettingParams{Name: "TestUpdated"})
+	targetID, err := archival.Wrap(client).CreateAWSTarget(ctx, gqlarchival.CreateAWSTargetParams{
+		Name:           "my-aws-target",
+		ClusterID:      uuid.MustParse("b83cf0de-0c26-4bd1-82a6-f2f8a099a53e"),
+		CloudAccountID: id,
+		BucketName:     "my-bucket",
+		KMSMasterKeyID: "aws/s3",
+		Region:         aws.ParseRegionNoValidation("us-east-2"),
+		StorageClass:   "STANDARD",
+		RetrievalTier:  "STANDARD_TIER",
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Printf("Target ID: %v\n", targetID)
 
-	// Search for an AWS archival location by a name prefix.
-	targetMappings, err := archival.Wrap(client).AWSTargetMappings(ctx, "Test")
+	targets, err := archival.Wrap(client).AWSTargets(ctx, "")
 	if err != nil {
 		log.Fatal(err)
 	}
-	for _, targetMapping := range targetMappings {
-		fmt.Printf("ID: %v, Name: %s\n", targetMapping.ID, targetMapping.Name)
+	fmt.Println("Targets:")
+	for _, target := range targets {
+		fmt.Printf("ID: %v, Name: %v\n", target.ID, target.Name)
 	}
 
-	// Delete the AWS archival location.
-	err = archival.Wrap(client).DeleteTargetMapping(ctx, targetMappingID)
-	if err != nil {
+	if err := archival.Wrap(client).DeleteTarget(ctx, targetID); err != nil {
 		log.Fatal(err)
 	}
 
-	// Remove the AWS account from RSC.
-	err = aws.Wrap(client).RemoveAccount(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection, core.FeatureCloudNativeArchival}, false)
-	if err != nil {
+	if err := archival.Wrap(client).DeleteAWSCloudAccount(ctx, id); err != nil {
 		log.Fatal(err)
 	}
 }

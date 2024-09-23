@@ -8,6 +8,20 @@ query RubrikPolarisSDKRequest($filter: [TargetMappingFilterInput!]) {
             status
         }
         targetTemplate {
+            ... on AwsTargetTemplate {
+                cloudAccount {
+                    cloudAccountId
+                }
+                bucketPrefix
+                storageClass
+                region
+                kmsMasterKeyId
+                cloudNativeLocTemplateType
+                bucketTags {
+                    key
+                    value
+                }
+            }
             ... on AzureTargetTemplate {
                 cloudAccount {
                     cloudAccountId
