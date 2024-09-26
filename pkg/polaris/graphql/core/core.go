@@ -41,10 +41,11 @@ import (
 type CloudVendor string
 
 const (
-	CloudVendorAWS   CloudVendor = "AWS"
-	CloudVendorAzure CloudVendor = "AZURE"
-	CloudVendorGCP   CloudVendor = "GCP"
-	CloudVendorAll   CloudVendor = "ALL_VENDORS"
+	CloudVendorUnspecified CloudVendor = ""
+	CloudVendorAWS         CloudVendor = "AWS"
+	CloudVendorAzure       CloudVendor = "AZURE"
+	CloudVendorGCP         CloudVendor = "GCP"
+	CloudVendorAll         CloudVendor = "ALL_VENDORS"
 )
 
 // CloudAccountAction represents a Polaris cloud account action.

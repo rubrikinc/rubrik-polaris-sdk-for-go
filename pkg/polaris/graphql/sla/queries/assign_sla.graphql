@@ -1,0 +1,10 @@
+mutation RubrikPolarisSDKRequest($slaOptionalId: UUID, $slaDomainAssignType: SlaAssignTypeEnum!, $objectIds: [UUID!]!, $applicableWorkloadType: WorkloadLevelHierarchy) {
+    result: assignSla(input: {
+        slaOptionalId:          $slaOptionalId,
+        slaDomainAssignType:    $slaDomainAssignType,
+        objectIds:              $objectIds,
+        applicableWorkloadType: $applicableWorkloadType
+    }) {
+        success
+    }
+}
