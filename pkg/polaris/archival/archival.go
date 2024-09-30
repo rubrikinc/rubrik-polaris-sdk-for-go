@@ -47,6 +47,10 @@ func Wrap(client *polaris.Client) API {
 func (a API) DeleteTarget(ctx context.Context, targetID uuid.UUID) error {
 	a.log.Print(log.Trace)
 
+	if err := archival.DisableTarget(ctx, a.client, targetID); err != nil {
+		return fmt.Errorf("failed to disable target: %s", err)
+	}
+
 	if err := archival.DeleteTarget(ctx, a.client, targetID); err != nil {
 		return fmt.Errorf("failed to delete target: %s", err)
 	}

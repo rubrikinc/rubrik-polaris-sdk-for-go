@@ -254,6 +254,15 @@ var deleteTargetMappingQuery = `mutation SdkGolangDeleteTargetMapping($id: Strin
     })
 }`
 
+// disableTarget GraphQL query
+var disableTargetQuery = `mutation SdkGolangDisableTarget($id: String!) {
+    result: disableTarget(input: {
+        id: $id
+    }) {
+        locationId
+    }
+}`
+
 // targets GraphQL query
 var targetsQuery = `query SdkGolangTargets($after: String, $filter: [TargetFilterInput!]) {
     result: targets(sortBy: NAME, sortOrder: ASC, after: $after, filter: $filter) {
@@ -269,6 +278,7 @@ var targetsQuery = `query SdkGolangTargets($after: String, $filter: [TargetFilte
                 cloudAccount {
                     cloudAccountId
                 }
+                syncStatus
                 bucket
                 region
                 storageClass
@@ -323,14 +333,15 @@ var updateAwsAccountQuery = `mutation SdkGolangUpdateAwsAccount($id: String!, $n
 
 // updateAwsTarget GraphQL query
 var updateAwsTargetQuery = `mutation SdkGolangUpdateAwsTarget(
-    $name:                   String!,
-    $cloudAccountId:         UUID!,
-    $storageClass:           AwsStorageClass!,
-    $awsRetrievalTier:       AwsRetrivalTier,
+    $id:                     String!,
+    $name:                   String,
+    $cloudAccountId:         UUID,
+    $storageClass:           AwsStorageClass,
+    $awsRetrievalTier:       AwsRetrievalTier,
     $cloudComputeSettings:   AwsCloudComputeSettingsInput,
-    $isConsolidationEnabled: Boolean!,
+    $isConsolidationEnabled: Boolean,
     $proxySettings:          ProxySettingsInput,
-    $bypassProxy:            Boolean!,
+    $bypassProxy:            Boolean,
     $computeProxySettings:   ProxySettingsInput,
     $immutabilitySettings:   AwsImmutabilitySettings,
     $s3Endpoint:             String,
@@ -338,7 +349,8 @@ var updateAwsTargetQuery = `mutation SdkGolangUpdateAwsTarget(
     $awsComputeSettingsId:   String,
     $awsIamPairId:           String,
 ) {
-    result: createAwsTarget(input: {
+    result: updateAwsTarget(input: {
+        id:                     $id,
         name:                   $name,
         cloudAccountId:         $cloudAccountId,
         storageClass:           $storageClass,

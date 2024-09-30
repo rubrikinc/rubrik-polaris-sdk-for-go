@@ -12,6 +12,7 @@ query RubrikPolarisSDKRequest($after: String, $filter: [TargetFilterInput!]) {
                 cloudAccount {
                     cloudAccountId
                 }
+                syncStatus
                 bucket
                 region
                 storageClass

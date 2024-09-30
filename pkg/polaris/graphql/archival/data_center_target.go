@@ -178,6 +178,37 @@ func UpdateTarget[R UpdateTargetResult[P], P UpdateTargetParams](ctx context.Con
 	return nil
 }
 
+// DisableTarget disables the target with the specified target ID. Data center
+// archival locations are also referred to as targets.
+func DisableTarget(ctx context.Context, gql *graphql.Client, targetID uuid.UUID) error {
+	gql.Log().Print(log.Trace)
+
+	query := disableTargetQuery
+	buf, err := gql.Request(ctx, query, struct {
+		ID uuid.UUID `json:"id"`
+	}{ID: targetID})
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+	graphql.LogResponse(gql.Log(), query, buf)
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				ID uuid.UUID `json:"locationId"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if id := payload.Data.Result.ID; id != targetID {
+		return graphql.ResponseError(query, fmt.Errorf("response ID does not match request ID: %s != %s", id, targetID))
+	}
+
+	return nil
+}
+
 // DeleteTarget deletes the target with the specified target ID. Data center
 // archival locations are also referred to as targets.
 func DeleteTarget(ctx context.Context, gql *graphql.Client, targetID uuid.UUID) error {

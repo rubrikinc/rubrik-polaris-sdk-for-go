@@ -9,12 +9,13 @@ import (
 // referred to as Amazon S3 in the RSC UI.
 type AWSTarget struct {
 	ID      uuid.UUID `json:"id"`
+	Name    string    `json:"name"`
 	Cluster struct {
 		ID uuid.UUID `json:"id"`
 	} `json:"cluster"`
-	TargetType   string `json:"targetType"`
 	Status       string `json:"status"`
-	Name         string `json:"name"`
+	TargetType   string `json:"targetType"`
+	SyncStatus   string `json:"syncStatus"`
 	CloudAccount struct {
 		ID uuid.UUID `json:"cloudAccountId"`
 	} `json:"cloudAccount"`
@@ -105,7 +106,7 @@ type UpdateAWSTargetParams struct {
 	Name                   string                         `json:"name,omitempty"`
 	CloudAccountID         uuid.UUID                      `json:"cloudAccountId,omitempty"`
 	StorageClass           string                         `json:"storageClass,omitempty"`
-	RetrivalTier           string                         `json:"awsRetrievalTier,omitempty"`
+	RetrievalTier          string                         `json:"awsRetrievalTier,omitempty"`
 	CloudComputeSettings   *AWSTargetCloudComputeSettings `json:"cloudComputeSettings,omitempty"`
 	IsConsolidationEnabled bool                           `json:"isConsolidationEnabled,omitempty"`
 	ProxySettings          *AWSTargetProxySettings        `json:"proxySettings,omitempty"`

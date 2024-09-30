@@ -1,12 +1,13 @@
 mutation RubrikPolarisSDKRequest(
-    $name:                   String!,
-    $cloudAccountId:         UUID!,
-    $storageClass:           AwsStorageClass!,
-    $awsRetrievalTier:       AwsRetrivalTier,
+    $id:                     String!,
+    $name:                   String,
+    $cloudAccountId:         UUID,
+    $storageClass:           AwsStorageClass,
+    $awsRetrievalTier:       AwsRetrievalTier,
     $cloudComputeSettings:   AwsCloudComputeSettingsInput,
-    $isConsolidationEnabled: Boolean!,
+    $isConsolidationEnabled: Boolean,
     $proxySettings:          ProxySettingsInput,
-    $bypassProxy:            Boolean!,
+    $bypassProxy:            Boolean,
     $computeProxySettings:   ProxySettingsInput,
     $immutabilitySettings:   AwsImmutabilitySettings,
     $s3Endpoint:             String,
@@ -14,7 +15,8 @@ mutation RubrikPolarisSDKRequest(
     $awsComputeSettingsId:   String,
     $awsIamPairId:           String,
 ) {
-    result: createAwsTarget(input: {
+    result: updateAwsTarget(input: {
+        id:                     $id,
         name:                   $name,
         cloudAccountId:         $cloudAccountId,
         storageClass:           $storageClass,
