@@ -1,0 +1,10 @@
+mutation RubrikPolarisSDKRequest($id: String!, $name: String!, $description: String, $subscriptionId: String!) {
+    result: updateAzureAccount(input: {
+        id:             $id,
+        name:           $name,
+        description:    $description,
+        subscriptionId: $subscriptionId,
+    }) {
+        cloudAccountId
+    }
+}

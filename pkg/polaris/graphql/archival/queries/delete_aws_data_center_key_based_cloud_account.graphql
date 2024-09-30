@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!) {
+    result: deleteAwsDataCenterKeyBasedCloudAccount(input: {
+        cloudAccountId: $cloudAccountId,
+    })
+}

@@ -135,44 +135,6 @@ var allAzureExocomputeConfigsInAccountQuery = `query SdkGolangAllAzureExocompute
     }
 }`
 
-// allTargetMappings GraphQL query
-var allTargetMappingsQuery = `query SdkGolangAllTargetMappings($filter: [TargetMappingFilterInput!]) {
-    result: allTargetMappings(sortBy: NAME, sortOrder: ASC, filter: $filter) {
-        id
-        name
-        groupType
-        targetType
-        connectionStatus {
-            status
-        }
-        targetTemplate {
-            ... on AzureTargetTemplate {
-                cloudAccount {
-                    cloudAccountId
-                }
-                cloudNativeCompanion {
-                    cloudNativeLocTemplateType
-                    cmkInfo {
-                        keyName
-                        keyVaultName
-                        region
-                    }
-                    redundancy
-                    storageAccountRegion
-                    storageAccountTags {
-                        key
-                        value
-                    }
-                    storageTier
-                    subscriptionNativeId
-                }
-                containerNamePrefix
-                storageAccountName
-            }
-        }
-    }
-}`
-
 // azureCloudAccountPermissionConfig GraphQL query
 var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPermissionConfig($feature: CloudAccountFeature!) {
     result: azureCloudAccountPermissionConfig(feature: $feature) {
@@ -224,39 +186,6 @@ var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($af
         pageInfo {
             endCursor
             hasNextPage
-        }
-    }
-}`
-
-// createCloudNativeAzureStorageSetting GraphQL query
-var createCloudNativeAzureStorageSettingQuery = `mutation SdkGolangCreateCloudNativeAzureStorageSetting(
-    $cloudAccountId:             UUID!,
-    $cloudNativeLocTemplateType: CloudNativeLocTemplateType!,
-    $cmkInfo:                    [AzureCmkInput!],
-    $containerName:              String!,
-    $name:                       String!,
-    $redundancy:                 AzureRedundancy!,
-    $storageTier:                AzureStorageTier!,
-    $subscriptionNativeId:       String!
-    $storageAccountName:         String!,
-    $storageAccountRegion:       AzureRegion,
-    $storageAccountTags:         TagsInput,
-) {
-    result: createCloudNativeAzureStorageSetting(input: {
-        cloudAccountId:              $cloudAccountId,
-        cloudNativeLocTemplateType:  $cloudNativeLocTemplateType,
-        cmkInfo:                     $cmkInfo,
-        containerName:               $containerName,
-        name:                        $name,
-        redundancy:                  $redundancy,
-        storageTier:                 $storageTier,
-        subscriptionNativeId:        $subscriptionNativeId
-        storageAccountName:          $storageAccountName,
-        storageAccountRegion:        $storageAccountRegion,
-        storageAccountTags:          $storageAccountTags,
-    }) {
-        targetMapping {
-            id
         }
     }
 }`
@@ -354,27 +283,6 @@ var updateAzureCloudAccountQuery = `mutation SdkGolangUpdateAzureCloudAccount($f
         status {
             azureSubscriptionNativeId
             isSuccess
-        }
-    }
-}`
-
-// updateCloudNativeAzureStorageSetting GraphQL query
-var updateCloudNativeAzureStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeAzureStorageSetting(
-    $id:                 UUID!,
-    $name:               String!,
-    $storageTier:        AzureStorageTier!,
-    $storageAccountTags: TagsInput!,
-    $cmkInfo:            [AzureCmkInput!],
-) {
-    result: updateCloudNativeAzureStorageSetting(input: {
-        id:                 $id,
-        name:               $name,
-        storageTier:        $storageTier,
-        storageAccountTags: $storageAccountTags,
-        cmkInfo:            $cmkInfo,
-    }) {
-        targetMapping {
-            id
         }
     }
 }`

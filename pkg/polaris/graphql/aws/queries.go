@@ -115,35 +115,6 @@ var allAwsPermissionPoliciesQuery = `query SdkGolangAllAwsPermissionPolicies($cl
     }
 }`
 
-// allTargetMappings GraphQL query
-var allTargetMappingsQuery = `query SdkGolangAllTargetMappings($filter: [TargetMappingFilterInput!]) {
-    result: allTargetMappings(sortBy: NAME, sortOrder: ASC, filter: $filter) {
-        id
-        name
-        groupType
-        targetType
-        connectionStatus {
-            status
-        }
-        targetTemplate {
-            ... on AwsTargetTemplate {
-                cloudAccount {
-                    cloudAccountId
-                }
-                bucketPrefix
-                storageClass
-                region
-                kmsMasterKeyId
-                cloudNativeLocTemplateType
-                bucketTags {
-                    key
-                    value
-                }
-            }
-        }
-    }
-}`
-
 // allVpcsByRegionFromAws GraphQL query
 var allVpcsByRegionFromAwsQuery = `query SdkGolangAllVpcsByRegionFromAws($awsAccountRubrikId: UUID!, $region: AwsNativeRegion!) {
     allVpcsByRegionFromAws(awsAccountRubrikId: $awsAccountRubrikId, region: $region) {
@@ -322,33 +293,6 @@ var createAwsExocomputeConfigsQuery = `mutation SdkGolangCreateAwsExocomputeConf
                 }
                 areSecurityGroupsRscManaged
             }
-        }
-    }
-}`
-
-// createCloudNativeAwsStorageSetting GraphQL query
-var createCloudNativeAwsStorageSettingQuery = `mutation SdkGolangCreateCloudNativeAwsStorageSetting(
-    $cloudAccountId:  UUID!,
-    $name:            String!,
-    $bucketPrefix:    String!,
-    $storageClass:    AwsStorageClass!,
-    $region:          AwsRegion,
-    $kmsMasterKeyId:  String!,
-    $locTemplateType: CloudNativeLocTemplateType!,
-    $bucketTags:      TagsInput
-) {
-    result: createCloudNativeAwsStorageSetting(input: {
-        cloudAccountId:             $cloudAccountId,
-        name:                       $name,
-        bucketPrefix:               $bucketPrefix,
-        storageClass:               $storageClass,
-        region:                     $region,
-        kmsMasterKeyId:             $kmsMasterKeyId,
-        cloudNativeLocTemplateType: $locTemplateType,
-        bucketTags:                 $bucketTags
-    }) {
-        targetMapping {
-            id
         }
     }
 }`
@@ -541,29 +485,6 @@ var updateAwsExocomputeConfigsQuery = `mutation SdkGolangUpdateAwsExocomputeConf
                 }
                 areSecurityGroupsRscManaged
             }
-        }
-    }
-}`
-
-// updateCloudNativeAwsStorageSetting GraphQL query
-var updateCloudNativeAwsStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeAwsStorageSetting(
-    $id:                  UUID!,
-    $name:                String,
-    $storageClass:        AwsStorageClass,
-    $kmsMasterKeyId:      String,
-    $deleteAllBucketTags: Boolean
-    $bucketTags:          TagsInput,
-) {
-    result: updateCloudNativeAwsStorageSetting(input: {
-        id:                  $id,
-        name:                $name,
-        storageClass:        $storageClass,
-        kmsMasterKeyId:      $kmsMasterKeyId,
-        deleteAllBucketTags: $deleteAllBucketTags
-        bucketTags:          $bucketTags,
-    }) {
-        targetMapping {
-            id
         }
     }
 }`

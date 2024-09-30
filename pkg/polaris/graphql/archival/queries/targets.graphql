@@ -1,0 +1,53 @@
+query RubrikPolarisSDKRequest($after: String, $filter: [TargetFilterInput!]) {
+    result: targets(sortBy: NAME, sortOrder: ASC, after: $after, filter: $filter) {
+        nodes {
+            id
+            cluster {
+                id
+            }
+            name
+            targetType
+            status
+            ... on RubrikManagedAwsTarget {
+                cloudAccount {
+                    cloudAccountId
+                }
+                syncStatus
+                bucket
+                region
+                storageClass
+                awsRetrievalTier
+                encryptionType
+                kmsMasterKeyId
+                computeSettings {
+                    subnetId
+                    securityGroupId
+                    vpcId
+                    proxySettings {
+                        portNumber
+                        protocol
+                        proxyServer
+                        username
+                    }
+                }
+                isConsolidationEnabled
+                proxySettings {
+                    portNumber
+                    protocol
+                    proxyServer
+                    username
+                }
+                bypassProxy
+                immutabilitySettings {
+                    lockDurationDays
+                }
+                s3Endpoint
+                kmsEndpoint
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}
