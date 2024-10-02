@@ -102,12 +102,9 @@ func (a API) AWSTargetMappings(ctx context.Context, nameFilter string) ([]archiv
 func (a API) CreateAWSStorageSetting(ctx context.Context, createParams archival.CreateAWSStorageSettingParams) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	if createParams.Region == "" {
-		createParams.Region = aws.RegionUnknown
-	}
 	if createParams.LocTemplate == "" {
 		createParams.LocTemplate = "SPECIFIC_REGION"
-		if createParams.Region == aws.RegionUnknown {
+		if createParams.Region.Region == aws.RegionUnknown {
 			createParams.LocTemplate = "SOURCE_REGION"
 		}
 	}

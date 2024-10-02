@@ -35,7 +35,7 @@ import (
 type ExoConfigsForAccount struct {
 	Account         CloudAccount          `json:"awsCloudAccount"`
 	Configs         []ExoConfig           `json:"exocomputeConfigs"`
-	EligibleRegions []string              `json:"exocomputeEligibleRegions"`
+	EligibleRegions []RegionEnum          `json:"exocomputeEligibleRegions"`
 	Feature         Feature               `json:"featureDetail"`
 	MappedAccounts  []CloudAccountDetails `json:"mappedCloudAccounts"`
 }
@@ -48,12 +48,12 @@ func (r ExoConfigsForAccount) ListQuery(filter string) (string, any) {
 
 // ExoConfig represents a single exocompute configuration.
 type ExoConfig struct {
-	ID      string `json:"configUuid"`
-	Region  Region `json:"region"`
-	VPCID   string `json:"vpcId"`
-	Subnet1 Subnet `json:"subnet1"`
-	Subnet2 Subnet `json:"subnet2"`
-	Message string `json:"message"`
+	ID      string     `json:"configUuid"`
+	Region  RegionEnum `json:"region"`
+	VPCID   string     `json:"vpcId"`
+	Subnet1 Subnet     `json:"subnet1"`
+	Subnet2 Subnet     `json:"subnet2"`
+	Message string     `json:"message"`
 
 	// When true, Polaris manages the security groups.
 	IsManagedByRubrik bool `json:"areSecurityGroupsRscManaged"`
@@ -88,7 +88,7 @@ type Subnet struct {
 // ExoCreateParams represents the parameters required to create an AWS
 // exocompute configuration.
 type ExoCreateParams struct {
-	Region Region `json:"region"`
+	Region RegionEnum `json:"region"`
 
 	// Only required for RSC managed clusters
 	VPCID   string   `json:"vpcId,omitempty"`

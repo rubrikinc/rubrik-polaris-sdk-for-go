@@ -109,7 +109,7 @@ func (a API) CreateAzureStorageSetting(ctx context.Context, createParams archiva
 
 	if createParams.LocTemplate == "" {
 		createParams.LocTemplate = "SPECIFIC_REGION"
-		if createParams.StorageAccountRegion == nil || createParams.StorageAccountRegion.Region == azure.RegionUnknown {
+		if createParams.StorageAccountRegion.Region == azure.RegionUnknown {
 			createParams.LocTemplate = "SOURCE_REGION"
 		}
 	}

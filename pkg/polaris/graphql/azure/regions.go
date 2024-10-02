@@ -109,26 +109,49 @@ func (region Region) RegionalDisplayName() string {
 	return regionInfoMap[region].regionalDisplayName
 }
 
-// ToRegion returns the Region. This is provided for region enum types which
-// embeds the Region type.
-func (region Region) ToRegion() Region {
-	return region
-}
-
-// ToCloudAccountRegionEnum returns the RSC AzureCloudAccountRegion enum for
-// the region.
+// ToCloudAccountRegionEnum returns the RSC GraphQL AzureCloudAccountRegion enum
+// value for the region.
 func (region Region) ToCloudAccountRegionEnum() CloudAccountRegionEnum {
 	return CloudAccountRegionEnum{Region: region}
 }
 
-// ToNativeRegionEnum returns the RSC AzureNativeRegion enum for the region.
+// ToCloudAccountRegionEnumPtr returns the RSC GraphQL AzureCloudAccountRegion
+// enum value for the region as a pointer. If the region is unknown, nil is
+// returned.
+func (region Region) ToCloudAccountRegionEnumPtr() *CloudAccountRegionEnum {
+	if region == RegionUnknown {
+		return nil
+	}
+	return &CloudAccountRegionEnum{Region: region}
+}
+
+// ToNativeRegionEnum returns the RSC GraphQL AzureNativeRegion enum value for
+// the region.
 func (region Region) ToNativeRegionEnum() NativeRegionEnum {
 	return NativeRegionEnum{Region: region}
 }
 
-// ToRegionEnum returns the RSC AzureRegion enum for the region.
+// ToNativeRegionEnumPtr returns the RSC GraphQL AzureNativeRegion enum value
+// for the region as a pointer. If the region is unknown, nil is returned.
+func (region Region) ToNativeRegionEnumPtr() *NativeRegionEnum {
+	if region == RegionUnknown {
+		return nil
+	}
+	return &NativeRegionEnum{Region: region}
+}
+
+// ToRegionEnum returns the RSC GraphQL AzureRegion enum value for the region.
 func (region Region) ToRegionEnum() RegionEnum {
 	return RegionEnum{Region: region}
+}
+
+// ToRegionEnumPtr returns the RSC GraphQL AzureRegion enum value for the region
+// as a pointer. If the region is unknown, nil is returned.
+func (region Region) ToRegionEnumPtr() *RegionEnum {
+	if region == RegionUnknown {
+		return nil
+	}
+	return &RegionEnum{Region: region}
 }
 
 // String returns the name of the region.
@@ -138,12 +161,12 @@ func (region Region) String() string {
 
 const (
 	FromAny                    = iota // Parse the value as any of the below formats.
-	FromCloudAccountRegionEnum        // Parse the value as an AzureCloudAccountRegion enum value.
+	FromCloudAccountRegionEnum        // Parse the value as a GraphQL AzureCloudAccountRegion enum value.
 	FromDisplayName                   // Parse the value as a region display name.
 	FromName                          // Parse the value as a region name.
-	FromNativeRegionEnum              // Parse the value as an AzureNativeRegion enum value.
+	FromNativeRegionEnum              // Parse the value as a GraphQL AzureNativeRegion enum value.
 	FromRegionalDisplayName           // Parse the value as a region regional display name.
-	FromRegionEnum                    // Parse the value as an AzureRegion enum value.
+	FromRegionEnum                    // Parse the value as a GraphQL AzureRegion enum value.
 )
 
 // RegionFrom parses the value as a region identifier in the specified format.
@@ -190,18 +213,19 @@ func RegionFromRegionalDisplayName(value string) Region {
 	return RegionFrom(value, FromRegionalDisplayName)
 }
 
-// RegionFromCloudAccountRegionEnum parses the value as an
+// RegionFromCloudAccountRegionEnum parses the value as a GraphQL
 // AzureCloudAccountRegion enum value.
 func RegionFromCloudAccountRegionEnum(value string) Region {
 	return RegionFrom(value, FromCloudAccountRegionEnum)
 }
 
-// RegionFromNativeRegionEnum parses the value as an AzureNativeRegion enum.
+// RegionFromNativeRegionEnum parses the value as a GraphQL AzureNativeRegion
+// enum.
 func RegionFromNativeRegionEnum(value string) Region {
 	return RegionFrom(value, FromNativeRegionEnum)
 }
 
-// RegionFromRegionEnum parses the value as an AzureRegion enum value.
+// RegionFromRegionEnum parses the value as a GraphQL AzureRegion enum value.
 func RegionFromRegionEnum(value string) Region {
 	return RegionFrom(value, FromRegionEnum)
 }
@@ -210,7 +234,7 @@ func RegionFromRegionEnum(value string) Region {
 type RegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
-func (region *RegionEnum) MarshalJSON() ([]byte, error) {
+func (region RegionEnum) MarshalJSON() ([]byte, error) {
 	return json.Marshal(regionInfoMap[region.Region].regionEnum)
 }
 
@@ -229,7 +253,7 @@ func (region *RegionEnum) UnmarshalJSON(b []byte) error {
 type CloudAccountRegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
-func (region *CloudAccountRegionEnum) MarshalJSON() ([]byte, error) {
+func (region CloudAccountRegionEnum) MarshalJSON() ([]byte, error) {
 	return json.Marshal(regionInfoMap[region.Region].cloudAccountRegionEnum)
 }
 
@@ -247,7 +271,7 @@ func (region *CloudAccountRegionEnum) UnmarshalJSON(b []byte) error {
 type NativeRegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
-func (region *NativeRegionEnum) MarshalJSON() ([]byte, error) {
+func (region NativeRegionEnum) MarshalJSON() ([]byte, error) {
 	return json.Marshal(regionInfoMap[region.Region].nativeRegionEnum)
 }
 
@@ -829,7 +853,7 @@ var validRegions = map[Region]struct{}{
 	RegionWestUS3:            {},
 }
 
-// Deprecated: use RegionFromName or RegionFromCommonEnum.
+// Deprecated: use RegionFromName or RegionFromCloudAccountRegionEnum.
 func ParseRegion(value string) (Region, error) {
 	// Polaris region name.
 	region := RegionFromCloudAccountRegionEnum(value)

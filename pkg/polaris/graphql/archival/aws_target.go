@@ -19,12 +19,12 @@ type AWSTarget struct {
 	CloudAccount struct {
 		ID uuid.UUID `json:"cloudAccountId"`
 	} `json:"cloudAccount"`
-	Bucket          string     `json:"bucket"`
-	Region          aws.Region `json:"region"`
-	StorageClass    string     `json:"storageClass"`
-	RetrivalTier    string     `json:"awsRetrievalTier"`
-	EncryptionType  string     `json:"encryptionType"`
-	KMSMasterKeyID  string     `json:"kmsMasterKeyId"`
+	Bucket          string         `json:"bucket"`
+	Region          aws.RegionEnum `json:"region"`
+	StorageClass    string         `json:"storageClass"`
+	RetrivalTier    string         `json:"awsRetrievalTier"`
+	EncryptionType  string         `json:"encryptionType"`
+	KMSMasterKeyID  string         `json:"kmsMasterKeyId"`
 	ComputeSettings *struct {
 		SubnetID        string `json:"subnetId"`
 		SecurityGroupID string `json:"securityGroupId"`
@@ -70,7 +70,7 @@ type CreateAWSTargetParams struct {
 	ClusterID              uuid.UUID                      `json:"clusterUuid"`
 	CloudAccountID         uuid.UUID                      `json:"cloudAccountId"`
 	BucketName             string                         `json:"bucketName"`
-	Region                 aws.Region                     `json:"region"`
+	Region                 aws.RegionEnum                 `json:"region"`
 	StorageClass           string                         `json:"storageClass"`
 	RetrievalTier          string                         `json:"awsRetrievalTier,omitempty"`
 	KMSMasterKeyID         string                         `json:"kmsMasterKeyId,omitempty"`

@@ -75,7 +75,7 @@ func main() {
 		CloudAccountID: id,
 		BucketName:     "my-bucket",
 		KMSMasterKeyID: "aws/s3",
-		Region:         aws.ParseRegionNoValidation("us-east-2"),
+		Region:         aws.RegionFromName("us-east-2").ToRegionEnum(),
 		StorageClass:   "STANDARD",
 		RetrievalTier:  "STANDARD_TIER",
 	})

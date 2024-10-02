@@ -109,7 +109,7 @@ func findSubnet(vpc aws.VPC, subnetID string) (aws.Subnet, error) {
 // with security groups managed by RSC using the specified values.
 func Managed(region, vpcID string, subnetIDs []string) ExoConfigFunc {
 	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExoCreateParams, error) {
-		reg := aws.ParseRegionNoValidation(region)
+		reg := aws.RegionFromName(region)
 
 		// Validate VPC.
 		vpcs, err := aws.Wrap(gql).AllVpcsByRegion(ctx, id, reg)
@@ -135,7 +135,7 @@ func Managed(region, vpcID string, subnetIDs []string) ExoConfigFunc {
 		}
 
 		return aws.ExoCreateParams{
-			Region:            reg,
+			Region:            reg.ToRegionEnum(),
 			VPCID:             vpcID,
 			Subnets:           []aws.Subnet{subnet1, subnet2},
 			IsManagedByRubrik: true,
@@ -147,7 +147,7 @@ func Managed(region, vpcID string, subnetIDs []string) ExoConfigFunc {
 // with security groups managed by the user using the specified values.
 func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID, nodeSecurityGroupID string) ExoConfigFunc {
 	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExoCreateParams, error) {
-		reg := aws.ParseRegionNoValidation(region)
+		reg := aws.RegionFromName(region)
 
 		// Validate VPC.
 		vpcs, err := aws.Wrap(gql).AllVpcsByRegion(ctx, id, reg)
@@ -183,7 +183,7 @@ func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID,
 		}
 
 		return aws.ExoCreateParams{
-			Region:                 reg,
+			Region:                 reg.ToRegionEnum(),
 			VPCID:                  vpcID,
 			Subnets:                []aws.Subnet{subnet1, subnet2},
 			IsManagedByRubrik:      false,
@@ -197,7 +197,7 @@ func Unmanaged(region, vpcID string, subnetIDs []string, clusterSecurityGroupID,
 // with a Bring-Your-Own-Kubernetes cluster.
 func BYOKCluster(region string) ExoConfigFunc {
 	return func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (aws.ExoCreateParams, error) {
-		return aws.ExoCreateParams{Region: aws.ParseRegionNoValidation(region)}, nil
+		return aws.ExoCreateParams{Region: aws.RegionFromName(region).ToRegionEnum()}, nil
 	}
 }
 
@@ -218,7 +218,7 @@ func toExocomputeConfig(config aws.ExoConfig) (ExocomputeConfig, error) {
 	}
 	return ExocomputeConfig{
 		ID:                     id,
-		Region:                 aws.FormatRegion(config.Region),
+		Region:                 config.Region.Name(),
 		VPCID:                  config.VPCID,
 		Subnets:                subnets,
 		ManagedByRubrik:        config.IsManagedByRubrik,
