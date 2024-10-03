@@ -38,12 +38,12 @@ type AWSTargetMapping struct {
 		CloudAccount struct {
 			ID uuid.UUID `json:"id"`
 		} `json:"cloudAccount"`
-		BucketPrefix string     `json:"bucketPrefix"`
-		StorageClass string     `json:"storageClass"`
-		Region       aws.Region `json:"region"`
-		KMSMasterKey string     `json:"kmsMasterKeyId"`
-		LocTemplate  string     `json:"cloudNativeLocTemplateType"`
-		BucketTags   []aws.Tag  `json:"bucketTags"`
+		BucketPrefix string         `json:"bucketPrefix"`
+		StorageClass string         `json:"storageClass"`
+		Region       aws.RegionEnum `json:"region"`
+		KMSMasterKey string         `json:"kmsMasterKeyId"`
+		LocTemplate  string         `json:"cloudNativeLocTemplateType"`
+		BucketTags   []aws.Tag      `json:"bucketTags"`
 	}
 }
 
@@ -67,14 +67,14 @@ func (AWSTargetMapping) ListQuery(filters []ListTargetMappingFilter) (string, an
 // key and bucket tags are optional.
 // AWS storage settings are also referred to as AWS target mappings.
 type CreateAWSStorageSettingParams struct {
-	CloudAccountID uuid.UUID  `json:"cloudAccountId"`
-	Name           string     `json:"name"`
-	BucketPrefix   string     `json:"bucketPrefix"`
-	StorageClass   string     `json:"storageClass"`
-	Region         aws.Region `json:"region,omitempty"`
-	KmsMasterKey   string     `json:"kmsMasterKeyId"`
-	LocTemplate    string     `json:"locTemplateType"`
-	BucketTags     *AWSTags   `json:"bucketTags,omitempty"`
+	CloudAccountID uuid.UUID      `json:"cloudAccountId"`
+	Name           string         `json:"name"`
+	BucketPrefix   string         `json:"bucketPrefix"`
+	StorageClass   string         `json:"storageClass"`
+	Region         aws.RegionEnum `json:"region"`
+	KmsMasterKey   string         `json:"kmsMasterKeyId"`
+	LocTemplate    string         `json:"locTemplateType"`
+	BucketTags     *AWSTags       `json:"bucketTags,omitempty"`
 }
 
 // CreateAWSStorageSettingResult holds the result of an AWS storage setting

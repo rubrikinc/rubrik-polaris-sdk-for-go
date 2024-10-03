@@ -168,9 +168,13 @@ func (a API) toNativeID(ctx context.Context, id IdentityFunc) (string, error) {
 func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccount {
 	features := make([]Feature, 0, len(accountWithFeatures.Features))
 	for _, feature := range accountWithFeatures.Features {
+		regions := make([]string, 0, len(feature.Regions))
+		for _, region := range feature.Regions {
+			regions = append(regions, region.Name())
+		}
 		features = append(features, Feature{
 			Feature:  core.Feature{Name: feature.Feature, PermissionGroups: feature.PermissionGroups},
-			Regions:  aws.FormatRegions(feature.Regions),
+			Regions:  regions,
 			RoleArn:  feature.RoleArn,
 			StackArn: feature.StackArn,
 			Status:   feature.Status,

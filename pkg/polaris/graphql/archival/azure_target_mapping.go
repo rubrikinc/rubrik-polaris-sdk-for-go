@@ -83,7 +83,7 @@ type CreateAzureStorageSettingParams struct {
 	StorageTier          string             `json:"storageTier"`
 	NativeID             uuid.UUID          `json:"subscriptionNativeId"`
 	StorageAccountName   string             `json:"storageAccountName"`
-	StorageAccountRegion *azure.RegionEnum  `json:"storageAccountRegion,omitempty"`
+	StorageAccountRegion azure.RegionEnum   `json:"storageAccountRegion"`
 	StorageAccountTags   *AzureTags         `json:"storageAccountTags,omitempty"`
 	CMKInfo              []AzureCustomerKey `json:"cmkInfo,omitempty"`
 }
