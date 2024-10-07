@@ -21,3 +21,37 @@
 // DEALINGS IN THE SOFTWARE.
 
 package archival
+
+import (
+	"github.com/google/uuid"
+)
+
+const (
+	TargetDeleted          = "DELETED"       // Target is deleted.
+	TargetDisabled         = "DISABLED"      // Target is disabled.
+	TargetSyncActionFailed = "ACTION_FAILED" // Target synchronization failed.
+	TargetSynced           = "SYNCED"        // Target synchronized.
+)
+
+// Target holds the result of a target get operation.
+type Target struct {
+	ID      uuid.UUID `json:"id"`
+	Name    string    `json:"name"`
+	Cluster struct {
+		ID uuid.UUID `json:"id"`
+	} `json:"cluster"`
+	Status            string `json:"status"`
+	TargetType        string `json:"targetType"`
+	SyncStatus        string `json:"syncStatus"`
+	SyncFailureReason string `json:"syncFailureReason"`
+}
+
+func (r Target) GetQuery(targetID uuid.UUID) (string, any) {
+	return targetQuery, struct {
+		ID uuid.UUID `json:"id"`
+	}{ID: targetID}
+}
+
+func (r Target) Validate() error {
+	return nil
+}

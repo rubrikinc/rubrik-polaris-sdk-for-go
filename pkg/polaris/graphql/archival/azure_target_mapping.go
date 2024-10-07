@@ -127,10 +127,6 @@ func (r UpdateAzureStorageSettingResult) UpdateQuery(targetMappingID uuid.UUID, 
 	}{ID: targetMappingID, UpdateAzureStorageSettingParams: updateParams}
 }
 
-func (r UpdateAzureStorageSettingResult) Validate() (uuid.UUID, error) {
-	return uuid.Parse(r.TargetMapping.ID)
-}
-
 // AzureCustomerKey represents a customer managed key required for encryption
 // of Azure storage.
 type AzureCustomerKey struct {
