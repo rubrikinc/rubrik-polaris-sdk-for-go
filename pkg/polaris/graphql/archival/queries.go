@@ -263,6 +263,56 @@ var disableTargetQuery = `mutation SdkGolangDisableTarget($id: String!) {
     }
 }`
 
+// target GraphQL query
+var targetQuery = `query SdkGolangTarget($id: UUID!) {
+     result: target(input: $id) {
+         id
+         cluster {
+             id
+         }
+         name
+         targetType
+         status
+         ... on RubrikManagedAwsTarget {
+             cloudAccount {
+                 cloudAccountId
+             }
+             syncStatus
+             syncFailureReason
+             bucket
+             region
+             storageClass
+             awsRetrievalTier
+             encryptionType
+             kmsMasterKeyId
+             computeSettings {
+                 subnetId
+                 securityGroupId
+                 vpcId
+                 proxySettings {
+                     portNumber
+                     protocol
+                     proxyServer
+                     username
+                 }
+             }
+             isConsolidationEnabled
+             proxySettings {
+                 portNumber
+                 protocol
+                 proxyServer
+                 username
+             }
+             bypassProxy
+             immutabilitySettings {
+                 lockDurationDays
+             }
+             s3Endpoint
+             kmsEndpoint
+         }
+     }
+ }`
+
 // targets GraphQL query
 var targetsQuery = `query SdkGolangTargets($after: String, $filter: [TargetFilterInput!]) {
     result: targets(sortBy: NAME, sortOrder: ASC, after: $after, filter: $filter) {
@@ -279,6 +329,7 @@ var targetsQuery = `query SdkGolangTargets($after: String, $filter: [TargetFilte
                     cloudAccountId
                 }
                 syncStatus
+                syncFailureReason
                 bucket
                 region
                 storageClass

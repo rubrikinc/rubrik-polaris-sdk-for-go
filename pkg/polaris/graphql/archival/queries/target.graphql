@@ -1,0 +1,48 @@
+ query RubrikPolarisSDKRequest($id: UUID!) {
+     result: target(input: $id) {
+         id
+         cluster {
+             id
+         }
+         name
+         targetType
+         status
+         ... on RubrikManagedAwsTarget {
+             cloudAccount {
+                 cloudAccountId
+             }
+             syncStatus
+             syncFailureReason
+             bucket
+             region
+             storageClass
+             awsRetrievalTier
+             encryptionType
+             kmsMasterKeyId
+             computeSettings {
+                 subnetId
+                 securityGroupId
+                 vpcId
+                 proxySettings {
+                     portNumber
+                     protocol
+                     proxyServer
+                     username
+                 }
+             }
+             isConsolidationEnabled
+             proxySettings {
+                 portNumber
+                 protocol
+                 proxyServer
+                 username
+             }
+             bypassProxy
+             immutabilitySettings {
+                 lockDurationDays
+             }
+             s3Endpoint
+             kmsEndpoint
+         }
+     }
+ }

@@ -23,7 +23,6 @@ package archival
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -129,7 +128,6 @@ type UpdateStorageSettingParams interface {
 // operation.
 type UpdateStorageSettingResult[P UpdateStorageSettingParams] interface {
 	UpdateQuery(targetMappingID uuid.UUID, updateParams P) (string, any)
-	Validate() (uuid.UUID, error)
 }
 
 // UpdateCloudNativeStorageSetting updates the cloud native archival location
@@ -152,13 +150,6 @@ func UpdateCloudNativeStorageSetting[R UpdateStorageSettingResult[P], P UpdateSt
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return graphql.UnmarshalError(query, err)
-	}
-	id, err := payload.Data.Result.Validate()
-	if err != nil {
-		return graphql.ResponseError(query, err)
-	}
-	if id != targetMappingID {
-		return graphql.ResponseError(query, fmt.Errorf("response ID does not match request ID: %s != %s", id, targetMappingID))
 	}
 
 	return nil

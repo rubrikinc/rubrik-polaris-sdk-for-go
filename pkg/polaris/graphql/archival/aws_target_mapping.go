@@ -120,10 +120,6 @@ func (r UpdateAWSStorageSettingResult) UpdateQuery(targetMappingID uuid.UUID, up
 	}{ID: targetMappingID, UpdateAWSStorageSettingParams: updateParams}
 }
 
-func (r UpdateAWSStorageSettingResult) Validate() (uuid.UUID, error) {
-	return uuid.Parse(r.TargetMapping.ID)
-}
-
 // AWSTags represents a collection of AWS tags.
 type AWSTags struct {
 	TagList []aws.Tag `json:"tagList"`

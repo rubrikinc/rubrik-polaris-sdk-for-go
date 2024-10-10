@@ -23,7 +23,6 @@ package archival
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -136,7 +135,6 @@ type UpdateCloudAccountParams interface {
 // operation.
 type UpdateCloudAccountResult[P UpdateCloudAccountParams] interface {
 	UpdateQuery(cloudAccountID uuid.UUID, updateParams P) (string, any)
-	Validate() (uuid.UUID, error)
 }
 
 // UpdateCloudAccount updates a data center cloud account.
@@ -158,13 +156,6 @@ func UpdateCloudAccount[R UpdateCloudAccountResult[P], P UpdateCloudAccountParam
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return graphql.UnmarshalError(query, err)
-	}
-	id, err := payload.Data.Result.Validate()
-	if err != nil {
-		return graphql.ResponseError(query, err)
-	}
-	if id != cloudAccountID {
-		return graphql.ResponseError(query, fmt.Errorf("response ID does not match request ID: %s != %s", id, cloudAccountID))
 	}
 
 	return nil
