@@ -15,6 +15,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/exocompute"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -205,12 +206,13 @@ func clean(ctx context.Context, client *polaris.Client) error {
 
 		// Polaris doesn't automatically remove exocompute configs when removing
 		// the subscription, so we need to do it manually here.
-		exoCfgs, err := azureClient.ExocomputeConfigs(ctx, azure.CloudAccountID(azureAcc.ID))
+		exoClient := exocompute.Wrap(client)
+		exoCfgs, err := exoClient.AzureConfigurationsByCloudAccountID(ctx, azureAcc.ID)
 		if err != nil {
 			return err
 		}
 		for i := range exoCfgs {
-			if err := azureClient.RemoveExocomputeConfig(ctx, exoCfgs[i].ID); err != nil {
+			if err := exoClient.RemoveAzureConfiguration(ctx, exoCfgs[i].ID); err != nil {
 				return fmt.Errorf("failed to remove Azure ExocomputeConfig: %v", pretty.Sprint(exoCfgs[i]))
 			}
 		}

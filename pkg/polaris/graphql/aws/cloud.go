@@ -395,47 +395,6 @@ func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAcc
 	return nil
 }
 
-// VPC represents an AWS VPC together with AWS subnets and AWS security groups.
-type VPC struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Subnets []struct {
-		ID               string `json:"id"`
-		Name             string `json:"name"`
-		AvailabilityZone string `json:"availabilityZone"`
-	} `json:"subnets"`
-	SecurityGroups []struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	} `json:"securityGroups"`
-}
-
-// AllVpcsByRegion returns all VPCs including their subnets for the specified
-// RSC cloud account id.
-func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, region Region) ([]VPC, error) {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(ctx, allVpcsByRegionFromAwsQuery, struct {
-		ID     uuid.UUID  `json:"awsAccountRubrikId"`
-		Region RegionEnum `json:"region"`
-	}{ID: id, Region: region.ToRegionEnum()})
-	if err != nil {
-		return nil, fmt.Errorf("failed to request allVpcsByRegionFromAws: %w", err)
-	}
-	a.log.Printf(log.Debug, "allVpcsByRegionFromAws(%q, %q): %s", id, region, string(buf))
-
-	var payload struct {
-		Data struct {
-			VPCs []VPC `json:"allVpcsByRegionFromAws"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal allVpcsByRegionFromAws: %s", err)
-	}
-
-	return payload.Data.VPCs, nil
-}
-
 // PrepareFeatureUpdateForAwsCloudAccount returns a CloudFormation URL and a
 // template URL from RSC which can be used to update the CloudFormation stack.
 func (a API) PrepareFeatureUpdateForAwsCloudAccount(ctx context.Context, id uuid.UUID, features []core.Feature) (cfmURL string, tmplURL string, err error) {

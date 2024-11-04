@@ -1,4 +1,4 @@
-// Copyright 2022 Rubrik, Inc.
+// Copyright 2024 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -18,43 +18,42 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package main
+package pcr
 
 import (
+	"context"
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
-
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/appliance"
-	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/pcr"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Example showing how to request an appliance token using a service account
-// with the Go SDK.
-//
-// The Polaris service account key file identifying the Polaris account should
-// either be placed at ~/.rubrik/polaris-service-account.json or pointed out by
-// the RUBRIK_POLARIS_SERVICEACCOUNT_FILE environment variable.
-func main() {
-	serviceAccount, err := polaris.DefaultServiceAccount(true)
+// AWSRegistry returns the AWS private container registry details.
+func (a API) AWSRegistry(ctx context.Context, cloudAccountID uuid.UUID) (pcr.AWSRegistry, error) {
+	a.log.Print(log.Trace)
+
+	params := pcr.GetAWSRegistryParams{CloudAccountID: cloudAccountID}
+	pcrInfo, err := pcr.GetRegistry(ctx, a.client, params)
 	if err != nil {
-		log.Fatal(err)
+		return pcr.AWSRegistry{}, fmt.Errorf("failed to get private container registry: %s", err)
 	}
 
-	// The appliance id. To run this example this needs to be changed to your
-	// appliance id.
-	applianceID, err := uuid.Parse("e71cc368-5fff-11ec-b6ac-df735a55e00f")
-	if err != nil {
-		log.Fatal(err)
+	return pcrInfo, nil
+}
+
+// SetAWSRegistry sets the AWS private container registry.
+func (a API) SetAWSRegistry(ctx context.Context, cloudAccountID uuid.UUID, nativeID, registryURL string) error {
+	a.log.Print(log.Trace)
+
+	params := pcr.SetAWSRegistryParams{
+		CloudAccountID: cloudAccountID,
+		NativeID:       nativeID,
+		RegistryURL:    registryURL,
+	}
+	if err := pcr.SetRegistry(ctx, a.client, params); err != nil {
+		return fmt.Errorf("failed to set private container registry: %s", err)
 	}
 
-	// Request an appliance token using a standard service account.
-	token, err := appliance.TokenFromServiceAccount(serviceAccount, applianceID, polarislog.NewStandardLogger())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("Appliance token: %s\n", token)
+	return nil
 }

@@ -18,7 +18,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package azure
+package exocompute
 
 import (
 	"context"
@@ -28,7 +28,9 @@ import (
 	"testing"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
@@ -56,29 +58,30 @@ func TestAzureExocompute(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	azureClient := Wrap(client)
+	azureClient := azure.Wrap(client)
+	exoClient := Wrap(client)
 
 	// Add default Azure service principal to RSC. Usually resolved using the
 	// environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
-	_, err = azureClient.SetServicePrincipal(ctx, Default(testSubscription.TenantDomain))
+	_, err = azureClient.SetServicePrincipal(ctx, azure.Default(testSubscription.TenantDomain))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Add Azure subscription to RSC.
-	subscription := Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
-	cnpRegions := Regions(testSubscription.CloudNativeProtection.Regions...)
-	cnpResourceGroup := ResourceGroup(testSubscription.CloudNativeProtection.ResourceGroupName,
+	subscription := azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
+	cnpRegions := azure.Regions(testSubscription.CloudNativeProtection.Regions...)
+	cnpResourceGroup := azure.ResourceGroup(testSubscription.CloudNativeProtection.ResourceGroupName,
 		testSubscription.CloudNativeProtection.ResourceGroupRegion, nil)
 	accountID, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection,
-		Name(testSubscription.SubscriptionName), cnpRegions, cnpResourceGroup)
+		azure.Name(testSubscription.SubscriptionName), cnpRegions, cnpResourceGroup)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Enable the exocompute feature for the account.
-	exoRegions := Regions(testSubscription.Exocompute.Regions...)
-	exoResourceGroup := ResourceGroup(testSubscription.Exocompute.ResourceGroupName,
+	exoRegions := azure.Regions(testSubscription.Exocompute.Regions...)
+	exoResourceGroup := azure.ResourceGroup(testSubscription.Exocompute.ResourceGroupName,
 		testSubscription.Exocompute.ResourceGroupRegion, nil)
 	exoAccountID, err := azureClient.AddSubscription(ctx, subscription, core.FeatureExocompute, exoRegions,
 		exoResourceGroup)
@@ -89,7 +92,7 @@ func TestAzureExocompute(t *testing.T) {
 		t.Fatal("cloud native protection and exocompute added to different cloud accounts")
 	}
 
-	account, err := azureClient.Subscription(ctx, CloudAccountID(accountID), core.FeatureExocompute)
+	account, err := azureClient.Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,26 +133,25 @@ func TestAzureExocompute(t *testing.T) {
 		t.Fatalf("invalid feature resource group tags: %v", tags)
 	}
 
-	// Add exocompute config for the account.
+	// Add an exocompute configuration to the account.
 	if len(testSubscription.Exocompute.Regions) == 0 {
 		t.Fatalf("exocompute test data must contain at least one region")
 	}
-	exoConfigRegion := testSubscription.Exocompute.Regions[0]
-	exoID, err := azureClient.AddExocomputeConfig(ctx, CloudAccountID(accountID),
-		Managed(exoConfigRegion, testSubscription.Exocompute.SubnetID))
+	exoConfigRegion := gqlazure.RegionFromName(testSubscription.Exocompute.Regions[0])
+	exoID, err := exoClient.AddAzureConfiguration(ctx, accountID, AzureManaged(exoConfigRegion, testSubscription.Exocompute.SubnetID))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Retrieve the exocompute config added.
-	exoConfig, err := azureClient.ExocomputeConfig(ctx, exoID)
+	// Retrieve the exocompute configuration added.
+	exoConfig, err := exoClient.AzureConfigurationByID(ctx, exoID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if id := exoConfig.ID; id != exoID {
 		t.Fatalf("invalid exocompute config id: %v", id)
 	}
-	if region := exoConfig.Region; region != exoConfigRegion {
+	if region := exoConfig.Region; region.Region != exoConfigRegion {
 		t.Fatalf("invalid exocompute config region: %v", region)
 	}
 	if id := exoConfig.SubnetID; id != testSubscription.Exocompute.SubnetID {
@@ -159,38 +161,38 @@ func TestAzureExocompute(t *testing.T) {
 		t.Fatalf("invalid exocompute config managed state: %t", exoConfig.ManagedByRubrik)
 	}
 
-	// Remove the exocompute config.
-	err = azureClient.RemoveExocomputeConfig(ctx, exoID)
+	// Remove the exocompute configuration.
+	err = exoClient.RemoveAzureConfiguration(ctx, exoID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Verify that the exocompute config was successfully removed.
-	exoConfig, err = azureClient.ExocomputeConfig(ctx, exoID)
+	// Verify that the exocompute configuration was successfully removed.
+	exoConfig, err = exoClient.AzureConfigurationByID(ctx, exoID)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
 
 	// Remove exocompute feature.
-	err = azureClient.RemoveSubscription(ctx, CloudAccountID(accountID), core.FeatureExocompute, false)
+	err = azureClient.RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the feature was successfully removed.
-	_, err = azureClient.Subscription(ctx, CloudAccountID(accountID), core.FeatureExocompute)
+	_, err = azureClient.Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
 
 	// Remove subscription.
-	err = azureClient.RemoveSubscription(ctx, CloudAccountID(accountID), core.FeatureCloudNativeProtection, false)
+	err = azureClient.RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	_, err = azureClient.Subscription(ctx, ID(subscription), core.FeatureCloudNativeProtection)
+	_, err = azureClient.Subscription(ctx, azure.ID(subscription), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}

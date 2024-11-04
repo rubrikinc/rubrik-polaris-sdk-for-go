@@ -1,0 +1,13 @@
+query RubrikPolarisSDKRequest(
+    $clusterName:        String!,
+    $clusterType:        CloudType!,
+    $exocomputeConfigId: UUID!
+) {
+    result: exocomputeGetClusterConnectionInfo(input: {
+        clusterName:        $clusterName,
+        clusterType:        $clusterType,
+        exocomputeConfigId: $exocomputeConfigId
+    }) {
+        clusterSetupYaml
+    }
+}

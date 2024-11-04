@@ -202,6 +202,18 @@ func (region *NativeRegionEnum) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// AllRegionNames returns all the recognized region names.
+func AllRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for _, info := range regionInfoMap {
+		if info.name != "" {
+			regions = append(regions, info.name)
+		}
+	}
+
+	return regions
+}
+
 var regionInfoMap = map[Region]struct {
 	name             string
 	displayName      string

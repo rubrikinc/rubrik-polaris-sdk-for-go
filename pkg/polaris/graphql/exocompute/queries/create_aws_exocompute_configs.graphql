@@ -1,0 +1,14 @@
+mutation RubrikPolarisSDKRequest(
+    $cloudAccountId: UUID!,
+    $config:         AwsExocomputeConfigInput!
+) {
+    result: createAwsExocomputeConfigs(input: {
+        cloudAccountId: $cloudAccountId,
+        configs:        [$config]}
+    ) {
+        exocomputeConfigs {
+            configUuid
+            message
+        }
+    }
+}

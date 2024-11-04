@@ -28,7 +28,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
-	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // Example showing how to manage an AWS account with the Polaris Go SDK.
@@ -44,7 +44,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger := polaris_log.NewStandardLogger()
+	logger := polarislog.NewStandardLogger()
 	polaris.SetLogLevelFromEnv(logger)
 	client, err := polaris.NewClientWithLogger(polAccount, logger)
 	if err != nil {
