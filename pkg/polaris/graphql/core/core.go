@@ -153,7 +153,7 @@ var (
 	FeatureCloudAccounts                 = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
 	FeatureCloudNativeArchival           = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
 	FeatureCloudNativeArchivalEncryption = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
-	FeatureCloudNativeBLOBProtection     = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
+	FeatureCloudNativeBlobProtection     = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
 	FeatureCloudNativeProtection         = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
 	FeatureCloudNativeS3Protection       = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
 	FeatureExocompute                    = Feature{Name: "EXOCOMPUTE"}
@@ -172,7 +172,7 @@ var validFeatures = map[string]struct{}{
 	FeatureCloudAccounts.Name:                 {}, // Deprecated: no replacement.
 	FeatureCloudNativeArchival.Name:           {},
 	FeatureCloudNativeArchivalEncryption.Name: {},
-	FeatureCloudNativeBLOBProtection.Name:     {},
+	FeatureCloudNativeBlobProtection.Name:     {},
 	FeatureCloudNativeProtection.Name:         {},
 	FeatureCloudNativeS3Protection.Name:       {},
 	FeatureExocompute.Name:                    {},
