@@ -2,8 +2,10 @@ package archival
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -184,6 +186,10 @@ func (a API) CreateAWSTarget(ctx context.Context, createParams archival.CreateAW
 		return uuid.Nil, fmt.Errorf("failed to create AWS target: %s", err)
 	}
 
+	if err := a.waitForAWSTargetSync(ctx, targetID); err != nil {
+		return uuid.Nil, fmt.Errorf("failed to wait for AWS target to sync: %s", err)
+	}
+
 	return targetID, nil
 }
 
@@ -195,5 +201,33 @@ func (a API) UpdateAWSTarget(ctx context.Context, targetID uuid.UUID, updatePara
 		return fmt.Errorf("failed update AWS target: %s", err)
 	}
 
+	if err := a.waitForAWSTargetSync(ctx, targetID); err != nil {
+		return fmt.Errorf("failed to wait for AWS target to sync: %s", err)
+	}
+
 	return nil
+}
+
+// waitForAWSTargetSync waits for the AWS target to synchronize.
+func (a API) waitForAWSTargetSync(ctx context.Context, targetID uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	for {
+		target, err := archival.GetTarget[archival.AWSTarget](ctx, a.client, targetID)
+		if err != nil {
+			return fmt.Errorf("failed to get target: %s", err)
+		}
+		if target.SyncStatus == archival.TargetSynced {
+			return nil
+		}
+		if target.SyncStatus == archival.TargetSyncActionFailed {
+			return errors.New(target.SyncFailureReason)
+		}
+
+		select {
+		case <-time.After(10 * time.Second):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }

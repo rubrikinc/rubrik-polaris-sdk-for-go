@@ -23,6 +23,7 @@ package archival
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
@@ -51,8 +52,16 @@ func (a API) DeleteTarget(ctx context.Context, targetID uuid.UUID) error {
 		return fmt.Errorf("failed to disable target: %s", err)
 	}
 
+	if err := a.waitForTargetStatus(ctx, targetID, archival.TargetDisabled); err != nil {
+		return fmt.Errorf("failed to wait for target to become disabled: %s", err)
+	}
+
 	if err := archival.DeleteTarget(ctx, a.client, targetID); err != nil {
 		return fmt.Errorf("failed to delete target: %s", err)
+	}
+
+	if err := a.waitForTargetStatus(ctx, targetID, archival.TargetDeleted); err != nil {
+		return fmt.Errorf("failed to wait for target to become deleted: %s", err)
 	}
 
 	return nil
@@ -68,4 +77,26 @@ func (a API) DeleteTargetMapping(ctx context.Context, targetMappingID uuid.UUID)
 	}
 
 	return nil
+}
+
+// waitForTargetStatus wait for the target's status to become the specified
+// status.
+func (a API) waitForTargetStatus(ctx context.Context, targetID uuid.UUID, status string) error {
+	a.log.Print(log.Trace)
+
+	for {
+		target, err := archival.GetTarget[archival.Target](ctx, a.client, targetID)
+		if err != nil {
+			return fmt.Errorf("failed to get target: %s", err)
+		}
+		if target.Status == status {
+			return nil
+		}
+
+		select {
+		case <-time.After(10 * time.Second):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }

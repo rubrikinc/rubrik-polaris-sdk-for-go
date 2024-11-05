@@ -23,12 +23,44 @@ package archival
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
+
+// GetTargetResult holds the result of a target get operation.
+type GetTargetResult interface {
+	GetQuery(targetID uuid.UUID) (string, any)
+	Validate() error
+}
+
+// GetTarget return the target with the specified target ID.
+func GetTarget[R GetTargetResult](ctx context.Context, gql *graphql.Client, targetID uuid.UUID) (R, error) {
+	gql.Log().Print(log.Trace)
+
+	var result R
+	query, params := result.GetQuery(targetID)
+	buf, err := gql.Request(ctx, query, params)
+	if err != nil {
+		return result, graphql.RequestError(query, err)
+	}
+	graphql.LogResponse(gql.Log(), query, buf)
+
+	var payload struct {
+		Data struct {
+			Result R `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return result, graphql.UnmarshalError(query, err)
+	}
+	if err := payload.Data.Result.Validate(); err != nil {
+		return result, graphql.ResponseError(query, err)
+	}
+
+	return payload.Data.Result, nil
+}
 
 // ListTargetFilter is used to filter data center archival targets. Common field
 // values are:
@@ -48,7 +80,7 @@ type ListTargetFilter struct {
 // ListTargetResult holds the result of a target list operation.
 type ListTargetResult interface {
 	ListQuery(cursor string, filters []ListTargetFilter) (string, any)
-	Validate() bool
+	Validate() error
 }
 
 // ListTargets return all targets matching the specified filters.
@@ -81,7 +113,7 @@ func ListTargets[R ListTargetResult](ctx context.Context, gql *graphql.Client, f
 			return nil, graphql.UnmarshalError(query, err)
 		}
 		for _, node := range payload.Data.Result.Nodes {
-			if node.Validate() {
+			if err := node.Validate(); err == nil {
 				nodes = append(nodes, node)
 			}
 		}
@@ -143,7 +175,6 @@ type UpdateTargetParams interface {
 // UpdateTargetResult represents the result of a target update operation.
 type UpdateTargetResult[P UpdateTargetParams] interface {
 	UpdateQuery(targetID uuid.UUID, updateParams P) (string, any)
-	Validate() (uuid.UUID, error)
 }
 
 // UpdateTarget updates the data center archival location with the specified
@@ -166,13 +197,6 @@ func UpdateTarget[R UpdateTargetResult[P], P UpdateTargetParams](ctx context.Con
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return graphql.UnmarshalError(query, err)
-	}
-	id, err := payload.Data.Result.Validate()
-	if err != nil {
-		return graphql.ResponseError(query, err)
-	}
-	if id != targetID {
-		return graphql.ResponseError(query, fmt.Errorf("response ID does not match request ID: %s != %s", id, targetID))
 	}
 
 	return nil
@@ -201,9 +225,6 @@ func DisableTarget(ctx context.Context, gql *graphql.Client, targetID uuid.UUID)
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return graphql.UnmarshalError(query, err)
-	}
-	if id := payload.Data.Result.ID; id != targetID {
-		return graphql.ResponseError(query, fmt.Errorf("response ID does not match request ID: %s != %s", id, targetID))
 	}
 
 	return nil

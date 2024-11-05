@@ -85,10 +85,6 @@ func (UpdateAWSCloudAccountResult) UpdateQuery(cloudAccountID uuid.UUID, updateP
 	}{ID: cloudAccountID, UpdateAWSCloudAccountParams: updateParams}
 }
 
-func (r UpdateAWSCloudAccountResult) Validate() (uuid.UUID, error) {
-	return uuid.Parse(r.ID)
-}
-
 // DeleteAWSCloudAccountResult holds the result of an AWS data center cloud
 // account delete operation.
 type DeleteAWSCloudAccountResult struct{}

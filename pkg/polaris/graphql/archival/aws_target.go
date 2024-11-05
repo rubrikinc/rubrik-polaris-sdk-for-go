@@ -1,6 +1,8 @@
 package archival
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 )
@@ -8,15 +10,10 @@ import (
 // AWSTarget holds the result of an AWS target list operation. AWS target is
 // referred to as Amazon S3 in the RSC UI.
 type AWSTarget struct {
-	ID      uuid.UUID `json:"id"`
-	Name    string    `json:"name"`
-	Cluster struct {
-		ID uuid.UUID `json:"id"`
-	} `json:"cluster"`
-	Status       string `json:"status"`
-	TargetType   string `json:"targetType"`
-	SyncStatus   string `json:"syncStatus"`
-	CloudAccount struct {
+	Target
+	SyncStatus        string `json:"syncStatus"`
+	SyncFailureReason string `json:"syncFailureReason"`
+	CloudAccount      struct {
 		ID uuid.UUID `json:"cloudAccountId"`
 	} `json:"cloudAccount"`
 	Bucket          string         `json:"bucket"`
@@ -51,16 +48,23 @@ type AWSTarget struct {
 	KMSEndpoint string `json:"kmsEndpoint"`
 }
 
-func (r AWSTarget) Validate() bool {
-	// There's no filter for AWS targets, so we filter manually here.
-	return r.TargetType == "AWS" && r.CloudAccount.ID != uuid.Nil
-}
-
 func (r AWSTarget) ListQuery(cursor string, filters []ListTargetFilter) (string, any) {
 	return targetsQuery, struct {
 		After   string             `json:"after,omitempty"`
 		Filters []ListTargetFilter `json:"filters,omitempty"`
 	}{After: cursor, Filters: filters}
+}
+
+func (r AWSTarget) Validate() error {
+	// There's no filter for AWS targets, so we filter manually here.
+	if targetType := r.TargetType; targetType != "AWS" {
+		return fmt.Errorf("invalid target type: %s", targetType)
+	}
+	if cloudAccountID := r.CloudAccount.ID; cloudAccountID == uuid.Nil {
+		return fmt.Errorf("invalid cloud account id: %s", cloudAccountID)
+	}
+
+	return nil
 }
 
 // CreateAWSTargetParams holds the parameters for an AWS target create
@@ -128,10 +132,6 @@ func (UpdateAWSTargetResult) UpdateQuery(targetID uuid.UUID, updateParams Update
 		ID uuid.UUID `json:"id"`
 		UpdateAWSTargetParams
 	}{ID: targetID, UpdateAWSTargetParams: updateParams}
-}
-
-func (r UpdateAWSTargetResult) Validate() (uuid.UUID, error) {
-	return uuid.Parse(r.ID)
 }
 
 // AWSTargetCloudComputeSettings holds the cloud compute settings for an AWS
