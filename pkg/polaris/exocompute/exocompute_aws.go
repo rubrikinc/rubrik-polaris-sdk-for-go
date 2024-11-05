@@ -83,9 +83,7 @@ func (a API) AWSConfigurations(ctx context.Context) ([]exocompute.AWSConfigurati
 
 	var configs []exocompute.AWSConfiguration
 	for _, configsForAccount := range configsForAccounts {
-		for _, config := range configsForAccount.Configs {
-			configs = append(configs, config)
-		}
+		configs = append(configs, configsForAccount.Configs...)
 	}
 
 	return configs, nil

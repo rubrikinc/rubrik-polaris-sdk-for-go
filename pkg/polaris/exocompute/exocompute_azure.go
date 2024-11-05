@@ -84,9 +84,7 @@ func (a API) AzureConfigurations(ctx context.Context) ([]exocompute.AzureConfigu
 
 	var configs []exocompute.AzureConfiguration
 	for _, configsForAccount := range configsForAccounts {
-		for _, config := range configsForAccount.Configs {
-			configs = append(configs, config)
-		}
+		configs = append(configs, configsForAccount.Configs...)
 	}
 
 	return configs, nil
