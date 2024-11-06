@@ -238,24 +238,24 @@ var disconnectAwsExocomputeClusterQuery = `mutation SdkGolangDisconnectAwsExocom
 
 // disconnectExocomputeCluster GraphQL query
 var disconnectExocomputeClusterQuery = `mutation SdkGolangDisconnectExocomputeCluster(
-    $clusterId:   UUID!,
-    $clusterType: CloudType!
+    $clusterId: UUID!,
+    $cloudType: CloudType!
 ) {
     result: disconnectExocomputeCluster(input: {
-        clusterId:   $clusterId
-        clusterType: $clusterType
+        clusterId: $clusterId
+        cloudType: $cloudType
     })
 }`
 
 // exocomputeClusterConnect GraphQL query
 var exocomputeClusterConnectQuery = `mutation SdkGolangExocomputeClusterConnect(
     $clusterName:        String!,
-    $clusterType:        CloudType!,
+    $cloudType:          CloudType!,
     $exocomputeConfigId: UUID!
 ) {
     result: exocomputeClusterConnect(input: {
         clusterName:        $clusterName,
-        clusterType:        $clusterType,
+        cloudType:          $cloudType,
         exocomputeConfigId: $exocomputeConfigId
     }) {
         clusterSetupYaml
@@ -266,12 +266,12 @@ var exocomputeClusterConnectQuery = `mutation SdkGolangExocomputeClusterConnect(
 // exocomputeGetClusterConnectionInfo GraphQL query
 var exocomputeGetClusterConnectionInfoQuery = `query SdkGolangExocomputeGetClusterConnectionInfo(
     $clusterName:        String!,
-    $clusterType:        CloudType!,
+    $cloudType:          CloudType!,
     $exocomputeConfigId: UUID!
 ) {
     result: exocomputeGetClusterConnectionInfo(input: {
         clusterName:        $clusterName,
-        clusterType:        $clusterType,
+        cloudType:          $cloudType,
         exocomputeConfigId: $exocomputeConfigId
     }) {
         clusterSetupYaml

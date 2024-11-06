@@ -122,6 +122,18 @@ func AzureManagedWithOverlayNetwork(region azure.Region, subnetID, podOverlayNet
 	}
 }
 
+// AzureBYOKCluster returns an AzureConfigurationFunc which initializes an
+// exocompute configuration with a Bring-Your-Own-Kubernetes cluster.
+func AzureBYOKCluster(region azure.Region) AzureConfigurationFunc {
+	return func(ctx context.Context, cloudAccountID uuid.UUID) (exocompute.CreateAzureConfigurationParams, error) {
+		return exocompute.CreateAzureConfigurationParams{
+			CloudAccountID:    cloudAccountID,
+			IsManagedByRubrik: false,
+			Region:            region.ToCloudAccountRegionEnum(),
+		}, nil
+	}
+}
+
 // AddAzureConfiguration adds the exocompute configuration to the cloud account
 // with the specified ID. Returns the ID of the added exocompute configuration.
 func (a API) AddAzureConfiguration(ctx context.Context, cloudAccountID uuid.UUID, config AzureConfigurationFunc) (uuid.UUID, error) {
@@ -223,7 +235,7 @@ func (a API) UnmapAzureCloudAccount(ctx context.Context, appCloudAccountID uuid.
 func (a API) AzureClusterConnection(ctx context.Context, clusterName string, configID uuid.UUID) (exocompute.AzureClusterConnectionResult, error) {
 	a.log.Print(log.Trace)
 
-	params := exocompute.AzureClusterConnectionParams{ClusterName: clusterName, ClusterType: "AZURE", ConfigID: configID}
+	params := exocompute.AzureClusterConnectionParams{ClusterName: clusterName, CloudType: "AZURE", ConfigID: configID}
 	info, err := exocompute.ClusterConnection(ctx, a.client, params)
 	if err != nil {
 		return exocompute.AzureClusterConnectionResult{}, fmt.Errorf("failed to get cluster connection info for %q: %s", clusterName, err)
@@ -238,7 +250,7 @@ func (a API) AzureClusterConnection(ctx context.Context, clusterName string, con
 func (a API) ConnectAzureCluster(ctx context.Context, clusterName string, configID uuid.UUID) (uuid.UUID, exocompute.AzureClusterConnectionResult, error) {
 	a.log.Print(log.Trace)
 
-	params := exocompute.ConnectAzureClusterParams{ClusterName: clusterName, ClusterType: "AZURE", ConfigID: configID}
+	params := exocompute.ConnectAzureClusterParams{ClusterName: clusterName, CloudType: "AZURE", ConfigID: configID}
 	info, err := exocompute.ConnectCluster(ctx, a.client, params)
 	if err != nil {
 		return uuid.Nil, exocompute.AzureClusterConnectionResult{}, fmt.Errorf("failed to connect exocompute cluster %q: %s", clusterName, err)
@@ -252,7 +264,7 @@ func (a API) ConnectAzureCluster(ctx context.Context, clusterName string, config
 func (a API) DisconnectAzureCluster(ctx context.Context, clusterID uuid.UUID) error {
 	a.log.Print(log.Trace)
 
-	params := exocompute.DisconnectAzureClusterParams{ClusterID: clusterID, ClusterType: "AZURE"}
+	params := exocompute.DisconnectAzureClusterParams{ClusterID: clusterID, CloudType: "AZURE"}
 	if err := exocompute.DisconnectCluster(ctx, a.client, params); err != nil {
 		return fmt.Errorf("failed to disconnect exocompute cluster %s: %s", clusterID, err)
 	}

@@ -1,9 +1,9 @@
 mutation RubrikPolarisSDKRequest(
-    $cloudType:               CloudType,
-    $exocomputeAccountId:     UUID!,
-    $registryUrl:             String!,
-    $pcrAwsImagePullDetails   PcrAwsImagePullDetailsInput,
-    $pcrAzureImagePullDetails PcrAzureImagePullDetailsInput
+    $cloudType:                CloudType,
+    $exocomputeAccountId:      UUID!,
+    $registryUrl:              String!,
+    $pcrAwsImagePullDetails:   PcrAwsImagePullDetailsInput,
+    $pcrAzureImagePullDetails: PcrAzureImagePullDetailsInput
 ) {
     result: setPrivateContainerRegistry(input: {
         cloudType:                $cloudType,

@@ -26,7 +26,7 @@ import "github.com/google/uuid"
 // cluster connection info operation.
 type AzureClusterConnectionParams struct {
 	ClusterName string    `json:"clusterName"`
-	ClusterType string    `json:"clusterType"`
+	CloudType   string    `json:"cloudType"`
 	ConfigID    uuid.UUID `json:"exocomputeConfigId"`
 }
 
@@ -58,8 +58,8 @@ type ConnectAzureClusterResult struct {
 // DisconnectAzureClusterParams holds the parameters for an Azure exocompute
 // cluster disconnect operation.
 type DisconnectAzureClusterParams struct {
-	ClusterID   uuid.UUID `json:"clusterId"`
-	ClusterType string    `json:"clusterType"`
+	ClusterID uuid.UUID `json:"clusterId"`
+	CloudType string    `json:"cloudType"`
 }
 
 func (p DisconnectAzureClusterParams) DisconnectQuery() (string, any, DisconnectAzureClusterResult) {

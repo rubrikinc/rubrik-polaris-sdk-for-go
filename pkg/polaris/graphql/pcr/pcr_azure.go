@@ -59,7 +59,7 @@ func (p SetAzureRegistryParams) SetQuery() (string, any, SetAzureRegistryResult)
 		RegistryURL      string                `json:"registryUrl"`
 		ImagePullDetails azureImagePullDetails `json:"pcrAzureImagePullDetails"`
 	}{
-		CloudType:      "Azure",
+		CloudType:      "AZURE",
 		CloudAccountID: p.CloudAccountID,
 		RegistryURL:    p.RegistryURL,
 		ImagePullDetails: azureImagePullDetails{

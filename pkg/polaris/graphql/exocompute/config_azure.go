@@ -72,7 +72,7 @@ type CreateAzureConfigurationParams struct {
 	// When true, Rubrik will manage the security groups.
 	IsManagedByRubrik bool `json:"isRscManaged"`
 
-	SubnetID              string `json:"subnetNativeId"`
+	SubnetID              string `json:"subnetNativeId,omitempty"`
 	PodOverlayNetworkCIDR string `json:"podOverlayNetworkCidr,omitempty"`
 	PodSubnetID           string `json:"podSubnetNativeId,omitempty"`
 }

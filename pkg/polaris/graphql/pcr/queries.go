@@ -53,11 +53,11 @@ var privateContainerRegistryQuery = `query SdkGolangPrivateContainerRegistry($ex
 
 // setPrivateContainerRegistryDetails GraphQL query
 var setPrivateContainerRegistryDetailsQuery = `mutation SdkGolangSetPrivateContainerRegistryDetails(
-    $cloudType:               CloudType,
-    $exocomputeAccountId:     UUID!,
-    $registryUrl:             String!,
-    $pcrAwsImagePullDetails   PcrAwsImagePullDetailsInput,
-    $pcrAzureImagePullDetails PcrAzureImagePullDetailsInput
+    $cloudType:                CloudType,
+    $exocomputeAccountId:      UUID!,
+    $registryUrl:              String!,
+    $pcrAwsImagePullDetails:   PcrAwsImagePullDetailsInput,
+    $pcrAzureImagePullDetails: PcrAzureImagePullDetailsInput
 ) {
     result: setPrivateContainerRegistry(input: {
         cloudType:                $cloudType,

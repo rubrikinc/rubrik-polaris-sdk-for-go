@@ -1,9 +1,9 @@
 mutation RubrikPolarisSDKRequest(
-    $clusterId:   UUID!,
-    $clusterType: CloudType!
+    $clusterId: UUID!,
+    $cloudType: CloudType!
 ) {
     result: disconnectExocomputeCluster(input: {
-        clusterId:   $clusterId
-        clusterType: $clusterType
+        clusterId: $clusterId
+        cloudType: $cloudType
     })
 }
