@@ -55,6 +55,7 @@ type CloudAccount struct {
 // Protection.
 type Feature struct {
 	Feature                     string                             `json:"feature"`
+	PermissionGroups            []core.PermissionGroup             `json:"permissionsGroups"`
 	ResourceGroup               FeatureResourceGroup               `json:"resourceGroup"`
 	Regions                     []CloudAccountRegionEnum           `json:"regions"`
 	Status                      core.Status                        `json:"status"`
@@ -325,10 +326,17 @@ type PermissionConfig struct {
 func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feature) (PermissionConfig, error) {
 	a.log.Print(log.Trace)
 
+	// The GraphQL query does not accept a null value for permission groups,
+	// but an empty array is accepted.
+	if feature.PermissionGroups == nil {
+		feature.PermissionGroups = []core.PermissionGroup{}
+	}
+
 	query := azureCloudAccountPermissionConfigQuery
-	buf, err := a.GQL.Request(ctx, azureCloudAccountPermissionConfigQuery, struct {
-		Feature string `json:"feature"`
-	}{Feature: feature.Name})
+	buf, err := a.GQL.Request(ctx, query, struct {
+		Feature          string                 `json:"feature"`
+		PermissionGroups []core.PermissionGroup `json:"permissionsGroups"`
+	}{Feature: feature.Name, PermissionGroups: feature.PermissionGroups})
 	if err != nil {
 		return PermissionConfig{}, graphql.RequestError(query, err)
 	}
@@ -353,10 +361,15 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id 
 	a.log.Print(log.Trace)
 
 	query := upgradeAzureCloudAccountPermissionsWithoutOauthQuery
+	var queryFeature any = feature.Name
+	if len(feature.PermissionGroups) > 0 {
+		query = upgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroupsQuery
+		queryFeature = feature
+	}
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID `json:"cloudAccountId"`
-		Feature string    `json:"feature"`
-	}{ID: id, Feature: feature.Name})
+		Feature any       `json:"feature"`
+	}{ID: id, Feature: queryFeature})
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}

@@ -12,6 +12,7 @@ query RubrikPolarisSDKRequest($feature: CloudAccountFeature!, $includeSubscripti
             nativeId
             featureDetail {
                 feature
+                permissionsGroups
                 status
                 regions
                 resourceGroup {

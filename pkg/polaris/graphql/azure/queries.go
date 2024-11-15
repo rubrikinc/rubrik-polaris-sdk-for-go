@@ -62,6 +62,7 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
             nativeId
             featureDetail {
                 feature
+                permissionsGroups
                 status
                 regions
                 resourceGroup {
@@ -84,8 +85,8 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
 }`
 
 // azureCloudAccountPermissionConfig GraphQL query
-var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPermissionConfig($feature: CloudAccountFeature!) {
-    result: azureCloudAccountPermissionConfig(feature: $feature) {
+var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPermissionConfig($feature: CloudAccountFeature!, $permissionsGroups: [PermissionsGroup!]!) {
+    result: azureCloudAccountPermissionConfig(feature: $feature, permissionsGroups: $permissionsGroups) {
         permissionVersion
         permissionsGroupVersions {
             permissionsGroup
@@ -209,8 +210,18 @@ var updateAzureCloudAccountQuery = `mutation SdkGolangUpdateAzureCloudAccount($f
 // upgradeAzureCloudAccountPermissionsWithoutOauth GraphQL query
 var upgradeAzureCloudAccountPermissionsWithoutOauthQuery = `mutation SdkGolangUpgradeAzureCloudAccountPermissionsWithoutOauth($cloudAccountId: UUID!, $feature: CloudAccountFeature!) {
     result: upgradeAzureCloudAccountPermissionsWithoutOauth(input: {
-        cloudAccountId: $cloudAccountId
+        cloudAccountId: $cloudAccountId,
         feature:        $feature,
+    }) {
+        status
+    }
+}`
+
+// upgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroups GraphQL query
+var upgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroupsQuery = `mutation SdkGolangUpgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroups($cloudAccountId: UUID!, $feature: UpgradeAzureCloudAccountFeatureInput!) {
+    result: upgradeAzureCloudAccountPermissionsWithoutOauth(input: {
+        cloudAccountId:   $cloudAccountId,
+        featureToUpgrade: [$feature],
     }) {
         status
     }

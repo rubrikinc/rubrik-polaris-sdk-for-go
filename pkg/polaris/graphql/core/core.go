@@ -63,9 +63,10 @@ const (
 type PermissionGroup string
 
 const (
-	PermissionGroupInvalid           PermissionGroup = "GROUP_UNSPECIFIED"
-	PermissionGroupBasic             PermissionGroup = "BASIC"
-	PermissionGroupRSCManagedCluster PermissionGroup = "RSC_MANAGED_CLUSTER"
+	PermissionGroupInvalid                PermissionGroup = "GROUP_UNSPECIFIED"
+	PermissionGroupBasic                  PermissionGroup = "BASIC"
+	PermissionGroupRSCManagedCluster      PermissionGroup = "RSC_MANAGED_CLUSTER"
+	PermissionGroupCustomerManagedCluster PermissionGroup = "CUSTOMER_MANAGED_BASIC"
 )
 
 // Feature represents a Polaris cloud account feature with a set of permission
