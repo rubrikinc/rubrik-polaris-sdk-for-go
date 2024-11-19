@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($exocomputeAccountId: UUID!) {
+    result: deregisterPrivateContainerRegistry(input: {
+        exocomputeAccountId: $exocomputeAccountId
+    })
+}

@@ -1,6 +1,6 @@
-mutation RubrikPolarisSDKRequest($cloudAccountIds: [UUID!]!) {
+mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!) {
     result: deleteAzureCloudAccountExocomputeConfigurations(input: {
-        cloudAccountIds: $cloudAccountIds
+        cloudAccountIds: [$cloudAccountId]
     }) {
         deletionFailedIds
         deletionSuccessIds

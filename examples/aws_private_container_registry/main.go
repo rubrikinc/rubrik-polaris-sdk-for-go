@@ -27,7 +27,8 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
-	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/pcr"
 )
 
 // Example showing how to set a private container registry with the RSC Go SDK.
@@ -39,14 +40,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger := polaris_log.NewStandardLogger()
-	polaris.SetLogLevelFromEnv(logger)
+	logger := polarislog.NewStandardLogger()
+	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
+		log.Fatal(err)
+	}
 	client, err := polaris.NewClientWithLogger(polAccount, logger)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	awsClient := aws.Wrap(client)
+	pcrClient := pcr.Wrap(client)
 
 	// Add the AWS default account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
@@ -58,8 +62,7 @@ func main() {
 	}
 
 	// Set the private container registry for the AWS account.
-	err = awsClient.SetPrivateContainerRegistry(ctx, aws.CloudAccountID(id),
-		"123456789012.dkr.ecr.us-east-2.amazonaws.com", "123456789012")
+	err = pcrClient.SetAWSRegistry(ctx, id, "123456789012", "123456789012.dkr.ecr.us-east-2.amazonaws.com")
 	if err != nil {
 		log.Fatal(err)
 	}

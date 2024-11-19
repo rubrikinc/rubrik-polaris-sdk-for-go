@@ -131,76 +131,6 @@ type FeatureUserAssignedManagedIdentity struct {
 	PrincipalID string
 }
 
-// toCloudAccountID returns the RSC cloud account ID for the specified identity.
-// If the identity is an RSC cloud account ID, no remote endpoint is called.
-func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
-	a.log.Print(log.Trace)
-
-	if id == nil {
-		return uuid.Nil, errors.New("id is not allowed to be nil")
-	}
-	identity, err := id(ctx)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to lookup identity: %v", err)
-	}
-
-	uid, err := uuid.Parse(identity.id)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to parse identity: %v", err)
-	}
-	if identity.internal {
-		return uid, nil
-	}
-
-	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, true)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get tenants: %s", err)
-	}
-
-	for _, account := range toSubscriptions(rawTenants) {
-		if account.NativeID == uid {
-			return account.ID, nil
-		}
-	}
-
-	return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotFound)
-}
-
-// toNativeID returns the Azure subscription ID for the specified identity.
-// If the identity is an Azure subscription ID, no remote endpoint is called.
-func (a API) toNativeID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
-	a.log.Print(log.Trace)
-
-	if id == nil {
-		return uuid.Nil, errors.New("id is not allowed to be nil")
-	}
-	identity, err := id(ctx)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to lookup identity: %v", err)
-	}
-
-	uid, err := uuid.Parse(identity.id)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to parse identity: %v", err)
-	}
-	if !identity.internal {
-		return uid, nil
-	}
-
-	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, true)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get tenants: %s", err)
-	}
-
-	for _, account := range toSubscriptions(rawTenants) {
-		if account.ID == uid {
-			return account.NativeID, nil
-		}
-	}
-
-	return uuid.Nil, fmt.Errorf("subscription %w", graphql.ErrNotFound)
-}
-
 // Tenant returns the tenant with the specified ID.
 func (a API) Tenant(ctx context.Context, tenantID uuid.UUID) (CloudAccountTenant, error) {
 	a.log.Print(log.Trace)
@@ -404,9 +334,21 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		return uuid.Nil, fmt.Errorf("failed to get permissions: %v", err)
 	}
 
+	permGroups := make(map[string]struct{}, len(feature.PermissionGroups))
+	for _, permGroup := range feature.PermissionGroups {
+		permGroups[string(permGroup)] = struct{}{}
+	}
+
+	permGroupVersions := make([]azure.PermissionGroupWithVersion, 0, len(feature.PermissionGroups))
+	for _, permGroupVersion := range perms.PermissionGroupVersions {
+		if _, ok := permGroups[permGroupVersion.PermissionGroup]; ok {
+			permGroupVersions = append(permGroupVersions, permGroupVersion)
+		}
+	}
+
 	cloudAccountFeature := azure.CloudAccountFeature{
 		PolicyVersion:       perms.PermissionVersion,
-		PermissionGroups:    perms.PermissionGroupVersions,
+		PermissionGroups:    permGroupVersions,
 		FeatureType:         feature.Name,
 		ResourceGroup:       options.resourceGroup,
 		FeatureSpecificInfo: options.featureSpecificInfo,
@@ -502,19 +444,31 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature core.Feature, opts ...OptionFunc) error {
 	a.log.Print(log.Trace)
 
-	var options options
-	for _, option := range opts {
-		if err := option(ctx, &options); err != nil {
-			return fmt.Errorf("failed to lookup option: %v", err)
-		}
-	}
-	if options.name == "" && len(options.regions) == 0 {
-		return errors.New("nothing to update")
-	}
-
 	account, err := a.Subscription(ctx, id, feature)
 	if err != nil {
 		return fmt.Errorf("failed to get subscription: %w", err)
+	}
+
+	if len(feature.PermissionGroups) > 0 {
+		azureFeature, ok := account.Feature(feature)
+		if !ok {
+			return fmt.Errorf("failed to get feature %s", feature)
+		}
+		if !feature.DeepEqual(azureFeature.Feature) {
+			if err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature); err != nil {
+				return fmt.Errorf("failed to update subscription feature permission groups: %s", err)
+			}
+		}
+	}
+
+	var options options
+	for _, option := range opts {
+		if err := option(ctx, &options); err != nil {
+			return fmt.Errorf("failed to lookup option: %s", err)
+		}
+	}
+	if options.name == "" && len(options.regions) == 0 {
+		return nil
 	}
 	if options.name == "" {
 		options.name = account.Name
@@ -635,7 +589,10 @@ func toSubscriptions(rawTenants []azure.CloudAccountTenant) []CloudAccount {
 				account = tenant.accounts[rawAccount.ID]
 			}
 
-			feature := core.Feature{Name: rawAccount.Feature.Feature}
+			feature := core.Feature{
+				Name:             rawAccount.Feature.Feature,
+				PermissionGroups: rawAccount.Feature.PermissionGroups,
+			}
 			if _, ok := account.Feature(feature); !ok {
 				tags := make(map[string]string, len(rawAccount.Feature.ResourceGroup.Tags))
 				for _, tag := range rawAccount.Feature.ResourceGroup.Tags {

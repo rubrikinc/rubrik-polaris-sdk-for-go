@@ -27,8 +27,10 @@ import (
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/exocompute"
+	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
-	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 func main() {
@@ -39,32 +41,33 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClientWithLogger(polAccount, polaris_log.NewStandardLogger())
+	logger := polarislog.NewStandardLogger()
+	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
+		log.Fatal(err)
+	}
+	client, err := polaris.NewClientWithLogger(polAccount, logger)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	awsClient := aws.Wrap(client)
+	exoClient := exocompute.Wrap(client)
 
-	// Add the AWS default account to Polaris. Usually resolved using the
+	// Add the AWS default account to RSC. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	accountID, err := awsClient.AddAccount(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection}, aws.Regions("us-east-2", "us-west-2"))
+	accountID, err := awsClient.AddAccount(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection}, aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Printf("Account ID: %v\n", accountID)
 
-	// Enable the exocompute feature for the account. Note that the
-	// cnpAccountID and exoAccountID should be the same, they refer to the same
-	// Polaris cloud account.
-	exoAccountID, err := awsClient.AddAccount(ctx, aws.Default(), []core.Feature{core.FeatureExocompute}, aws.Regions("us-east-2"))
+	// Enable the exocompute feature for the account.
+	_, err = awsClient.AddAccount(ctx, aws.Default(), []core.Feature{core.FeatureExocompute.WithPermissionGroups(core.PermissionGroupBasic, core.PermissionGroupRSCManagedCluster)}, aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Printf("Exocompute Account ID: %v\n", exoAccountID)
 
 	account, err := awsClient.Account(ctx, aws.CloudAccountID(accountID), core.FeatureAll)
 	if err != nil {
@@ -76,25 +79,25 @@ func main() {
 		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
 	}
 
-	// Add exocompute config for the account.
-	exoID, err := awsClient.AddExocomputeConfig(ctx, aws.ID(aws.Default()),
-		aws.Managed("us-east-2", "vpc-4859acb9", []string{"subnet-ea67b67b", "subnet-ea43ec78"}))
+	// Add an exocompute configuration for the account.
+	exoID, err := exoClient.AddAWSConfiguration(ctx, accountID,
+		exocompute.AWSManaged(gqlaws.RegionUsEast2, "vpc-4859acb9", []string{"subnet-ea67b67b", "subnet-ea43ec78"}))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Printf("Exocompute config ID: %v\n", exoID)
 
-	// Retrieve the exocompute config added.
-	exoConfig, err := awsClient.ExocomputeConfig(ctx, exoID)
+	// Read the exocompute configuration.
+	exoConfig, err := exoClient.AWSConfigurationByID(ctx, exoID)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Printf("Exocompute Config: %v\n", exoConfig)
 
-	// Remove the exocompute config.
-	err = awsClient.RemoveExocomputeConfig(ctx, exoID)
+	// Remove the exocompute configuration.
+	err = exoClient.RemoveAWSConfiguration(ctx, exoID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -105,7 +108,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Remove the AWS account from Polaris.
+	// Remove the AWS account from RSC.
 	err = awsClient.RemoveAccount(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection}, false)
 	if err != nil {
 		log.Fatal(err)

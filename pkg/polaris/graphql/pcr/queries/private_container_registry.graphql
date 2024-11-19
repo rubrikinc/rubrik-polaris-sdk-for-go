@@ -1,0 +1,18 @@
+query RubrikPolarisSDKRequest($exocomputeAccountId: UUID!) {
+    result: privateContainerRegistry(input: {
+        exocomputeAccountId: $exocomputeAccountId
+    }) {
+        pcrLatestApprovedBundleVersion
+        pcrDetails {
+            registryUrl
+            imagePullDetails {
+                ... on PcrAzureImagePullDetails {
+                    customerAppId
+                }
+                ... on PcrAwsImagePullDetails {
+                    awsNativeId
+                }
+            }
+        }
+    }
+}

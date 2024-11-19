@@ -18,7 +18,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package aws
+package exocompute
 
 import (
 	"context"
@@ -28,7 +28,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
@@ -57,20 +59,21 @@ func TestAwsExocompute(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	awsClient := Wrap(client)
+	awsClient := aws.Wrap(client)
+	exoClient := Wrap(client)
 
 	// Adds the AWS account identified by the specified profile to RSC. Note
 	// that the profile needs to have a default region.
-	accountID, err := awsClient.AddAccount(ctx, Profile(testAccount.Profile), []core.Feature{core.FeatureCloudNativeProtection},
-		Name(testAccount.AccountName), Regions("us-east-2"))
+	accountID, err := awsClient.AddAccount(ctx, aws.Profile(testAccount.Profile),
+		[]core.Feature{core.FeatureCloudNativeProtection}, aws.Name(testAccount.AccountName), aws.Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Enable the exocompute feature for the account.
-	exoAccountID, err := awsClient.AddAccount(ctx, Profile(testAccount.Profile),
+	exoAccountID, err := awsClient.AddAccount(ctx, aws.Profile(testAccount.Profile),
 		[]core.Feature{core.FeatureExocompute.WithPermissionGroups(core.PermissionGroupBasic, core.PermissionGroupRSCManagedCluster)},
-		Regions("us-east-2"))
+		aws.Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,120 +83,119 @@ func TestAwsExocompute(t *testing.T) {
 	}
 
 	// Verify that the account was successfully added.
-	account, err := awsClient.Account(ctx, CloudAccountID(accountID), core.FeatureExocompute)
+	account, err := awsClient.Account(ctx, aws.CloudAccountID(accountID), core.FeatureExocompute)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if account.Name != testAccount.AccountName {
-		t.Fatalf("invalid name: %v", account.Name)
+		t.Fatalf("invalid name: %s", account.Name)
 	}
 	if account.NativeID != testAccount.AccountID {
-		t.Fatalf("invalid native id: %v", account.NativeID)
+		t.Fatalf("invalid native id: %s", account.NativeID)
 	}
 	if n := len(account.Features); n != 1 {
-		t.Fatalf("invalid number of features: %v", n)
+		t.Fatalf("invalid number of features: %d", n)
 	}
 	if !account.Features[0].Equal(core.FeatureExocompute) {
-		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
+		t.Fatalf("invalid feature name: %s", account.Features[0].Name)
 	}
 	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
-		t.Fatalf("invalid feature regions: %v", regions)
+		t.Fatalf("invalid feature regions: %s", regions)
 	}
 	if account.Features[0].Status != core.StatusConnected {
-		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
+		t.Fatalf("invalid feature status: %s", account.Features[0].Status)
 	}
 
-	exoID, err := awsClient.AddExocomputeConfig(ctx, AccountID(testAccount.AccountID),
-		Managed("us-east-2", testAccount.Exocompute.VPCID,
-			[]string{testAccount.Exocompute.Subnets[0].ID, testAccount.Exocompute.Subnets[1].ID}))
+	// Add an exocompute configuration to the cloud account.
+	exoID, err := exoClient.AddAWSConfiguration(ctx, accountID,
+		AWSManaged(gqlaws.RegionUsEast2, testAccount.Exocompute.VPCID, []string{testAccount.Exocompute.Subnets[0].ID, testAccount.Exocompute.Subnets[1].ID}))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	validateConfig := func(exoID uuid.UUID, sn1inx, sn2inx int) {
-		// Retrieve the exocompute config added.
-		exoConfig, err := awsClient.ExocomputeConfig(ctx, exoID)
+		// Retrieve the exocompute configuration added.
+		exoConfig, err := exoClient.AWSConfigurationByID(ctx, exoID)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if exoConfig.ID != exoID {
-			t.Fatalf("invalid id: %v", exoConfig.ID)
+			t.Fatalf("invalid id: %s", exoConfig.ID)
 		}
-		if exoConfig.Region != "us-east-2" {
-			t.Fatalf("invalid region: %v", exoConfig.Region)
+		if exoConfig.Region.Region != gqlaws.RegionUsEast2 {
+			t.Fatalf("invalid region: %s", exoConfig.Region)
 		}
 		if exoConfig.VPCID != testAccount.Exocompute.VPCID {
-			t.Fatalf("invalid vpc id: %v", exoConfig.VPCID)
+			t.Fatalf("invalid vpc id: %s", exoConfig.VPCID)
 		}
 		sn1 := testAccount.Exocompute.Subnets[sn1inx]
 		sn2 := testAccount.Exocompute.Subnets[sn2inx]
-		if sn := exoConfig.Subnets[0]; sn.ID != sn1.ID && sn.ID != sn2.ID {
-			t.Fatalf("invalid subnet id: %v", sn.ID)
+		if sn := exoConfig.Subnet1; sn.ID != sn1.ID && sn.ID != sn2.ID {
+			t.Fatalf("invalid subnet id: %s", sn.ID)
 		}
-		if sn := exoConfig.Subnets[0]; sn.AvailabilityZone != sn1.AvailabilityZone && sn.AvailabilityZone != sn2.AvailabilityZone {
-			t.Fatalf("invalid subnet availability zone: %v", sn.AvailabilityZone)
+		if sn := exoConfig.Subnet1; sn.AvailabilityZone != sn1.AvailabilityZone && sn.AvailabilityZone != sn2.AvailabilityZone {
+			t.Fatalf("invalid subnet availability zone: %s", sn.AvailabilityZone)
 		}
-		if sn := exoConfig.Subnets[1]; sn.ID != sn1.ID && sn.ID != sn2.ID {
-			t.Fatalf("invalid subnet id: %v", sn.ID)
+		if sn := exoConfig.Subnet2; sn.ID != sn1.ID && sn.ID != sn2.ID {
+			t.Fatalf("invalid subnet id: %s", sn.ID)
 		}
-		if sn := exoConfig.Subnets[1]; sn.AvailabilityZone != sn1.AvailabilityZone && sn.AvailabilityZone != sn2.AvailabilityZone {
-			t.Fatalf("invalid subnet availability zone: %v", sn.AvailabilityZone)
+		if sn := exoConfig.Subnet2; sn.AvailabilityZone != sn1.AvailabilityZone && sn.AvailabilityZone != sn2.AvailabilityZone {
+			t.Fatalf("invalid subnet availability zone: %s", sn.AvailabilityZone)
 		}
-		if !exoConfig.ManagedByRubrik {
-			t.Fatalf("invalid polaris managed state: %t", exoConfig.ManagedByRubrik)
+		if !exoConfig.IsManagedByRubrik {
+			t.Fatalf("invalid polaris managed state: %t", exoConfig.IsManagedByRubrik)
 		}
 	}
 
-	// Verify that the exocompute config uses subnet 0 & 1 from the test account.
+	// Verify that the exocompute configuration uses subnet 0 & 1 from the test
+	// account.
 	validateConfig(exoID, 0, 1)
 
-	// Update the exocompute config to use subnet 1 & 2.
-	updatedExoID, err := awsClient.UpdateExocomputeConfig(ctx, AccountID(testAccount.AccountID),
-		Managed("us-east-2", testAccount.Exocompute.VPCID,
-			[]string{testAccount.Exocompute.Subnets[1].ID, testAccount.Exocompute.Subnets[2].ID}))
+	// Update the exocompute configuration to use subnet 1 & 2.
+	updatedExoID, err := exoClient.UpdateAWSConfiguration(ctx, accountID,
+		AWSManaged(gqlaws.RegionUsEast2, testAccount.Exocompute.VPCID, []string{testAccount.Exocompute.Subnets[1].ID, testAccount.Exocompute.Subnets[2].ID}))
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	if updatedExoID != exoID {
 		t.Fatalf("invalid exo id post update, expected: %v, got: %v", exoID, updatedExoID)
 	}
 
-	// Verify that the exocompute config has been updated to use subnet 1 & 2 from the test account.
+	// Verify that the exocompute configuration has been updated to use subnet
+	// 1 & 2 from the test account.
 	validateConfig(exoID, 1, 2)
 
-	// Remove the exocompute config.
-	err = awsClient.RemoveExocomputeConfig(ctx, exoID)
+	// Remove the exocompute configuration.
+	err = exoClient.RemoveAWSConfiguration(ctx, exoID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Verify that the exocompute config was successfully removed.
-	_, err = awsClient.ExocomputeConfig(ctx, exoID)
-	if !errors.Is(err, graphql.ErrNotFound) {
+	// Verify that the exocompute configuration was successfully removed.
+	if _, err = exoClient.AWSConfigurationByID(ctx, exoID); !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
 
 	// Disable the exocompute feature for the account.
-	err = awsClient.RemoveAccount(ctx, Profile(testAccount.Profile), []core.Feature{core.FeatureExocompute}, false)
+	err = awsClient.RemoveAccount(ctx, aws.Profile(testAccount.Profile), []core.Feature{core.FeatureExocompute}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the exocompute feature was successfully disabled.
-	account, err = awsClient.Account(ctx, AccountID(testAccount.AccountID), core.FeatureExocompute)
+	account, err = awsClient.Account(ctx, aws.AccountID(testAccount.AccountID), core.FeatureExocompute)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
 
 	// Remove the AWS account from RSC.
-	err = awsClient.RemoveAccount(ctx, Profile(testAccount.Profile), []core.Feature{core.FeatureCloudNativeProtection}, false)
+	err = awsClient.RemoveAccount(ctx, aws.Profile(testAccount.Profile), []core.Feature{core.FeatureCloudNativeProtection}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	account, err = awsClient.Account(ctx, AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection)
+	account, err = awsClient.Account(ctx, aws.AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}

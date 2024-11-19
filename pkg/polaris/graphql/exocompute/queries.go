@@ -24,6 +24,114 @@
 
 package exocompute
 
+// addAzureCloudAccountExocomputeConfigurations GraphQL query
+var addAzureCloudAccountExocomputeConfigurationsQuery = `mutation SdkGolangAddAzureCloudAccountExocomputeConfigurations(
+    $cloudAccountId:              UUID!,
+    $azureExocomputeRegionConfig: AzureExocomputeAddConfigInputType!
+) {
+    result: addAzureCloudAccountExocomputeConfigurations(input: {
+        cloudAccountId: $cloudAccountId, azureExocomputeRegionConfigs: [$azureExocomputeRegionConfig]
+    }) {
+        configs {
+            configUuid
+            message
+        }
+    }
+}`
+
+// allAwsExocomputeConfigs GraphQL query
+var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsNativeAccountIdOrNamePrefix: String!) {
+    result: allAwsExocomputeConfigs(awsNativeAccountIdOrNamePrefix: $awsNativeAccountIdOrNamePrefix) {
+        awsCloudAccount {
+            cloudType
+            id
+            nativeId
+            message
+            accountName
+        }
+        mappedCloudAccounts {
+            id
+            name
+            nativeId
+        }
+        featureDetail {
+            feature
+            roleArn
+            stackArn
+            status
+            awsRegions
+        }
+        exocomputeConfigs {
+            configUuid
+            healthCheckStatus {
+                failureReason
+                lastUpdatedAt
+                status
+                taskchainId
+            }
+            region
+            message
+            ... on AwsRscManagedExocomputeConfig {
+                vpcId
+                clusterSecurityGroupId
+                nodeSecurityGroupId
+                subnet1 {
+                    availabilityZone
+                    subnetId
+                }
+                subnet2 {
+                    availabilityZone
+                    subnetId
+                }
+                areSecurityGroupsRscManaged
+            }
+        }
+    }
+}`
+
+// allAzureExocomputeConfigsInAccount GraphQL query
+var allAzureExocomputeConfigsInAccountQuery = `query SdkGolangAllAzureExocomputeConfigsInAccount(
+    $cloudAccountIDs:            [UUID!],
+    $azureExocomputeSearchQuery: String!
+) {
+    result: allAzureExocomputeConfigsInAccount(
+        cloudAccountIDs:            $cloudAccountIDs,
+        azureExocomputeSearchQuery: $azureExocomputeSearchQuery
+    ) {
+        azureCloudAccount {
+            id
+            name
+            nativeId
+            featureDetail {
+                feature
+                regions
+                status
+            }
+        }
+        configs {
+            configUuid
+            healthCheckStatus {
+                failureReason
+                lastUpdatedAt
+                status
+                taskchainId
+            }
+            isRscManaged
+            message
+            podOverlayNetworkCidr
+            podSubnetNativeId
+            region
+            subnetNativeId
+        }
+        exocomputeEligibleRegions
+        featureDetails {
+            feature
+            regions
+            status
+        }
+    }
+}`
+
 // allCloudAccountExocomputeMappings GraphQL query
 var allCloudAccountExocomputeMappingsQuery = `query SdkGolangAllCloudAccountExocomputeMappings($cloudVendor: CloudVendor!) {
     result: allCloudAccountExocomputeMappings(cloudVendor: $cloudVendor) {
@@ -32,8 +140,163 @@ var allCloudAccountExocomputeMappingsQuery = `query SdkGolangAllCloudAccountExoc
     }
 }`
 
+// allVpcsByRegionFromAws GraphQL query
+var allVpcsByRegionFromAwsQuery = `query SdkGolangAllVpcsByRegionFromAws(
+    $awsAccountRubrikId: UUID!,
+    $region:             AwsNativeRegion!
+) {
+    result: allVpcsByRegionFromAws(
+        awsAccountRubrikId: $awsAccountRubrikId,
+        region:             $region
+    ) {
+        id
+        name
+        subnets {
+            id
+            name
+            availabilityZone
+        }
+        securityGroups {
+            id
+            name
+        }
+    }
+}`
+
+// awsExocomputeClusterConnect GraphQL query
+var awsExocomputeClusterConnectQuery = `mutation SdkGolangAwsExocomputeClusterConnect(
+    $clusterName:        String!,
+    $exocomputeConfigId: UUID!
+) {
+    result: awsExocomputeClusterConnect(input: {
+        clusterName:        $clusterName,
+        exocomputeConfigId: $exocomputeConfigId
+    }) {
+        clusterSetupYaml
+        clusterUuid
+        connectionCommand
+    }
+}`
+
+// awsExocomputeGetClusterConnectionInfo GraphQL query
+var awsExocomputeGetClusterConnectionInfoQuery = `query SdkGolangAwsExocomputeGetClusterConnectionInfo(
+    $clusterName:        String!,
+    $exocomputeConfigId: UUID!
+) {
+    result: awsExocomputeGetClusterConnectionInfo(input: {
+        clusterName:        $clusterName,
+        exocomputeConfigId: $exocomputeConfigId
+    }) {
+        clusterSetupYaml
+        connectionCommand
+    }
+}`
+
+// createAwsExocomputeConfigs GraphQL query
+var createAwsExocomputeConfigsQuery = `mutation SdkGolangCreateAwsExocomputeConfigs(
+    $cloudAccountId: UUID!,
+    $config:         AwsExocomputeConfigInput!
+) {
+    result: createAwsExocomputeConfigs(input: {
+        cloudAccountId: $cloudAccountId,
+        configs:        [$config]}
+    ) {
+        exocomputeConfigs {
+            configUuid
+            message
+        }
+    }
+}`
+
+// deleteAwsExocomputeConfigs GraphQL query
+var deleteAwsExocomputeConfigsQuery = `mutation SdkGolangDeleteAwsExocomputeConfigs($configId: UUID!) {
+    result: deleteAwsExocomputeConfigs(input: {
+        configIdsToBeDeleted: [$configId]
+    }) {
+        deletionStatus {
+            success
+        }
+    }
+}`
+
+// deleteAzureCloudAccountExocomputeConfigurations GraphQL query
+var deleteAzureCloudAccountExocomputeConfigurationsQuery = `mutation SdkGolangDeleteAzureCloudAccountExocomputeConfigurations($cloudAccountId: UUID!) {
+    result: deleteAzureCloudAccountExocomputeConfigurations(input: {
+        cloudAccountIds: [$cloudAccountId]
+    }) {
+        deletionFailedIds
+        deletionSuccessIds
+    }
+}`
+
+// disconnectAwsExocomputeCluster GraphQL query
+var disconnectAwsExocomputeClusterQuery = `mutation SdkGolangDisconnectAwsExocomputeCluster($clusterId: UUID!) {
+    result: disconnectAwsExocomputeCluster(input: {
+        clusterId: $clusterId
+    })
+}`
+
+// disconnectExocomputeCluster GraphQL query
+var disconnectExocomputeClusterQuery = `mutation SdkGolangDisconnectExocomputeCluster(
+    $clusterId: UUID!,
+    $cloudType: CloudType!
+) {
+    result: disconnectExocomputeCluster(input: {
+        clusterId: $clusterId
+        cloudType: $cloudType
+    })
+}`
+
+// exocomputeClusterConnect GraphQL query
+var exocomputeClusterConnectQuery = `mutation SdkGolangExocomputeClusterConnect(
+    $clusterName:        String!,
+    $cloudType:          CloudType!,
+    $exocomputeConfigId: UUID!
+) {
+    result: exocomputeClusterConnect(input: {
+        clusterName:        $clusterName,
+        cloudType:          $cloudType,
+        exocomputeConfigId: $exocomputeConfigId
+    }) {
+        clusterSetupYaml
+        clusterUuid
+    }
+}`
+
+// exocomputeGetClusterConnectionInfo GraphQL query
+var exocomputeGetClusterConnectionInfoQuery = `query SdkGolangExocomputeGetClusterConnectionInfo(
+    $clusterName:        String!,
+    $cloudType:          CloudType!,
+    $exocomputeConfigId: UUID!
+) {
+    result: exocomputeGetClusterConnectionInfo(input: {
+        clusterName:        $clusterName,
+        cloudType:          $cloudType,
+        exocomputeConfigId: $exocomputeConfigId
+    }) {
+        clusterSetupYaml
+    }
+}`
+
+// mapAzureCloudAccountExocomputeSubscription GraphQL query
+var mapAzureCloudAccountExocomputeSubscriptionQuery = `mutation SdkGolangMapAzureCloudAccountExocomputeSubscription(
+    $exocomputeCloudAccountId: UUID!,
+    $cloudAccountIds:          [UUID!]!
+) {
+    result: mapAzureCloudAccountExocomputeSubscription(input: {
+        exocomputeCloudAccountId: $exocomputeCloudAccountId,
+        cloudAccountIds:          $cloudAccountIds
+    }) {
+        isSuccess
+    }
+}`
+
 // mapCloudAccountExocomputeAccount GraphQL query
-var mapCloudAccountExocomputeAccountQuery = `mutation SdkGolangMapCloudAccountExocomputeAccount($cloudVendor: CloudVendor!, $exocomputeCloudAccountId: UUID!, $cloudAccountIds: [UUID!]!) {
+var mapCloudAccountExocomputeAccountQuery = `mutation SdkGolangMapCloudAccountExocomputeAccount(
+    $cloudVendor:              CloudVendor!,
+    $exocomputeCloudAccountId: UUID!,
+    $cloudAccountIds:          [UUID!]!
+) {
     result: mapCloudAccountExocomputeAccount(input: {
         exocomputeCloudAccountId: $exocomputeCloudAccountId,
         cloudAccountIds:          $cloudAccountIds,
@@ -43,12 +306,40 @@ var mapCloudAccountExocomputeAccountQuery = `mutation SdkGolangMapCloudAccountEx
     }
 }`
 
+// unmapAzureCloudAccountExocomputeSubscription GraphQL query
+var unmapAzureCloudAccountExocomputeSubscriptionQuery = `mutation SdkGolangUnmapAzureCloudAccountExocomputeSubscription($cloudAccountIds: [UUID!]!) {
+    result: unmapAzureCloudAccountExocomputeSubscription(input: {
+        cloudAccountIds: $cloudAccountIds
+    }) {
+      isSuccess
+    }
+}`
+
 // unmapCloudAccountExocomputeAccount GraphQL query
-var unmapCloudAccountExocomputeAccountQuery = `mutation SdkGolangUnmapCloudAccountExocomputeAccount($cloudVendor: CloudVendor!, $cloudAccountIds: [UUID!]!) {
+var unmapCloudAccountExocomputeAccountQuery = `mutation SdkGolangUnmapCloudAccountExocomputeAccount(
+    $cloudVendor:     CloudVendor!,
+    $cloudAccountIds: [UUID!]!
+) {
     result: unmapCloudAccountExocomputeAccount(input: {
         cloudAccountIds: $cloudAccountIds,
         cloudVendor:     $cloudVendor,
     }) {
         isSuccess
+    }
+}`
+
+// updateAwsExocomputeConfigs GraphQL query
+var updateAwsExocomputeConfigsQuery = `mutation SdkGolangUpdateAwsExocomputeConfigs(
+    $cloudAccountId: UUID!,
+    $config:         AwsExocomputeConfigInput!
+) {
+    result: updateAwsExocomputeConfigs(input: {
+        cloudAccountId: $cloudAccountId,
+        configs:        [$config]}
+    ) {
+        exocomputeConfigs {
+            configUuid
+            message
+        }
     }
 }`

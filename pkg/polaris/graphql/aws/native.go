@@ -27,7 +27,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -154,4 +154,37 @@ func (a API) StartNativeAccountDisableJob(ctx context.Context, id uuid.UUID, fea
 	}
 
 	return payload.Data.Query.JobID, nil
+}
+
+// StartExocomputeDisableJob starts a task chain job to disable the Exocompute
+// feature for the account with the specified RSC native account id. Returns the
+// RSC task chain id.
+func (a API) StartExocomputeDisableJob(ctx context.Context, nativeID uuid.UUID) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	query := startAwsExocomputeDisableJobQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ID uuid.UUID `json:"cloudAccountId"`
+	}{ID: nativeID})
+	if err != nil {
+		return uuid.Nil, graphql.RequestError(query, err)
+	}
+	graphql.LogResponse(a.log, query, buf)
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Error string    `json:"error"`
+				JobID uuid.UUID `json:"jobId"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, graphql.UnmarshalError(query, err)
+	}
+	if payload.Data.Result.Error != "" {
+		return uuid.Nil, errors.New(payload.Data.Result.Error)
+	}
+
+	return payload.Data.Result.JobID, nil
 }
