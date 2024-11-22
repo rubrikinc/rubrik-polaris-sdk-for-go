@@ -1,0 +1,6 @@
+mutation RubrikPolarisSDKRequest($awsCloudAccountId: String!, $features: [CloudAccountFeature!]!) {
+    result: upgradeAwsCloudAccountFeaturesWithoutCft(input: {
+        awsCloudAccountId: $awsCloudAccountId,
+        features:          $features
+    })
+}

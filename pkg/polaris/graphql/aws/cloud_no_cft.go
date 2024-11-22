@@ -25,6 +25,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -241,4 +243,34 @@ func (a API) ArtifactsToDelete(ctx context.Context, nativeID string) ([]Artifact
 	}
 
 	return payload.Data.Result.ArtifactsToDelete, nil
+}
+
+// UpgradeCloudAccountFeaturesWithoutCft notifies RSC that permissions have been
+// updated for the specified cloud account and features.
+func (a API) UpgradeCloudAccountFeaturesWithoutCft(ctx context.Context, cloudAccountID uuid.UUID, features []core.Feature) error {
+	a.log.Print(log.Trace)
+
+	query := upgradeAwsCloudAccountFeaturesWithoutCftQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		CloudAccountID uuid.UUID `json:"awsCloudAccountId"`
+		Features       []string  `json:"features"`
+	}{CloudAccountID: cloudAccountID, Features: core.FeatureNames(features)})
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+	graphql.LogResponse(a.log, query, buf)
+
+	var payload struct {
+		Data struct {
+			Result bool `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result {
+		return graphql.ResponseError(query, err)
+	}
+
+	return nil
 }
