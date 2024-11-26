@@ -293,6 +293,14 @@ var updateAwsCloudAccountFeatureQuery = `mutation SdkGolangUpdateAwsCloudAccount
     }
 }`
 
+// upgradeAwsCloudAccountFeaturesWithoutCft GraphQL query
+var upgradeAwsCloudAccountFeaturesWithoutCftQuery = `mutation SdkGolangUpgradeAwsCloudAccountFeaturesWithoutCft($awsCloudAccountId: String!, $features: [CloudAccountFeature!]!) {
+    result: upgradeAwsCloudAccountFeaturesWithoutCft(input: {
+        awsCloudAccountId: $awsCloudAccountId,
+        features:          $features
+    })
+}`
+
 // validateAndCreateAwsCloudAccount GraphQL query
 var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!]) {
     result: validateAndCreateAwsCloudAccount(input: {

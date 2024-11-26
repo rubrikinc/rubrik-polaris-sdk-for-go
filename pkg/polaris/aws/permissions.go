@@ -28,6 +28,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -139,6 +140,46 @@ func (a API) UpdatePermissions(ctx context.Context, account AccountFunc, feature
 	err = awsUpdateStack(ctx, a.client.Log(), *config.config, stackID, tmplURL)
 	if err != nil {
 		return fmt.Errorf("failed to update CloudFormation stack: %v", err)
+	}
+
+	return nil
+}
+
+// PermissionsUpdated notifies RSC that the AWS roles for the RSC cloud account
+// with the specified ID has been updated.
+//
+// The permissions should be updated when a feature has the status
+// StatusMissingPermissions. Updating the permissions is done outside of this
+// SDK. The feature parameter is allowed to be nil. When features are nil, all
+// features are updated. Note that RSC is only notified about features with
+// status StatusMissingPermissions.
+func (a API) PermissionsUpdated(ctx context.Context, cloudAccountID uuid.UUID, features []core.Feature) error {
+	a.log.Print(log.Trace)
+
+	featureSet := make(map[string]struct{})
+	for _, feature := range features {
+		featureSet[feature.Name] = struct{}{}
+	}
+
+	account, err := a.Account(ctx, CloudAccountID(cloudAccountID), core.FeatureAll)
+	if err != nil {
+		return fmt.Errorf("failed to read cloud account %s: %s", cloudAccountID, err)
+	}
+
+	for _, feature := range account.Features {
+		if feature.Status != core.StatusMissingPermissions {
+			continue
+		}
+
+		// Check that the feature is in the feature set unless the set is empty
+		// which is when all features should be updated.
+		if _, ok := featureSet[feature.Name]; len(featureSet) > 0 && !ok {
+			continue
+		}
+
+		if err := aws.Wrap(a.client).UpgradeCloudAccountFeaturesWithoutCft(ctx, cloudAccountID, []core.Feature{feature.Feature}); err != nil {
+			return fmt.Errorf("failed to notify RSC about upgraded permissions for cloud account %s: %s", cloudAccountID, err)
+		}
 	}
 
 	return nil
