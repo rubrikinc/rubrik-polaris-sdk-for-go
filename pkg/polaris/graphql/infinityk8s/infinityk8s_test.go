@@ -12,7 +12,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
-	infinityk8s "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/infinity-k8s"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/infinityk8s"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -149,7 +149,7 @@ func TestIntegration(t *testing.T) {
 	// 2. Get ProtectionSet.
 	// If we get to this point, addResp.ID should be a valid uuid.
 	rsFID := uuid.Must(uuid.Parse(addResp.ID))
-	getResp, err := infinityK8sClient.GetK8sProtectionSet(ctx, rsFID)
+	getResp, err := infinityK8sClient.K8sProtectionSet(ctx, rsFID)
 	if err != nil {
 		t.Error(err)
 		return
@@ -211,7 +211,7 @@ func TestIntegration(t *testing.T) {
 
 	// 4. Get ProtectionSet and check the sla.
 	time.Sleep(1 * time.Minute)
-	getResp, err = infinityK8sClient.GetK8sProtectionSet(ctx, rsFID)
+	getResp, err = infinityK8sClient.K8sProtectionSet(ctx, rsFID)
 	if err != nil {
 		t.Error(err)
 		return
@@ -240,7 +240,7 @@ func TestIntegration(t *testing.T) {
 	logger.Printf(log.Info, "response: %+v", snapshotRet)
 
 	// 6. Get the status of the job.
-	getJobResp, err := infinityK8sClient.GetJobInstance(
+	getJobResp, err := infinityK8sClient.JobInstance(
 		ctx,
 		snapshotRet.ID,
 		cdmID.String(),
@@ -263,7 +263,7 @@ func TestIntegration(t *testing.T) {
 			case <-ctx.Done():
 				return nil, errors.New("timeout")
 			default:
-				snapshots, err := infinityK8sClient.GetProtectionSetSnapshots(
+				snapshots, err := infinityK8sClient.ProtectionSetSnapshots(
 					timeoutCTX,
 					rsFID.String(),
 				)
@@ -287,7 +287,7 @@ func TestIntegration(t *testing.T) {
 	// 6.1 check for events on the snapshot job. Since the job is complete, we
 	// should see all the events.
 	esi := getJobResp.EventSeriesID
-	series, err := infinityK8sClient.GetActivitySeries(
+	series, err := infinityK8sClient.ActivitySeries(
 		ctx,
 		uuid.MustParse(esi),
 		cdmID,
@@ -325,7 +325,7 @@ func TestIntegration(t *testing.T) {
 
 	// 9. Use the job id of the new job and call the get job instance operation
 	// exportJobResp.ID would have a valid job instance id
-	getJobResp, err = infinityK8sClient.GetJobInstance(
+	getJobResp, err = infinityK8sClient.JobInstance(
 		ctx,
 		exportJobResp.ID,
 		cdmID.String(),
@@ -339,7 +339,7 @@ func TestIntegration(t *testing.T) {
 	// 10 check for events on the restore job. Since the job is incomplete, we
 	// should not see all the events.
 	resi := getJobResp.EventSeriesID
-	rseries, err := infinityK8sClient.GetActivitySeries(
+	rseries, err := infinityK8sClient.ActivitySeries(
 		ctx,
 		uuid.MustParse(resi),
 		cdmID,
@@ -375,7 +375,7 @@ func TestIntegration(t *testing.T) {
 
 	// 12. Use the job id of the new job and call the get job instance operation
 	// restoreJobResp.ID would have a valid job instance id
-	getJobResp, err = infinityK8sClient.GetJobInstance(
+	getJobResp, err = infinityK8sClient.JobInstance(
 		ctx,
 		restoreJobResp.ID,
 		cdmID.String(),
@@ -386,7 +386,7 @@ func TestIntegration(t *testing.T) {
 	}
 
 	// 13. Translate FID to internal_id and back.
-	interalID, err := infinityK8sClient.GetK8sObjectInternalID(ctx, rsFID)
+	interalID, err := infinityK8sClient.K8sObjectInternalID(ctx, rsFID)
 	if err != nil {
 		t.Error(err)
 		return
@@ -394,7 +394,7 @@ func TestIntegration(t *testing.T) {
 	logger.Printf(log.Info, "get internal id response: %v", interalID)
 
 	// Get the object FID from RSC
-	fid, err := infinityK8sClient.GetK8sObjectFID(
+	fid, err := infinityK8sClient.K8sObjectFID(
 		ctx,
 		interalID,
 		cdmID,
@@ -444,6 +444,29 @@ func TestIntegrationTemp(t *testing.T) {
 	logger.Printf(log.Info, "Assign SLA response %v\n", slaResp)
 }
 
+func TestIntegrationK8sJobInstance(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+	cdmUUID := uuid.MustParse("8f7ce6e6-5d20-4496-b45d-ea2c50efa025")
+	infinityK8sClient := infinityk8s.Wrap(client)
+	logger := infinityK8sClient.GQL.Log()
+	logger.SetLogLevel(log.Debug)
+	// 1. Get the Job status using k8sJobInstance endpoint.
+	jobResp, err := infinityK8sClient.K8sJobInstance(
+		ctx,
+		"CREATE_MN_K8S_SNAPSHOT_f7101244-c3ca-495d-946c-d4d0c2cd676c_cc859058-f5fd-48ea-8aa2-ccb80fc089c6:::0",
+		cdmUUID,
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	logger.Printf(log.Info, "Get k8sJobInstance response %v\n", jobResp)
+}
+
 func TestIntegrationTranslation(t *testing.T) {
 	ctx := context.Background()
 
@@ -458,7 +481,7 @@ func TestIntegrationTranslation(t *testing.T) {
 	// 1. Translate Global SLA FID to internal_id and back.
 	silverFID := uuid.MustParse("313297f1-0b9d-4a1f-826c-ccc607dae06a")
 	clusterUUID := uuid.MustParse("10ae4970-e22f-4d92-a04f-cbf241103190")
-	internalID, err := infinityK8sClient.GetK8sObjectInternalIDByType(
+	internalID, err := infinityK8sClient.K8sObjectInternalIDByType(
 		ctx,
 		silverFID,
 		clusterUUID,
@@ -472,7 +495,7 @@ func TestIntegrationTranslation(t *testing.T) {
 	logger.Printf(log.Info, "get internal id response: %v", internalID)
 
 	// Get the object FID from RSC
-	fid, err := infinityK8sClient.GetK8sObjectFIDByType(
+	fid, err := infinityK8sClient.K8sObjectFIDByType(
 		ctx,
 		internalID,
 		clusterUUID,
@@ -494,7 +517,7 @@ func TestIntegrationTranslation(t *testing.T) {
 
 	// 2. Translate internal_id to Global SLA FID and back.
 	slaInternalID := uuid.MustParse("ff8be367-25c4-43bf-bd56-e16d66984aef")
-	fid, err = infinityK8sClient.GetK8sObjectFIDByType(
+	fid, err = infinityK8sClient.K8sObjectFIDByType(
 		ctx,
 		slaInternalID,
 		clusterUUID,
@@ -508,7 +531,7 @@ func TestIntegrationTranslation(t *testing.T) {
 	logger.Printf(log.Info, "get fid response: %v", fid)
 
 	// Get the object internal_id from RSC
-	internalID, err = infinityK8sClient.GetK8sObjectInternalIDByType(
+	internalID, err = infinityK8sClient.K8sObjectInternalIDByType(
 		ctx,
 		fid,
 		clusterUUID,

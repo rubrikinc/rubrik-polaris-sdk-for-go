@@ -55,6 +55,16 @@ type JobInstanceDetail struct {
 	Archived           bool    `json:"archived"`
 }
 
+// K8sJobInstanceDetail describes the state of a K8s CDM job. It is limited
+// to the fields that are used by the K8s job CRDs.
+type K8sJobInstanceDetail struct {
+	ID            string `json:"id"`
+	EventSeriesID string `json:"eventSeriesId"`
+	StartTime     string `json:"startTime,omitempty"`
+	EndTime       string `json:"endTime,omitempty"`
+	JobStatus     string `json:"jobStatus"`
+}
+
 // AddK8sProtectionSetConfig defines the input parameters required to a
 // ProtectionSet.
 type AddK8sProtectionSetConfig struct {
@@ -338,8 +348,8 @@ func (a API) AddK8sProtectionSet(
 	return payload.Data.Config, nil
 }
 
-// GetK8sProtectionSet get the K8s protection set corresponding to the given fid.
-func (a API) GetK8sProtectionSet(
+// K8sProtectionSet get the K8s protection set corresponding to the given fid.
+func (a API) K8sProtectionSet(
 	ctx context.Context,
 	fid uuid.UUID,
 ) (KubernetesProtectionSet, error) {
@@ -432,9 +442,9 @@ func (a API) DeleteK8sProtectionSet(
 	return true, nil
 }
 
-// GetJobInstance fetches information about the CDM job corresponding to the
+// JobInstance fetches information about the CDM job corresponding to the
 // given jobID and cdmClusterID.
-func (a API) GetJobInstance(
+func (a API) JobInstance(
 	ctx context.Context,
 	jobID string,
 	cdmClusterID string,
@@ -476,6 +486,55 @@ func (a API) GetJobInstance(
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return JobInstanceDetail{}, fmt.Errorf(
 			"failed to unmarshal jobInstance response: %v",
+			err,
+		)
+	}
+
+	return payload.Data.Response, nil
+}
+
+// K8sJobInstance fetches information about the K8s CDM job corresponding to
+// the given jobID and cdmClusterID.
+func (a API) K8sJobInstance(
+	ctx context.Context,
+	jobID string,
+	cdmClusterID uuid.UUID,
+) (K8sJobInstanceDetail, error) {
+	a.log.Print(log.Trace)
+	buf, err := a.GQL.Request(
+		ctx,
+		k8sJobInstanceQuery,
+		struct {
+			K8sJobID     string    `json:"k8sJobId"`
+			CDMClusterID uuid.UUID `json:"clusterUuid"`
+		}{
+			K8sJobID:     jobID,
+			CDMClusterID: cdmClusterID,
+		},
+	)
+	if err != nil {
+		return K8sJobInstanceDetail{}, fmt.Errorf(
+			"failed to request k8sJobInstance: %w",
+			err,
+		)
+	}
+
+	a.log.Printf(
+		log.Debug,
+		"k8sJobInstance(%q, %q): %s",
+		jobID,
+		cdmClusterID,
+		string(buf),
+	)
+
+	var payload struct {
+		Data struct {
+			Response K8sJobInstanceDetail `json:"k8sJobInstance"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return K8sJobInstanceDetail{}, fmt.Errorf(
+			"failed to unmarshal k8sJobInstance response: %v",
 			err,
 		)
 	}
@@ -636,9 +695,9 @@ func (a API) CreateK8sProtectionSetSnapshot(
 	return payload.Data.Response, nil
 }
 
-// GetK8sObjectFID fetches the RSC FID for the object corresponding to the
+// K8sObjectFID fetches the RSC FID for the object corresponding to the
 // provided internal id and CDM cluster id.
-func (a API) GetK8sObjectFID(
+func (a API) K8sObjectFID(
 	ctx context.Context,
 	internalID uuid.UUID,
 	cdmClusterID uuid.UUID,
@@ -679,9 +738,9 @@ func (a API) GetK8sObjectFID(
 	return payload.Data.ObjectFID, nil
 }
 
-// GetK8sObjectInternalID fetches the object Internal ID on CDM for the
+// K8sObjectInternalID fetches the object Internal ID on CDM for the
 // given RSC FID.
-func (a API) GetK8sObjectInternalID(
+func (a API) K8sObjectInternalID(
 	ctx context.Context,
 	fid uuid.UUID,
 ) (uuid.UUID, error) {
@@ -719,9 +778,9 @@ func (a API) GetK8sObjectInternalID(
 	return payload.Data.ObjectInternalID, nil
 }
 
-// GetK8sObjectFIDByType fetches the RSC FID for the object corresponding to the
+// K8sObjectFIDByType fetches the RSC FID for the object corresponding to the
 // provided internal id, CDM cluster id and object type.
-func (a API) GetK8sObjectFIDByType(
+func (a API) K8sObjectFIDByType(
 	ctx context.Context,
 	internalID uuid.UUID,
 	cdmClusterID uuid.UUID,
@@ -769,9 +828,9 @@ func (a API) GetK8sObjectFIDByType(
 	return payload.Data.ObjectFID, nil
 }
 
-// GetK8sObjectInternalIDByType fetches the object Internal ID on CDM for the
+// K8sObjectInternalIDByType fetches the object Internal ID on CDM for the
 // given RSC FID by type.
-func (a API) GetK8sObjectInternalIDByType(
+func (a API) K8sObjectInternalIDByType(
 	ctx context.Context,
 	fid uuid.UUID,
 	clusterUUID uuid.UUID,
@@ -822,9 +881,9 @@ func (a API) GetK8sObjectInternalIDByType(
 	return payload.Data.ObjectInternalID, nil
 }
 
-// getProtectionSetSnapshots get initial snapshots for a given fid. Only used
+// protectionSetSnapshots get initial snapshots for a given fid. Only used
 // internally for testing purposes.
-func (a API) getProtectionSetSnapshots(
+func (a API) protectionSetSnapshots(
 	ctx context.Context,
 	fid string,
 ) ([]string, error) {
@@ -869,9 +928,9 @@ func (a API) getProtectionSetSnapshots(
 	return snaps, nil
 }
 
-// GetActivitySeries fetches the activity series for the
+// ActivitySeries fetches the activity series for the
 // given activity series id.
-func (a API) GetActivitySeries(
+func (a API) ActivitySeries(
 	ctx context.Context,
 	activitySeriesID uuid.UUID,
 	cdmClusterID uuid.UUID,
