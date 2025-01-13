@@ -96,7 +96,7 @@ pipeline {
         }
         stage('Test') {
             steps {
-                sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -timeout=120m -v ./...'
+                sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -p=1 -timeout=120m -v ./...'
             }
         }
         stage('Coverage') {
