@@ -48,7 +48,7 @@ func Name(name string) OptionFunc {
 // instance.
 func Region(region string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
-		opts.regions = append(opts.regions, aws.ParseRegionNoValidation(region))
+		opts.regions = append(opts.regions, aws.RegionFromName(region))
 		return nil
 	}
 }
@@ -63,7 +63,7 @@ func Regions(regions ...string) OptionFunc {
 		}
 
 		for _, r := range regions {
-			region := aws.ParseRegionNoValidation(r)
+			region := aws.RegionFromName(r)
 			if _, ok := set[region]; !ok {
 				opts.regions = append(opts.regions, region)
 				set[region] = struct{}{}

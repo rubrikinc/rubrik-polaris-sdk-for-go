@@ -63,9 +63,10 @@ const (
 type PermissionGroup string
 
 const (
-	PermissionGroupInvalid           PermissionGroup = "GROUP_UNSPECIFIED"
-	PermissionGroupBasic             PermissionGroup = "BASIC"
-	PermissionGroupRSCManagedCluster PermissionGroup = "RSC_MANAGED_CLUSTER"
+	PermissionGroupInvalid                PermissionGroup = "GROUP_UNSPECIFIED"
+	PermissionGroupBasic                  PermissionGroup = "BASIC"
+	PermissionGroupRSCManagedCluster      PermissionGroup = "RSC_MANAGED_CLUSTER"
+	PermissionGroupCustomerManagedCluster PermissionGroup = "CUSTOMER_MANAGED_BASIC"
 )
 
 // Feature represents a Polaris cloud account feature with a set of permission
@@ -153,7 +154,7 @@ var (
 	FeatureCloudAccounts                 = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
 	FeatureCloudNativeArchival           = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
 	FeatureCloudNativeArchivalEncryption = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
-	FeatureCloudNativeBLOBProtection     = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
+	FeatureCloudNativeBlobProtection     = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
 	FeatureCloudNativeProtection         = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
 	FeatureCloudNativeS3Protection       = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
 	FeatureExocompute                    = Feature{Name: "EXOCOMPUTE"}
@@ -172,7 +173,7 @@ var validFeatures = map[string]struct{}{
 	FeatureCloudAccounts.Name:                 {}, // Deprecated: no replacement.
 	FeatureCloudNativeArchival.Name:           {},
 	FeatureCloudNativeArchivalEncryption.Name: {},
-	FeatureCloudNativeBLOBProtection.Name:     {},
+	FeatureCloudNativeBlobProtection.Name:     {},
 	FeatureCloudNativeProtection.Name:         {},
 	FeatureCloudNativeS3Protection.Name:       {},
 	FeatureExocompute.Name:                    {},

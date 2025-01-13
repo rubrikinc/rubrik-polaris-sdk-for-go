@@ -1,8 +1,0 @@
-mutation RubrikPolarisSDKRequest($configIdsToBeDeleted: [UUID!]!) {
-    result: deleteAwsExocomputeConfigs(input: {configIdsToBeDeleted: $configIdsToBeDeleted}) {
-        deletionStatus {
-            exocomputeConfigId
-            success
-        }
-    }
-}

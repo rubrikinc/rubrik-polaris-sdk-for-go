@@ -64,7 +64,7 @@ func Config(config aws.Config) AccountFunc {
 
 // Default returns an AccountFunc that initializes the account with values from
 // the default profile (~/.aws/credentials and ~/.aws/config) and the AWS cloud.
-// Credentials and region from the profile can be overriden by environment
+// Credentials and region from the profile can be overridden by environment
 // variables.
 func Default() AccountFunc {
 	return ProfileWithRegionAndRole("default", "", "")
@@ -72,7 +72,7 @@ func Default() AccountFunc {
 
 // DefaultWithRegion returns an AccountFunc that initializes the account with
 // values from the default profile (~/.aws/credentials and ~/.aws/config) and
-// the AWS cloud. Credentials and region from the profile can be overriden by
+// the AWS cloud. Credentials and region from the profile can be overridden by
 // environment variables.
 func DefaultWithRegion(region string) AccountFunc {
 	return ProfileWithRegionAndRole("default", region, "")
@@ -82,7 +82,7 @@ func DefaultWithRegion(region string) AccountFunc {
 // values from the default profile (~/.aws/credentials and ~/.aws/config) and
 // the AWS cloud. After the account has been initialized it assumes the role
 // specified by the role ARN. Credentials and region from the profile can be
-// overriden by environment variables.
+// overridden by environment variables.
 func DefaultWithRole(roleARN string) AccountFunc {
 	return ProfileWithRegionAndRole("default", "", roleARN)
 }
@@ -91,7 +91,7 @@ func DefaultWithRole(roleARN string) AccountFunc {
 // with values from the default profile (~/.aws/credentials and ~/.aws/config)
 // and the AWS cloud. After the account has been initialized it assumes the role
 // specified by the role ARN. Credentials and region from the profile can be
-// overriden by environment variables.
+// overridden by environment variables.
 func DefaultWithRegionAndRole(region, roleARN string) AccountFunc {
 	return ProfileWithRegionAndRole("default", region, roleARN)
 }
@@ -99,7 +99,7 @@ func DefaultWithRegionAndRole(region, roleARN string) AccountFunc {
 // Profile returns an AccountFunc that initializes the account with values from
 // the named profile (~/.aws/credentials and ~/.aws/config) and the AWS cloud.
 // If the profile specified is "default", credentials and region from the
-// profile can be overriden by environment variables.
+// profile can be overridden by environment variables.
 func Profile(profile string) AccountFunc {
 	return ProfileWithRegionAndRole(profile, "", "")
 }
@@ -107,7 +107,7 @@ func Profile(profile string) AccountFunc {
 // ProfileWithRegion returns an AccountFunc that initializes the account with
 // values from the named profile (~/.aws/credentials and ~/.aws/config) and the
 // AWS cloud. If the profile specified is "default", credentials and region from
-// the profile can be overriden by environment variables.
+// the profile can be overridden by environment variables.
 func ProfileWithRegion(profile, region string) AccountFunc {
 	return ProfileWithRegionAndRole(profile, region, "")
 }
@@ -116,7 +116,7 @@ func ProfileWithRegion(profile, region string) AccountFunc {
 // values from the named profile (~/.aws/credentials and ~/.aws/config) and the
 // AWS cloud. After the account has been initialized it assumes the role
 // specified by the role ARN. If the profile specified is "default", credentials
-// and region from the profile can be overriden by environment variables.
+// and region from the profile can be overridden by environment variables.
 func ProfileWithRole(profile string, roleArn string) AccountFunc {
 	return ProfileWithRegionAndRole(profile, "", roleArn)
 }
@@ -125,7 +125,7 @@ func ProfileWithRole(profile string, roleArn string) AccountFunc {
 // with values from the named profile (~/.aws/credentials and ~/.aws/config) and
 // the AWS cloud. After the account has been initialized it assumes the role
 // specified by the role ARN. If the profile specified is "default", credentials
-// and region from the profile can be overriden by environment variables.
+// and region from the profile can be overridden by environment variables.
 func ProfileWithRegionAndRole(profile, region, roleARN string) AccountFunc {
 	return func(ctx context.Context) (account, error) {
 		// When profileToLoad is the empty string environment variables can be

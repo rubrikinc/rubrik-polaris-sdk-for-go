@@ -24,9 +24,455 @@
 
 package archival
 
+// allCloudAccounts GraphQL query
+var allCloudAccountsQuery = `query SdkGolangAllCloudAccounts($filter: [CloudAccountFilterInput!]) {
+    result: allCloudAccounts(sortBy: NAME, sortOrder: ASC, features: [ARCHIVAL], filter: $filter) {
+        cloudAccountId
+        cloudProvider
+        connectionStatus
+        description
+        name
+        ... on AwsAccount {
+            accessKey
+        }
+        ... on AzureAccount {
+            subscriptionId
+            tenantId
+        }
+    }
+}`
+
+// allTargetMappings GraphQL query
+var allTargetMappingsQuery = `query SdkGolangAllTargetMappings($filter: [TargetMappingFilterInput!]) {
+    result: allTargetMappings(sortBy: NAME, sortOrder: ASC, filter: $filter) {
+        id
+        name
+        groupType
+        targetType
+        connectionStatus {
+            status
+        }
+        targetTemplate {
+            ... on AwsTargetTemplate {
+                cloudAccount {
+                    cloudAccountId
+                }
+                bucketPrefix
+                storageClass
+                region
+                kmsMasterKeyId
+                cloudNativeLocTemplateType
+                bucketTags {
+                    key
+                    value
+                }
+            }
+            ... on AzureTargetTemplate {
+                cloudAccount {
+                    cloudAccountId
+                }
+                cloudNativeCompanion {
+                    cloudNativeLocTemplateType
+                    cmkInfo {
+                        keyName
+                        keyVaultName
+                        region
+                    }
+                    redundancy
+                    storageAccountRegion
+                    storageAccountTags {
+                        key
+                        value
+                    }
+                    storageTier
+                    subscriptionNativeId
+                }
+                containerNamePrefix
+                storageAccountName
+            }
+        }
+    }
+}`
+
+// createAwsAccount GraphQL query
+var createAwsAccountQuery = `mutation SdkGolangCreateAwsAccount($name: String!, $description: String, $accessKey: String!, $secretKey: String!) {
+    result: createAwsAccount(input: {
+        name:        $name,
+        description: $description,
+        accessKey:   $accessKey,
+        secretKey:   $secretKey
+    }) {
+        cloudAccountId
+    }
+}`
+
+// createAwsTarget GraphQL query
+var createAwsTargetQuery = `mutation SdkGolangCreateAwsTarget(
+    $name:                   String!,
+    $clusterUuid:            String!,
+    $cloudAccountId:         UUID!,
+    $bucketName:             String!,
+    $region:                 AwsRegion!,
+    $storageClass:           AwsStorageClass!,
+    $awsRetrievalTier:       AwsRetrievalTier,
+    $kmsMasterKeyId:         String,
+    $rsaKey:                 String,
+    $encryptionPassword:     String,
+    $cloudComputeSettings:   AwsCloudComputeSettingsInput,
+    $isConsolidationEnabled: Boolean!,
+    $proxySettings:          ProxySettingsInput,
+    $bypassProxy:            Boolean!,
+    $computeProxySettings:   ProxySettingsInput,
+    $immutabilitySettings:   AwsImmutabilitySettings,
+    $s3Endpoint:             String,
+    $kmsEndpoint:            String,
+    $awsComputeSettingsId:   String,
+    $awsIamPairId:           String,
+) {
+    result: createAwsTarget(input: {
+        name:                   $name,
+        clusterUuid:            $clusterUuid,
+        cloudAccountId:         $cloudAccountId,
+        bucketName:             $bucketName,
+        region:                 $region,
+        storageClass:           $storageClass,
+        awsRetrievalTier:       $awsRetrievalTier,
+        kmsMasterKeyId:         $kmsMasterKeyId,
+        rsaKey:                 $rsaKey
+        encryptionPassword:     $encryptionPassword,
+        cloudComputeSettings:   $cloudComputeSettings,
+        isConsolidationEnabled: $isConsolidationEnabled,
+        proxySettings:          $proxySettings,
+        bypassProxy:            $bypassProxy,
+        computeProxySettings:   $computeProxySettings,
+        immutabilitySettings:   $immutabilitySettings
+        s3Endpoint:             $s3Endpoint,
+        kmsEndpoint:            $kmsEndpoint,
+        awsComputeSettingsId:   $awsComputeSettingsId,
+        awsIamPairId:           $awsIamPairId,
+    }) {
+        id
+    }
+}`
+
+// createAzureAccount GraphQL query
+var createAzureAccountQuery = `mutation SdkGolangCreateAzureAccount($name: String!, $description: String, $subscriptionId: String!) {
+    result: createAzureAccount(input: {
+        name:           $name,
+        description:    $description,
+        subscriptionId: $subscriptionId,
+    }) {
+        cloudAccountId
+    }
+}`
+
+// createCloudNativeAwsStorageSetting GraphQL query
+var createCloudNativeAwsStorageSettingQuery = `mutation SdkGolangCreateCloudNativeAwsStorageSetting(
+    $cloudAccountId:  UUID!,
+    $name:            String!,
+    $bucketPrefix:    String!,
+    $storageClass:    AwsStorageClass!,
+    $region:          AwsRegion,
+    $kmsMasterKeyId:  String!,
+    $locTemplateType: CloudNativeLocTemplateType!,
+    $bucketTags:      TagsInput
+) {
+    result: createCloudNativeAwsStorageSetting(input: {
+        cloudAccountId:             $cloudAccountId,
+        name:                       $name,
+        bucketPrefix:               $bucketPrefix,
+        storageClass:               $storageClass,
+        region:                     $region,
+        kmsMasterKeyId:             $kmsMasterKeyId,
+        cloudNativeLocTemplateType: $locTemplateType,
+        bucketTags:                 $bucketTags
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}`
+
+// createCloudNativeAzureStorageSetting GraphQL query
+var createCloudNativeAzureStorageSettingQuery = `mutation SdkGolangCreateCloudNativeAzureStorageSetting(
+    $cloudAccountId:             UUID!,
+    $cloudNativeLocTemplateType: CloudNativeLocTemplateType!,
+    $cmkInfo:                    [AzureCmkInput!],
+    $containerName:              String!,
+    $name:                       String!,
+    $redundancy:                 AzureRedundancy!,
+    $storageTier:                AzureStorageTier!,
+    $subscriptionNativeId:       String!
+    $storageAccountName:         String!,
+    $storageAccountRegion:       AzureRegion,
+    $storageAccountTags:         TagsInput,
+) {
+    result: createCloudNativeAzureStorageSetting(input: {
+        cloudAccountId:              $cloudAccountId,
+        cloudNativeLocTemplateType:  $cloudNativeLocTemplateType,
+        cmkInfo:                     $cmkInfo,
+        containerName:               $containerName,
+        name:                        $name,
+        redundancy:                  $redundancy,
+        storageTier:                 $storageTier,
+        subscriptionNativeId:        $subscriptionNativeId
+        storageAccountName:          $storageAccountName,
+        storageAccountRegion:        $storageAccountRegion,
+        storageAccountTags:          $storageAccountTags,
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}`
+
+// deleteAwsDataCenterKeyBasedCloudAccount GraphQL query
+var deleteAwsDataCenterKeyBasedCloudAccountQuery = `mutation SdkGolangDeleteAwsDataCenterKeyBasedCloudAccount($cloudAccountId: UUID!) {
+    result: deleteAwsDataCenterKeyBasedCloudAccount(input: {
+        cloudAccountId: $cloudAccountId,
+    })
+}`
+
+// deleteAzureDataCenterCloudAccount GraphQL query
+var deleteAzureDataCenterCloudAccountQuery = `mutation SdkGolangDeleteAzureDataCenterCloudAccount($cloudAccountId: UUID!) {
+    result: deleteAzureDataCenterCloudAccount(input: {
+        cloudAccountId: $cloudAccountId,
+    })
+}`
+
+// deleteTarget GraphQL query
+var deleteTargetQuery = `mutation SdkGolangDeleteTarget($id: String!) {
+    result: deleteTarget(input: {
+        id: $id
+    })
+}`
+
 // deleteTargetMapping GraphQL query
 var deleteTargetMappingQuery = `mutation SdkGolangDeleteTargetMapping($id: String!) {
     result: deleteTargetMapping(input: {
         id: $id
     })
+}`
+
+// disableTarget GraphQL query
+var disableTargetQuery = `mutation SdkGolangDisableTarget($id: String!) {
+    result: disableTarget(input: {
+        id: $id
+    }) {
+        locationId
+    }
+}`
+
+// target GraphQL query
+var targetQuery = `query SdkGolangTarget($id: UUID!) {
+     result: target(input: $id) {
+         id
+         cluster {
+             id
+         }
+         name
+         targetType
+         status
+         ... on RubrikManagedAwsTarget {
+             cloudAccount {
+                 cloudAccountId
+             }
+             syncStatus
+             syncFailureReason
+             bucket
+             region
+             storageClass
+             awsRetrievalTier
+             encryptionType
+             kmsMasterKeyId
+             computeSettings {
+                 subnetId
+                 securityGroupId
+                 vpcId
+                 proxySettings {
+                     portNumber
+                     protocol
+                     proxyServer
+                     username
+                 }
+             }
+             isConsolidationEnabled
+             proxySettings {
+                 portNumber
+                 protocol
+                 proxyServer
+                 username
+             }
+             bypassProxy
+             immutabilitySettings {
+                 lockDurationDays
+             }
+             s3Endpoint
+             kmsEndpoint
+         }
+     }
+ }`
+
+// targets GraphQL query
+var targetsQuery = `query SdkGolangTargets($after: String, $filter: [TargetFilterInput!]) {
+    result: targets(sortBy: NAME, sortOrder: ASC, after: $after, filter: $filter) {
+        nodes {
+            id
+            cluster {
+                id
+            }
+            name
+            targetType
+            status
+            ... on RubrikManagedAwsTarget {
+                cloudAccount {
+                    cloudAccountId
+                }
+                syncStatus
+                syncFailureReason
+                bucket
+                region
+                storageClass
+                awsRetrievalTier
+                encryptionType
+                kmsMasterKeyId
+                computeSettings {
+                    subnetId
+                    securityGroupId
+                    vpcId
+                    proxySettings {
+                        portNumber
+                        protocol
+                        proxyServer
+                        username
+                    }
+                }
+                isConsolidationEnabled
+                proxySettings {
+                    portNumber
+                    protocol
+                    proxyServer
+                    username
+                }
+                bypassProxy
+                immutabilitySettings {
+                    lockDurationDays
+                }
+                s3Endpoint
+                kmsEndpoint
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
+// updateAwsAccount GraphQL query
+var updateAwsAccountQuery = `mutation SdkGolangUpdateAwsAccount($id: String!, $name: String!, $description: String, $accessKey: String!, $secretKey: String!) {
+    result: updateAwsAccount(input: {
+        id:          $id,
+        name:        $name,
+        description: $description,
+        accessKey:   $accessKey,
+        secretKey:   $secretKey
+    }) {
+        cloudAccountId
+    }
+}`
+
+// updateAwsTarget GraphQL query
+var updateAwsTargetQuery = `mutation SdkGolangUpdateAwsTarget(
+    $id:                     String!,
+    $name:                   String,
+    $cloudAccountId:         UUID,
+    $storageClass:           AwsStorageClass,
+    $awsRetrievalTier:       AwsRetrievalTier,
+    $cloudComputeSettings:   AwsCloudComputeSettingsInput,
+    $isConsolidationEnabled: Boolean,
+    $proxySettings:          ProxySettingsInput,
+    $bypassProxy:            Boolean,
+    $computeProxySettings:   ProxySettingsInput,
+    $immutabilitySettings:   AwsImmutabilitySettings,
+    $s3Endpoint:             String,
+    $kmsEndpoint:            String,
+    $awsComputeSettingsId:   String,
+    $awsIamPairId:           String,
+) {
+    result: updateAwsTarget(input: {
+        id:                     $id,
+        name:                   $name,
+        cloudAccountId:         $cloudAccountId,
+        storageClass:           $storageClass,
+        awsRetrievalTier:       $awsRetrievalTier,
+        cloudComputeSettings:   $cloudComputeSettings,
+        isConsolidationEnabled: $isConsolidationEnabled,
+        proxySettings:          $proxySettings,
+        bypassProxy:            $bypassProxy,
+        computeProxySettings:   $computeProxySettings,
+        immutabilitySettings:   $immutabilitySettings
+        s3Endpoint:             $s3Endpoint,
+        kmsEndpoint:            $kmsEndpoint,
+        awsComputeSettingsId:   $awsComputeSettingsId,
+        awsIamPairId:           $awsIamPairId,
+    }) {
+        id
+    }
+}`
+
+// updateAzureAccount GraphQL query
+var updateAzureAccountQuery = `mutation SdkGolangUpdateAzureAccount($id: String!, $name: String!, $description: String, $subscriptionId: String!) {
+    result: updateAzureAccount(input: {
+        id:             $id,
+        name:           $name,
+        description:    $description,
+        subscriptionId: $subscriptionId,
+    }) {
+        cloudAccountId
+    }
+}`
+
+// updateCloudNativeAwsStorageSetting GraphQL query
+var updateCloudNativeAwsStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeAwsStorageSetting(
+    $id:                  UUID!,
+    $name:                String,
+    $storageClass:        AwsStorageClass,
+    $kmsMasterKeyId:      String,
+    $deleteAllBucketTags: Boolean
+    $bucketTags:          TagsInput,
+) {
+    result: updateCloudNativeAwsStorageSetting(input: {
+        id:                  $id,
+        name:                $name,
+        storageClass:        $storageClass,
+        kmsMasterKeyId:      $kmsMasterKeyId,
+        deleteAllBucketTags: $deleteAllBucketTags
+        bucketTags:          $bucketTags,
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}`
+
+// updateCloudNativeAzureStorageSetting GraphQL query
+var updateCloudNativeAzureStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeAzureStorageSetting(
+    $id:                 UUID!,
+    $name:               String!,
+    $storageTier:        AzureStorageTier!,
+    $storageAccountTags: TagsInput!,
+    $cmkInfo:            [AzureCmkInput!],
+) {
+    result: updateCloudNativeAzureStorageSetting(input: {
+        id:                 $id,
+        name:               $name,
+        storageTier:        $storageTier,
+        storageAccountTags: $storageAccountTags,
+        cmkInfo:            $cmkInfo,
+    }) {
+        targetMapping {
+            id
+        }
+    }
 }`

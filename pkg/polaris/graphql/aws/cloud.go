@@ -48,7 +48,7 @@ type CloudAccount struct {
 type Feature struct {
 	Feature          string                 `json:"feature"`
 	PermissionGroups []core.PermissionGroup `json:"permissionsGroups"`
-	Regions          []Region               `json:"awsRegions"`
+	Regions          []RegionEnum           `json:"awsRegions"`
 	RoleArn          string                 `json:"roleArn"`
 	StackArn         string                 `json:"stackArn"`
 	Status           core.Status            `json:"status"`
@@ -204,17 +204,21 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 		features = nil
 	}
 
+	regionEnums := make([]RegionEnum, 0, len(regions))
+	for _, reg := range regions {
+		regionEnums = append(regionEnums, reg.ToRegionEnum())
+	}
 	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountProtectionQuery, struct {
 		Cloud          Cloud            `json:"cloudType"`
 		ID             string           `json:"nativeId"`
 		Name           string           `json:"accountName"`
-		Regions        []Region         `json:"awsRegions,omitempty"`
+		Regions        []RegionEnum     `json:"awsRegions,omitempty"`
 		ExternalID     string           `json:"externalId"`
 		FeatureVersion []FeatureVersion `json:"featureVersion"`
 		Features       []string         `json:"features,omitempty"`
 		FeaturesWithPG []core.Feature   `json:"featuresWithPG,omitempty"`
 		StackName      string           `json:"stackName"`
-	}{Cloud: cloud, ID: id, Name: name, Regions: regions, ExternalID: init.ExternalID, FeatureVersion: init.FeatureVersions, Features: plainFeatures, FeaturesWithPG: features, StackName: init.StackName})
+	}{Cloud: cloud, ID: id, Name: name, Regions: regionEnums, ExternalID: init.ExternalID, FeatureVersion: init.FeatureVersions, Features: plainFeatures, FeaturesWithPG: features, StackName: init.StackName})
 	if err != nil {
 		return fmt.Errorf("failed to request finalizeAwsCloudAccountProtection: %w", err)
 	}
@@ -357,12 +361,16 @@ func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, accountName s
 func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAccountAction, id uuid.UUID, feature core.Feature, regions []Region) error {
 	a.GQL.Log().Print(log.Trace)
 
+	regionEnums := make([]RegionEnum, 0, len(regions))
+	for _, reg := range regions {
+		regionEnums = append(regionEnums, reg.ToRegionEnum())
+	}
 	buf, err := a.GQL.Request(ctx, updateAwsCloudAccountFeatureQuery, struct {
 		Action  core.CloudAccountAction `json:"action"`
 		ID      uuid.UUID               `json:"cloudAccountId"`
-		Regions []Region                `json:"awsRegions"`
+		Regions []RegionEnum            `json:"awsRegions"`
 		Feature string                  `json:"feature"`
-	}{Action: action, ID: id, Regions: regions, Feature: feature.Name})
+	}{Action: action, ID: id, Regions: regionEnums, Feature: feature.Name})
 	if err != nil {
 		return fmt.Errorf("failed to request updateAwsCloudAccountFeature: %w", err)
 	}
@@ -385,47 +393,6 @@ func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAcc
 	}
 
 	return nil
-}
-
-// VPC represents an AWS VPC together with AWS subnets and AWS security groups.
-type VPC struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Subnets []struct {
-		ID               string `json:"id"`
-		Name             string `json:"name"`
-		AvailabilityZone string `json:"availabilityZone"`
-	} `json:"subnets"`
-	SecurityGroups []struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	} `json:"securityGroups"`
-}
-
-// AllVpcsByRegion returns all VPCs including their subnets for the specified
-// RSC cloud account id.
-func (a API) AllVpcsByRegion(ctx context.Context, id uuid.UUID, region Region) ([]VPC, error) {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(ctx, allVpcsByRegionFromAwsQuery, struct {
-		ID     uuid.UUID `json:"awsAccountRubrikId"`
-		Region Region    `json:"region"`
-	}{ID: id, Region: region})
-	if err != nil {
-		return nil, fmt.Errorf("failed to request allVpcsByRegionFromAws: %w", err)
-	}
-	a.log.Printf(log.Debug, "allVpcsByRegionFromAws(%q, %q): %s", id, region, string(buf))
-
-	var payload struct {
-		Data struct {
-			VPCs []VPC `json:"allVpcsByRegionFromAws"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal allVpcsByRegionFromAws: %s", err)
-	}
-
-	return payload.Data.VPCs, nil
 }
 
 // PrepareFeatureUpdateForAwsCloudAccount returns a CloudFormation URL and a

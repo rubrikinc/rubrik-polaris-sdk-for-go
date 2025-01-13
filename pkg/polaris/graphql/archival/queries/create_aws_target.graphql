@@ -1,0 +1,47 @@
+mutation RubrikPolarisSDKRequest(
+    $name:                   String!,
+    $clusterUuid:            String!,
+    $cloudAccountId:         UUID!,
+    $bucketName:             String!,
+    $region:                 AwsRegion!,
+    $storageClass:           AwsStorageClass!,
+    $awsRetrievalTier:       AwsRetrievalTier,
+    $kmsMasterKeyId:         String,
+    $rsaKey:                 String,
+    $encryptionPassword:     String,
+    $cloudComputeSettings:   AwsCloudComputeSettingsInput,
+    $isConsolidationEnabled: Boolean!,
+    $proxySettings:          ProxySettingsInput,
+    $bypassProxy:            Boolean!,
+    $computeProxySettings:   ProxySettingsInput,
+    $immutabilitySettings:   AwsImmutabilitySettings,
+    $s3Endpoint:             String,
+    $kmsEndpoint:            String,
+    $awsComputeSettingsId:   String,
+    $awsIamPairId:           String,
+) {
+    result: createAwsTarget(input: {
+        name:                   $name,
+        clusterUuid:            $clusterUuid,
+        cloudAccountId:         $cloudAccountId,
+        bucketName:             $bucketName,
+        region:                 $region,
+        storageClass:           $storageClass,
+        awsRetrievalTier:       $awsRetrievalTier,
+        kmsMasterKeyId:         $kmsMasterKeyId,
+        rsaKey:                 $rsaKey
+        encryptionPassword:     $encryptionPassword,
+        cloudComputeSettings:   $cloudComputeSettings,
+        isConsolidationEnabled: $isConsolidationEnabled,
+        proxySettings:          $proxySettings,
+        bypassProxy:            $bypassProxy,
+        computeProxySettings:   $computeProxySettings,
+        immutabilitySettings:   $immutabilitySettings
+        s3Endpoint:             $s3Endpoint,
+        kmsEndpoint:            $kmsEndpoint,
+        awsComputeSettingsId:   $awsComputeSettingsId,
+        awsIamPairId:           $awsIamPairId,
+    }) {
+        id
+    }
+}

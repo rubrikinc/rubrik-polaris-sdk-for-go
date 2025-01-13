@@ -45,56 +45,6 @@ var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWi
     }
 }`
 
-// allAwsExocomputeConfigs GraphQL query
-var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsNativeAccountIdOrNamePrefix: String!) {
-    result: allAwsExocomputeConfigs(awsNativeAccountIdOrNamePrefix: $awsNativeAccountIdOrNamePrefix) {
-        awsCloudAccount {
-            cloudType
-            id
-            nativeId
-            message
-            accountName
-        }
-        mappedCloudAccounts {
-            id
-            name
-            nativeId
-        }
-        featureDetail {
-            feature
-            roleArn
-            stackArn
-            status
-            awsRegions
-        }
-        exocomputeConfigs {
-            configUuid
-            healthCheckStatus {
-                failureReason
-                lastUpdatedAt
-                status
-                taskchainId
-            }
-            region
-            message
-            ... on AwsRscManagedExocomputeConfig {
-                vpcId
-                clusterSecurityGroupId
-                nodeSecurityGroupId
-                subnet1 {
-                    availabilityZone
-                    subnetId
-                }
-                subnet2 {
-                    availabilityZone
-                    subnetId
-                }
-                areSecurityGroupsRscManaged
-            }
-        }
-    }
-}`
-
 // allAwsPermissionPolicies GraphQL query
 var allAwsPermissionPoliciesQuery = `query SdkGolangAllAwsPermissionPolicies($cloudType: AwsCloudType!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!], $ec2RecoveryRolePath: String) {
     result: allAwsPermissionPolicies(input: {
@@ -111,52 +61,6 @@ var allAwsPermissionPoliciesQuery = `query SdkGolangAllAwsPermissionPolicies($cl
             feature
             policyName
             policyDocumentJson
-        }
-    }
-}`
-
-// allTargetMappings GraphQL query
-var allTargetMappingsQuery = `query SdkGolangAllTargetMappings($filter: [TargetMappingFilterInput!]) {
-    result: allTargetMappings(sortBy: NAME, sortOrder: ASC, filter: $filter) {
-        id
-        name
-        groupType
-        targetType
-        connectionStatus {
-            status
-        }
-        targetTemplate {
-            ... on AwsTargetTemplate {
-                cloudAccount {
-                    cloudAccountId
-                }
-                bucketPrefix
-                storageClass
-                region
-                kmsMasterKeyId
-                cloudNativeLocTemplateType
-                bucketTags {
-                    key
-                    value
-                }
-            }
-        }
-    }
-}`
-
-// allVpcsByRegionFromAws GraphQL query
-var allVpcsByRegionFromAwsQuery = `query SdkGolangAllVpcsByRegionFromAws($awsAccountRubrikId: UUID!, $region: AwsNativeRegion!) {
-    allVpcsByRegionFromAws(awsAccountRubrikId: $awsAccountRubrikId, region: $region) {
-        id
-        name
-        subnets {
-            id
-            name
-            availabilityZone
-        }
-        securityGroups {
-            id
-            name
         }
     }
 }`
@@ -192,18 +96,6 @@ var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatur
             status
             awsRegions
         }
-    }
-}`
-
-// awsExocomputeClusterConnect GraphQL query
-var awsExocomputeClusterConnectQuery = `mutation SdkGolangAwsExocomputeClusterConnect($clusterName: String!, $exocomputeConfigId: UUID!) {
-    result: awsExocomputeClusterConnect(input: {
-        clusterName:        $clusterName,
-        exocomputeConfigId: $exocomputeConfigId
-    }) {
-        clusterSetupYaml
-        clusterUuid
-        connectionCommand
     }
 }`
 
@@ -284,85 +176,10 @@ var bulkDeleteAwsCloudAccountWithoutCftQuery = `mutation SdkGolangBulkDeleteAwsC
     }
 }`
 
-// createAwsExocomputeConfigs GraphQL query
-var createAwsExocomputeConfigsQuery = `mutation SdkGolangCreateAwsExocomputeConfigs($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
-    result: createAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
-        exocomputeConfigs {
-            configUuid
-            healthCheckStatus {
-                failureReason
-                lastUpdatedAt
-                status
-                taskchainId
-            }
-            region
-            message
-            ... on AwsRscManagedExocomputeConfig {
-                vpcId
-                clusterSecurityGroupId
-                nodeSecurityGroupId
-                subnet1 {
-                    availabilityZone
-                    subnetId
-                }
-                subnet2 {
-                    availabilityZone
-                    subnetId
-                }
-                areSecurityGroupsRscManaged
-            }
-        }
-    }
-}`
-
-// createCloudNativeAwsStorageSetting GraphQL query
-var createCloudNativeAwsStorageSettingQuery = `mutation SdkGolangCreateCloudNativeAwsStorageSetting(
-    $cloudAccountId:  UUID!,
-    $name:            String!,
-    $bucketPrefix:    String!,
-    $storageClass:    AwsStorageClass!,
-    $region:          AwsRegion,
-    $kmsMasterKeyId:  String!,
-    $locTemplateType: CloudNativeLocTemplateType!,
-    $bucketTags:      TagsInput
-) {
-    result: createCloudNativeAwsStorageSetting(input: {
-        cloudAccountId:             $cloudAccountId,
-        name:                       $name,
-        bucketPrefix:               $bucketPrefix,
-        storageClass:               $storageClass,
-        region:                     $region,
-        kmsMasterKeyId:             $kmsMasterKeyId,
-        cloudNativeLocTemplateType: $locTemplateType,
-        bucketTags:                 $bucketTags
-    }) {
-        targetMapping {
-            id
-        }
-    }
-}`
-
-// deleteAwsExocomputeConfigs GraphQL query
-var deleteAwsExocomputeConfigsQuery = `mutation SdkGolangDeleteAwsExocomputeConfigs($configIdsToBeDeleted: [UUID!]!) {
-    result: deleteAwsExocomputeConfigs(input: {configIdsToBeDeleted: $configIdsToBeDeleted}) {
-        deletionStatus {
-            exocomputeConfigId
-            success
-        }
-    }
-}`
-
 // deleteTargetMapping GraphQL query
 var deleteTargetMappingQuery = `mutation SdkGolangDeleteTargetMapping($id: String!) {
     result: deleteTargetMapping(input: {
         id: $id
-    })
-}`
-
-// disconnectAwsExocomputeCluster GraphQL query
-var disconnectAwsExocomputeClusterQuery = `mutation SdkGolangDisconnectAwsExocomputeCluster($clusterId: UUID!) {
-    result: disconnectAwsExocomputeCluster(input: {
-        clusterId: $clusterId
     })
 }`
 
@@ -423,22 +240,6 @@ var prepareFeatureUpdateForAwsCloudAccountQuery = `mutation SdkGolangPrepareFeat
     }
 }`
 
-// privateContainerRegistry GraphQL query
-var privateContainerRegistryQuery = `query SdkGolangPrivateContainerRegistry($exocomputeCloudAccountId: UUID!) {
-    result: privateContainerRegistry(input: {
-        exocomputeAccountId: $exocomputeCloudAccountId,
-    }) {
-        pcrDetails {
-            imagePullDetails {
-              ... on PcrAwsImagePullDetails {
-                awsNativeId
-              }
-            }
-            registryUrl
-        }
-    }
-}`
-
 // registerAwsFeatureArtifacts GraphQL query
 var registerAwsFeatureArtifactsQuery = `mutation SdkGolangRegisterAwsFeatureArtifacts($cloudType: AwsCloudType, $awsArtifacts: [AwsAccountFeatureArtifact!]!) {
     result: registerAwsFeatureArtifacts(input: {cloudType: $cloudType, awsArtifacts: $awsArtifacts}) {
@@ -448,17 +249,6 @@ var registerAwsFeatureArtifactsQuery = `mutation SdkGolangRegisterAwsFeatureArti
             message
         }
     }
-}`
-
-// setPrivateContainerRegistryDetails GraphQL query
-var setPrivateContainerRegistryDetailsQuery = `mutation SdkGolangSetPrivateContainerRegistryDetails($exocomputeAccountId: UUID!, $registryUrl: String!, $awsNativeId: String) {
-    setPrivateContainerRegistry(input: {
-        exocomputeAccountId: $exocomputeAccountId,
-        registryUrl:         $registryUrl,
-        pcrAwsImagePullDetails: {
-            awsNativeId: $awsNativeId
-        }
-    })
 }`
 
 // startAwsExocomputeDisableJob GraphQL query
@@ -503,58 +293,12 @@ var updateAwsCloudAccountFeatureQuery = `mutation SdkGolangUpdateAwsCloudAccount
     }
 }`
 
-// updateAwsExocomputeConfigs GraphQL query
-var updateAwsExocomputeConfigsQuery = `mutation SdkGolangUpdateAwsExocomputeConfigs($cloudAccountId: UUID!, $configs: [AwsExocomputeConfigInput!]!) {
-    result: updateAwsExocomputeConfigs(input: {cloudAccountId: $cloudAccountId, configs: $configs}) {
-        exocomputeConfigs {
-            configUuid
-            healthCheckStatus {
-                failureReason
-                lastUpdatedAt
-                status
-                taskchainId
-            }
-            region
-            message
-            ... on AwsRscManagedExocomputeConfig {
-                vpcId
-                clusterSecurityGroupId
-                nodeSecurityGroupId
-                subnet1 {
-                    availabilityZone
-                    subnetId
-                }
-                subnet2 {
-                    availabilityZone
-                    subnetId
-                }
-                areSecurityGroupsRscManaged
-            }
-        }
-    }
-}`
-
-// updateCloudNativeAwsStorageSetting GraphQL query
-var updateCloudNativeAwsStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeAwsStorageSetting(
-    $id:                  UUID!,
-    $name:                String,
-    $storageClass:        AwsStorageClass,
-    $kmsMasterKeyId:      String,
-    $deleteAllBucketTags: Boolean
-    $bucketTags:          TagsInput,
-) {
-    result: updateCloudNativeAwsStorageSetting(input: {
-        id:                  $id,
-        name:                $name,
-        storageClass:        $storageClass,
-        kmsMasterKeyId:      $kmsMasterKeyId,
-        deleteAllBucketTags: $deleteAllBucketTags
-        bucketTags:          $bucketTags,
-    }) {
-        targetMapping {
-            id
-        }
-    }
+// upgradeAwsCloudAccountFeaturesWithoutCft GraphQL query
+var upgradeAwsCloudAccountFeaturesWithoutCftQuery = `mutation SdkGolangUpgradeAwsCloudAccountFeaturesWithoutCft($awsCloudAccountId: String!, $features: [CloudAccountFeature!]!) {
+    result: upgradeAwsCloudAccountFeaturesWithoutCft(input: {
+        awsCloudAccountId: $awsCloudAccountId,
+        features:          $features
+    })
 }`
 
 // validateAndCreateAwsCloudAccount GraphQL query

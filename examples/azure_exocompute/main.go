@@ -28,8 +28,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/exocompute"
+	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
-	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 func main() {
@@ -40,21 +42,22 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClientWithLogger(polAccount, polaris_log.NewStandardLogger())
+	client, err := polaris.NewClientWithLogger(polAccount, polarislog.NewStandardLogger())
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	azureClient := azure.Wrap(client)
+	exoClient := exocompute.Wrap(client)
 
-	// Add default Azure service principal to Polaris. Usually resolved using
-	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
+	// Add default Azure service principal to RSC. Usually resolved using the
+	// environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
 	_, err = azureClient.SetServicePrincipal(ctx, azure.Default("my-domain.onmicrosoft.com"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Add Azure subscription to Polaris.
+	// Add Azure subscription to RSC.
 	subscription := azure.Subscription(uuid.MustParse("9318aeec-d357-11eb-9b37-5f4e9f79db5d"),
 		"my-domain.onmicrosoft.com")
 	accountID, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection, azure.Regions("eastus2", "westus2"))
@@ -82,25 +85,25 @@ func main() {
 		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
 	}
 
-	// Add exocompute config for the account.
-	exoID, err := azureClient.AddExocomputeConfig(ctx, azure.CloudAccountID(accountID),
-		azure.Managed("eastus2", "/subscriptions/9318aeec-d357-11eb-9b37-5f4e9f79db5d/resourceGroups/terraform-test/providers/Microsoft.Network/virtualNetworks/terraform-test/subnets/default"))
+	// Add an exocompute configuration to the cloud account.
+	configID, err := exoClient.AddAzureConfiguration(ctx, accountID,
+		exocompute.AzureManaged(gqlazure.RegionEastUS2, "/subscriptions/9318aeec-d357-11eb-9b37-5f4e9f79db5d/resourceGroups/terraform-test/providers/Microsoft.Network/virtualNetworks/terraform-test/subnets/default"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Exocompute config ID: %v\n", exoID)
+	fmt.Printf("Exocompute configuration ID: %v\n", configID)
 
-	// Retrieve the exocompute config added.
-	exoConfig, err := azureClient.ExocomputeConfig(ctx, exoID)
+	// Retrieve the exocompute configuration added.
+	exoConfig, err := exoClient.AzureConfigurationByID(ctx, configID)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Exocompute Config: %v\n", exoConfig)
+	fmt.Printf("Exocompute Configuration: %v\n", exoConfig)
 
-	// Remove the exocompute config.
-	err = azureClient.RemoveExocomputeConfig(ctx, exoID)
+	// Remove the exocompute configuration.
+	err = exoClient.RemoveAzureConfiguration(ctx, configID)
 	if err != nil {
 		log.Fatal(err)
 	}

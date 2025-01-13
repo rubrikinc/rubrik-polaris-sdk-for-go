@@ -28,7 +28,7 @@ import (
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/appliance"
-	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // Example showing how to request an appliance token using a service account
@@ -51,7 +51,7 @@ func main() {
 	}
 
 	// Request an appliance token using a standard service account.
-	token, err := appliance.TokenFromServiceAccount(serviceAccount, applianceID, polaris_log.NewStandardLogger())
+	token, err := appliance.TokenFromServiceAccount(serviceAccount, applianceID, polarislog.NewStandardLogger())
 	if err != nil {
 		log.Fatal(err)
 	}

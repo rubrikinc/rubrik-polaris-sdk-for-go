@@ -1,0 +1,50 @@
+query RubrikPolarisSDKRequest($filter: [TargetMappingFilterInput!]) {
+    result: allTargetMappings(sortBy: NAME, sortOrder: ASC, filter: $filter) {
+        id
+        name
+        groupType
+        targetType
+        connectionStatus {
+            status
+        }
+        targetTemplate {
+            ... on AwsTargetTemplate {
+                cloudAccount {
+                    cloudAccountId
+                }
+                bucketPrefix
+                storageClass
+                region
+                kmsMasterKeyId
+                cloudNativeLocTemplateType
+                bucketTags {
+                    key
+                    value
+                }
+            }
+            ... on AzureTargetTemplate {
+                cloudAccount {
+                    cloudAccountId
+                }
+                cloudNativeCompanion {
+                    cloudNativeLocTemplateType
+                    cmkInfo {
+                        keyName
+                        keyVaultName
+                        region
+                    }
+                    redundancy
+                    storageAccountRegion
+                    storageAccountTags {
+                        key
+                        value
+                    }
+                    storageTier
+                    subscriptionNativeId
+                }
+                containerNamePrefix
+                storageAccountName
+            }
+        }
+    }
+}

@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($id: String!) {
+    result: deleteTarget(input: {
+        id: $id
+    })
+}

@@ -1,5 +1,5 @@
-query RubrikPolarisSDKRequest($feature: CloudAccountFeature!) {
-    result: azureCloudAccountPermissionConfig(feature: $feature) {
+query RubrikPolarisSDKRequest($feature: CloudAccountFeature!, $permissionsGroups: [PermissionsGroup!]!) {
+    result: azureCloudAccountPermissionConfig(feature: $feature, permissionsGroups: $permissionsGroups) {
         permissionVersion
         permissionsGroupVersions {
             permissionsGroup

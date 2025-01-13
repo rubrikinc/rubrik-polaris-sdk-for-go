@@ -1,0 +1,14 @@
+mutation RubrikPolarisSDKRequest(
+    $clusterName:        String!,
+    $cloudType:          CloudType!,
+    $exocomputeConfigId: UUID!
+) {
+    result: exocomputeClusterConnect(input: {
+        clusterName:        $clusterName,
+        cloudType:          $cloudType,
+        exocomputeConfigId: $exocomputeConfigId
+    }) {
+        clusterSetupYaml
+        clusterUuid
+    }
+}

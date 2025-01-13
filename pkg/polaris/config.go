@@ -28,9 +28,130 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 )
+
+const (
+	// DefaultLocalUserFile path to the default local users file.
+	DefaultLocalUserFile = "~/.rubrik/polaris-accounts.json"
+
+	// DefaultServiceAccountFile path to the default service account file.
+	DefaultServiceAccountFile = "~/.rubrik/polaris-service-account.json"
+
+	// UserAccount environment variables.
+	keyUserAccountCredentials = "RUBRIK_POLARIS_ACCOUNT_CREDENTIALS"
+	keyUserAccountFile        = "RUBRIK_POLARIS_ACCOUNT_FILE"
+	keyUserAccountName        = "RUBRIK_POLARIS_ACCOUNT_NAME"
+	keyUserAccountPassword    = "RUBRIK_POLARIS_ACCOUNT_PASSWORD"
+	keyUserAccountURL         = "RUBRIK_POLARIS_ACCOUNT_URL"
+	keyUserAccountUsername    = "RUBRIK_POLARIS_ACCOUNT_USERNAME"
+
+	// ServiceAccount environment variables.
+	keyServiceAccountAccessTokenURI = "RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI"
+	keyServiceAccountClientID       = "RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID"
+	keyServiceAccountClientSecret   = "RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET"
+	keyServiceAccountCredentials    = "RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS"
+	keyServiceAccountFile           = "RUBRIK_POLARIS_SERVICEACCOUNT_FILE"
+	keyServiceAccountName           = "RUBRIK_POLARIS_SERVICEACCOUNT_NAME"
+)
+
+var (
+	// ErrAccountNotFound signals that the account could not be found.
+	// Note that this is different from the account data being invalid or
+	// malformed.
+	ErrAccountNotFound = errors.New("account not found")
+)
+
+// Account represents a Polaris account. Implemented by UserAccount and
+// ServiceAccount.
+type Account interface {
+	// AccountName returns the RSC account name.
+	AccountName() string
+
+	// AccountFQDN returns the fully qualified domain name of the RSC account.
+	AccountFQDN() string
+
+	// APIURL returns the RSC account API URL.
+	APIURL() string
+
+	// TokenURL returns the RSC account token URL.
+	TokenURL() string
+
+	allowEnvOverride() bool
+	cacheKeyMaterial() string
+	cacheSuffixMaterial() string
+}
+
+// FindAccount looks for a valid Account using the passed in credentials string
+// with the following algorithm:
+//
+// When credentials string contains a value:
+//
+//  1. Try and read the service account by interpreting the credentials string as
+//     a service account.
+//
+//  2. Try and read the service account by interpreting the credentials string as
+//     a path to a file holding the service account.
+//
+//  3. If the default user account file exist, try and read the user account from
+//     the file by interpreting the credentials string as the user account name.
+//
+// When the credentials string is empty:
+//
+//  1. If the default service account file exist, try and read the service
+//     account from the file.
+//
+//  2. If env contains a service account, try and read the service account from
+//     env.
+//
+// Note, when reading an account from file, environment variables can be used to
+// override account information.
+func FindAccount(credentials string, allowEnvOverride bool) (Account, error) {
+	if credentials == "" {
+		serviceAccount, err := DefaultServiceAccount(allowEnvOverride)
+		if err == nil {
+			return serviceAccount, nil
+		}
+		if !errors.Is(err, ErrAccountNotFound) {
+			return nil, fmt.Errorf("failed to load service account from default file: %s", err)
+		}
+
+		serviceAccount, err = ServiceAccountFromEnv()
+		if err == nil {
+			return serviceAccount, nil
+		}
+		if !errors.Is(err, ErrAccountNotFound) {
+			return nil, fmt.Errorf("failed to load service account from env: %s", err)
+		}
+
+		return nil, fmt.Errorf("%w, searched: default service account file and env", ErrAccountNotFound)
+	}
+
+	serviceAccount, err := ServiceAccountFromText(credentials, allowEnvOverride)
+	if err == nil {
+		return serviceAccount, nil
+	}
+	if !errors.Is(err, ErrAccountNotFound) {
+		return nil, fmt.Errorf("failed to load service account from text: %s", err)
+	}
+
+	serviceAccount, err = ServiceAccountFromFile(credentials, allowEnvOverride)
+	if err == nil {
+		return serviceAccount, nil
+	}
+	if !errors.Is(err, ErrAccountNotFound) {
+		return nil, fmt.Errorf("failed to load service account from file: %s", err)
+	}
+
+	userAccount, err := DefaultUserAccount(credentials, allowEnvOverride)
+	if err == nil {
+		return userAccount, nil
+	}
+	if !errors.Is(err, ErrAccountNotFound) {
+		return nil, fmt.Errorf("failed to load user account from default file: %s", err)
+	}
+
+	return nil, fmt.Errorf("%w, searched: passed in credentials, default service account file and default user account file", ErrAccountNotFound)
+}
 
 // UserAccount holds an RSC local user account configuration. Depending on how
 // the local user account is stored, the Name field might hold the RSC account
@@ -89,10 +210,10 @@ func (a *UserAccount) cacheSuffixMaterial() string {
 // DefaultUserAccount returns a new UserAccount read from the default account
 // file.
 //
-// If allowEnvOverride is true, environment variables can be used to override
-// user information in the file. See AccountFromEnv for details. In addition,
-// the environment variable RUBRIK_POLARIS_ACCOUNT_FILE can be used to override
-// the file that the user information is read from.
+// If allowEnvOverride is true environment variables can be used to override
+// user information in the file. See UserAccountFromEnv for details.
+// In addition, the environment variable RUBRIK_POLARIS_ACCOUNT_FILE can be used
+// to override the file that the user information is read from.
 //
 // Note that RSC user accounts with MFA enabled cannot be used.
 func DefaultUserAccount(name string, allowEnvOverride bool) (*UserAccount, error) {
@@ -102,7 +223,7 @@ func DefaultUserAccount(name string, allowEnvOverride bool) (*UserAccount, error
 // UserAccountFromEnv returns a new UserAccount from the current environment.
 // The account can be stored as a single JSON encoded environment variable
 // (RUBRIK_POLARIS_ACCOUNT_CREDENTIALS) or as multiple plain text environment
-// variables (e.g., name, username, etc.). When using a single environment
+// variables (e.g. name, username, etc.). When using a single environment
 // variable, the JSON content should have the following structure:
 //
 //	{
@@ -132,15 +253,16 @@ func DefaultUserAccount(name string, allowEnvOverride bool) (*UserAccount, error
 //
 // When using multiple environment variables, they must have the same name as
 // the public UserAccount fields but be all upper case and prepended with
-// RUBRIK_POLARIS_ACCOUNT, e.g., RUBRIK_POLARIS_ACCOUNT_NAME.
+// RUBRIK_POLARIS_ACCOUNT, e.g. RUBRIK_POLARIS_ACCOUNT_NAME.
 //
 // Note that RSC user accounts with MFA enabled cannot be used.
 func UserAccountFromEnv() (*UserAccount, error) {
-	account, err := userAccountFromEnv("")
-	if err != nil {
-		return nil, err
-	}
+	account := userAccountFromEnv("")
 	account.envOverride = true
+
+	if account.Name == "" && account.Username == "" && account.Password == "" && account.URL == "" {
+		return nil, fmt.Errorf("%w in env", ErrAccountNotFound)
+	}
 
 	if err := initUserAccount(&account); err != nil {
 		return nil, err
@@ -150,7 +272,7 @@ func UserAccountFromEnv() (*UserAccount, error) {
 }
 
 // UserAccountFromFile returns a new UserAccount read from the specified file.
-// The file must be in the JSON format, and the attributes must have the same
+// The file must be in the JSON format and the attributes must have the same
 // name as the public UserAccount fields but be all lower case. Note that the
 // name field is used as a key for the JSON object. E.g:
 //
@@ -177,57 +299,38 @@ func UserAccountFromEnv() (*UserAccount, error) {
 //	}
 //
 // The later format is used to hold multiple accounts. The URL field is
-// optional, if it is skipped, the URL is constructed from the account name.
+// optional, if it is skipped the URL is constructed from the account name.
 //
 // If allowEnvOverride is true, environment variables can be used to override
-// user information in the file. See AccountFromEnv for details. In addition,
-// the environment variable RUBRIK_POLARIS_ACCOUNT_FILE can be used to override
-// the file that the user information is read from.
+// user information in the file. See UserAccountFromEnv for details.
+// In addition, the environment variable RUBRIK_POLARIS_ACCOUNT_FILE can be used
+// to override the file that the user information is read from.
 //
 // Note that RSC user accounts with MFA enabled cannot be used.
 func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount, error) {
 	var envAccount UserAccount
 	if allowEnvOverride {
-		var err error
-		envAccount, err = userAccountFromEnv(name)
-		if err != nil && !errors.Is(err, graphql.ErrNotFound) {
-			return nil, err
-		}
-
+		envAccount = userAccountFromEnv(name)
 		if envAccount.Name != "" {
 			name = envAccount.Name
 		}
-		if envFile, ok := os.LookupEnv("RUBRIK_POLARIS_ACCOUNT_FILE"); ok {
-			file = envFile
+
+		if val := os.Getenv(keyUserAccountFile); val != "" {
+			file = val
 		}
 	}
 
-	// Ignore errors for now since they might be corrected by what's in the
-	// current environment.
-	account, fileErr := userAccountFromFile(file, name)
+	account, err := userAccountFromFile(file, name)
+	if err != nil {
+		return nil, err
+	}
+
 	account.envOverride = allowEnvOverride
-
-	// Merge with the current environment.
 	if allowEnvOverride {
-		if envAccount.Name != "" {
-			account.Name = envAccount.Name
-		}
-		if envAccount.Username != "" {
-			account.Username = envAccount.Username
-		}
-		if envAccount.Password != "" {
-			account.Password = envAccount.Password
-		}
-		if envAccount.URL != "" {
-			account.URL = envAccount.URL
-		}
+		overrideUserAccount(&account, envAccount)
 	}
 
-	// Validate.
 	if err := initUserAccount(&account); err != nil {
-		if fileErr != nil {
-			return nil, fmt.Errorf("%s (user account file error: %w)", err, fileErr)
-		}
 		return nil, err
 	}
 
@@ -252,51 +355,49 @@ func lookupUserAccount(name string, accounts map[string]UserAccount) UserAccount
 	return UserAccount{Name: name}
 }
 
-// userAccountFromEnv returns a UserAccount from the current environment.
-func userAccountFromEnv(name string) (UserAccount, error) {
-	var envKeyFound bool
-
+// userAccountFromEnv returns the named UserAccount from the current
+// environment.
+func userAccountFromEnv(name string) UserAccount {
 	var accounts map[string]UserAccount
-	if creds, ok := os.LookupEnv("RUBRIK_POLARIS_ACCOUNT_CREDENTIALS"); ok {
-		if err := json.Unmarshal([]byte(creds), &accounts); err != nil {
-			return UserAccount{}, fmt.Errorf("failed to unmarshal RUBRIK_POLARIS_ACCOUNT_CREDENTIALS: %s", err)
+	if val := os.Getenv(keyUserAccountCredentials); val != "" {
+		var credAccounts map[string]UserAccount
+		if err := json.Unmarshal([]byte(val), &credAccounts); err == nil {
+			accounts = credAccounts
 		}
-		envKeyFound = true
+	}
+	if val := os.Getenv(keyUserAccountName); val != "" {
+		name = val
 	}
 
-	if envName, ok := os.LookupEnv("RUBRIK_POLARIS_ACCOUNT_NAME"); ok {
-		name = envName
-		envKeyFound = true
-	}
 	account := lookupUserAccount(name, accounts)
-	if v, ok := os.LookupEnv("RUBRIK_POLARIS_ACCOUNT_USERNAME"); ok {
-		account.Username = v
-		envKeyFound = true
+	if val := os.Getenv(keyUserAccountUsername); val != "" {
+		account.Username = val
 	}
-	if v, ok := os.LookupEnv("RUBRIK_POLARIS_ACCOUNT_PASSWORD"); ok {
-		account.Password = v
-		envKeyFound = true
+	if val := os.Getenv(keyUserAccountPassword); val != "" {
+		account.Password = val
 	}
-	if v, ok := os.LookupEnv("RUBRIK_POLARIS_ACCOUNT_URL"); ok {
-		account.URL = v
-		envKeyFound = true
+	if val := os.Getenv(keyUserAccountURL); val != "" {
+		account.URL = val
 	}
 
-	if !envKeyFound {
-		return UserAccount{}, fmt.Errorf("failed to read user account from env: %w", graphql.ErrNotFound)
-	}
-
-	return account, nil
+	return account
 }
 
-// userAccountFromFile returns a UserAccount from the specified file with the
-// given name.
+// userAccountFromFile returns the named UserAccount from the specified file.
 func userAccountFromFile(file, name string) (UserAccount, error) {
 	expFile, err := expandPath(file)
 	if err != nil {
-		return UserAccount{}, fmt.Errorf("failed to expand file path: %s", err)
+		return UserAccount{}, fmt.Errorf("failed to expand user account file path: %s", err)
 	}
 
+	// Stat the file to determine if it exists, stat doesn't require access
+	// permissions on the file.
+	if info, err := os.Stat(expFile); err != nil || info.IsDir() {
+		if err == nil {
+			err = fmt.Errorf("user account file is a directory")
+		}
+		return UserAccount{}, fmt.Errorf("%w in file: %s", ErrAccountNotFound, err)
+	}
 	buf, err := os.ReadFile(expFile)
 	if err != nil {
 		return UserAccount{}, fmt.Errorf("failed to read user account file: %s", err)
@@ -309,7 +410,7 @@ func userAccountFromFile(file, name string) (UserAccount, error) {
 
 	account, ok := accounts[name]
 	if !ok {
-		return UserAccount{}, fmt.Errorf("failed to lookup user account %q: %w", name, graphql.ErrNotFound)
+		return UserAccount{}, fmt.Errorf("user account %q not found in user account file: %s", name, expFile)
 	}
 	account.Name = name
 
@@ -335,7 +436,7 @@ func initUserAccount(account *UserAccount) error {
 	// Derive fields.
 	u, err := url.ParseRequestURI(account.URL)
 	if err != nil {
-		return fmt.Errorf("invalid url: %s", err)
+		return fmt.Errorf("invalid user account url: %s", err)
 	}
 	fqdn := u.Hostname()
 	i := strings.Index(fqdn, ".")
@@ -348,6 +449,23 @@ func initUserAccount(account *UserAccount) error {
 	account.tokenURL = account.URL + "/session"
 
 	return nil
+}
+
+// overrideUserAccount overrides the fields of the UserAccount with valid
+// information from the other UserAccount.
+func overrideUserAccount(account *UserAccount, other UserAccount) {
+	if other.Name != "" {
+		account.Name = other.Name
+	}
+	if other.Username != "" {
+		account.Username = other.Username
+	}
+	if other.Password != "" {
+		account.Password = other.Password
+	}
+	if other.URL != "" {
+		account.URL = other.URL
+	}
 }
 
 // ServiceAccount holds an RSC ServiceAccount configuration. The Name field
@@ -378,7 +496,6 @@ func (a *ServiceAccount) AccountFQDN() string {
 
 // APIURL returns the RSC account API URL.
 func (a *ServiceAccount) APIURL() string {
-
 	return a.apiURL
 }
 
@@ -417,11 +534,13 @@ func DefaultServiceAccount(allowEnvOverride bool) (*ServiceAccount, error) {
 // the RSC service account file downloaded from RSC when creating the service
 // account. When using multiple environment variables, they must have the same
 // name as the public ServiceAccount fields but be all upper case and prepended
-// with RUBRIK_POLARIS_SERVICEACCOUNT, e.g., RUBRIK_POLARIS_SERVICEACCOUNT_NAME.
+// with RUBRIK_POLARIS_SERVICEACCOUNT, e.g. RUBRIK_POLARIS_SERVICEACCOUNT_NAME.
 func ServiceAccountFromEnv() (*ServiceAccount, error) {
-	account, err := serviceAccountFromEnv()
-	if err != nil {
-		return nil, err
+	account := serviceAccountFromEnv()
+	account.envOverride = true
+
+	if account.Name == "" && account.ClientID == "" && account.ClientSecret == "" && account.AccessTokenURI == "" {
+		return nil, fmt.Errorf("%w in env", ErrAccountNotFound)
 	}
 
 	if err := initServiceAccount(&account); err != nil {
@@ -434,49 +553,54 @@ func ServiceAccountFromEnv() (*ServiceAccount, error) {
 // ServiceAccountFromFile returns a new ServiceAccount read from the specified
 // RSC service account file.
 //
-// If allowEnvOverride is true, environment variables can be used to override
+// If allowEnvOverride is true environment variables can be used to override
 // account information in the file. See ServiceAccountFromEnv for details. In
 // addition, the environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE can be
 // used to override the file that the service account is read from.
 func ServiceAccountFromFile(file string, allowEnvOverride bool) (*ServiceAccount, error) {
-	var envAccount ServiceAccount
 	if allowEnvOverride {
-		var err error
-		envAccount, err = serviceAccountFromEnv()
-		if err != nil && !errors.Is(err, graphql.ErrNotFound) {
-			return nil, err
-		}
-
-		if envFile, ok := os.LookupEnv("RUBRIK_POLARIS_SERVICEACCOUNT_FILE"); ok {
-			file = envFile
+		if val := os.Getenv(keyServiceAccountFile); val != "" {
+			file = val
 		}
 	}
 
-	// Ignore errors for now since they might be corrected by what's in the
-	// current environment.
-	account, fileErr := serviceAccountFromFile(file)
-	account.envOverride = allowEnvOverride
+	account, err := serviceAccountFromFile(file)
+	if err != nil {
+		return nil, err
+	}
 
-	// Merge with shell environment.
+	account.envOverride = allowEnvOverride
 	if allowEnvOverride {
-		if envAccount.Name != "" {
-			account.Name = envAccount.Name
-		}
-		if envAccount.ClientID != "" {
-			account.ClientID = envAccount.ClientID
-		}
-		if envAccount.ClientSecret != "" {
-			account.ClientSecret = envAccount.ClientSecret
-		}
-		if envAccount.AccessTokenURI != "" {
-			account.AccessTokenURI = envAccount.AccessTokenURI
-		}
+		overrideServiceAccount(&account, serviceAccountFromEnv())
 	}
 
 	if err := initServiceAccount(&account); err != nil {
-		if fileErr != nil {
-			return nil, fmt.Errorf("%s (service account file error: %s)", err, fileErr)
-		}
+		return nil, err
+	}
+
+	return &account, nil
+
+}
+
+// ServiceAccountFromText returns a new ServiceAccount read from the specified
+// text containing an RSC service account.
+//
+// If allowEnvOverride is true environment variables can be used to override
+// account information in the file. See ServiceAccountFromEnv for details. In
+// addition, the environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE can be
+// used to override the file that the service account is read from.
+func ServiceAccountFromText(text string, allowEnvOverride bool) (*ServiceAccount, error) {
+	account, err := serviceAccountFromString(text)
+	if err != nil {
+		return nil, err
+	}
+
+	account.envOverride = allowEnvOverride
+	if allowEnvOverride {
+		overrideServiceAccount(&account, serviceAccountFromEnv())
+	}
+
+	if err := initServiceAccount(&account); err != nil {
 		return nil, err
 	}
 
@@ -484,49 +608,47 @@ func ServiceAccountFromFile(file string, allowEnvOverride bool) (*ServiceAccount
 }
 
 // serviceAccountFromEnv returns a ServiceAccount from the current environment.
-func serviceAccountFromEnv() (ServiceAccount, error) {
-	var envKeyFound bool
-
+func serviceAccountFromEnv() ServiceAccount {
 	var account ServiceAccount
-	if creds, ok := os.LookupEnv("RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS"); ok {
-		if err := json.Unmarshal([]byte(creds), &account); err != nil {
-			return ServiceAccount{}, fmt.Errorf("failed to unmarshal RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS: %s", err)
+	if val := os.Getenv(keyServiceAccountCredentials); val != "" {
+		var credAccount ServiceAccount
+		if err := json.Unmarshal([]byte(val), &credAccount); err == nil {
+			account = credAccount
 		}
-		envKeyFound = true
 	}
 
-	if v, ok := os.LookupEnv("RUBRIK_POLARIS_SERVICEACCOUNT_NAME"); ok {
-		account.Name = v
-		envKeyFound = true
+	if val := os.Getenv(keyServiceAccountName); val != "" {
+		account.Name = val
 	}
-	if v, ok := os.LookupEnv("RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID"); ok {
-		account.ClientID = v
-		envKeyFound = true
+	if val := os.Getenv(keyServiceAccountClientID); val != "" {
+		account.ClientID = val
 	}
-	if v, ok := os.LookupEnv("RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET"); ok {
-		account.ClientSecret = v
-		envKeyFound = true
+	if val := os.Getenv(keyServiceAccountClientSecret); val != "" {
+		account.ClientSecret = val
 	}
-	if v, ok := os.LookupEnv("RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI"); ok {
-		account.AccessTokenURI = v
-		envKeyFound = true
+	if val := os.Getenv(keyServiceAccountAccessTokenURI); val != "" {
+		account.AccessTokenURI = val
 	}
 
-	if !envKeyFound {
-		return ServiceAccount{}, fmt.Errorf("failed to read service account from env: %w", graphql.ErrNotFound)
-	}
-
-	return account, nil
+	return account
 }
 
-// serviceAccountFromFile returns a ServiceAccount from the specified RSC
-// service account file.
+// serviceAccountFromFile returns a ServiceAccount from the specified service
+// account file.
 func serviceAccountFromFile(file string) (ServiceAccount, error) {
 	expFile, err := expandPath(file)
 	if err != nil {
-		return ServiceAccount{}, fmt.Errorf("failed to expand file path: %s", err)
+		return ServiceAccount{}, fmt.Errorf("failed to expand service account file path: %s", err)
 	}
 
+	// Stat the file to determine if it exists, stat doesn't require access
+	// permissions on the file.
+	if info, err := os.Stat(expFile); err != nil || info.IsDir() {
+		if err == nil {
+			err = fmt.Errorf("service account file is a directory")
+		}
+		return ServiceAccount{}, fmt.Errorf("%w in file: %s", ErrAccountNotFound, err)
+	}
 	buf, err := os.ReadFile(expFile)
 	if err != nil {
 		return ServiceAccount{}, fmt.Errorf("failed to read service account file: %s", err)
@@ -534,7 +656,18 @@ func serviceAccountFromFile(file string) (ServiceAccount, error) {
 
 	var account ServiceAccount
 	if err := json.Unmarshal(buf, &account); err != nil {
-		return ServiceAccount{}, fmt.Errorf("failed to unmarshal service account: %s", err)
+		return ServiceAccount{}, fmt.Errorf("failed to unmarshal service account file: %s", err)
+	}
+
+	return account, nil
+}
+
+// serviceAccountFromString returns a ServiceAccount from the specified JSON
+// encoded string.
+func serviceAccountFromString(s string) (ServiceAccount, error) {
+	var account ServiceAccount
+	if err := json.Unmarshal([]byte(s), &account); err != nil {
+		return ServiceAccount{}, fmt.Errorf("%w in text: %s", ErrAccountNotFound, err)
 	}
 
 	return account, nil
@@ -577,8 +710,26 @@ func initServiceAccount(account *ServiceAccount) error {
 	return nil
 }
 
+// overrideServiceAccount overrides the fields of the ServiceAccount with valid
+// information from the other ServiceAccount.
+func overrideServiceAccount(account *ServiceAccount, other ServiceAccount) {
+	if other.Name != "" {
+		account.Name = other.Name
+	}
+	if other.ClientID != "" {
+		account.ClientID = other.ClientID
+	}
+	if other.ClientSecret != "" {
+		account.ClientSecret = other.ClientSecret
+	}
+	if other.AccessTokenURI != "" {
+		account.AccessTokenURI = other.AccessTokenURI
+	}
+}
+
 func expandPath(file string) (string, error) {
-	// Expand the ~ token to the user's home directory.
+	// Expand the ~ token to the user's home directory. This should never fail
+	// unless the shell environment is broken.
 	if homeToken := fmt.Sprintf("~%c", filepath.Separator); strings.HasPrefix(file, homeToken) {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -588,6 +739,7 @@ func expandPath(file string) (string, error) {
 	}
 
 	// Expand environment variables and make sure that the path is absolute.
+	// This should never fail unless the shell environment is broken.
 	var err error
 	file, err = filepath.Abs(os.ExpandEnv(file))
 	if err != nil {

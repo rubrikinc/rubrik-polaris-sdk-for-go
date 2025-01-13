@@ -1,0 +1,7 @@
+mutation RubrikPolarisSDKRequest($id: String!) {
+    result: disableTarget(input: {
+        id: $id
+    }) {
+        locationId
+    }
+}

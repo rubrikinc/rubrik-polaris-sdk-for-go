@@ -24,21 +24,6 @@
 
 package azure
 
-// addAzureCloudAccountExocomputeConfigurations GraphQL query
-var addAzureCloudAccountExocomputeConfigurationsQuery = `mutation SdkGolangAddAzureCloudAccountExocomputeConfigurations($cloudAccountId: UUID!, $azureExocomputeRegionConfigs: [AzureExocomputeAddConfigInputType!]!) {
-    result: addAzureCloudAccountExocomputeConfigurations(input: {
-        cloudAccountId: $cloudAccountId, azureExocomputeRegionConfigs: $azureExocomputeRegionConfigs
-    }) {
-        configs {
-            configUuid
-            isRscManaged
-            message
-            region
-            subnetNativeId
-        }
-    }
-}`
-
 // addAzureCloudAccountWithoutOauth GraphQL query
 var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAccountWithoutOauth($tenantDomainName: String!, $azureCloudType: AzureCloudType!, $regions: [AzureCloudAccountRegion!]!, $feature: AddAzureCloudAccountFeatureInputWithoutOauth!, $subscriptionName: String!, $subscriptionId: String!) {
     result: addAzureCloudAccountWithoutOauth(input: {
@@ -77,6 +62,7 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
             nativeId
             featureDetail {
                 feature
+                permissionsGroups
                 status
                 regions
                 resourceGroup {
@@ -98,84 +84,9 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
     }
 }`
 
-// allAzureExocomputeConfigsInAccount GraphQL query
-var allAzureExocomputeConfigsInAccountQuery = `query SdkGolangAllAzureExocomputeConfigsInAccount($cloudAccountIDs: [UUID!], $azureExocomputeSearchQuery: String!) {
-    result: allAzureExocomputeConfigsInAccount(cloudAccountIDs: $cloudAccountIDs, azureExocomputeSearchQuery: $azureExocomputeSearchQuery) {
-        azureCloudAccount {
-            id
-            name
-            nativeId
-            featureDetail {
-                feature
-                regions
-                status
-            }
-        }
-        configs {
-            configUuid
-            healthCheckStatus {
-                failureReason
-                lastUpdatedAt
-                status
-                taskchainId
-            }
-            isRscManaged
-            message
-            podOverlayNetworkCidr
-            podSubnetNativeId
-            region
-            subnetNativeId
-        }
-        exocomputeEligibleRegions
-        featureDetails {
-            feature
-            regions
-            status
-        }
-    }
-}`
-
-// allTargetMappings GraphQL query
-var allTargetMappingsQuery = `query SdkGolangAllTargetMappings($filter: [TargetMappingFilterInput!]) {
-    result: allTargetMappings(sortBy: NAME, sortOrder: ASC, filter: $filter) {
-        id
-        name
-        groupType
-        targetType
-        connectionStatus {
-            status
-        }
-        targetTemplate {
-            ... on AzureTargetTemplate {
-                cloudAccount {
-                    cloudAccountId
-                }
-                cloudNativeCompanion {
-                    cloudNativeLocTemplateType
-                    cmkInfo {
-                        keyName
-                        keyVaultName
-                        region
-                    }
-                    redundancy
-                    storageAccountRegion
-                    storageAccountTags {
-                        key
-                        value
-                    }
-                    storageTier
-                    subscriptionNativeId
-                }
-                containerNamePrefix
-                storageAccountName
-            }
-        }
-    }
-}`
-
 // azureCloudAccountPermissionConfig GraphQL query
-var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPermissionConfig($feature: CloudAccountFeature!) {
-    result: azureCloudAccountPermissionConfig(feature: $feature) {
+var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPermissionConfig($feature: CloudAccountFeature!, $permissionsGroups: [PermissionsGroup!]!) {
+    result: azureCloudAccountPermissionConfig(feature: $feature, permissionsGroups: $permissionsGroups) {
         permissionVersion
         permissionsGroupVersions {
             permissionsGroup
@@ -228,49 +139,6 @@ var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($af
     }
 }`
 
-// createCloudNativeAzureStorageSetting GraphQL query
-var createCloudNativeAzureStorageSettingQuery = `mutation SdkGolangCreateCloudNativeAzureStorageSetting(
-    $cloudAccountId:             UUID!,
-    $cloudNativeLocTemplateType: CloudNativeLocTemplateType!,
-    $cmkInfo:                    [AzureCmkInput!],
-    $containerName:              String!,
-    $name:                       String!,
-    $redundancy:                 AzureRedundancy!,
-    $storageTier:                AzureStorageTier!,
-    $subscriptionNativeId:       String!
-    $storageAccountName:         String!,
-    $storageAccountRegion:       AzureRegion,
-    $storageAccountTags:         TagsInput,
-) {
-    result: createCloudNativeAzureStorageSetting(input: {
-        cloudAccountId:              $cloudAccountId,
-        cloudNativeLocTemplateType:  $cloudNativeLocTemplateType,
-        cmkInfo:                     $cmkInfo,
-        containerName:               $containerName,
-        name:                        $name,
-        redundancy:                  $redundancy,
-        storageTier:                 $storageTier,
-        subscriptionNativeId:        $subscriptionNativeId
-        storageAccountName:          $storageAccountName,
-        storageAccountRegion:        $storageAccountRegion,
-        storageAccountTags:          $storageAccountTags,
-    }) {
-        targetMapping {
-            id
-        }
-    }
-}`
-
-// deleteAzureCloudAccountExocomputeConfigurations GraphQL query
-var deleteAzureCloudAccountExocomputeConfigurationsQuery = `mutation SdkGolangDeleteAzureCloudAccountExocomputeConfigurations($cloudAccountIds: [UUID!]!) {
-    result: deleteAzureCloudAccountExocomputeConfigurations(input: {
-        cloudAccountIds: $cloudAccountIds
-    }) {
-        deletionFailedIds
-        deletionSuccessIds
-    }
-}`
-
 // deleteAzureCloudAccountWithoutOauth GraphQL query
 var deleteAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteAzureCloudAccountWithoutOauth($subscriptionIds: [UUID!]!, $features: [CloudAccountFeature!]!) {
     result: deleteAzureCloudAccountWithoutOauth(input: {
@@ -282,16 +150,6 @@ var deleteAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteAzureClo
             isSuccess
             error
         }
-    }
-}`
-
-// mapAzureCloudAccountExocomputeSubscription GraphQL query
-var mapAzureCloudAccountExocomputeSubscriptionQuery = `mutation SdkGolangMapAzureCloudAccountExocomputeSubscription($exocomputeCloudAccountId: UUID!, $cloudAccountIds: [UUID!]!) {
-    result: mapAzureCloudAccountExocomputeSubscription(input: {
-        exocomputeCloudAccountId: $exocomputeCloudAccountId,
-        cloudAccountIds:          $cloudAccountIds
-    }) {
-        isSuccess
     }
 }`
 
@@ -334,15 +192,6 @@ var startDisableAzureNativeSubscriptionProtectionJobQuery = `mutation SdkGolangS
      }
  }`
 
-// unmapAzureCloudAccountExocomputeSubscription GraphQL query
-var unmapAzureCloudAccountExocomputeSubscriptionQuery = `mutation SdkGolangUnmapAzureCloudAccountExocomputeSubscription($cloudAccountIds: [UUID!]!) {
-    result: unmapAzureCloudAccountExocomputeSubscription(input: {
-        cloudAccountIds: $cloudAccountIds
-    }) {
-      isSuccess
-    }
-}`
-
 // updateAzureCloudAccount GraphQL query
 var updateAzureCloudAccountQuery = `mutation SdkGolangUpdateAzureCloudAccount($features: [CloudAccountFeature!]!, $regionsToAdd: [AzureCloudAccountRegion!], $regionsToRemove: [AzureCloudAccountRegion!], $subscriptions: [AzureCloudAccountSubscriptionInput!]!) {
     result: updateAzureCloudAccount(input: {
@@ -358,32 +207,21 @@ var updateAzureCloudAccountQuery = `mutation SdkGolangUpdateAzureCloudAccount($f
     }
 }`
 
-// updateCloudNativeAzureStorageSetting GraphQL query
-var updateCloudNativeAzureStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeAzureStorageSetting(
-    $id:                 UUID!,
-    $name:               String!,
-    $storageTier:        AzureStorageTier!,
-    $storageAccountTags: TagsInput!,
-    $cmkInfo:            [AzureCmkInput!],
-) {
-    result: updateCloudNativeAzureStorageSetting(input: {
-        id:                 $id,
-        name:               $name,
-        storageTier:        $storageTier,
-        storageAccountTags: $storageAccountTags,
-        cmkInfo:            $cmkInfo,
-    }) {
-        targetMapping {
-            id
-        }
-    }
-}`
-
 // upgradeAzureCloudAccountPermissionsWithoutOauth GraphQL query
 var upgradeAzureCloudAccountPermissionsWithoutOauthQuery = `mutation SdkGolangUpgradeAzureCloudAccountPermissionsWithoutOauth($cloudAccountId: UUID!, $feature: CloudAccountFeature!) {
     result: upgradeAzureCloudAccountPermissionsWithoutOauth(input: {
-        cloudAccountId: $cloudAccountId
+        cloudAccountId: $cloudAccountId,
         feature:        $feature,
+    }) {
+        status
+    }
+}`
+
+// upgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroups GraphQL query
+var upgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroupsQuery = `mutation SdkGolangUpgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroups($cloudAccountId: UUID!, $feature: UpgradeAzureCloudAccountFeatureInput!) {
+    result: upgradeAzureCloudAccountPermissionsWithoutOauth(input: {
+        cloudAccountId:   $cloudAccountId,
+        featureToUpgrade: [$feature],
     }) {
         status
     }
