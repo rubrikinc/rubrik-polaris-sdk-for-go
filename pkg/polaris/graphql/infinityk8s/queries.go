@@ -156,6 +156,17 @@ var jobInstanceQuery = `query SdkGolangJobInstance($id:String!, $clusterUuid: St
   }
 }`
 
+// k8sJobInstance GraphQL query
+var k8sJobInstanceQuery = `query SdkGolangK8sJobInstance($k8sJobId :String!, $clusterUuid: UUID!) {
+    k8sJobInstance(k8sJobId: $k8sJobId, clusterUuid: $clusterUuid) {
+        id
+        eventSeriesId
+        startTime
+        endTime
+        jobStatus
+    }
+}`
+
 // k8sObjectFid GraphQL query
 var k8sObjectFidQuery = `query SdkGolangK8sObjectFid($k8SObjectInternalIdArg: UUID!, $clusterUuid: UUID!) {
   k8sObjectFid(K8sObjectInternalIDArg: $k8SObjectInternalIdArg, clusterUuid: $clusterUuid)
