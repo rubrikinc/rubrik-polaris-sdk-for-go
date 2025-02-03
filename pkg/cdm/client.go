@@ -137,6 +137,19 @@ func (c *Client) Post(ctx context.Context, version APIVersion, endpoint string, 
 	return c.doRequest(req)
 }
 
+// Put sends a PUT request to the provided Rubrik API endpoint and returns the
+// response and status code.
+func (c *Client) Put(ctx context.Context, version APIVersion, endpoint string, payload any) ([]byte, int, error) {
+	c.Log.Print(log.Trace)
+
+	req, err := c.request(ctx, http.MethodPut, c.nodeIP, version, endpoint, payload)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return c.doRequest(req)
+}
+
 // Patch sends a PATCH request to the provided Rubrik API endpoint and returns
 // the response and status code.
 func (c *Client) Patch(ctx context.Context, version APIVersion, endpoint string, payload any) ([]byte, int, error) {

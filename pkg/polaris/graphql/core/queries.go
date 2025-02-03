@@ -51,3 +51,16 @@ var getKorgTaskchainStatusQuery = `query SdkGolangGetKorgTaskchainStatus($taskch
         }
     }
 }`
+
+// registerCluster GraphQL query
+var registerClusterQuery = `mutation SdkGolangRegisterCluster($managedByPolaris: Boolean, $nodeConfigs: [NodeRegistrationConfigsInput!], $isOfflineRegistration: Boolean) {
+    result: generateClusterRegistrationToken(input: {
+        managedByPolaris:      $managedByPolaris,
+        nodeConfigs:           $nodeConfigs,
+        isOfflineRegistration: $isOfflineRegistration,
+    }) {
+        token
+        pubkey
+        productType
+    }
+}`
