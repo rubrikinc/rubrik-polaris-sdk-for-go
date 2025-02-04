@@ -1,0 +1,11 @@
+mutation RubrikPolarisSDKRequest($managedByPolaris: Boolean, $nodeConfigs: [NodeRegistrationConfigsInput!], $isOfflineRegistration: Boolean) {
+    result: generateClusterRegistrationToken(input: {
+        managedByPolaris:      $managedByPolaris,
+        nodeConfigs:           $nodeConfigs,
+        isOfflineRegistration: $isOfflineRegistration,
+    }) {
+        token
+        pubkey
+        productType
+    }
+}
