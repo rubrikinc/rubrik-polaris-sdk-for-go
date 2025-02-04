@@ -72,7 +72,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("AuthToken: %s, Product Type: %s\n", authToken, productType)
+	fmt.Printf("Product Type: %s\n", productType)
 
 	// Finalize cluster registration.
 	mode, err := cdmClient.SetRegisteredMode(ctx, authToken)
