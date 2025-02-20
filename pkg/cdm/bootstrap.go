@@ -216,7 +216,7 @@ func (c *BootstrapClient) BootstrapCluster(ctx context.Context, nodeIP string, c
 	// If the bootstrap request was successful the response should contain a
 	// valid JSON object.
 	if jsonErr != nil {
-		return 0, fmt.Errorf("failed to unmarshal bootstrap status: %s", err)
+		return 0, fmt.Errorf("failed to unmarshal bootstrap status: %s", jsonErr)
 	}
 
 	return bootstrap.ID, nil
