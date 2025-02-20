@@ -194,14 +194,28 @@ func (c *BootstrapClient) BootstrapCluster(ctx context.Context, nodeIP string, c
 	if err != nil {
 		return 0, fmt.Errorf("failed POST request %q: %s", endpoint, err)
 	}
+
+	// We unmarshal the response from the bootstrap request early to capture
+	// potential error messages. Unmarshal errors are ignored at this time as
+	// certain responses could contain malformed JSON object.
+	var bootstrap struct {
+		ID     int    `json:"id"`
+		Status string `json:"status"`
+	}
+	jsonErr := json.Unmarshal(buf, &bootstrap)
+
 	if code != 202 {
-		return 0, fmt.Errorf("failed POST request %q: %s", endpoint, http.StatusText(code))
+		msg := fmt.Sprintf("%s (%d)", http.StatusText(code), code)
+		if bootstrap.Status != "" {
+			msg = fmt.Sprintf("%s: %s", msg, bootstrap.Status)
+		}
+
+		return 0, fmt.Errorf("failed POST request %q: %s", endpoint, msg)
 	}
 
-	var bootstrap struct {
-		ID int `json:"id"`
-	}
-	if err := json.Unmarshal(buf, &bootstrap); err != nil {
+	// If the bootstrap request was successful the response should contain a
+	// valid JSON object.
+	if jsonErr != nil {
 		return 0, fmt.Errorf("failed to unmarshal bootstrap status: %s", err)
 	}
 
