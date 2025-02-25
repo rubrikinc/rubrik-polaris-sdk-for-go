@@ -24,3 +24,5 @@
 /examples/gcp_project/gcp_permissions
 /examples/gcp_project/gcp_project
 /examples/gcp_project/gcp_project_with_set_sa
+/examples/roles/roles
+.idea

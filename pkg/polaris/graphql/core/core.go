@@ -255,21 +255,6 @@ const (
 	TaskChainUndoing   TaskChainState = "UNDOING"
 )
 
-// SLAAssignment represents the type of SLA assignment in Polaris.
-type SLAAssignment string
-
-const (
-	Derived    SLAAssignment = "Derived"
-	Direct     SLAAssignment = "Direct"
-	Unassigned SLAAssignment = "Unassigned"
-)
-
-// SLADomain represents a Polaris SLA domain.
-type SLADomain struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
 // API wraps around GraphQL clients to give them the Polaris Core API.
 type API struct {
 	Version string // Deprecated: use GQL.DeploymentVersion
