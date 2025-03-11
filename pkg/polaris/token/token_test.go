@@ -76,37 +76,34 @@ func TestTokenSetAsHeader(t *testing.T) {
 }
 
 func TestTokenSource(t *testing.T) {
-	ctx := context.Background()
-
 	client, lis := testnet.NewPipeNet()
 	src := NewUserSource(client, "http://test/api", "john", "doe")
 
 	// Respond with 200 and a valid token as long as the correct username and
 	// password are received.
-	srv := testnet.ServeJSON(lis, func(w http.ResponseWriter, req *http.Request) {
+	cancel := testnet.ServeJSON(lis, func(w http.ResponseWriter, req *http.Request) error {
 		var payload struct {
 			Username string
 			Password string
 		}
 		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return err
 		}
 
 		if payload.Username != "john" || payload.Password != "doe" {
 			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
+			return nil
 		}
 
-		json.NewEncoder(w).Encode(struct {
+		return json.NewEncoder(w).Encode(struct {
 			AccessToken string `json:"access_token"`
 		}{AccessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0I" +
 			"joxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0"})
 	})
-	defer srv.Shutdown(ctx)
+	defer assertCancel(t, cancel)
 
 	// Request token and verify that it's not expired.
-	token, err := src.token(ctx)
+	token, err := src.token(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,8 +113,6 @@ func TestTokenSource(t *testing.T) {
 }
 
 func TestTokenSourceWithBadCredentials(t *testing.T) {
-	ctx := context.Background()
-
 	tmpl, err := template.ParseFiles("testdata/auth_error_response.json")
 	if err != nil {
 		t.Fatal(err)
@@ -127,15 +122,13 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 	src := NewUserSource(client, "http://test/api", "john", "doe")
 
 	// Respond with status code 401 and additional details in the body.
-	srv := testnet.ServeJSON(lis, func(w http.ResponseWriter, req *http.Request) {
+	cancel := testnet.ServeJSON(lis, func(w http.ResponseWriter, req *http.Request) error {
 		w.WriteHeader(401)
-		if err := tmpl.Execute(w, nil); err != nil {
-			panic(err)
-		}
+		return tmpl.Execute(w, nil)
 	})
-	defer srv.Shutdown(ctx)
+	defer assertCancel(t, cancel)
 
-	_, err = src.token(ctx)
+	_, err = src.token(context.Background())
 	if err == nil {
 		t.Fatal("token request should fail")
 	}
@@ -145,18 +138,17 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 }
 
 func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
-	ctx := context.Background()
-
 	client, lis := testnet.NewPipeNet()
 	src := NewUserSource(client, "http://test/api", "john", "doe")
 
 	// Respond with status code 500 and no additional details.
-	srv := testnet.Serve(lis, func(w http.ResponseWriter, req *http.Request) {
+	cancel := testnet.Serve(lis, func(w http.ResponseWriter, req *http.Request) error {
 		w.WriteHeader(500)
+		return nil
 	})
-	defer srv.Shutdown(ctx)
+	defer assertCancel(t, cancel)
 
-	_, err := src.token(ctx)
+	_, err := src.token(context.Background())
 	if err == nil {
 		t.Fatal("token request should fail")
 	}
@@ -166,25 +158,32 @@ func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
 }
 
 func TestTokenSourceWithInternalServerErrorTextBody(t *testing.T) {
-	ctx := context.Background()
-
 	client, lis := testnet.NewPipeNet()
 	src := NewUserSource(client, "http://test/api", "john", "doe")
 
 	// Respond with status code 500 and no additional details.
-	srv := testnet.Serve(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := testnet.Serve(lis, func(w http.ResponseWriter, req *http.Request) error {
 		w.Header().Add("Content-Type", "text/plain")
 		w.WriteHeader(500)
 		w.Write([]byte("user database is corrupt"))
+		return nil
 	})
-	defer srv.Shutdown(ctx)
+	defer assertCancel(t, srv)
 
-	_, err := src.token(ctx)
+	_, err := src.token(context.Background())
 	if err == nil {
 		t.Fatal("token request should fail")
 	}
 	if !strings.HasSuffix(err.Error(),
 		"token response has Content-Type text/plain (status code 500): \"user database is corrupt\"") {
+		t.Fatal(err)
+	}
+}
+
+// assertCancel calls the cancel function and asserts it did not return an
+// error.
+func assertCancel(t *testing.T, cancel testnet.CancelFunc) {
+	if err := cancel(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }

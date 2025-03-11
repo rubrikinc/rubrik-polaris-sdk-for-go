@@ -36,16 +36,18 @@ import (
 )
 
 func TestValidateAndCreateAWSCloudAccountWithDuplicate(t *testing.T) {
+	tmpl, err := template.ParseFiles("testdata/validate_and_create_aws_cloud_account_response.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	client, lis := graphql.NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with an error indicating that the account has already been added.
-	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
-		tmpl := template.Must(template.ParseFiles("testdata/validate_and_create_aws_cloud_account_response.json"))
-
+	cancel := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) error {
 		buf, err := io.ReadAll(req.Body)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
+			return err
 		}
 
 		var payload struct {
@@ -56,25 +58,30 @@ func TestValidateAndCreateAWSCloudAccountWithDuplicate(t *testing.T) {
 			} `json:"variables"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			t.Fatal(err)
+			return err
 		}
 
-		err = tmpl.Execute(w, struct {
+		return tmpl.Execute(w, struct {
 			ID   string
 			Name string
 		}{ID: payload.Variables.ID, Name: payload.Variables.Name})
-		if err != nil {
-			panic(err)
-		}
 	})
-	defer srv.Shutdown(context.Background())
+	defer assertCancel(t, cancel)
 
-	_, err := Wrap(client).ValidateAndCreateCloudAccount(context.Background(),
+	_, err = Wrap(client).ValidateAndCreateCloudAccount(context.Background(),
 		"123456789012", "123456789012 : default", []core.Feature{core.FeatureCloudNativeProtection})
 	if err == nil {
 		t.Fatal("expected ValidateAndCreateCloudAccount to fail")
 	}
 	if msg := err.Error(); !strings.HasPrefix(msg, "invalid account: You do not need to add 123456789012") {
 		t.Errorf("invalid error: %v", err)
+	}
+}
+
+// assertCancel calls the cancel function and asserts it did not return an
+// error.
+func assertCancel(t *testing.T, cancel testnet.CancelFunc) {
+	if err := cancel(context.Background()); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -60,11 +60,10 @@ func TestKorgTaskChainStatus(t *testing.T) {
 	coreAPI := Wrap(client)
 
 	// Respond with status code 200 and a valid body.
-	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	cancel := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) error {
 		buf, err := io.ReadAll(req.Body)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
+			return err
 		}
 
 		var payload struct {
@@ -74,18 +73,15 @@ func TestKorgTaskChainStatus(t *testing.T) {
 			} `json:"variables,omitempty"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			t.Fatal(err)
+			return err
 		}
 
-		err = tmpl.Execute(w, struct {
+		return tmpl.Execute(w, struct {
 			ChainState string
 			ChainUUID  string
 		}{ChainState: "RUNNING", ChainUUID: payload.Variables.TaskChainID})
-		if err != nil {
-			panic(err)
-		}
 	})
-	defer srv.Shutdown(context.Background())
+	defer assertCancel(t, cancel)
 
 	id := uuid.MustParse("b48e7ad0-7b86-4c96-b6ba-97eb6a82f765")
 	taskChain, err := coreAPI.KorgTaskChainStatus(context.Background(), id)
@@ -115,11 +111,10 @@ func TestWaitForTaskChain(t *testing.T) {
 	// Respond with status code 200 and a valid body. The First 2 responses have
 	// state RUNNING. The Third response is SUCCEEDED.
 	reqCount := 3
-	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	cancel := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) error {
 		buf, err := io.ReadAll(req.Body)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
+			return err
 		}
 
 		var payload struct {
@@ -129,7 +124,7 @@ func TestWaitForTaskChain(t *testing.T) {
 			} `json:"variables,omitempty"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			t.Fatal(err)
+			return err
 		}
 
 		reqCount--
@@ -137,15 +132,12 @@ func TestWaitForTaskChain(t *testing.T) {
 		if reqCount == 0 {
 			chainState = "SUCCEEDED"
 		}
-		err = tmpl.Execute(w, struct {
+		return tmpl.Execute(w, struct {
 			ChainState string
 			ChainUUID  string
 		}{ChainState: chainState, ChainUUID: payload.Variables.TaskChainID})
-		if err != nil {
-			panic(err)
-		}
 	})
-	defer srv.Shutdown(context.Background())
+	defer assertCancel(t, cancel)
 
 	id := uuid.MustParse("b48e7ad0-7b86-4c96-b6ba-97eb6a82f765")
 	state, err := coreAPI.WaitForTaskChain(context.Background(), id, 5*time.Millisecond)
@@ -154,5 +146,13 @@ func TestWaitForTaskChain(t *testing.T) {
 	}
 	if state != "SUCCEEDED" {
 		t.Errorf("invalid task chain state: %v", state)
+	}
+}
+
+// assertCancel calls the cancel function and asserts it did not return an
+// error.
+func assertCancel(t *testing.T, cancel testnet.CancelFunc) {
+	if err := cancel(context.Background()); err != nil {
+		t.Fatal(err)
 	}
 }

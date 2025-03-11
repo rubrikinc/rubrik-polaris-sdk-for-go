@@ -31,10 +31,6 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-const (
-	defaultWait = 30 * time.Second
-)
-
 // NodeConfig holds node configuration for the cluster.
 type NodeConfig struct {
 	Name         string
@@ -107,25 +103,15 @@ type ClusterConfig struct {
 	StorageConfig        StorageConfig
 }
 
-// BootstrapClient is used to make bootstrap API calls to the CDM platform.
-type BootstrapClient struct {
-	*client
-	Log log.Logger
+// BootstrapAPI is used to make bootstrap API calls to the CDM platform.
+type BootstrapAPI struct {
+	client *Client
+	log    log.Logger
 }
 
-// NewBootstrapClient creates a new bootstrap client from the provided Rubrik
-// cluster credentials.
-func NewBootstrapClient(allowInsecureTLS bool) *BootstrapClient {
-	return NewBootstrapClientWithLogger(allowInsecureTLS, log.DiscardLogger{})
-}
-
-// NewBootstrapClientWithLogger creates a new bootstrap client from the provided
-// Rubrik cluster credentials.
-func NewBootstrapClientWithLogger(allowInsecureTLS bool, logger log.Logger) *BootstrapClient {
-	return &BootstrapClient{
-		client: newClient(allowInsecureTLS),
-		Log:    logger,
-	}
+// WrapBootstrap the client in the Bootstrap API.
+func WrapBootstrap(client *Client) BootstrapAPI {
+	return BootstrapAPI{client: client, log: client.Log}
 }
 
 // BootstrapCluster starts the bootstrap process for a Rubrik cluster and
@@ -138,10 +124,10 @@ func NewBootstrapClientWithLogger(allowInsecureTLS bool, logger log.Logger) *Boo
 //
 // Bootstrapping a Rubrik cluster requires a single node to have its management
 // interface configured.
-func (c *BootstrapClient) BootstrapCluster(ctx context.Context, nodeIP string, config ClusterConfig, timeout time.Duration) (int, error) {
-	c.Log.Print(log.Trace)
+func (c BootstrapAPI) BootstrapCluster(ctx context.Context, config ClusterConfig, timeout time.Duration, waitTime time.Duration) (int, error) {
+	c.log.Print(log.Trace)
 
-	ok, err := c.IsBootstrapped(ctx, nodeIP, timeout)
+	ok, err := c.IsBootstrapped(ctx, timeout, waitTime)
 	if err != nil {
 		return 0, fmt.Errorf("failed to check cluster bootstrap status: %s", err)
 	}
@@ -190,7 +176,7 @@ func (c *BootstrapClient) BootstrapCluster(ctx context.Context, nodeIP string, c
 	}
 
 	endpoint := "/cluster/me/bootstrap"
-	buf, code, err := c.post(ctx, nodeIP, endpoint, Internal, bootstrapConfig)
+	buf, code, err := c.client.Post(ctx, Internal, endpoint, bootstrapConfig)
 	if err != nil {
 		return 0, fmt.Errorf("failed POST request %q: %s", endpoint, err)
 	}
@@ -226,12 +212,12 @@ func (c *BootstrapClient) BootstrapCluster(ctx context.Context, nodeIP string, c
 // otherwise. The cluster can be rebooted at any time when this function runs,
 // the timeout parameter controls how long we wait for the cluster to become
 // responsive again.
-func (c *BootstrapClient) IsBootstrapped(ctx context.Context, nodeIP string, timeout time.Duration) (bool, error) {
-	c.Log.Print(log.Trace)
+func (c BootstrapAPI) IsBootstrapped(ctx context.Context, timeout time.Duration, waitTime time.Duration) (bool, error) {
+	c.log.Print(log.Trace)
 
 	var failure time.Time
 	for {
-		buf, code, err := c.get(ctx, nodeIP, "/node_management/is_bootstrapped", Internal)
+		buf, code, err := c.client.Get(ctx, Internal, "/node_management/is_bootstrapped")
 		if err == nil && code == 200 {
 			var isBootstrapped struct {
 				Value bool `json:"value"`
@@ -253,11 +239,10 @@ func (c *BootstrapClient) IsBootstrapped(ctx context.Context, nodeIP string, tim
 			failure = time.Now()
 		}
 		if time.Since(failure) > timeout {
-			return false, err
+			return false, fmt.Errorf("timeout waiting for bootstrap status: %s", err)
 		}
-
-		c.Log.Printf(log.Debug, "Request returned: %s, retrying", err)
-		time.Sleep(defaultWait)
+		c.log.Printf(log.Debug, "Request returned: %s, retrying", err)
+		time.Sleep(waitTime)
 	}
 }
 
@@ -265,12 +250,12 @@ func (c *BootstrapClient) IsBootstrapped(ctx context.Context, nodeIP string, tim
 // fails. The cluster can be rebooted at any time when this function runs, the
 // timeout parameter controls how long we wait for the cluster to become
 // responsive again.
-func (c *BootstrapClient) WaitForBootstrap(ctx context.Context, nodeIP string, requestID int, timeout time.Duration) error {
-	c.Log.Print(log.Trace)
+func (c BootstrapAPI) WaitForBootstrap(ctx context.Context, requestID int, timeout time.Duration, waitTime time.Duration) error {
+	c.log.Print(log.Trace)
 
 	var failure time.Time
 	for {
-		res, code, err := c.get(ctx, nodeIP, fmt.Sprintf("/cluster/me/bootstrap?request_id=%d", requestID), Internal)
+		res, code, err := c.client.Get(ctx, Internal, fmt.Sprintf("/cluster/me/bootstrap?request_id=%d", requestID))
 		if err == nil && code == 200 {
 			failure = time.Time{}
 
@@ -283,8 +268,8 @@ func (c *BootstrapClient) WaitForBootstrap(ctx context.Context, nodeIP string, r
 			}
 			switch bootstrap.Status {
 			case "IN_PROGRESS":
-				c.Log.Print(log.Debug, "Bootstrap in progress")
-				time.Sleep(defaultWait)
+				c.log.Printf(log.Debug, "Bootstrap in progress: %s", bootstrap.Message)
+				time.Sleep(waitTime)
 				continue
 			case "FAILURE", "FAILED":
 				return fmt.Errorf("bootstrap failed: %s", bootstrap.Message)
@@ -303,11 +288,11 @@ func (c *BootstrapClient) WaitForBootstrap(ctx context.Context, nodeIP string, r
 			failure = time.Now()
 		}
 		if time.Since(failure) > timeout {
-			return err
+			return fmt.Errorf("timeout waiting for bootstrap: %s", err)
 		}
 
-		c.Log.Printf(log.Debug, "Request returned: %s, retrying", err)
-		time.Sleep(defaultWait)
+		c.log.Printf(log.Debug, "Request returned: %s, retrying", err)
+		time.Sleep(waitTime)
 	}
 }
 
@@ -342,26 +327,4 @@ func wrapCloudStorageProvider(config StorageConfig) StorageConfig {
 	default:
 		return nil
 	}
-}
-
-func (c *BootstrapClient) get(ctx context.Context, nodeIP, endpoint string, version APIVersion) ([]byte, int, error) {
-	c.Log.Print(log.Trace)
-
-	req, err := c.request(ctx, http.MethodGet, nodeIP, version, endpoint, nil)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return c.doRequest(req)
-}
-
-func (c *BootstrapClient) post(ctx context.Context, nodeIP, endpoint string, version APIVersion, payload any) ([]byte, int, error) {
-	c.Log.Print(log.Trace)
-
-	req, err := c.request(ctx, http.MethodPost, nodeIP, version, endpoint, payload)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return c.doRequest(req)
 }

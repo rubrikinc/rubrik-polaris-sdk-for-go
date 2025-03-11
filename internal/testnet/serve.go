@@ -1,4 +1,4 @@
-// Copyright 2021 Rubrik, Inc.
+// Copyright 2025 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -21,55 +21,69 @@
 package testnet
 
 import (
+	"context"
 	"net"
 	"net/http"
+	"sync"
 )
 
-// Serve serves the handler function over HTTP by accepting incoming connections
-// on the specified listener. Intended to be used with a pipenet in unit tests.
-func Serve(lis net.Listener, handler http.HandlerFunc) *http.Server {
-	server := &http.Server{Handler: handler}
-	go server.Serve(lis)
-	return server
-}
+// CancelFunc stops the serving of the HandlerFunc function and returns any
+// error encountered while serving the function.
+type CancelFunc func(ctx context.Context) error
 
-// ServeJSON serves the handler function using HTTP by accepting incoming
-// connections on the specified listener. The response content-type is set to
-// application/json. Intended to be used with a pipenet in unit tests.
-func ServeJSON(lis net.Listener, handler http.HandlerFunc) *http.Server {
-	return Serve(lis, func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		handler(w, req)
-	})
-}
+// HandlerFunc is a function that handles HTTP/HTTPS requests.
+// Any error returned from the function will be returned by the CancelFunc
+// function.
+type HandlerFunc func(http.ResponseWriter, *http.Request) error
 
-// ServeWithStaticToken serves the handler function and tokens using HTTP by
-// accepting incoming connections on specified listener. Intended to be used
-// with a pipenet in unit tests.
-func ServeWithStaticToken(lis net.Listener, handler http.HandlerFunc) *http.Server {
-	mux := &http.ServeMux{}
-	mux.HandleFunc("/api/session", func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{
-			"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0",
-			"is_eula_accepted": true
-		}`))
-	})
-	mux.HandleFunc("/api/graphql", func(w http.ResponseWriter, req *http.Request) {
-		handler(w, req)
-	})
-	server := &http.Server{Handler: mux}
-	go server.Serve(lis)
-	return server
-}
+// serverFunc is a function that starts a server serving the HandlerFunc
+// function until canceled by the CancelFunc.
+type serverFunc func(lis net.Listener, server *http.Server) error
 
-// ServeJSONWithStaticToken serves the handler function and tokens using HTTP by
-// accepting incoming connections on specified listener. The response
-// content-type is set to application/json. Intended to be used with a pipenet
-// in unit tests.
-func ServeJSONWithStaticToken(lis net.Listener, handler http.HandlerFunc) *http.Server {
-	return ServeWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		handler(w, req)
-	})
+// serve starts a server, using the serverFunc, serving the HandlerFunc function
+// until canceled by the CancelFunc.
+func serve(lis net.Listener, server serverFunc, handler HandlerFunc) CancelFunc {
+	ch := make(chan error)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	srv := &http.Server{
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			rb := newResponseBuffer(w)
+			if err := handler(rb, req); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					ch <- err
+				}()
+				return
+			}
+			rb.copyTo(w)
+		}),
+	}
+
+	go func() {
+		defer wg.Done()
+		if err := server(lis, srv); err != nil {
+			ch <- err
+		}
+	}()
+
+	return func(ctx context.Context) error {
+		err := srv.Shutdown(ctx)
+
+		// Flush the channel, keeping the first error encountered.
+		for e := range ch {
+			if err == nil {
+				err = e
+			}
+		}
+
+		return err
+	}
 }

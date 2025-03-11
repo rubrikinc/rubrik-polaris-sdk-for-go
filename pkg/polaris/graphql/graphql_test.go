@@ -40,13 +40,11 @@ func TestRequestUnauthenticated(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 401 and additional details in the body.
-	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	cancel := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) error {
 		w.WriteHeader(401)
-		if err := tmpl.Execute(w, nil); err != nil {
-			panic(err)
-		}
+		return tmpl.Execute(w, nil)
 	})
-	defer srv.Shutdown(context.Background())
+	defer assertCancel(t, cancel)
 
 	_, err = client.Request(context.Background(), "me { name }", nil)
 	if err == nil {
@@ -66,13 +64,11 @@ func TestRequestWithInternalServerErrorJSONBody(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 500 and additional details in the JSON body.
-	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	cancel := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) error {
 		w.WriteHeader(500)
-		if err := tmpl.Execute(w, nil); err != nil {
-			panic(err)
-		}
+		return tmpl.Execute(w, nil)
 	})
-	defer srv.Shutdown(context.Background())
+	defer assertCancel(t, cancel)
 
 	_, err = client.Request(context.Background(), "me { name }", nil)
 	if err == nil {
@@ -88,10 +84,11 @@ func TestRequestWithInternalServerErrorNoBody(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 500 and no additional details.
-	srv := testnet.ServeWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	cancel := testnet.ServeWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) error {
 		w.WriteHeader(500)
+		return nil
 	})
-	defer srv.Shutdown(context.Background())
+	defer assertCancel(t, cancel)
 
 	_, err := client.Request(context.Background(), "me { name }", nil)
 	if err == nil {
@@ -106,12 +103,13 @@ func TestRequestWithInternalServerErrorTextBody(t *testing.T) {
 	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
 
 	// Respond with status code 500 and additional details in the text body.
-	srv := testnet.ServeWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	cancel := testnet.ServeWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) error {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(500)
 		w.Write([]byte("database is corrupt"))
+		return nil
 	})
-	defer srv.Shutdown(context.Background())
+	defer assertCancel(t, cancel)
 
 	_, err := client.Request(context.Background(), "me { name }", nil)
 	if err == nil {
@@ -152,5 +150,13 @@ func TestExtractOperationName(t *testing.T) {
 				t.Fatalf("%q returned %q, expected %q", tc.query, op, tc.expectedOp)
 			}
 		})
+	}
+}
+
+// assertCancel calls the cancel function and asserts it did not return an
+// error.
+func assertCancel(t *testing.T, cancel testnet.CancelFunc) {
+	if err := cancel(context.Background()); err != nil {
+		t.Fatal(err)
 	}
 }

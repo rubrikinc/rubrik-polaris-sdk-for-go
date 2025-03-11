@@ -22,6 +22,7 @@ package testnet
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"net"
 	"net/http"
@@ -91,6 +92,7 @@ func NewPipeNet() (*http.Client, *TestListener) {
 	}
 	transport = transport.Clone()
 	transport.DialContext = dialer
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	client := &http.Client{
 		Transport: transport,
