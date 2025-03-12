@@ -38,18 +38,18 @@ type Client struct {
 }
 
 // NewClient creates a new client without any cluster credentials.
-func NewClient(nodeIP string, allowInsecureTLS bool) (*Client, error) {
+func NewClient(nodeIP string, allowInsecureTLS bool) *Client {
 	return NewClientWithLogger(nodeIP, allowInsecureTLS, log.DiscardLogger{})
 }
 
 // NewClientWithLogger creates a new client without any cluster credentials.
 // The client logs to the provided logger.
-func NewClientWithLogger(nodeIP string, allowInsecureTLS bool, logger log.Logger) (*Client, error) {
+func NewClientWithLogger(nodeIP string, allowInsecureTLS bool, logger log.Logger) *Client {
 	return &Client{
 		client: newClient(allowInsecureTLS),
 		nodeIP: nodeIP,
 		Log:    logger,
-	}, nil
+	}
 }
 
 // NewClientFromCredentials creates a new client from the provided Rubrik
