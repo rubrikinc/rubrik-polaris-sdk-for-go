@@ -90,7 +90,7 @@ func requestToken(ctx context.Context, client *http.Client, tokenURL string, req
 			snippet = snippet[:512]
 		}
 		return nil, fmt.Errorf("token response has Content-Type %s (status code %d): %q",
-			contentType, res.StatusCode, snippet)
+			contentType, res.StatusCode, strings.TrimSpace(snippet))
 	}
 
 	// Remote responded with a JSON document. Try to parse it as an error

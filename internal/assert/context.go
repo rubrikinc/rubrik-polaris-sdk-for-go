@@ -18,48 +18,19 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package testnet
+package assert
 
 import (
-	"bytes"
-	"net/http"
+	"context"
+	"testing"
 )
 
-// responseBuffer is a http.ResponseWriter that buffers the response, so that a
-// different response can be sent if an error occurs while generating the
-// response.
-type responseBuffer struct {
-	header     http.Header
-	statusCode int
-	buffer     *bytes.Buffer
-}
-
-func newResponseBuffer(w http.ResponseWriter) *responseBuffer {
-	return &responseBuffer{
-		header:     w.Header().Clone(),
-		statusCode: 200,
-		buffer:     &bytes.Buffer{},
-	}
-}
-
-func (rb *responseBuffer) Header() http.Header {
-	return rb.header
-}
-
-func (rb *responseBuffer) Write(data []byte) (int, error) {
-	return rb.buffer.Write(data)
-}
-
-func (rb *responseBuffer) WriteHeader(statusCode int) {
-	rb.statusCode = statusCode
-}
-
-func (rb *responseBuffer) copyTo(w http.ResponseWriter) {
-	h := w.Header()
-	for key, val := range rb.header {
-		h[key] = val
+// Context asserts that the context doesn't contain an error. Afterward, the
+// context is canceled.
+func Context(t *testing.T, ctx context.Context, cancel context.CancelCauseFunc) {
+	if ctx.Err() != nil {
+		t.Fatalf("context contains an error: %s", context.Cause(ctx))
 	}
 
-	w.WriteHeader(rb.statusCode)
-	w.Write(rb.buffer.Bytes())
+	cancel(nil)
 }

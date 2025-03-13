@@ -26,13 +26,14 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testnet"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 func TestValidateAndCreateAWSCloudAccountWithDuplicate(t *testing.T) {
@@ -41,13 +42,15 @@ func TestValidateAndCreateAWSCloudAccountWithDuplicate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client, lis := graphql.NewTestClient("john", "doe", log.DiscardLogger{})
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
 
 	// Respond with an error indicating that the account has already been added.
-	cancel := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) error {
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
 		buf, err := io.ReadAll(req.Body)
 		if err != nil {
-			return err
+			cancel(err)
+			return
 		}
 
 		var payload struct {
@@ -58,30 +61,25 @@ func TestValidateAndCreateAWSCloudAccountWithDuplicate(t *testing.T) {
 			} `json:"variables"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return err
+			cancel(err)
+			return
 		}
 
-		return tmpl.Execute(w, struct {
+		if err := tmpl.Execute(w, struct {
 			ID   string
 			Name string
-		}{ID: payload.Variables.ID, Name: payload.Variables.Name})
-	})
-	defer assertCancel(t, cancel)
+		}{ID: payload.Variables.ID, Name: payload.Variables.Name}); err != nil {
+			cancel(err)
+		}
+	}))
+	defer srv.Close()
 
-	_, err = Wrap(client).ValidateAndCreateCloudAccount(context.Background(),
+	_, err = Wrap(graphql.NewTestClient(srv)).ValidateAndCreateCloudAccount(ctx,
 		"123456789012", "123456789012 : default", []core.Feature{core.FeatureCloudNativeProtection})
 	if err == nil {
 		t.Fatal("expected ValidateAndCreateCloudAccount to fail")
 	}
 	if msg := err.Error(); !strings.HasPrefix(msg, "invalid account: You do not need to add 123456789012") {
 		t.Errorf("invalid error: %v", err)
-	}
-}
-
-// assertCancel calls the cancel function and asserts it did not return an
-// error.
-func assertCancel(t *testing.T, cancel testnet.CancelFunc) {
-	if err := cancel(context.Background()); err != nil {
-		t.Fatal(err)
 	}
 }
