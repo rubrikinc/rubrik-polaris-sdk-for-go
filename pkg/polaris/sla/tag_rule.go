@@ -23,6 +23,7 @@ package sla
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -96,10 +97,19 @@ func (a API) TagRules(ctx context.Context, nameFilter string) ([]sla.TagRule, er
 		})
 	}
 
+	// List tag rules for all object types. Note, if a customer account doesn't
+	// have access to one of the object types, a GQL error with status code 403
+	// is returned. Ignore those object types.
 	var tagRules []sla.TagRule
 	for _, objectType := range tagRuleObjectTypes {
 		objectTypeTagRules, err := sla.ListTagRules(ctx, a.client, objectType, filter)
 		if err != nil {
+			var gqlErr graphql.GQLError
+			if errors.As(err, &gqlErr) {
+				if gqlErr.Code() == 403 {
+					continue
+				}
+			}
 			return nil, fmt.Errorf("failed to list tag rules: %s", err)
 		}
 		tagRules = append(tagRules, objectTypeTagRules...)

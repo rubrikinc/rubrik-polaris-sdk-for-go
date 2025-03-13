@@ -65,10 +65,13 @@ type TagRuleFilter struct {
 func ListTagRules(ctx context.Context, gql *graphql.Client, objectType string, filters []TagRuleFilter) ([]TagRule, error) {
 	gql.Log().Print(log.Trace)
 
+	// Skip retries when listing tag rules since some object types can result
+	// in an error classified as a temporary error, even though it will never
+	// succeed.
 	query := cloudNativeTagRulesQuery
-	buf, err := gql.Request(ctx, query, struct {
+	buf, err := gql.RequestWithoutRetry(ctx, query, struct {
 		ObjectType string          `json:"objectType"`
-		Filters    []TagRuleFilter `json:"filters"`
+		Filters    []TagRuleFilter `json:"filters,omitempty"`
 	}{ObjectType: objectType, Filters: filters})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
