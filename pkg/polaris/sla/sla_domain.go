@@ -95,6 +95,7 @@ func (a API) GlobalSLADomainProtectedObjects(ctx context.Context, slaID uuid.UUI
 
 	objects, err := sla.ListSLADomainProtectedObjects(ctx, a.client, slaID, sla.ProtectedObjectFilter{
 		ObjectName:                      nameFilter,
+		ProtectionStatus:                sla.ProtectionStatusUnspecified,
 		ShowOnlyDirectlyAssignedObjects: true,
 	})
 	if err != nil {

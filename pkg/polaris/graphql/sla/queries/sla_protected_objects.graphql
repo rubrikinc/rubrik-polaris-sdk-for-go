@@ -4,15 +4,12 @@ query RubrikPolarisSDKRequest($slaIds: [UUID!]!, $after: String, $filter: GetPro
         after:  $after
         filter: $filter
     ) {
-        edges {
-            cursor
-            node {
-                id
-                name
-                objectType
-                effectiveSla
-                protectionStatus
-            }
+        nodes {
+            id
+            name
+            objectType
+            effectiveSla
+            protectionStatus
         }
         pageInfo {
             endCursor

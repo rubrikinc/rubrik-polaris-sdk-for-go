@@ -295,7 +295,17 @@ const (
 type ProtectionStatus string
 
 const (
-	Protected   ProtectionStatus = "PROTECTED"
-	Relic       ProtectionStatus = "RELIC"
-	Unprotected ProtectionStatus = "UNPROTECTED"
+	ProtectionStatusUnspecified ProtectionStatus = "PROTECTION_STATUS_UNSPECIFIED"
+	ProtectionStatusProtected   ProtectionStatus = "PROTECTED"
+	ProtectionStatusRelic       ProtectionStatus = "RELIC"
+	ProtectionStatusUnprotected ProtectionStatus = "UNPROTECTED"
+)
+
+type ExistingSnapshotRetention string
+
+const (
+	NotApplicable     ExistingSnapshotRetention = "NOT_APPLICABLE"
+	RetainSnapshots   ExistingSnapshotRetention = "RETAIN_SNAPSHOTS"
+	KeepForever       ExistingSnapshotRetention = "KEEP_FOREVER"
+	ExpireImmediately ExistingSnapshotRetention = "EXPIRE_IMMEDIATELY"
 )

@@ -146,7 +146,7 @@ func ListSLADomainProtectedObjects(ctx context.Context, gql *graphql.Client, sla
 		buf, err := gql.Request(ctx, query, struct {
 			SLAID  []uuid.UUID           `json:"slaIds"`
 			After  string                `json:"after,omitempty"`
-			Filter ProtectedObjectFilter `json:"filter,omitempty"`
+			Filter ProtectedObjectFilter `json:"filter"`
 		}{SLAID: []uuid.UUID{slaID}, After: cursor, Filter: filter})
 		if err != nil {
 			return nil, graphql.RequestError(query, err)

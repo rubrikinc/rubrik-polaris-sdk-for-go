@@ -264,10 +264,11 @@ func DeleteGlobalSLADomain(ctx context.Context, gql *graphql.Client, slaID uuid.
 // AssignSLAParams holds the parameters for an RSC global SLA domain assignment
 // operation.
 type AssignSLAParams struct {
-	SLAID                  *uuid.UUID          `json:"slaOptionalId,omitempty"`
-	SLADomainAssignType    SLADomainAssignType `json:"slaDomainAssignType"`
-	ObjectIDs              []uuid.UUID         `json:"objectIds"`
-	ApplicableWorkloadType string              `json:"applicableWorkloadType,omitempty"`
+	SLAID                     *uuid.UUID                `json:"slaOptionalId,omitempty"`
+	SLADomainAssignType       SLADomainAssignType       `json:"slaDomainAssignType"`
+	ObjectIDs                 []uuid.UUID               `json:"objectIds"`
+	ApplicableWorkloadType    string                    `json:"applicableWorkloadType,omitempty"`
+	ExistingSnapshotRetention ExistingSnapshotRetention `json:"existingSnapshotRetention,omitempty"`
 }
 
 // AssignSLADomain assigns the specified RSC global SLA domain to the specified

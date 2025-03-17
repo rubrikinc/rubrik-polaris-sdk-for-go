@@ -25,12 +25,19 @@
 package sla
 
 // assignSla GraphQL query
-var assignSlaQuery = `mutation SdkGolangAssignSla($slaOptionalId: UUID, $slaDomainAssignType: SlaAssignTypeEnum!, $objectIds: [UUID!]!, $applicableWorkloadType: WorkloadLevelHierarchy) {
+var assignSlaQuery = `mutation SdkGolangAssignSla(
+    $slaOptionalId:             UUID,
+    $slaDomainAssignType:       SlaAssignTypeEnum!,
+    $objectIds:                 [UUID!]!,
+    $applicableWorkloadType:    WorkloadLevelHierarchy,
+    $existingSnapshotRetention: GlobalExistingSnapshotRetention
+) {
     result: assignSla(input: {
-        slaOptionalId:          $slaOptionalId,
-        slaDomainAssignType:    $slaDomainAssignType,
-        objectIds:              $objectIds,
-        applicableWorkloadType: $applicableWorkloadType
+        slaOptionalId:             $slaOptionalId,
+        slaDomainAssignType:       $slaDomainAssignType,
+        objectIds:                 $objectIds,
+        applicableWorkloadType:    $applicableWorkloadType
+        existingSnapshotRetention: $existingSnapshotRetention,
     }) {
         success
     }
@@ -267,15 +274,12 @@ var slaProtectedObjectsQuery = `query SdkGolangSlaProtectedObjects($slaIds: [UUI
         after:  $after
         filter: $filter
     ) {
-        edges {
-            cursor
-            node {
-                id
-                name
-                objectType
-                effectiveSla
-                protectionStatus
-            }
+        nodes {
+            id
+            name
+            objectType
+            effectiveSla
+            protectionStatus
         }
         pageInfo {
             endCursor
