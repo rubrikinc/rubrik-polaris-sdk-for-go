@@ -82,10 +82,26 @@ func (a API) GlobalSLADomains(ctx context.Context, nameFilter string) ([]sla.Glo
 	}
 	slaDomains, err := sla.ListSLADomains(ctx, a.client, filters)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list global SLAs: %s", err)
+		return nil, fmt.Errorf("failed to list global SLA domains: %s", err)
 	}
 
 	return slaDomains, nil
+}
+
+// GlobalSLADomainProtectedObjects returns all objects protected by the global
+// SLA domain matching the specified name filter.
+func (a API) GlobalSLADomainProtectedObjects(ctx context.Context, slaID uuid.UUID, nameFilter string) ([]sla.ProtectedObject, error) {
+	a.log.Print(log.Trace)
+
+	objects, err := sla.ListSLADomainProtectedObjects(ctx, a.client, slaID, sla.ProtectedObjectFilter{
+		ObjectName:                      nameFilter,
+		ShowOnlyDirectlyAssignedObjects: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list protected objects for SLA domain %q: %s", slaID, err)
+	}
+
+	return objects, nil
 }
 
 // CreateGlobalSLADomain creates a new global SLA domain with specified

@@ -69,7 +69,7 @@ type GlobalSLADomain struct {
 	Version           string                 `json:"version"`
 }
 
-// SLADomainFilter holds the filter for an SLA domain list operation.
+// SLADomainFilter holds the filter parameters for an SLA domain list operation.
 type SLADomainFilter struct {
 	Field string `json:"field"`
 	Value string `json:"text"`
@@ -107,9 +107,67 @@ func ListSLADomains(ctx context.Context, gql *graphql.Client, filters []SLADomai
 		if err := json.Unmarshal(buf, &payload); err != nil {
 			return nil, graphql.UnmarshalError(query, err)
 		}
-		for _, node := range payload.Data.Result.Nodes {
-			nodes = append(nodes, node)
+		nodes = append(nodes, payload.Data.Result.Nodes...)
+		if !payload.Data.Result.PageInfo.HasNextPage {
+			break
 		}
+		cursor = payload.Data.Result.PageInfo.EndCursor
+	}
+
+	return nodes, nil
+}
+
+// ProtectedObject represents an object protected by an RSC global SLA domain.
+type ProtectedObject struct {
+	ID                 uuid.UUID        `json:"id"`
+	Name               string           `json:"name"`
+	ObjectType         string           `json:"objectType"`
+	EffectiveSLADomain string           `json:"effectiveSla"`
+	ProtectionStatus   ProtectionStatus `json:"protectionStatus"`
+}
+
+// ProtectedObjectFilter holds the filter parameters for a protected object list
+// operation.
+type ProtectedObjectFilter struct {
+	ObjectName                      string           `json:"objectName"`
+	ProtectionStatus                ProtectionStatus `json:"protectionStatus"`
+	ShowOnlyDirectlyAssignedObjects bool             `json:"showOnlyDirectlyAssignedObjects"`
+}
+
+// ListSLADomainProtectedObjects returns all objects protected by the specified
+// RSC global SLA domain.
+func ListSLADomainProtectedObjects(ctx context.Context, gql *graphql.Client, slaID uuid.UUID, filter ProtectedObjectFilter) ([]ProtectedObject, error) {
+	gql.Log().Print(log.Trace)
+
+	var cursor string
+	var nodes []ProtectedObject
+	for {
+		query := slaProtectedObjectsQuery
+		buf, err := gql.Request(ctx, query, struct {
+			SLAID  []uuid.UUID           `json:"slaIds"`
+			After  string                `json:"after,omitempty"`
+			Filter ProtectedObjectFilter `json:"filter,omitempty"`
+		}{SLAID: []uuid.UUID{slaID}, After: cursor, Filter: filter})
+		if err != nil {
+			return nil, graphql.RequestError(query, err)
+		}
+		graphql.LogResponse(gql.Log(), query, buf)
+
+		var payload struct {
+			Data struct {
+				Result struct {
+					Nodes    []ProtectedObject `json:"nodes"`
+					PageInfo struct {
+						EndCursor   string `json:"endCursor"`
+						HasNextPage bool   `json:"hasNextPage"`
+					} `json:"pageInfo"`
+				} `json:"result"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(buf, &payload); err != nil {
+			return nil, graphql.UnmarshalError(query, err)
+		}
+		nodes = append(nodes, payload.Data.Result.Nodes...)
 		if !payload.Data.Result.PageInfo.HasNextPage {
 			break
 		}

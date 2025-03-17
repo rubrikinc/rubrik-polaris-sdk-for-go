@@ -289,3 +289,13 @@ const (
 	DoNotProtect   SLADomainAssignType = "doNotProtect"
 	ProtectWithSLA SLADomainAssignType = "protectWithSlaId"
 )
+
+// ProtectionStatus represents the protection status of an object protected by
+// an RSC global SLA domain.
+type ProtectionStatus string
+
+const (
+	Protected   ProtectionStatus = "PROTECTED"
+	Relic       ProtectionStatus = "RELIC"
+	Unprotected ProtectionStatus = "UNPROTECTED"
+)

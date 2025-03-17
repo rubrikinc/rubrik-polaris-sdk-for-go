@@ -1,0 +1,22 @@
+query RubrikPolarisSDKRequest($slaIds: [UUID!]!, $after: String, $filter: GetProtectedObjectsFilterInput) {
+    result: slaProtectedObjects(
+        slaIds: $slaIds
+        after:  $after
+        filter: $filter
+    ) {
+        edges {
+            cursor
+            node {
+                id
+                name
+                objectType
+                effectiveSla
+                protectionStatus
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}

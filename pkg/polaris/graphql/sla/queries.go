@@ -260,6 +260,30 @@ var slaDomainsQuery = `query SdkGolangSlaDomains($after: String, $filter: [Globa
     }
 }`
 
+// slaProtectedObjects GraphQL query
+var slaProtectedObjectsQuery = `query SdkGolangSlaProtectedObjects($slaIds: [UUID!]!, $after: String, $filter: GetProtectedObjectsFilterInput) {
+    result: slaProtectedObjects(
+        slaIds: $slaIds
+        after:  $after
+        filter: $filter
+    ) {
+        edges {
+            cursor
+            node {
+                id
+                name
+                objectType
+                effectiveSla
+                protectionStatus
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
 // updateCloudNativeTagRule GraphQL query
 var updateCloudNativeTagRuleQuery = `mutation SdkGolangUpdateCloudNativeTagRule(
     $tagRuleId:               UUID!,
