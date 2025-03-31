@@ -21,29 +21,25 @@
 package cdm
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
+	"net/http/httptest"
+	"net/url"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// errorMessage returns an error message from the specified response and HTTP
-// status code.
-func errorMessage(res []byte, code int) string {
-	msg := fmt.Sprintf("%s (%d)", http.StatusText(code), code)
-
-	var cdmErr struct {
-		Type    string `json:"errorType"`
-		Message string `json:"message"`
-	}
-	if err := json.Unmarshal(res, &cdmErr); err == nil {
-		if cdmErr.Type != "" && cdmErr.Message != "" {
-			return fmt.Sprintf("%s: %s: %s", msg, cdmErr.Type, cdmErr.Message)
-		}
+// testClient
+func testClient(testServer *httptest.Server) *Client {
+	u, err := url.Parse(testServer.URL)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse test server url: %s", err))
 	}
 
-	if res := string(res); res != "" {
-		msg = fmt.Sprintf("%s: %s", msg, res)
+	return &Client{
+		client: &client{
+			client: testServer.Client(),
+		},
+		nodeIP: u.Host,
+		Log:    &log.DiscardLogger{},
 	}
-
-	return msg
 }

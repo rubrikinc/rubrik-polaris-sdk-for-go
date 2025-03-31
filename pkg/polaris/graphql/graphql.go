@@ -42,11 +42,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"time"
 
 	internalerrors "github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/errors"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testnet"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/token"
 )
@@ -95,19 +95,21 @@ func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSe
 }
 
 // NewTestClient returns a new Client intended to be used by unit tests.
-func NewTestClient(username, password string, logger log.Logger) (*Client, *testnet.TestListener) {
-	testClient, listener := testnet.NewPipeNet()
-	tokenSource := token.NewUserSourceWithLogger(testClient, "http://test/api/session", username, password, logger)
+func NewTestClient(testServer *httptest.Server) *Client {
+	tokenSource := token.NewTestUserSource(testServer, "username", "password")
+	return NewTestClientWithTokenSource(testServer, tokenSource)
+}
 
-	client := &Client{
-		gqlURL: "http://test/api/graphql",
+// NewTestClientWithTokenSource returns a new Client with a custom token source
+// intended to be used by unit tests.
+func NewTestClientWithTokenSource(testServer *httptest.Server, tokenSource token.Source) *Client {
+	return &Client{
+		gqlURL: testServer.URL + "/api/graphql",
 		client: &http.Client{
-			Transport: token.NewRoundTripper(testClient.Transport, tokenSource),
+			Transport: token.NewRoundTripper(testServer.Client().Transport, tokenSource),
 		},
-		log: logger,
+		log: &log.DiscardLogger{},
 	}
-
-	return client, listener
 }
 
 // DeploymentVersion returns the deployed version of RSC.

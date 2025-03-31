@@ -26,25 +26,30 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testnet"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 func TestValidateAndCreateAWSCloudAccountWithDuplicate(t *testing.T) {
-	client, lis := graphql.NewTestClient("john", "doe", log.DiscardLogger{})
+	tmpl, err := template.ParseFiles("testdata/validate_and_create_aws_cloud_account_response.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
 
 	// Respond with an error indicating that the account has already been added.
-	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
-		tmpl := template.Must(template.ParseFiles("testdata/validate_and_create_aws_cloud_account_response.json"))
-
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
 		buf, err := io.ReadAll(req.Body)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			cancel(err)
 			return
 		}
 
@@ -56,20 +61,20 @@ func TestValidateAndCreateAWSCloudAccountWithDuplicate(t *testing.T) {
 			} `json:"variables"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			t.Fatal(err)
+			cancel(err)
+			return
 		}
 
-		err = tmpl.Execute(w, struct {
+		if err := tmpl.Execute(w, struct {
 			ID   string
 			Name string
-		}{ID: payload.Variables.ID, Name: payload.Variables.Name})
-		if err != nil {
-			panic(err)
+		}{ID: payload.Variables.ID, Name: payload.Variables.Name}); err != nil {
+			cancel(err)
 		}
-	})
-	defer srv.Shutdown(context.Background())
+	}))
+	defer srv.Close()
 
-	_, err := Wrap(client).ValidateAndCreateCloudAccount(context.Background(),
+	_, err = Wrap(graphql.NewTestClient(srv)).ValidateAndCreateCloudAccount(ctx,
 		"123456789012", "123456789012 : default", []core.Feature{core.FeatureCloudNativeProtection})
 	if err == nil {
 		t.Fatal("expected ValidateAndCreateCloudAccount to fail")
