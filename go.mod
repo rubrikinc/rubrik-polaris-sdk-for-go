@@ -1,6 +1,6 @@
 module github.com/rubrikinc/rubrik-polaris-sdk-for-go
 
-go 1.21
+go 1.23.0
 
 require (
 	github.com/Azure/azure-sdk-for-go v55.6.0+incompatible
@@ -12,12 +12,12 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.1.2
 	github.com/aws/aws-sdk-go-v2/service/organizations v1.1.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.2.0
-	github.com/golang-jwt/jwt/v4 v4.5.1
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/uuid v1.3.1
 	github.com/kr/pretty v0.1.0
 	golang.org/x/oauth2 v0.11.0
-	golang.org/x/sync v0.10.0
-	golang.org/x/text v0.21.0
+	golang.org/x/sync v0.11.0
+	golang.org/x/text v0.22.0
 	google.golang.org/api v0.128.0
 )
 
@@ -47,9 +47,9 @@ require (
 	github.com/kr/text v0.1.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/crypto v0.35.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231002182017-d307bd883b97 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231016165738-49dd2c1f3d0b // indirect
