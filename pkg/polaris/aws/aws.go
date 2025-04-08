@@ -208,36 +208,31 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 			return CloudAccount{}, fmt.Errorf("failed to parse identity: %s", err)
 		}
 
-		// We need to list all accounts and filter on the cloud account id since
-		// the API that looks up cloud accounts returns archived accounts too.
-		accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, "")
-		if err != nil {
-			return CloudAccount{}, fmt.Errorf("failed to get account: %s", err)
-		}
+		return a.AccountByID(ctx, feature, cloudAccountID)
+	}
 
-		// Find the exact match.
-		for _, accountWithFeatures := range accountsWithFeatures {
-			if accountWithFeatures.Account.ID == cloudAccountID {
-				return toCloudAccount(accountWithFeatures), nil
-			}
-		}
-	} else {
-		// We need to list accounts and filter on the native id since there is
-		// no API to look up an account by native id.
-		accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, identity.id)
-		if err != nil {
-			return CloudAccount{}, fmt.Errorf("failed to get account: %s", err)
-		}
+	return a.AccountByNativeID(ctx, feature, identity.id)
+}
 
-		// Find the exact match.
-		for _, accountWithFeatures := range accountsWithFeatures {
-			if accountWithFeatures.Account.NativeID == identity.id {
-				return toCloudAccount(accountWithFeatures), nil
-			}
+// AccountByID returns the account with the specified feature and RSC cloud
+// account ID.
+func (a API) AccountByID(ctx context.Context, feature core.Feature, id uuid.UUID) (CloudAccount, error) {
+	a.log.Print(log.Trace)
+
+	// We need to list all accounts and filter on the cloud account id since
+	// the API that looks up cloud accounts returns archived accounts too.
+	accounts, err := a.Accounts(ctx, feature, "")
+	if err != nil {
+		return CloudAccount{}, fmt.Errorf("failed to get account by cloud account id: %s", err)
+	}
+
+	for _, account := range accounts {
+		if account.ID == id {
+			return account, nil
 		}
 	}
 
-	return CloudAccount{}, fmt.Errorf("account %w", graphql.ErrNotFound)
+	return CloudAccount{}, fmt.Errorf("account %q %w", id, graphql.ErrNotFound)
 }
 
 // AccountByNativeID returns the account with the specified feature and native
@@ -245,6 +240,8 @@ func (a API) Account(ctx context.Context, id IdentityFunc, feature core.Feature)
 func (a API) AccountByNativeID(ctx context.Context, feature core.Feature, nativeID string) (CloudAccount, error) {
 	a.log.Print(log.Trace)
 
+	// We need to list accounts and filter on the native id since there is
+	// no API to look up an account by native id.
 	accounts, err := a.Accounts(ctx, feature, nativeID)
 	if err != nil {
 		return CloudAccount{}, fmt.Errorf("failed to get account by native id: %s", err)
