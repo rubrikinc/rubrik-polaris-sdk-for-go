@@ -23,10 +23,95 @@ package sla
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+)
+
+// CloudNativeTagObjectType represents the valid object type values when
+// creating a cloud native tag rule.
+type CloudNativeTagObjectType string
+
+const (
+	TagObjectAWSEBSVolume                  CloudNativeTagObjectType = "AWS_EBS_VOLUME"
+	TagObjectAWSEC2Instance                CloudNativeTagObjectType = "AWS_EC2_INSTANCE"
+	TagObjectAWSRDSInstance                CloudNativeTagObjectType = "AWS_RDS_INSTANCE"
+	TagObjectAWSS3Bucket                   CloudNativeTagObjectType = "AWS_S3_BUCKET"
+	TagObjectAzureManagedDisk              CloudNativeTagObjectType = "AZURE_MANAGED_DISK"
+	TagObjectAzureSQLDatabaseDB            CloudNativeTagObjectType = "AZURE_SQL_DATABASE_DB"
+	TagObjectAzureSQLDatabaseServer        CloudNativeTagObjectType = "AZURE_SQL_DATABASE_SERVER"
+	TagObjectAzureSQLManagedInstanceServer CloudNativeTagObjectType = "AZURE_SQL_MANAGED_INSTANCE_SERVER"
+	TagObjectAzureStorageAccount           CloudNativeTagObjectType = "AZURE_STORAGE_ACCOUNT"
+	TagObjectAzureVirtualMachine           CloudNativeTagObjectType = "AZURE_VIRTUAL_MACHINE"
+)
+
+// AllCloudNativeTagObjectTypesAsStrings returns all cloud native tag object
+// types as a slice of strings.
+func AllCloudNativeTagObjectTypesAsStrings() []string {
+	return []string{
+		string(TagObjectAWSEBSVolume),
+		string(TagObjectAWSEC2Instance),
+		string(TagObjectAWSRDSInstance),
+		string(TagObjectAWSS3Bucket),
+		string(TagObjectAzureManagedDisk),
+		string(TagObjectAzureSQLDatabaseDB),
+		string(TagObjectAzureSQLDatabaseServer),
+		string(TagObjectAzureSQLManagedInstanceServer),
+		string(TagObjectAzureStorageAccount),
+		string(TagObjectAzureVirtualMachine),
+	}
+}
+
+var managedObjectTypeMap = map[ManagedObjectType]CloudNativeTagObjectType{
+	AWSNativeEBSVolume:            TagObjectAWSEBSVolume,
+	AWSNativeEC2Instance:          TagObjectAWSEC2Instance,
+	AWSNativeRDSInstance:          TagObjectAWSRDSInstance,
+	AWSNativeS3Bucket:             TagObjectAWSS3Bucket,
+	AzureManagedDisk:              TagObjectAzureManagedDisk,
+	AzureSQLDatabaseDB:            TagObjectAzureSQLDatabaseDB,
+	AzureSQLDatabaseServer:        TagObjectAzureSQLDatabaseServer,
+	AzureSQLManagedInstanceServer: TagObjectAzureSQLManagedInstanceServer,
+	AzureStorageAccount:           TagObjectAzureStorageAccount,
+	AzureVirtualMachine:           TagObjectAzureVirtualMachine,
+}
+
+// FromManagedObjectType returns the corresponding CloudNativeTagObjectType for
+// the given ManagedObjectType.
+func FromManagedObjectType(objectType ManagedObjectType) (CloudNativeTagObjectType, error) {
+	if tagObjectType, ok := managedObjectTypeMap[objectType]; ok {
+		return tagObjectType, nil
+	}
+
+	return "", fmt.Errorf("unsupported managed object type: %s", objectType)
+}
+
+// ManagedObjectType represents the object type of managed objects.
+type ManagedObjectType string
+
+const (
+	AWSNativeAccount                   ManagedObjectType = "AWS_NATIVE_ACCOUNT"
+	AWSNativeEBSVolume                 ManagedObjectType = "AWS_NATIVE_EBS_VOLUME"
+	AWSNativeEC2Instance               ManagedObjectType = "AWS_NATIVE_EC2_INSTANCE"
+	AWSNativeRDSInstance               ManagedObjectType = "AWS_NATIVE_RDS_INSTANCE"
+	AWSNativeS3Bucket                  ManagedObjectType = "AWS_NATIVE_S3_BUCKET"
+	AzureManagedDisk                   ManagedObjectType = "AZURE_MANAGED_DISK"
+	AzureResourceGroup                 ManagedObjectType = "AZURE_RESOURCE_GROUP"
+	AzureResourceGroupForVMHierarchy   ManagedObjectType = "AZURE_RESOURCE_GROUP_FOR_VM_HIERARCHY"
+	AzureResourceGroupFprDiskHierarchy ManagedObjectType = "AZURE_RESOURCE_GROUP_FOR_DISK_HIERARCHY"
+	AzureSQLDatabaseDB                 ManagedObjectType = "AZURE_SQL_DATABASE_DB"
+	AzureSQLDatabaseServer             ManagedObjectType = "AZURE_SQL_DATABASE_SERVER"
+	AzureSQLManagedInstanceDB          ManagedObjectType = "AZURE_SQL_MANAGED_INSTANCE_DB"
+	AzureSQLManagedInstanceServer      ManagedObjectType = "AZURE_SQL_MANAGED_INSTANCE_SERVER"
+	AzureStorageAccount                ManagedObjectType = "AZURE_STORAGE_ACCOUNT"
+	AzureSubscription                  ManagedObjectType = "AZURE_SUBSCRIPTION"
+	AzureUnmanagedDisk                 ManagedObjectType = "AZURE_UNMANAGED_DISK"
+	AzureVirtualMachine                ManagedObjectType = "AZURE_VIRTUAL_MACHINE"
+	CloudNativeTagRule                 ManagedObjectType = "CLOUD_NATIVE_TAG_RULE"
+	GCPNativeDisk                      ManagedObjectType = "GCP_NATIVE_DISK"
+	GCPNativeGCEInstance               ManagedObjectType = "GCP_NATIVE_GCE_INSTANCE"
+	GCPNativeProject                   ManagedObjectType = "GCP_NATIVE_PROJECT"
 )
 
 // TagRule represents an RSC tag rule. Note, the ID field of the EffectiveSLA
@@ -41,7 +126,7 @@ type TagRule struct {
 		ID   uuid.UUID `json:"id"`
 		Name string    `json:"name"`
 	} `json:"cloudNativeAccounts"`
-	EffectiveSLA struct {
+	EffectiveDomain struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"effectiveSla"`

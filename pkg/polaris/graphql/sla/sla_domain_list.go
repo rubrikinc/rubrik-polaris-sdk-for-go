@@ -29,8 +29,8 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// GlobalSLADomain represents an RSC global SLA domain.
-type GlobalSLADomain struct {
+// Domain represents a global SLA domain.
+type Domain struct {
 	ArchivalSpecs []struct {
 		Frequencies    []RetentionUnit `json:"frequencies"`
 		Threshold      int             `json:"threshold"`
@@ -62,31 +62,31 @@ type GlobalSLADomain struct {
 		AzureSQLDatabaseDBConfig        *AzureDBConfig `json:"azureSqlDatabaseDbConfig"`
 		AzureSQLManagedInstanceDBConfig *AzureDBConfig `json:"azureSqlManagedInstanceDbConfig"`
 	} `json:"objectSpecificConfigs"`
-	ObjectTypes       []SLAObjectType        `json:"objectTypes"`
-	RetentionLock     bool                   `json:"isRetentionLockedSla"`
-	RetentionLockMode RetentionLockMode      `json:"retentionLockMode"`
-	SnapshotSchedule  GlobalSnapshotSchedule `json:"snapshotSchedule"`
-	Version           string                 `json:"version"`
+	ObjectTypes       []ObjectType      `json:"objectTypes"`
+	RetentionLock     bool              `json:"isRetentionLockedSla"`
+	RetentionLockMode RetentionLockMode `json:"retentionLockMode"`
+	SnapshotSchedule  SnapshotSchedule  `json:"snapshotSchedule"`
+	Version           string            `json:"version"`
 }
 
-// SLADomainFilter holds the filter parameters for an SLA domain list operation.
-type SLADomainFilter struct {
+// DomainFilter holds the filter parameters for an SLA domain list operation.
+type DomainFilter struct {
 	Field string `json:"field"`
 	Value string `json:"text"`
 }
 
-// ListSLADomains returns all RSC global SLA domains matching the specified SLA
-// domain filters.
-func ListSLADomains(ctx context.Context, gql *graphql.Client, filters []SLADomainFilter) ([]GlobalSLADomain, error) {
+// ListDomains returns all global SLA domains matching the specified SLA domain
+// filters.
+func ListDomains(ctx context.Context, gql *graphql.Client, filters []DomainFilter) ([]Domain, error) {
 	gql.Log().Print(log.Trace)
 
 	var cursor string
-	var nodes []GlobalSLADomain
+	var nodes []Domain
 	for {
 		query := slaDomainsQuery
 		buf, err := gql.Request(ctx, query, struct {
-			After  string            `json:"after,omitempty"`
-			Filter []SLADomainFilter `json:"filter,omitempty"`
+			After  string         `json:"after,omitempty"`
+			Filter []DomainFilter `json:"filter,omitempty"`
 		}{After: cursor, Filter: filters})
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
@@ -96,7 +96,7 @@ func ListSLADomains(ctx context.Context, gql *graphql.Client, filters []SLADomai
 		var payload struct {
 			Data struct {
 				Result struct {
-					Nodes    []GlobalSLADomain `json:"nodes"`
+					Nodes    []Domain `json:"nodes"`
 					PageInfo struct {
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`
@@ -117,37 +117,37 @@ func ListSLADomains(ctx context.Context, gql *graphql.Client, filters []SLADomai
 	return nodes, nil
 }
 
-// ProtectedObject represents an object protected by an RSC global SLA domain.
-type ProtectedObject struct {
-	ID                 uuid.UUID        `json:"id"`
-	Name               string           `json:"name"`
-	ObjectType         string           `json:"objectType"`
-	EffectiveSLADomain string           `json:"effectiveSla"`
-	ProtectionStatus   ProtectionStatus `json:"protectionStatus"`
+// Object represents an object protected by an RSC global SLA domain.
+type Object struct {
+	ID                uuid.UUID        `json:"id"`
+	Name              string           `json:"name"`
+	ObjectType        string           `json:"objectType"`
+	EffectiveDomainID string           `json:"effectiveSla"`
+	ProtectionStatus  ProtectionStatus `json:"protectionStatus"`
 }
 
 // ProtectedObjectFilter holds the filter parameters for a protected object list
 // operation.
 type ProtectedObjectFilter struct {
-	ObjectName                      string           `json:"objectName"`
-	ProtectionStatus                ProtectionStatus `json:"protectionStatus"`
-	ShowOnlyDirectlyAssignedObjects bool             `json:"showOnlyDirectlyAssignedObjects"`
+	ObjectName                  string           `json:"objectName"`
+	ProtectionStatus            ProtectionStatus `json:"protectionStatus"`
+	OnlyDirectlyAssignedObjects bool             `json:"showOnlyDirectlyAssignedObjects"`
 }
 
-// ListSLADomainProtectedObjects returns all objects protected by the specified
-// RSC global SLA domain.
-func ListSLADomainProtectedObjects(ctx context.Context, gql *graphql.Client, slaID uuid.UUID, filter ProtectedObjectFilter) ([]ProtectedObject, error) {
+// ListDomainObjects returns all objects protected by the specified global SLA
+// domain.
+func ListDomainObjects(ctx context.Context, gql *graphql.Client, slaID uuid.UUID, filter ProtectedObjectFilter) ([]Object, error) {
 	gql.Log().Print(log.Trace)
 
 	var cursor string
-	var nodes []ProtectedObject
+	var nodes []Object
 	for {
 		query := slaProtectedObjectsQuery
 		buf, err := gql.Request(ctx, query, struct {
-			SLAID  []uuid.UUID           `json:"slaIds"`
-			After  string                `json:"after,omitempty"`
-			Filter ProtectedObjectFilter `json:"filter"`
-		}{SLAID: []uuid.UUID{slaID}, After: cursor, Filter: filter})
+			DomainID []uuid.UUID           `json:"slaIds"`
+			After    string                `json:"after,omitempty"`
+			Filter   ProtectedObjectFilter `json:"filter"`
+		}{DomainID: []uuid.UUID{slaID}, After: cursor, Filter: filter})
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
 		}
@@ -156,7 +156,7 @@ func ListSLADomainProtectedObjects(ctx context.Context, gql *graphql.Client, sla
 		var payload struct {
 			Data struct {
 				Result struct {
-					Nodes    []ProtectedObject `json:"nodes"`
+					Nodes    []Object `json:"nodes"`
 					PageInfo struct {
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`

@@ -28,7 +28,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -40,10 +40,10 @@ type NativeAccount struct {
 		Region        RegionEnum `json:"region"`
 		HasExocompute bool       `json:"isExocomputeConfigured"`
 	} `json:"regionSpecs"`
-	Status     string             `json:"status"`
-	Assignment core.SLAAssignment `json:"slaAssignment"`
-	Configured core.SLADomain     `json:"configuredSlaDomain"`
-	Effective  core.SLADomain     `json:"effectiveSlaDomain"`
+	Status     string         `json:"status"`
+	Assignment sla.Assignment `json:"slaAssignment"`
+	Configured sla.Domain     `json:"configuredSlaDomain"`
+	Effective  sla.Domain     `json:"effectiveSlaDomain"`
 }
 
 // NativeAccount returns the native account with the specified RSC native

@@ -26,18 +26,22 @@ package sla
 
 // assignSla GraphQL query
 var assignSlaQuery = `mutation SdkGolangAssignSla(
-    $slaOptionalId:             UUID,
-    $slaDomainAssignType:       SlaAssignTypeEnum!,
-    $objectIds:                 [UUID!]!,
-    $applicableWorkloadType:    WorkloadLevelHierarchy,
-    $existingSnapshotRetention: GlobalExistingSnapshotRetention
+    $slaOptionalId:                   UUID,
+    $slaDomainAssignType:             SlaAssignTypeEnum!,
+    $objectIds:                       [UUID!]!,
+    $applicableWorkloadType:          WorkloadLevelHierarchy,
+    $existingSnapshotRetention:       GlobalExistingSnapshotRetention,
+    $shouldApplyToExistingSnapshots:  Boolean,
+    $shouldApplyToNonPolicySnapshots: Boolean,
 ) {
     result: assignSla(input: {
-        slaOptionalId:             $slaOptionalId,
-        slaDomainAssignType:       $slaDomainAssignType,
-        objectIds:                 $objectIds,
-        applicableWorkloadType:    $applicableWorkloadType
-        existingSnapshotRetention: $existingSnapshotRetention,
+        slaOptionalId:                   $slaOptionalId,
+        slaDomainAssignType:             $slaDomainAssignType,
+        objectIds:                       $objectIds,
+        applicableWorkloadType:          $applicableWorkloadType
+        existingSnapshotRetention:       $existingSnapshotRetention,
+        shouldApplyToExistingSnapshots:  $shouldApplyToExistingSnapshots,
+        shouldApplyToNonPolicySnapshots: $shouldApplyToNonPolicySnapshots,
     }) {
         success
     }

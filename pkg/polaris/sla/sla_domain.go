@@ -31,86 +31,85 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// GlobalSLADomainByID returns the global SLA domain with the specified ID.
-func (a API) GlobalSLADomainByID(ctx context.Context, slaID uuid.UUID) (sla.GlobalSLADomain, error) {
+// DomainByID returns the global SLA domain with the specified ID.
+func (a API) DomainByID(ctx context.Context, domainID uuid.UUID) (sla.Domain, error) {
 	a.log.Print(log.Trace)
 
-	slaDomains, err := a.GlobalSLADomains(ctx, "")
+	domains, err := a.Domains(ctx, "")
 	if err != nil {
-		return sla.GlobalSLADomain{}, err
+		return sla.Domain{}, err
 	}
 
-	for _, slaDomain := range slaDomains {
-		if slaDomain.ID == slaID {
-			return slaDomain, nil
+	for _, domain := range domains {
+		if domain.ID == domainID {
+			return domain, nil
 		}
 	}
 
-	return sla.GlobalSLADomain{}, fmt.Errorf("global SLA domain %q %w", slaID, graphql.ErrNotFound)
+	return sla.Domain{}, fmt.Errorf("global SLA domain %q %w", domainID, graphql.ErrNotFound)
 }
 
-// GlobalSLADomainByName returns the global SLA domain with the specified name.
-func (a API) GlobalSLADomainByName(ctx context.Context, name string) (sla.GlobalSLADomain, error) {
+// DomainByName returns the global SLA domain with the specified name.
+func (a API) DomainByName(ctx context.Context, name string) (sla.Domain, error) {
 	a.log.Print(log.Trace)
 
-	slaDomains, err := a.GlobalSLADomains(ctx, name)
+	domains, err := a.Domains(ctx, name)
 	if err != nil {
-		return sla.GlobalSLADomain{}, err
+		return sla.Domain{}, err
 	}
 
 	name = strings.ToLower(name)
-	for _, slaDomain := range slaDomains {
-		if strings.ToLower(slaDomain.Name) == name {
-			return slaDomain, nil
+	for _, domain := range domains {
+		if strings.ToLower(domain.Name) == name {
+			return domain, nil
 		}
 	}
 
-	return sla.GlobalSLADomain{}, fmt.Errorf("global SLA domain %q %w", name, graphql.ErrNotFound)
+	return sla.Domain{}, fmt.Errorf("global SLA domain %q %w", name, graphql.ErrNotFound)
 }
 
-// GlobalSLADomains returns all global SLA domains matching the specified name
-// filter.
-func (a API) GlobalSLADomains(ctx context.Context, nameFilter string) ([]sla.GlobalSLADomain, error) {
+// Domains returns all global SLA domains matching the specified name filter.
+func (a API) Domains(ctx context.Context, nameFilter string) ([]sla.Domain, error) {
 	a.log.Print(log.Trace)
 
-	var filters []sla.SLADomainFilter
+	var filters []sla.DomainFilter
 	if nameFilter != "" {
-		filters = append(filters, sla.SLADomainFilter{
+		filters = append(filters, sla.DomainFilter{
 			Field: "NAME",
 			Value: nameFilter,
 		})
 	}
-	slaDomains, err := sla.ListSLADomains(ctx, a.client, filters)
+	domains, err := sla.ListDomains(ctx, a.client, filters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list global SLA domains: %s", err)
 	}
 
-	return slaDomains, nil
+	return domains, nil
 }
 
-// GlobalSLADomainProtectedObjects returns all objects protected by the global
-// SLA domain matching the specified name filter.
-func (a API) GlobalSLADomainProtectedObjects(ctx context.Context, slaID uuid.UUID, nameFilter string) ([]sla.ProtectedObject, error) {
+// DomainObjects returns all objects protected by the global SLA domain matching
+// the specified name filter. Note that doNotProtect can be used as the domain
+// ID to list all objects assigned as Do Not Protect.
+func (a API) DomainObjects(ctx context.Context, domainID uuid.UUID, nameFilter string) ([]sla.Object, error) {
 	a.log.Print(log.Trace)
 
-	objects, err := sla.ListSLADomainProtectedObjects(ctx, a.client, slaID, sla.ProtectedObjectFilter{
-		ObjectName:                      nameFilter,
-		ProtectionStatus:                sla.ProtectionStatusUnspecified,
-		ShowOnlyDirectlyAssignedObjects: true,
+	objects, err := sla.ListDomainObjects(ctx, a.client, domainID, sla.ProtectedObjectFilter{
+		ObjectName:                  nameFilter,
+		ProtectionStatus:            sla.StatusUnspecified,
+		OnlyDirectlyAssignedObjects: true,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list protected objects for SLA domain %q: %s", slaID, err)
+		return nil, fmt.Errorf("failed to list objects for SLA domain %q: %s", domainID, err)
 	}
 
 	return objects, nil
 }
 
-// CreateGlobalSLADomain creates a new global SLA domain with specified
-// parameters.
-func (a API) CreateGlobalSLADomain(ctx context.Context, createParams sla.CreateGlobalSLAParams) (uuid.UUID, error) {
+// CreateDomain creates a new global SLA domain with specified parameters.
+func (a API) CreateDomain(ctx context.Context, createParams sla.CreateDomainParams) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	id, err := sla.CreateGlobalSLADomain(ctx, a.client, createParams)
+	id, err := sla.CreateDomain(ctx, a.client, createParams)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create global SLA domain: %s", err)
 	}
@@ -118,23 +117,23 @@ func (a API) CreateGlobalSLADomain(ctx context.Context, createParams sla.CreateG
 	return id, nil
 }
 
-// DeleteGlobalSLADomain deletes the global SLA domain with the specified ID.
-func (a API) DeleteGlobalSLADomain(ctx context.Context, slaID uuid.UUID) error {
+// DeleteDomain deletes the global SLA domain with the specified ID.
+func (a API) DeleteDomain(ctx context.Context, slaID uuid.UUID) error {
 	a.log.Print(log.Trace)
 
-	if err := sla.DeleteGlobalSLADomain(ctx, a.client, slaID); err != nil {
+	if err := sla.DeleteDomain(ctx, a.client, slaID); err != nil {
 		return fmt.Errorf("failed delete global SLA domain: %s", err)
 	}
 
 	return nil
 }
 
-// AssignSLADomain assigns the specified global SLA domain according to the
+// AssignDomain assigns the specified global SLA domain according to the
 // assignment parameters.
-func (a API) AssignSLADomain(ctx context.Context, assignParams sla.AssignSLAParams) error {
+func (a API) AssignDomain(ctx context.Context, assignParams sla.AssignDomainParams) error {
 	a.log.Print(log.Trace)
 
-	if err := sla.AssignSLADomain(ctx, a.client, assignParams); err != nil {
+	if err := sla.AssignDomain(ctx, a.client, assignParams); err != nil {
 		return fmt.Errorf("failed to assign global SLA domain: %s", err)
 	}
 

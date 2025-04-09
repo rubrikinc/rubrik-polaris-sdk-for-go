@@ -125,116 +125,31 @@ func AllMonthsAsStrings() []string {
 	}
 }
 
-// CloudNativeTagObjectType represents the valid object type values when
-// creating a cloud native tag rule.
-type CloudNativeTagObjectType string
+// ObjectType represents the object type an SLA domain is applicable to.
+type ObjectType string
 
 const (
-	TagObjectAWSEBSVolume                  CloudNativeTagObjectType = "AWS_EBS_VOLUME"
-	TagObjectAWSEC2Instance                CloudNativeTagObjectType = "AWS_EC2_INSTANCE"
-	TagObjectAWSRDSInstance                CloudNativeTagObjectType = "AWS_RDS_INSTANCE"
-	TagObjectAWSS3Bucket                   CloudNativeTagObjectType = "AWS_S3_BUCKET"
-	TagObjectAzureManagedDisk              CloudNativeTagObjectType = "AZURE_MANAGED_DISK"
-	TagObjectAzureSQLDatabaseDB            CloudNativeTagObjectType = "AZURE_SQL_DATABASE_DB"
-	TagObjectAzureSQLDatabaseServer        CloudNativeTagObjectType = "AZURE_SQL_DATABASE_SERVER"
-	TagObjectAzureSQLManagedInstanceServer CloudNativeTagObjectType = "AZURE_SQL_MANAGED_INSTANCE_SERVER"
-	TagObjectAzureStorageAccount           CloudNativeTagObjectType = "AZURE_STORAGE_ACCOUNT"
-	TagObjectAzureVirtualMachine           CloudNativeTagObjectType = "AZURE_VIRTUAL_MACHINE"
+	ObjectAWSEC2EBS               ObjectType = "AWS_EC2_EBS_OBJECT_TYPE"
+	ObjectAWSRDS                  ObjectType = "AWS_RDS_OBJECT_TYPE"
+	ObjectAWSS3                   ObjectType = "AWS_S3_OBJECT_TYPE"
+	ObjectAzure                   ObjectType = "AZURE_OBJECT_TYPE"
+	ObjectAzureSQLDatabase        ObjectType = "AZURE_SQL_DATABASE_OBJECT_TYPE"
+	ObjectAzureSQLManagedInstance ObjectType = "AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE"
+	ObjectAzureBlob               ObjectType = "AZURE_BLOB_OBJECT_TYPE"
+	ObjectGCP                     ObjectType = "GCP_OBJECT_TYPE"
 )
 
-// AllCloudNativeTagObjectTypesAsStrings returns all cloud native tag object
-// types as a slice of strings.
-func AllCloudNativeTagObjectTypesAsStrings() []string {
+// AllObjectTypesAsStrings returns all SLA object types as a slice of strings.
+func AllObjectTypesAsStrings() []string {
 	return []string{
-		string(TagObjectAWSEBSVolume),
-		string(TagObjectAWSEC2Instance),
-		string(TagObjectAWSRDSInstance),
-		string(TagObjectAWSS3Bucket),
-		string(TagObjectAzureManagedDisk),
-		string(TagObjectAzureSQLDatabaseDB),
-		string(TagObjectAzureSQLDatabaseServer),
-		string(TagObjectAzureSQLManagedInstanceServer),
-		string(TagObjectAzureStorageAccount),
-		string(TagObjectAzureVirtualMachine),
-	}
-}
-
-var managedObjectTypeMap = map[ManagedObjectType]CloudNativeTagObjectType{
-	AWSNativeEBSVolume:            TagObjectAWSEBSVolume,
-	AWSNativeEC2Instance:          TagObjectAWSEC2Instance,
-	AWSNativeRDSInstance:          TagObjectAWSRDSInstance,
-	AWSNativeS3Bucket:             TagObjectAWSS3Bucket,
-	AzureManagedDisk:              TagObjectAzureManagedDisk,
-	AzureSQLDatabaseDB:            TagObjectAzureSQLDatabaseDB,
-	AzureSQLDatabaseServer:        TagObjectAzureSQLDatabaseServer,
-	AzureSQLManagedInstanceServer: TagObjectAzureSQLManagedInstanceServer,
-	AzureStorageAccount:           TagObjectAzureStorageAccount,
-	AzureVirtualMachine:           TagObjectAzureVirtualMachine,
-}
-
-// FromManagedObjectType returns the corresponding CloudNativeTagObjectType for
-// the given ManagedObjectType.
-func FromManagedObjectType(objectType ManagedObjectType) (CloudNativeTagObjectType, error) {
-	if tagObjectType, ok := managedObjectTypeMap[objectType]; ok {
-		return tagObjectType, nil
-	}
-
-	return "", fmt.Errorf("unsupported managed object type: %s", objectType)
-}
-
-// ManagedObjectType represents the object type of a managed object.
-type ManagedObjectType string
-
-const (
-	AWSNativeAccount                   ManagedObjectType = "AWS_NATIVE_ACCOUNT"
-	AWSNativeEBSVolume                 ManagedObjectType = "AWS_NATIVE_EBS_VOLUME"
-	AWSNativeEC2Instance               ManagedObjectType = "AWS_NATIVE_EC2_INSTANCE"
-	AWSNativeRDSInstance               ManagedObjectType = "AWS_NATIVE_RDS_INSTANCE"
-	AWSNativeS3Bucket                  ManagedObjectType = "AWS_NATIVE_S3_BUCKET"
-	AzureManagedDisk                   ManagedObjectType = "AZURE_MANAGED_DISK"
-	AzureResourceGroup                 ManagedObjectType = "AZURE_RESOURCE_GROUP"
-	AzureResourceGroupForVMHierarchy   ManagedObjectType = "AZURE_RESOURCE_GROUP_FOR_VM_HIERARCHY"
-	AzureResourceGroupFprDiskHierarchy ManagedObjectType = "AZURE_RESOURCE_GROUP_FOR_DISK_HIERARCHY"
-	AzureSQLDatabaseDB                 ManagedObjectType = "AZURE_SQL_DATABASE_DB"
-	AzureSQLDatabaseServer             ManagedObjectType = "AZURE_SQL_DATABASE_SERVER"
-	AzureSQLManagedInstanceDB          ManagedObjectType = "AZURE_SQL_MANAGED_INSTANCE_DB"
-	AzureSQLManagedInstanceServer      ManagedObjectType = "AZURE_SQL_MANAGED_INSTANCE_SERVER"
-	AzureStorageAccount                ManagedObjectType = "AZURE_STORAGE_ACCOUNT"
-	AzureSubscription                  ManagedObjectType = "AZURE_SUBSCRIPTION"
-	AzureUnmanagedDisk                 ManagedObjectType = "AZURE_UNMANAGED_DISK"
-	AzureVirtualMachine                ManagedObjectType = "AZURE_VIRTUAL_MACHINE"
-	CloudNativeTagRule                 ManagedObjectType = "CLOUD_NATIVE_TAG_RULE"
-	GCPNativeDisk                      ManagedObjectType = "GCP_NATIVE_DISK"
-	GCPNativeGCEInstance               ManagedObjectType = "GCP_NATIVE_GCE_INSTANCE"
-	GCPNativeProject                   ManagedObjectType = "GCP_NATIVE_PROJECT"
-)
-
-// SLAObjectType represents the object type an SLA domain is applicable to.
-type SLAObjectType string
-
-const (
-	SLAObjectAWSEC2EBS               SLAObjectType = "AWS_EC2_EBS_OBJECT_TYPE"
-	SLAObjectAWSRDS                  SLAObjectType = "AWS_RDS_OBJECT_TYPE"
-	SLAObjectAWSS3                   SLAObjectType = "AWS_S3_OBJECT_TYPE"
-	SLAObjectAzure                   SLAObjectType = "AZURE_OBJECT_TYPE"
-	SLAObjectAzureSQLDatabase        SLAObjectType = "AZURE_SQL_DATABASE_OBJECT_TYPE"
-	SLAObjectAzureSQLManagedInstance SLAObjectType = "AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE"
-	SLAObjectAzureBlob               SLAObjectType = "AZURE_BLOB_OBJECT_TYPE"
-	SLAObjectGCP                     SLAObjectType = "GCP_OBJECT_TYPE"
-)
-
-// AllSLAObjectTypesAsStrings returns all SLA object types as a slice of
-// strings.
-func AllSLAObjectTypesAsStrings() []string {
-	return []string{
-		string(SLAObjectAWSEC2EBS),
-		string(SLAObjectAWSRDS),
-		string(SLAObjectAWSS3),
-		string(SLAObjectAzure),
-		string(SLAObjectAzureSQLDatabase),
-		string(SLAObjectAzureSQLManagedInstance),
-		string(SLAObjectAzureBlob),
-		string(SLAObjectGCP),
+		string(ObjectAWSEC2EBS),
+		string(ObjectAWSRDS),
+		string(ObjectAWSS3),
+		string(ObjectAzure),
+		string(ObjectAzureSQLDatabase),
+		string(ObjectAzureSQLManagedInstance),
+		string(ObjectAzureBlob),
+		string(ObjectGCP),
 	}
 }
 
@@ -281,24 +196,22 @@ func AllRetentionUnitsAsStrings() []string {
 	return units
 }
 
-// SLADomainAssignType represents the type of assignment for an SLA domain.
-type SLADomainAssignType string
+// Assignment represents the type of SLA assignment in Polaris.
+type Assignment string
 
 const (
-	NoAssignment   SLADomainAssignType = "noAssignment"
-	DoNotProtect   SLADomainAssignType = "doNotProtect"
-	ProtectWithSLA SLADomainAssignType = "protectWithSlaId"
+	Derived    Assignment = "Derived"
+	Direct     Assignment = "Direct"
+	Unassigned Assignment = "Unassigned"
 )
 
-// ProtectionStatus represents the protection status of an object protected by
-// an RSC global SLA domain.
-type ProtectionStatus string
+// AssignmentType represents the type of assignment for an SLA domain.
+type AssignmentType string
 
 const (
-	ProtectionStatusUnspecified ProtectionStatus = "PROTECTION_STATUS_UNSPECIFIED"
-	ProtectionStatusProtected   ProtectionStatus = "PROTECTED"
-	ProtectionStatusRelic       ProtectionStatus = "RELIC"
-	ProtectionStatusUnprotected ProtectionStatus = "UNPROTECTED"
+	NoAssignment   AssignmentType = "noAssignment"
+	DoNotProtect   AssignmentType = "doNotProtect"
+	ProtectWithSLA AssignmentType = "protectWithSlaId"
 )
 
 type ExistingSnapshotRetention string
@@ -308,4 +221,15 @@ const (
 	RetainSnapshots   ExistingSnapshotRetention = "RETAIN_SNAPSHOTS"
 	KeepForever       ExistingSnapshotRetention = "KEEP_FOREVER"
 	ExpireImmediately ExistingSnapshotRetention = "EXPIRE_IMMEDIATELY"
+)
+
+// ProtectionStatus represents the protection status of an object protected by
+// an RSC global SLA domain.
+type ProtectionStatus string
+
+const (
+	StatusUnspecified ProtectionStatus = "PROTECTION_STATUS_UNSPECIFIED"
+	StatusProtected   ProtectionStatus = "PROTECTED"
+	StatusRelic       ProtectionStatus = "RELIC"
+	StatusUnprotected ProtectionStatus = "UNPROTECTED"
 )

@@ -30,9 +30,8 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// CreateGlobalSLAParams holds the parameters for a global SLA domain create
-// operation.
-type CreateGlobalSLAParams struct {
+// CreateDomainParams holds the parameters for a global SLA domain create operation.
+type CreateDomainParams struct {
 	ArchivalSpecs []ArchivalSpec `json:"archivalSpecs,omitempty"`
 	BackupWindows []BackupWindow `json:"backupWindows,omitempty"`
 	Description   string         `json:"description,omitempty"`
@@ -43,10 +42,10 @@ type CreateGlobalSLAParams struct {
 	LocalRetentionLimit   *RetentionDuration     `json:"localRetentionLimit,omitempty"`
 	Name                  string                 `json:"name"`
 	ObjectSpecificConfigs *ObjectSpecificConfigs `json:"objectSpecificConfigsInput,omitempty"`
-	ObjectTypes           []SLAObjectType        `json:"objectTypes"`
+	ObjectTypes           []ObjectType           `json:"objectTypes"`
 	RetentionLock         bool                   `json:"isRetentionLockedSla"`
 	RetentionLockMode     RetentionLockMode      `json:"retentionLockMode,omitempty"`
-	SnapshotSchedule      GlobalSnapshotSchedule `json:"snapshotSchedule"`
+	SnapshotSchedule      SnapshotSchedule       `json:"snapshotSchedule"`
 }
 
 // ArchivalSpec holds the archival specification for an RSC global SLA domain.
@@ -103,9 +102,8 @@ type AzureDBConfig struct {
 	LogRetentionInDays int `json:"logRetentionInDays"`
 }
 
-// GlobalSnapshotSchedule holds the snapshot schedule for an RSC global SLA
-// domain.
-type GlobalSnapshotSchedule struct {
+// SnapshotSchedule holds the snapshot schedule for an RSC global SLA domain.
+type SnapshotSchedule struct {
 	Daily     *DailySnapshotSchedule     `json:"daily,omitempty"`
 	Hourly    *HourlySnapshotSchedule    `json:"hourly,omitempty"`
 	Minute    *MinuteSnapshotSchedule    `json:"minute,omitempty"`
@@ -164,9 +162,9 @@ type BasicSnapshotSchedule struct {
 	RetentionUnit RetentionUnit `json:"retentionUnit"`
 }
 
-// CreateGlobalSLADomain creates a new global SLA domain. Returns the ID of the
+// CreateDomain creates a new global SLA domain. Returns the ID of the
 // new global SLA domain.
-func CreateGlobalSLADomain(ctx context.Context, gql *graphql.Client, createParams CreateGlobalSLAParams) (uuid.UUID, error) {
+func CreateDomain(ctx context.Context, gql *graphql.Client, createParams CreateDomainParams) (uuid.UUID, error) {
 	gql.Log().Print(log.Trace)
 
 	query := createGlobalSlaQuery
@@ -194,13 +192,13 @@ func CreateGlobalSLADomain(ctx context.Context, gql *graphql.Client, createParam
 	return id, nil
 }
 
-// UpdateGlobalSLAParams holds the parameters for an RSC global SLA domain
-// update operation.
-type UpdateGlobalSLAParams struct {
+// UpdateDomainParams holds the parameters for an RSC global SLA domain update
+// operation.
+type UpdateDomainParams struct {
 	ID                              uuid.UUID  `json:"id"`
 	ShouldApplyToExistingSnapshots  *BoolValue `json:"shouldApplyToExistingSnapshots,omitempty"`
 	ShouldApplyToNonPolicySnapshots *BoolValue `json:"shouldApplyToNonPolicySnapshots,omitempty"`
-	CreateGlobalSLAParams
+	CreateDomainParams
 }
 
 // BoolValue represents a boolean value.
@@ -209,7 +207,7 @@ type BoolValue struct {
 }
 
 // UpdateGlobalSLADomain updates an existing global SLA domain.
-func UpdateGlobalSLADomain(ctx context.Context, gql *graphql.Client, updateParams UpdateGlobalSLAParams) error {
+func UpdateDomain(ctx context.Context, gql *graphql.Client, updateParams UpdateDomainParams) error {
 	gql.Log().Print(log.Trace)
 
 	query := updateGlobalSlaQuery
@@ -231,8 +229,8 @@ func UpdateGlobalSLADomain(ctx context.Context, gql *graphql.Client, updateParam
 	return nil
 }
 
-// DeleteGlobalSLADomain deletes the global SLA domain with the specified ID.
-func DeleteGlobalSLADomain(ctx context.Context, gql *graphql.Client, slaID uuid.UUID) error {
+// DeleteDomain deletes the global SLA domain with the specified ID.
+func DeleteDomain(ctx context.Context, gql *graphql.Client, slaID uuid.UUID) error {
 	gql.Log().Print(log.Trace)
 
 	query := deleteGlobalSlaQuery
@@ -261,19 +259,21 @@ func DeleteGlobalSLADomain(ctx context.Context, gql *graphql.Client, slaID uuid.
 	return nil
 }
 
-// AssignSLAParams holds the parameters for an RSC global SLA domain assignment
-// operation.
-type AssignSLAParams struct {
-	SLAID                     *uuid.UUID                `json:"slaOptionalId,omitempty"`
-	SLADomainAssignType       SLADomainAssignType       `json:"slaDomainAssignType"`
+// AssignDomainParams holds the parameters for an RSC global SLA domain
+// assignment operation.
+type AssignDomainParams struct {
+	DomainID                  *uuid.UUID                `json:"slaOptionalId,omitempty"`
+	DomainAssignType          AssignmentType            `json:"slaDomainAssignType"`
 	ObjectIDs                 []uuid.UUID               `json:"objectIds"`
 	ApplicableWorkloadType    string                    `json:"applicableWorkloadType,omitempty"`
+	ApplyToExistingSnapshots  *bool                     `json:"shouldApplyToExistingSnapshots,omitempty"`
+	ApplyToNonPolicySnapshots *bool                     `json:"shouldApplyToNonPolicySnapshots,omitempty"`
 	ExistingSnapshotRetention ExistingSnapshotRetention `json:"existingSnapshotRetention,omitempty"`
 }
 
-// AssignSLADomain assigns the specified RSC global SLA domain to the specified
+// AssignDomain assigns the specified RSC global SLA domain to the specified
 // objects.
-func AssignSLADomain(ctx context.Context, gql *graphql.Client, assignParams AssignSLAParams) error {
+func AssignDomain(ctx context.Context, gql *graphql.Client, assignParams AssignDomainParams) error {
 	gql.Log().Print(log.Trace)
 
 	query := assignSlaQuery
