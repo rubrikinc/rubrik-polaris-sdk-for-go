@@ -26,21 +26,21 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // NativeSubscription represents an RSC native subscription. NativeSubscriptions
 // are connected to CloudAccounts through the NativeID field.
 type NativeSubscription struct {
-	ID            uuid.UUID          `json:"id"`
-	Name          string             `json:"name"`
-	NativeID      uuid.UUID          `json:"azureSubscriptionNativeId"`
-	Status        string             `json:"azureSubscriptionStatus"`
-	SLAAssignment core.SLAAssignment `json:"slaAssignment"`
-	Configured    core.SLADomain     `json:"configuredSlaDomain"`
-	Effective     core.SLADomain     `json:"effectiveSlaDomain"`
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	NativeID      uuid.UUID      `json:"azureSubscriptionNativeId"`
+	Status        string         `json:"azureSubscriptionStatus"`
+	SLAAssignment sla.Assignment `json:"slaAssignment"`
+	Configured    sla.Domain     `json:"configuredSlaDomain"`
+	Effective     sla.Domain     `json:"effectiveSlaDomain"`
 }
 
 // NativeSubscriptions returns the native subscriptions matching the specified

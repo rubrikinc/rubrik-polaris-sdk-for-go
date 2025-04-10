@@ -41,10 +41,11 @@ import (
 type CloudVendor string
 
 const (
-	CloudVendorAWS   CloudVendor = "AWS"
-	CloudVendorAzure CloudVendor = "AZURE"
-	CloudVendorGCP   CloudVendor = "GCP"
-	CloudVendorAll   CloudVendor = "ALL_VENDORS"
+	CloudVendorUnspecified CloudVendor = ""
+	CloudVendorAWS         CloudVendor = "AWS"
+	CloudVendorAzure       CloudVendor = "AZURE"
+	CloudVendorGCP         CloudVendor = "GCP"
+	CloudVendorAll         CloudVendor = "ALL_VENDORS"
 )
 
 // CloudAccountAction represents a Polaris cloud account action.
@@ -254,21 +255,6 @@ const (
 	TaskChainSucceeded TaskChainState = "SUCCEEDED"
 	TaskChainUndoing   TaskChainState = "UNDOING"
 )
-
-// SLAAssignment represents the type of SLA assignment in Polaris.
-type SLAAssignment string
-
-const (
-	Derived    SLAAssignment = "Derived"
-	Direct     SLAAssignment = "Direct"
-	Unassigned SLAAssignment = "Unassigned"
-)
-
-// SLADomain represents a Polaris SLA domain.
-type SLADomain struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
 
 // API wraps around GraphQL clients to give them the Polaris Core API.
 type API struct {

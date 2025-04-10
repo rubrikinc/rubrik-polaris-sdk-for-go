@@ -59,9 +59,10 @@ func (e GQLError) isError() bool {
 	return len(e.Errors) > 0
 }
 
+// isTemporary returns true if the error represents a temporary condition.
 func (e GQLError) isTemporary() bool {
-	if len(e.Errors) > 0 {
-		switch err := e.Errors[0]; {
+	for _, err := range e.Errors {
+		switch {
 		case strings.HasPrefix(err.Message, "Error checking account flags to determine access. Please try again."):
 			return true
 		case strings.HasPrefix(err.Message, "UNAVAILABLE: Connection closed while performing TLS negotiation"):
@@ -70,6 +71,18 @@ func (e GQLError) isTemporary() bool {
 	}
 
 	return false
+}
+
+// Code returns the status code of the first error with a non-zero extension
+// status code. If no error has a non-zero status code, 0 is returned.
+func (e GQLError) Code() int {
+	for _, err := range e.Errors {
+		if err.Extensions.Code != 0 {
+			return err.Extensions.Code
+		}
+	}
+
+	return 0
 }
 
 func (e GQLError) Error() string {

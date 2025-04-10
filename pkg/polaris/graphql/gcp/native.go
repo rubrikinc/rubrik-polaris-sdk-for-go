@@ -27,23 +27,23 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // NativeProject represents an RSC native project. NativeProjects are connected
 // to CloudAccounts through the NativeID field.
 type NativeProject struct {
-	ID               uuid.UUID          `json:"id"`
-	Name             string             `json:"name"`
-	NativeID         string             `json:"nativeId"`
-	NativeName       string             `json:"nativeName"`
-	ProjectNumber    string             `json:"projectNumber"`
-	OrganizationName string             `json:"organizationName"`
-	Assignment       core.SLAAssignment `json:"slaAssignment"`
-	Configured       core.SLADomain     `json:"configuredSlaDomain"`
-	Effective        core.SLADomain     `json:"effectiveSlaDomain"`
+	ID               uuid.UUID      `json:"id"`
+	Name             string         `json:"name"`
+	NativeID         string         `json:"nativeId"`
+	NativeName       string         `json:"nativeName"`
+	ProjectNumber    string         `json:"projectNumber"`
+	OrganizationName string         `json:"organizationName"`
+	Assignment       sla.Assignment `json:"slaAssignment"`
+	Configured       sla.Domain     `json:"configuredSlaDomain"`
+	Effective        sla.Domain     `json:"effectiveSlaDomain"`
 }
 
 // NativeProject returns the native project with the specified RSC native
