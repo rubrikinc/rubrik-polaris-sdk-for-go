@@ -28,6 +28,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/access"
+	gqlaccess "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
 	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -52,14 +53,14 @@ func main() {
 	accessClient := access.Wrap(client)
 
 	// Add role to RSC.
-	roleID, err := accessClient.AddRole(ctx, "Test Role", "Test Role Description",
-		[]access.Permission{{
+	roleID, err := accessClient.CreateRole(ctx, "Test Role", "Test Role Description",
+		[]gqlaccess.Permission{{
 			Operation: "VIEW_CLUSTER",
-			Hierarchies: []access.SnappableHierarchy{{
+			ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 				SnappableType: "AllSubHierarchyType",
 				ObjectIDs:     []string{"CLUSTER_ROOT"},
 			}},
-		}}, access.NoProtectableClusters)
+		}})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -75,13 +76,13 @@ func main() {
 	}
 
 	// Add a new user to RSC using the new role.
-	err = accessClient.AddUser(ctx, "test@rubrik.com", []uuid.UUID{roleID})
+	userID, err := accessClient.CreateUser(ctx, "test@rubrik.com", []uuid.UUID{roleID})
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// List roles for the new user.
-	user, err := accessClient.User(ctx, "test@rubrik.com")
+	user, err := accessClient.UserByID(ctx, userID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,13 +92,12 @@ func main() {
 	}
 
 	// Remove user from RSC.
-	err = accessClient.RemoveUser(ctx, "test@rubrik.com")
-	if err != nil {
+	if err := accessClient.DeleteUser(ctx, userID); err != nil {
 		log.Fatal(err)
 	}
 
 	// Remove role from RSC.
-	if err := accessClient.RemoveRole(ctx, roleID); err != nil {
+	if err := accessClient.DeleteRole(ctx, roleID); err != nil {
 		log.Fatal(err)
 	}
 }

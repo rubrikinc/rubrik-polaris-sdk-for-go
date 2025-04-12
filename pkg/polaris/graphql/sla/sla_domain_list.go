@@ -126,9 +126,9 @@ type Object struct {
 	ProtectionStatus  ProtectionStatus `json:"protectionStatus"`
 }
 
-// ProtectedObjectFilter holds the filter parameters for a protected object list
+// ObjectFilter holds the filter parameters for a protected object list
 // operation.
-type ProtectedObjectFilter struct {
+type ObjectFilter struct {
 	ObjectName                  string           `json:"objectName"`
 	ProtectionStatus            ProtectionStatus `json:"protectionStatus"`
 	OnlyDirectlyAssignedObjects bool             `json:"showOnlyDirectlyAssignedObjects"`
@@ -136,7 +136,7 @@ type ProtectedObjectFilter struct {
 
 // ListDomainObjects returns all objects protected by the specified global SLA
 // domain.
-func ListDomainObjects(ctx context.Context, gql *graphql.Client, slaID uuid.UUID, filter ProtectedObjectFilter) ([]Object, error) {
+func ListDomainObjects(ctx context.Context, gql *graphql.Client, slaID uuid.UUID, filter ObjectFilter) ([]Object, error) {
 	gql.Log().Print(log.Trace)
 
 	var cursor string
@@ -144,9 +144,9 @@ func ListDomainObjects(ctx context.Context, gql *graphql.Client, slaID uuid.UUID
 	for {
 		query := slaProtectedObjectsQuery
 		buf, err := gql.Request(ctx, query, struct {
-			DomainID []uuid.UUID           `json:"slaIds"`
-			After    string                `json:"after,omitempty"`
-			Filter   ProtectedObjectFilter `json:"filter"`
+			DomainID []uuid.UUID  `json:"slaIds"`
+			After    string       `json:"after,omitempty"`
+			Filter   ObjectFilter `json:"filter"`
 		}{DomainID: []uuid.UUID{slaID}, After: cursor, Filter: filter})
 		if err != nil {
 			return nil, graphql.RequestError(query, err)

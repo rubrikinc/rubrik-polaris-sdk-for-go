@@ -1,23 +1,24 @@
-query RubrikPolarisSDKRequest($after: String, $emailFilter: String) {
-    result: usersInCurrentAndDescendantOrganization(after: $after, filter: {emailFilter: $emailFilter}) {
-        edges {
-            node {
+query RubrikPolarisSDKRequest($after: String, $filter: UserFilterInput) {
+    result: usersInCurrentAndDescendantOrganization(
+        after:  $after,
+        filter: $filter,
+    ) {
+        nodes {
+            id
+            email
+            status
+            isAccountOwner
+            groups
+            roles {
                 id
-                email
-                status
-                isAccountOwner
-                roles {
-                    id
-                    name
-                    description
-                    isOrgAdmin
-                    protectableClusters
-                    explicitlyAssignedPermissions {
-                        operation
-                        objectsForHierarchyTypes {
-                            objectIds
-                            snappableType
-                        }
+                name
+                description
+                isOrgAdmin
+                explicitlyAssignedPermissions {
+                    operation
+                    objectsForHierarchyTypes {
+                        objectIds
+                        snappableType
                     }
                 }
             }

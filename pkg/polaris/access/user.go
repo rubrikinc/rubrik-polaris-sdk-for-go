@@ -30,121 +30,105 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// User represents a user in RSC.
-type User struct {
-	ID             string
-	Email          string
-	Status         string
-	IsAccountOwner bool
-	Roles          []Role
-}
+// UserByID returns the user with the specified user ID.
+func (a API) UserByID(ctx context.Context, userID string) (access.User, error) {
+	a.client.Log().Print(log.Trace)
 
-// HasRole returns true if the user is assigned the specified role, otherwise
-// false.
-func (u User) HasRole(roleID uuid.UUID) bool {
-	for _, role := range u.Roles {
-		if role.ID == roleID {
-			return true
+	users, err := a.Users(ctx, "")
+	if err != nil {
+		return access.User{}, err
+	}
+
+	for _, user := range users {
+		if user.ID == userID {
+			return user, nil
 		}
 	}
 
-	return false
+	return access.User{}, fmt.Errorf("user %q %w", userID, graphql.ErrNotFound)
 }
 
-// User returns the user with the specified email address.
-func (a API) User(ctx context.Context, userEmail string) (User, error) {
+// UserByEmail returns the user with the specified email address.
+func (a API) UserByEmail(ctx context.Context, userEmail string) (access.User, error) {
 	a.client.Log().Print(log.Trace)
 
 	users, err := a.Users(ctx, userEmail)
 	if err != nil {
-		return User{}, fmt.Errorf("failed to get users: %v", err)
+		return access.User{}, err
 	}
 
-	user, err := findUserByEmail(users, userEmail)
-	if err != nil {
-		return User{}, fmt.Errorf("failed to find user: %w", err)
-	}
-
-	return user, nil
-}
-
-// findUserByEmail returns the user with an email address exactly matching the
-// specified email address.
-func findUserByEmail(users []User, userEmail string) (User, error) {
 	for _, user := range users {
 		if user.Email == userEmail {
 			return user, nil
 		}
 	}
 
-	return User{}, fmt.Errorf("user with email address %q %w", userEmail, graphql.ErrNotFound)
+	return access.User{}, fmt.Errorf("user %q %w", userEmail, graphql.ErrNotFound)
 }
 
 // Users returns the users matching the specified email address filter.
-func (a API) Users(ctx context.Context, emailFilter string) ([]User, error) {
+func (a API) Users(ctx context.Context, emailFilter string) ([]access.User, error) {
 	a.client.Log().Print(log.Trace)
 
-	users, err := access.Wrap(a.client).UsersInCurrentAndDescendantOrganization(ctx, emailFilter)
+	users, err := access.ListUsers(ctx, a.client, access.UserFilter{
+		EmailFilter: emailFilter,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to lookup users by email: %v", err)
+		return nil, fmt.Errorf("failed to get users with filter %q: %s", emailFilter, err)
 	}
 
-	return toUsers(users), nil
+	return users, nil
 }
 
-// AddUser adds a new user with the specified email address and roles. Note that
-// a user needs at least one role assigned at all times.
-func (a API) AddUser(ctx context.Context, userEmail string, roleIDs []uuid.UUID) error {
+// CreateUser creates a new user with the specified email address and roles.
+// Returns the ID of the new role. Note, a user needs at least one role assigned
+// at all times.
+func (a API) CreateUser(ctx context.Context, userEmail string, roleIDs []uuid.UUID) (string, error) {
 	a.client.Log().Print(log.Trace)
 
-	if _, err := access.Wrap(a.client).CreateUser(ctx, userEmail, roleIDs); err != nil {
-		return fmt.Errorf("failed to add user: %v", err)
+	userID, err := access.CreateUser(ctx, a.client, access.CreateUserParams{
+		Email:   userEmail,
+		RoleIDs: roleIDs,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create user %q: %s", userEmail, err)
+	}
+
+	return userID, nil
+}
+
+// DeleteUser deletes the user with the specified user ID.
+func (a API) DeleteUser(ctx context.Context, userID string) error {
+	a.client.Log().Print(log.Trace)
+
+	if err := access.DeleteUser(ctx, a.client, userID); err != nil {
+		return fmt.Errorf("failed to delete user %q: %s", userID, err)
 	}
 
 	return nil
 }
 
-// RemoveUser removes the user with the specified email address.
-func (a API) RemoveUser(ctx context.Context, userEmail string) error {
+// AssignUserRole assigns the role to the user with the specified user ID.
+func (a API) AssignUserRole(ctx context.Context, userID string, roleID uuid.UUID) error {
 	a.client.Log().Print(log.Trace)
 
-	user, err := a.User(ctx, userEmail)
-	if err != nil {
-		return fmt.Errorf("failed to get user: %w", err)
-	}
-
-	if err := access.Wrap(a.client).DeleteUserFromAccount(ctx, []string{user.ID}); err != nil {
-		return fmt.Errorf("failed to remove user: %v", err)
+	if err := access.AssignRoles(ctx, a.client, access.AssignRoleParams{
+		RoleIDs: []uuid.UUID{roleID},
+		UserIDs: []string{userID},
+	}); err != nil {
+		return fmt.Errorf("failed to assign role %q to user %q: %s", roleID, userID, err)
 	}
 
 	return nil
 }
 
-// AssignRole assigns the role to the user with the specified user email
-// address.
-func (a API) AssignRole(ctx context.Context, userEmail string, roleID uuid.UUID) error {
+// UnassignUserRole unassigns the role from the user with the specified user ID.
+func (a API) UnassignUserRole(ctx context.Context, userID string, roleID uuid.UUID) error {
 	a.client.Log().Print(log.Trace)
 
-	user, err := a.User(ctx, userEmail)
+	user, err := a.UserByID(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("failed to get user: %w", err)
-	}
-
-	if err := access.Wrap(a.client).AddRoleAssignment(ctx, []uuid.UUID{roleID}, []string{user.ID}, nil); err != nil {
-		return fmt.Errorf("failed to assign role: %v", err)
-	}
-
-	return nil
-}
-
-// UnassignRole unassigns the role from the user with the specified user email
-// address.
-func (a API) UnassignRole(ctx context.Context, userEmail string, roleID uuid.UUID) error {
-	a.client.Log().Print(log.Trace)
-
-	user, err := a.User(ctx, userEmail)
-	if err != nil {
-		return fmt.Errorf("failed to get user: %w", err)
+		return fmt.Errorf("failed to get user %q: %w", userID, err)
 	}
 
 	var roleIDs []uuid.UUID
@@ -153,44 +137,27 @@ func (a API) UnassignRole(ctx context.Context, userEmail string, roleID uuid.UUI
 			roleIDs = append(roleIDs, role.ID)
 		}
 	}
-	if err := access.Wrap(a.client).UpdateRoleAssignment(ctx, []string{user.ID}, nil, roleIDs); err != nil {
-		return fmt.Errorf("failed to unassign role: %v", err)
+	if err := access.ReplaceRoles(ctx, a.client, access.ReplaceRoleParams{
+		RoleIDs: roleIDs,
+		UserIDs: []string{userID},
+	}); err != nil {
+		return fmt.Errorf("failed to unassign role %q from user %q: %s", roleID, userID, err)
 	}
 
 	return nil
 }
 
-// ReplaceRoles replaces all the roles for the specified user.
-func (a API) ReplaceRoles(ctx context.Context, userEmail string, newRoleIDs []uuid.UUID) error {
+// ReplaceUserRoles replaces all the roles for the user with the specified user
+// ID.
+func (a API) ReplaceUserRoles(ctx context.Context, userID string, newRoleIDs []uuid.UUID) error {
 	a.client.Log().Print(log.Trace)
 
-	user, err := a.User(ctx, userEmail)
-	if err != nil {
-		return fmt.Errorf("failed to get user: %w", err)
-	}
-
-	if err := access.Wrap(a.client).UpdateRoleAssignment(ctx, []string{user.ID}, nil, newRoleIDs); err != nil {
-		return fmt.Errorf("failed to replace roles: %v", err)
+	if err := access.ReplaceRoles(ctx, a.client, access.ReplaceRoleParams{
+		RoleIDs: newRoleIDs,
+		UserIDs: []string{userID},
+	}); err != nil {
+		return fmt.Errorf("failed to replace roles for user %q: %s", userID, err)
 	}
 
 	return nil
-}
-
-func toUsers(accessUsers []access.User) []User {
-	users := make([]User, 0, len(accessUsers))
-	for _, user := range accessUsers {
-		users = append(users, toUser(user))
-	}
-
-	return users
-}
-
-func toUser(accessUser access.User) User {
-	return User{
-		ID:             accessUser.ID,
-		Email:          accessUser.Email,
-		Status:         accessUser.Status,
-		IsAccountOwner: accessUser.IsAccountOwner,
-		Roles:          toRoles(accessUser.Roles),
-	}
 }

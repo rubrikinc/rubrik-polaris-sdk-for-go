@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlaccess "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
 )
 
 func TestUserManagement(t *testing.T) {
@@ -31,37 +32,54 @@ func TestUserManagement(t *testing.T) {
 	}
 
 	// Add user with administrator role.
-	err = accessClient.AddUser(ctx, testConfig.NewUserEmail, []uuid.UUID{adminRole.ID})
+	userID, err := accessClient.CreateUser(ctx, testConfig.NewUserEmail, []uuid.UUID{adminRole.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertUserHasRoles(t, testConfig.NewUserEmail, adminRole.ID)
+	assertUserHasRoles(t, userID, adminRole.ID)
 
-	// Get user by email address.
-	user, err := accessClient.User(ctx, testConfig.NewUserEmail)
+	// Get user by ID.
+	user1, err := accessClient.UserByID(ctx, userID)
 	if err != nil {
 		t.Error(err)
 	}
-	if user.ID == "" {
-		t.Errorf("invalid user id: %v", user.ID)
+	if user1.ID != userID {
+		t.Errorf("invalid user id: %s", user1.ID)
 	}
-	if user.Email != testConfig.NewUserEmail {
-		t.Errorf("invalid user email: %v", user.Email)
+	if user1.Email != testConfig.NewUserEmail {
+		t.Errorf("invalid user email: %s", user1.Email)
 	}
-	if user.Status != "ACTIVE" {
-		t.Errorf("invalid user status: %v", user.Status)
+
+	// Get user by email address.
+	user2, err := accessClient.UserByEmail(ctx, testConfig.NewUserEmail)
+	if err != nil {
+		t.Error(err)
 	}
-	if user.IsAccountOwner {
+	if user2.ID != userID {
+		t.Errorf("invalid user id: %s", user2.ID)
+	}
+	if user2.Email != testConfig.NewUserEmail {
+		t.Errorf("invalid user email: %s", user2.Email)
+	}
+	if user2.Status != "ACTIVE" {
+		t.Errorf("invalid user status: %s", user2.Status)
+	}
+	if user2.IsAccountOwner {
 		t.Errorf("invalid user account owner: true")
 	}
 
-	// Verify that RoleByName returns ErrNotFound for non-exact matches.
-	if _, err := accessClient.User(ctx, "name@example.com"); err == nil || !errors.Is(err, graphql.ErrNotFound) {
-		t.Errorf("expected graphql.ErrNotFound: %v", err)
+	// Verify that UserByID returns ErrNotFound for non-existing UUIDs.
+	if _, err := accessClient.UserByEmail(ctx, "c4c53ec0-aa02-4582-9443-bc4be0045653"); err == nil || !errors.Is(err, graphql.ErrNotFound) {
+		t.Errorf("expected graphql.ErrNotFound: %s", err)
+	}
+
+	// Verify that UserByEmail returns ErrNotFound for non-exact matches.
+	if _, err := accessClient.UserByEmail(ctx, "name@example.com"); err == nil || !errors.Is(err, graphql.ErrNotFound) {
+		t.Errorf("expected graphql.ErrNotFound: %s", err)
 	}
 	email := testConfig.NewUserEmail[:len(testConfig.NewUserEmail)-1]
-	if _, err := accessClient.User(ctx, email); err == nil || !errors.Is(err, graphql.ErrNotFound) {
-		t.Errorf("expected graphql.ErrNotFound: %v", err)
+	if _, err := accessClient.UserByEmail(ctx, email); err == nil || !errors.Is(err, graphql.ErrNotFound) {
+		t.Errorf("expected graphql.ErrNotFound: %s", err)
 	}
 
 	// List users.
@@ -70,75 +88,71 @@ func TestUserManagement(t *testing.T) {
 		t.Error(err)
 	}
 	if n := len(users); n != 1 {
-		t.Errorf("invalid number of users: %v", n)
+		t.Errorf("invalid number of users: %d", n)
 	}
-	assertUserHasRoles(t, testConfig.NewUserEmail, adminRole.ID)
+	assertUserHasRoles(t, userID, adminRole.ID)
 
 	// Add new role.
-	roleID, err := accessClient.AddRole(ctx, "Integration Test Role", "Test Role Description", []Permission{{
+	roleID, err := accessClient.CreateRole(ctx, "Integration Test Role", "Test Role Description", []gqlaccess.Permission{{
 		Operation: "VIEW_CLUSTER",
-		Hierarchies: []SnappableHierarchy{{
+		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
 			ObjectIDs:     []string{"CLUSTER_ROOT"},
 		}},
-	}}, NoProtectableClusters)
+	}})
 	if err != nil {
 		t.Error(err)
 	}
 
 	// Assign role to user.
-	if err := accessClient.AssignRole(ctx, testConfig.NewUserEmail, roleID); err != nil {
+	if err := accessClient.AssignUserRole(ctx, userID, roleID); err != nil {
 		t.Error(err)
 	}
-	assertUserHasRoles(t, testConfig.NewUserEmail, adminRole.ID, roleID)
+	assertUserHasRoles(t, userID, adminRole.ID, roleID)
 
 	// Unassign role from user.
-	if err := accessClient.UnassignRole(ctx, testConfig.NewUserEmail, roleID); err != nil {
+	if err := accessClient.UnassignUserRole(ctx, userID, roleID); err != nil {
 		t.Error(err)
 	}
-	assertUserHasRoles(t, testConfig.NewUserEmail, adminRole.ID)
+	assertUserHasRoles(t, userID, adminRole.ID)
 
 	// Replace roles for user.
-	if err := accessClient.ReplaceRoles(ctx, testConfig.NewUserEmail, []uuid.UUID{adminRole.ID, roleID}); err != nil {
+	if err := accessClient.ReplaceUserRoles(ctx, userID, []uuid.UUID{adminRole.ID, roleID}); err != nil {
 		t.Error(err)
 	}
-	assertUserHasRoles(t, testConfig.NewUserEmail, adminRole.ID, roleID)
+	assertUserHasRoles(t, userID, adminRole.ID, roleID)
 
 	// Unassign role from user.
-	if err := accessClient.UnassignRole(ctx, testConfig.NewUserEmail, roleID); err != nil {
+	if err := accessClient.UnassignUserRole(ctx, userID, roleID); err != nil {
 		t.Error(err)
 	}
-	assertUserHasRoles(t, testConfig.NewUserEmail, adminRole.ID)
+	assertUserHasRoles(t, userID, adminRole.ID)
 
-	// Remove role.
-	if err := accessClient.RemoveRole(ctx, roleID); err != nil {
+	// Delete role and user.
+	if err := accessClient.DeleteRole(ctx, roleID); err != nil {
 		t.Error(err)
 	}
-
-	// Remove user.
-	if err := accessClient.RemoveUser(ctx, testConfig.NewUserEmail); err != nil {
+	if err := accessClient.DeleteUser(ctx, userID); err != nil {
 		t.Fatal(err)
 	}
 
-	// Check that the user has been removed.
-	if _, err = accessClient.User(ctx, testConfig.NewUserEmail); err == nil || !errors.Is(err, graphql.ErrNotFound) {
-		t.Fatal("user should have been removed")
+	// Check that the user has been deleted.
+	if _, err = accessClient.UserByID(ctx, userID); err == nil || !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal("user should have been deleted")
 	}
 }
 
-func assertUserHasRoles(t *testing.T, userEmail string, roles ...uuid.UUID) {
-	user, err := Wrap(client).User(context.Background(), userEmail)
+func assertUserHasRoles(t *testing.T, userID string, roles ...uuid.UUID) {
+	user, err := Wrap(client).UserByID(context.Background(), userID)
 	if err != nil {
-		t.Errorf("failed to get user: %v", err)
+		t.Errorf("failed to get user: %s", err)
 	}
-
 	if n := len(user.Roles); n != len(roles) {
-		t.Errorf("invalid number of roles: %v", n)
+		t.Errorf("invalid number of roles: %d", n)
 	}
-
 	for _, role := range roles {
 		if !user.HasRole(role) {
-			t.Errorf("user should be assigned role: %v", role)
+			t.Errorf("user should be assigned role: %s", role)
 		}
 	}
 }

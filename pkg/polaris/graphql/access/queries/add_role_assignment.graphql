@@ -1,7 +1,11 @@
-mutation RubrikPolarisSDKRequest($userIds: [String!]!, $groupIds: [String!], $roleIds: [String!]!) {
+mutation RubrikPolarisSDKRequest(
+    $userIds:  [String!]!,
+    $groupIds: [String!],
+    $roleIds:  [String!]!,
+) {
     result: addRoleAssignments(
-        userIds:  $userIds
-        groupIds: $groupIds
-        roleIds:  $roleIds
+        userIds:  $userIds,
+        groupIds: $groupIds,
+        roleIds:  $roleIds,
     )
 }

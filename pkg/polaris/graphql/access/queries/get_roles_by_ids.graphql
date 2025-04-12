@@ -4,7 +4,6 @@ query RubrikPolarisSDKRequest($roleIds: [String!]!) {
         name
         description
         isOrgAdmin
-        protectableClusters
         explicitlyAssignedPermissions {
             operation
             objectsForHierarchyTypes {

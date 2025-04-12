@@ -3,17 +3,15 @@ query RubrikPolarisSDKRequest($after: String, $nameFilter: String) {
         after:      $after,
         nameFilter: $nameFilter,
     ) {
-        edges {
-            node {
-                id
-                name
-                description
-                explicitlyAssignedPermissions {
-                    operation
-                    objectsForHierarchyTypes {
-                        objectIds
-                        snappableType
-                    }
+        nodes {
+            id
+            name
+            description
+            explicitlyAssignedPermissions {
+                operation
+                objectsForHierarchyTypes {
+                    objectIds
+                    snappableType
                 }
             }
         }

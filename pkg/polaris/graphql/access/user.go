@@ -26,41 +26,70 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+)
+
+// UserDomain represents the domain in RSC in which a user exists.
+type UserDomain string
+
+const (
+	DomainLocal   UserDomain = "LOCAL"
+	DomainSSO     UserDomain = "SSO"
+	DomainLDAP    UserDomain = "LDAP"
+	DomainClient  UserDomain = "CLIENT"
+	DomainSupport UserDomain = "SUPPORT"
 )
 
 // User represents a user in RSC.
 type User struct {
-	ID             string `json:"id"`
-	Email          string `json:"email"`
-	Status         string `json:"status"`
-	IsAccountOwner bool   `json:"isAccountOwner"`
-	Roles          []Role `json:"roles"`
+	ID             string   `json:"id"`
+	Email          string   `json:"email"`
+	Status         string   `json:"status"`
+	IsAccountOwner bool     `json:"isAccountOwner"`
+	Groups         []string `json:"groups"`
+	Roles          []Role   `json:"roles"`
 }
 
-// UsersInCurrentAndDescendantOrganization returns the users matching the
-// specified email address filter.
-func (a API) UsersInCurrentAndDescendantOrganization(ctx context.Context, emailFilter string) ([]User, error) {
-	a.log.Print(log.Trace)
-
-	var users []User
-	var cursor string
-	for {
-		buf, err := a.GQL.Request(ctx, usersInCurrentAndDescendantOrganizationQuery, struct {
-			After       string `json:"after,omitempty"`
-			EmailFilter string `json:"emailFilter,omitempty"`
-		}{After: cursor, EmailFilter: emailFilter})
-		if err != nil {
-			return nil, fmt.Errorf("failed to request usersInCurrentAndDescendantOrganization: %w", err)
+// HasRole returns true if the user has the specified role, false otherwise.
+func (user User) HasRole(roleID uuid.UUID) bool {
+	for _, role := range user.Roles {
+		if role.ID == roleID {
+			return true
 		}
-		a.log.Printf(log.Debug, "usersInCurrentAndDescendantOrganization(%q): %s", emailFilter, string(buf))
+	}
+
+	return false
+}
+
+// UserFilter holds the filter parameters for a user list operation.
+type UserFilter struct {
+	AuthDomainIDs []string     `json:"authDomainIdsFilter,omitempty"`
+	UserDomains   []UserDomain `json:"domainFilter,omitempty"`
+	EmailFilter   string       `json:"emailFilter,omitempty"`
+}
+
+// ListUsers returns all users matching the specified user filter.
+func ListUsers(ctx context.Context, gql *graphql.Client, filter UserFilter) ([]User, error) {
+	gql.Log().Print(log.Trace)
+
+	var cursor string
+	var nodes []User
+	for {
+		query := usersInCurrentAndDescendantOrganizationQuery
+		buf, err := gql.Request(ctx, query, struct {
+			After  string     `json:"after,omitempty"`
+			Filter UserFilter `json:"filter"`
+		}{After: cursor, Filter: filter})
+		if err != nil {
+			return nil, graphql.RequestError(query, err)
+		}
+		graphql.LogResponse(gql.Log(), query, buf)
 
 		var payload struct {
 			Data struct {
 				Result struct {
-					Edges []struct {
-						Node User `json:"node"`
-					} `json:"edges"`
+					Nodes    []User `json:"nodes"`
 					PageInfo struct {
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`
@@ -69,33 +98,34 @@ func (a API) UsersInCurrentAndDescendantOrganization(ctx context.Context, emailF
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal usersInCurrentAndDescendantOrganization response: %v", err)
+			return nil, graphql.UnmarshalError(query, err)
 		}
-		for _, account := range payload.Data.Result.Edges {
-			users = append(users, account.Node)
-		}
-
+		nodes = append(nodes, payload.Data.Result.Nodes...)
 		if !payload.Data.Result.PageInfo.HasNextPage {
 			break
 		}
 		cursor = payload.Data.Result.PageInfo.EndCursor
 	}
 
-	return users, nil
+	return nodes, nil
 }
 
-// CreateUser creates a new user with the specified email address and roles.
-func (a API) CreateUser(ctx context.Context, userEmail string, roleIDs []uuid.UUID) (string, error) {
-	a.log.Print(log.Trace)
+// CreateUserParams holds the parameters for a user create operation.
+type CreateUserParams struct {
+	Email   string      `json:"email"`
+	RoleIDs []uuid.UUID `json:"roleIds"`
+}
 
-	buf, err := a.GQL.Request(ctx, createUserQuery, struct {
-		Email   string      `json:"email"`
-		RoleIDs []uuid.UUID `json:"roleIds"`
-	}{Email: userEmail, RoleIDs: roleIDs})
+// CreateUser creates a new user. Returns the ID of the new user.
+func CreateUser(ctx context.Context, gql *graphql.Client, params CreateUserParams) (string, error) {
+	gql.Log().Print(log.Trace)
+
+	query := createUserQuery
+	buf, err := gql.Request(ctx, query, params)
 	if err != nil {
-		return "", fmt.Errorf("failed to request createUser: %w", err)
+		return "", graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "createUser(%q, %v): %s", userEmail, roleIDs, string(buf))
+	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -103,23 +133,27 @@ func (a API) CreateUser(ctx context.Context, userEmail string, roleIDs []uuid.UU
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", fmt.Errorf("failed to unmarshal createUser response: %v", err)
+		return "", graphql.UnmarshalError(query, err)
+	}
+	if payload.Data.Result == "" {
+		return "", graphql.ResponseError(query, fmt.Errorf("failed to create user %q", params.Email))
 	}
 
 	return payload.Data.Result, nil
 }
 
-// DeleteUserFromAccount deletes the users with the specified email addresses.
-func (a API) DeleteUserFromAccount(ctx context.Context, ids []string) error {
-	a.log.Print(log.Trace)
+// DeleteUser deletes the user with the specified ID.
+func DeleteUser(ctx context.Context, gql *graphql.Client, userID string) error {
+	gql.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, deleteUserFromAccountQuery, struct {
+	query := deleteUserFromAccountQuery
+	buf, err := gql.Request(ctx, query, struct {
 		IDs []string `json:"ids"`
-	}{IDs: ids})
+	}{IDs: []string{userID}})
 	if err != nil {
-		return fmt.Errorf("failed to request deleteUserFromAccount: %w", err)
+		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "deleteUserFromAccount(%v): %s", ids, string(buf))
+	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -127,7 +161,10 @@ func (a API) DeleteUserFromAccount(ctx context.Context, ids []string) error {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal deleteUserFromAccount response: %v", err)
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result {
+		return graphql.ResponseError(query, fmt.Errorf("failed to delete user %q", userID))
 	}
 
 	return nil
