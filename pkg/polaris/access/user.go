@@ -23,6 +23,7 @@ package access
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -72,6 +73,7 @@ func (a API) Users(ctx context.Context, emailFilter string) ([]access.User, erro
 
 	users, err := access.ListUsers(ctx, a.client, access.UserFilter{
 		EmailFilter: emailFilter,
+		UserDomains: []access.UserDomain{access.DomainLocal, access.DomainSSO},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users with filter %q: %s", emailFilter, err)
@@ -122,13 +124,27 @@ func (a API) AssignUserRole(ctx context.Context, userID string, roleID uuid.UUID
 	return nil
 }
 
+// AssignUserRoles assigns the roles to the user with the specified user ID.
+func (a API) AssignUserRoles(ctx context.Context, userID string, roleIDs []uuid.UUID) error {
+	a.client.Log().Print(log.Trace)
+
+	if err := access.AssignRoles(ctx, a.client, access.AssignRoleParams{
+		RoleIDs: roleIDs,
+		UserIDs: []string{userID},
+	}); err != nil {
+		return fmt.Errorf("failed to assign roles %s to user %q: %s", joinUUIDs(roleIDs), userID, err)
+	}
+
+	return nil
+}
+
 // UnassignUserRole unassigns the role from the user with the specified user ID.
 func (a API) UnassignUserRole(ctx context.Context, userID string, roleID uuid.UUID) error {
 	a.client.Log().Print(log.Trace)
 
 	user, err := a.UserByID(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("failed to get user %q: %w", userID, err)
+		return err
 	}
 
 	var roleIDs []uuid.UUID
@@ -142,6 +158,32 @@ func (a API) UnassignUserRole(ctx context.Context, userID string, roleID uuid.UU
 		UserIDs: []string{userID},
 	}); err != nil {
 		return fmt.Errorf("failed to unassign role %q from user %q: %s", roleID, userID, err)
+	}
+
+	return nil
+}
+
+// UnassignUserRoles unassigns the roles from the user with the specified user
+// ID.
+func (a API) UnassignUserRoles(ctx context.Context, userID string, roleIDs []uuid.UUID) error {
+	a.client.Log().Print(log.Trace)
+
+	user, err := a.UserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	var keepRoleIDs []uuid.UUID
+	for _, role := range user.Roles {
+		if !slices.Contains(roleIDs, role.ID) {
+			keepRoleIDs = append(keepRoleIDs, role.ID)
+		}
+	}
+	if err := access.ReplaceRoles(ctx, a.client, access.ReplaceRoleParams{
+		RoleIDs: keepRoleIDs,
+		UserIDs: []string{userID},
+	}); err != nil {
+		return fmt.Errorf("failed to unassign role %q from user %q: %s", joinUUIDs(roleIDs), userID, err)
 	}
 
 	return nil

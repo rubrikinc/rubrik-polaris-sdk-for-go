@@ -44,6 +44,18 @@ type SSOGroup struct {
 	} `json:"users"`
 }
 
+// HasRole returns true if the SSO group has the specified role, false
+// otherwise.
+func (group SSOGroup) HasRole(roleID uuid.UUID) bool {
+	for _, role := range group.Roles {
+		if role.ID == roleID {
+			return true
+		}
+	}
+
+	return false
+}
+
 // SSOGroupFilter holds the filter parameters for an SSO group list operation.
 type SSOGroupFilter struct {
 	AuthDomainIDs []string `json:"authDomainIdsFilter,omitempty"`

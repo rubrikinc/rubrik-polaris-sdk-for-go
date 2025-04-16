@@ -23,6 +23,7 @@ package access
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -99,6 +100,21 @@ func (a API) AssignSSOGroupRole(ctx context.Context, ssoGroupID string, roleID u
 	return nil
 }
 
+// AssignSSOGroupRoles assigns the roles to the SSO group with the specified SSO
+// group ID.
+func (a API) AssignSSOGroupRoles(ctx context.Context, ssoGroupID string, roleIDs []uuid.UUID) error {
+	a.client.Log().Print(log.Trace)
+
+	if err := access.AssignRoles(ctx, a.client, access.AssignRoleParams{
+		RoleIDs:  roleIDs,
+		GroupIDs: []string{ssoGroupID},
+	}); err != nil {
+		return fmt.Errorf("failed to assign roles %s to SSO group %q: %s", joinUUIDs(roleIDs), ssoGroupID, err)
+	}
+
+	return nil
+}
+
 // UnassignSSOGroupRole unassigns the role from the SSO group with the specified
 // SSO group ID.
 func (a API) UnassignSSOGroupRole(ctx context.Context, ssoGroupID string, roleID uuid.UUID) error {
@@ -106,7 +122,7 @@ func (a API) UnassignSSOGroupRole(ctx context.Context, ssoGroupID string, roleID
 
 	group, err := a.SSOGroupByID(ctx, ssoGroupID)
 	if err != nil {
-		return fmt.Errorf("failed to get SSO group %q: %w", ssoGroupID, err)
+		return err
 	}
 
 	var roleIDs []uuid.UUID
@@ -120,6 +136,32 @@ func (a API) UnassignSSOGroupRole(ctx context.Context, ssoGroupID string, roleID
 		GroupIDs: []string{ssoGroupID},
 	}); err != nil {
 		return fmt.Errorf("failed to unassign role %q from SSO group %q: %s", roleID, ssoGroupID, err)
+	}
+
+	return nil
+}
+
+// UnassignSSOGroupRoles unassigns the roles from the SSO group with the
+// specified SSO group ID.
+func (a API) UnassignSSOGroupRoles(ctx context.Context, ssoGroupID string, roleIDs []uuid.UUID) error {
+	a.client.Log().Print(log.Trace)
+
+	group, err := a.SSOGroupByID(ctx, ssoGroupID)
+	if err != nil {
+		return err
+	}
+
+	var keepRoleIDs []uuid.UUID
+	for _, role := range group.Roles {
+		if !slices.Contains(roleIDs, role.ID) {
+			keepRoleIDs = append(keepRoleIDs, role.ID)
+		}
+	}
+	if err := access.ReplaceRoles(ctx, a.client, access.ReplaceRoleParams{
+		RoleIDs:  keepRoleIDs,
+		GroupIDs: []string{ssoGroupID},
+	}); err != nil {
+		return fmt.Errorf("failed to unassign role %s from SSO group %q: %s", joinUUIDs(roleIDs), ssoGroupID, err)
 	}
 
 	return nil
