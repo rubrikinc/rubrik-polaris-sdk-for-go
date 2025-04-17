@@ -53,7 +53,6 @@ func ListConfigurations[F ListConfigurationsFilter[R], R ListConfigurationsResul
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -90,7 +89,6 @@ func CreateConfiguration[P CreateConfigurationParams[R], R CreateConfigurationRe
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -132,7 +130,6 @@ func UpdateConfiguration[P UpdateConfigurationParams[R], R UpdateConfigurationRe
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -172,7 +169,6 @@ func DeleteConfiguration[P DeleteConfigurationParams[R], R DeleteConfigurationRe
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {

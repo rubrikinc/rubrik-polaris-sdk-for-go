@@ -62,7 +62,6 @@ func ListAccounts[R ListAccountResult](ctx context.Context, gql *graphql.Client,
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -103,11 +102,10 @@ func CreateCloudAccount[R CreateCloudAccountResult[P], P CreateCloudAccountParam
 
 	var result R
 	query, queryParams := result.CreateQuery(createParams)
-	buf, err := gql.RequestWithoutLogging(ctx, query, queryParams)
+	buf, err := gql.Request(ctx, query, queryParams)
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -143,11 +141,10 @@ func UpdateCloudAccount[R UpdateCloudAccountResult[P], P UpdateCloudAccountParam
 
 	var result R
 	query, queryParams := result.UpdateQuery(cloudAccountID, updateParams)
-	buf, err := gql.RequestWithoutLogging(ctx, query, queryParams)
+	buf, err := gql.Request(ctx, query, queryParams)
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -177,7 +174,6 @@ func DeleteCloudAccount[R DeleteCloudAccountResult](ctx context.Context, gql *gr
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {

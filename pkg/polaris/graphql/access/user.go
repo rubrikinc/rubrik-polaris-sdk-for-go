@@ -88,7 +88,6 @@ func ListUsers(ctx context.Context, gql *graphql.Client, filter UserFilter) ([]U
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
 		}
-		graphql.LogResponse(gql.Log(), query, buf)
 
 		var payload struct {
 			Data struct {
@@ -129,7 +128,6 @@ func CreateUser(ctx context.Context, gql *graphql.Client, params CreateUserParam
 	if err != nil {
 		return "", graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -157,7 +155,6 @@ func DeleteUser(ctx context.Context, gql *graphql.Client, userID string) error {
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {

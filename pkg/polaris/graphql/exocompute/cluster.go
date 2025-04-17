@@ -50,7 +50,6 @@ func ClusterConnection[P ClusterConnectionParams[R], R ClusterConnectionResult](
 	if err != nil {
 		return defValue, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -85,7 +84,6 @@ func ConnectCluster[P ConnectClusterParams[R], R ConnectClusterResult](ctx conte
 	if err != nil {
 		return defValue, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -120,7 +118,6 @@ func DisconnectCluster[P DisconnectClusterParams[R], R DisconnectClusterResult](
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {

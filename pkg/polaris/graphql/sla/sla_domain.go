@@ -173,7 +173,6 @@ func CreateDomain(ctx context.Context, gql *graphql.Client, params CreateDomainP
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -216,7 +215,6 @@ func UpdateDomain(ctx context.Context, gql *graphql.Client, params UpdateDomainP
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -241,7 +239,6 @@ func DeleteDomain(ctx context.Context, gql *graphql.Client, slaID uuid.UUID) err
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -282,7 +279,6 @@ func AssignDomain(ctx context.Context, gql *graphql.Client, params AssignDomainP
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {

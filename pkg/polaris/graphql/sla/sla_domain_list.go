@@ -91,7 +91,6 @@ func ListDomains(ctx context.Context, gql *graphql.Client, filters []DomainFilte
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
 		}
-		graphql.LogResponse(gql.Log(), query, buf)
 
 		var payload struct {
 			Data struct {
@@ -151,7 +150,6 @@ func ListDomainObjects(ctx context.Context, gql *graphql.Client, slaID uuid.UUID
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
 		}
-		graphql.LogResponse(gql.Log(), query, buf)
 
 		var payload struct {
 			Data struct {

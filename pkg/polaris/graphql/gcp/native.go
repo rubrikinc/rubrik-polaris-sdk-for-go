@@ -24,9 +24,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -42,8 +42,14 @@ type NativeProject struct {
 	ProjectNumber    string         `json:"projectNumber"`
 	OrganizationName string         `json:"organizationName"`
 	Assignment       sla.Assignment `json:"slaAssignment"`
-	Configured       sla.Domain     `json:"configuredSlaDomain"`
-	Effective        sla.Domain     `json:"effectiveSlaDomain"`
+	Configured       struct {
+		ID   string `json:"id"` // Can be UNPROTECTED.
+		Name string `json:"name"`
+	} `json:"configuredSlaDomain"`
+	Effective struct {
+		ID   string `json:"id"` // Can be UNPROTECTED.
+		Name string `json:"name"`
+	} `json:"effectiveSlaDomain"`
 }
 
 // NativeProject returns the native project with the specified RSC native
@@ -51,13 +57,13 @@ type NativeProject struct {
 func (a API) NativeProject(ctx context.Context, id uuid.UUID) (NativeProject, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, gcpNativeProjectQuery, struct {
+	query := gcpNativeProjectQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID uuid.UUID `json:"fid"`
 	}{ID: id})
 	if err != nil {
-		return NativeProject{}, fmt.Errorf("failed to request gcpNativeProject: %w", err)
+		return NativeProject{}, graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "gcpNativeProject(%q): %s", id, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -65,7 +71,7 @@ func (a API) NativeProject(ctx context.Context, id uuid.UUID) (NativeProject, er
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return NativeProject{}, fmt.Errorf("failed to unmarshal gcpNativeProject: %v", err)
+		return NativeProject{}, graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Account, nil
@@ -79,14 +85,14 @@ func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject
 	var accounts []NativeProject
 	var cursor string
 	for {
-		buf, err := a.GQL.Request(ctx, gcpNativeProjectsQuery, struct {
+		query := gcpNativeProjectsQuery
+		buf, err := a.GQL.Request(ctx, query, struct {
 			After  string `json:"after,omitempty"`
 			Filter string `json:"filter"`
 		}{After: cursor, Filter: filter})
 		if err != nil {
-			return nil, fmt.Errorf("failed to request gcpNativeProjects: %w", err)
+			return nil, graphql.RequestError(query, err)
 		}
-		a.log.Printf(log.Debug, "gcpNativeProjects(%q): %s", filter, string(buf))
 
 		var payload struct {
 			Data struct {
@@ -103,7 +109,7 @@ func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal gcpNativeProjects: %v", err)
+			return nil, graphql.UnmarshalError(query, err)
 		}
 		for _, account := range payload.Data.Result.Edges {
 			accounts = append(accounts, account.Node)
@@ -124,14 +130,14 @@ func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject
 func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnapshots bool) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, gcpNativeDisableProjectQuery, struct {
+	query := gcpNativeDisableProjectQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID              uuid.UUID `json:"projectId"`
 		DeleteSnapshots bool      `json:"shouldDeleteNativeSnapshots"`
 	}{ID: id, DeleteSnapshots: deleteSnapshots})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to request gcpNativeDisableProject: %w", err)
+		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "gcpNativeDisableProject(%q, %t): %s", id, deleteSnapshots, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -142,10 +148,10 @@ func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnaps
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to unmarshal gcpNativeDisableProject: %v", err)
+		return uuid.Nil, graphql.UnmarshalError(query, err)
 	}
 	if payload.Data.Query.Error != "" {
-		return uuid.Nil, errors.New(payload.Data.Query.Error)
+		return uuid.Nil, graphql.ResponseError(query, errors.New(payload.Data.Query.Error))
 	}
 	return payload.Data.Query.JobID, nil
 }

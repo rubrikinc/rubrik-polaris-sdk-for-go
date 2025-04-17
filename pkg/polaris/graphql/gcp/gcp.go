@@ -28,8 +28,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/secret"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -51,11 +51,11 @@ func Wrap(gql *graphql.Client) API {
 func (a API) DefaultCredentialsServiceAccount(ctx context.Context) (name string, err error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, gcpGetDefaultCredentialsServiceAccountQuery, nil)
+	query := gcpGetDefaultCredentialsServiceAccountQuery
+	buf, err := a.GQL.Request(ctx, query, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to request gcpGetDefaultCredentialsServiceAccount: %w", err)
+		return "", graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "gcpGetDefaultCredentialsServiceAccount(): %s", string(buf))
 
 	var payload struct {
 		Data struct {
@@ -63,7 +63,7 @@ func (a API) DefaultCredentialsServiceAccount(ctx context.Context) (name string,
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", fmt.Errorf("failed to unmarshal gcpGetDefaultCredentialsServiceAccount: %v", err)
+		return "", graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Name, nil
@@ -75,15 +75,14 @@ func (a API) DefaultCredentialsServiceAccount(ctx context.Context) (name string,
 func (a API) SetDefaultServiceAccount(ctx context.Context, name, jwtConfig string) error {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.RequestWithoutLogging(ctx, gcpSetDefaultServiceAccountJwtConfigQuery, struct {
-		Name      string `json:"serviceAccountName"`
-		JwtConfig string `json:"serviceAccountJwtConfig"`
-	}{Name: name, JwtConfig: jwtConfig})
+	query := gcpSetDefaultServiceAccountJwtConfigQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		Name      string        `json:"serviceAccountName"`
+		JwtConfig secret.String `json:"serviceAccountJwtConfig"`
+	}{Name: name, JwtConfig: secret.String(jwtConfig)})
 	if err != nil {
-		return fmt.Errorf("failed to request gcpSetDefaultServiceAccountJwtConfig: %w", err)
+		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "gcpSetDefaultServiceAccountJwtConfig(%q, %q): %s", name, "<REDACTED>",
-		string(buf))
 
 	var payload struct {
 		Data struct {
@@ -91,10 +90,10 @@ func (a API) SetDefaultServiceAccount(ctx context.Context, name, jwtConfig strin
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal gcpSetDefaultServiceAccountJwtConfig: %v", err)
+		return graphql.UnmarshalError(query, err)
 	}
 	if !payload.Data.Success {
-		return errors.New("set gcp service account failed")
+		return graphql.ResponseError(query, errors.New("set gcp service account failed"))
 	}
 
 	return nil

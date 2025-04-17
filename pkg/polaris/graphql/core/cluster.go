@@ -57,7 +57,6 @@ func (a API) RegisterCluster(ctx context.Context, managedByPolaris bool, nodeCon
 	if err != nil {
 		return "", "", graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {

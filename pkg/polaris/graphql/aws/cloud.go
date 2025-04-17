@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -76,14 +77,14 @@ type CloudAccountWithFeatures struct {
 func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature core.Feature) (CloudAccountWithFeatures, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, awsCloudAccountWithFeaturesQuery, struct {
+	query := awsCloudAccountWithFeaturesQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID       uuid.UUID `json:"cloudAccountId"`
 		Features []string  `json:"features"`
 	}{ID: id, Features: []string{feature.Name}})
 	if err != nil {
-		return CloudAccountWithFeatures{}, fmt.Errorf("failed to request awsCloudAccountWithFeatures: %w", err)
+		return CloudAccountWithFeatures{}, graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "awsCloudAccountWithFeatures(%q, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -91,7 +92,7 @@ func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return CloudAccountWithFeatures{}, fmt.Errorf("failed to unmarshal awsCloudAccountWithFeatures: %v", err)
+		return CloudAccountWithFeatures{}, graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Result, nil
@@ -103,14 +104,14 @@ func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature
 func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountWithFeatures, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, allAwsCloudAccountsWithFeaturesQuery, struct {
+	query := allAwsCloudAccountsWithFeaturesQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Feature string `json:"feature"`
 		Filter  string `json:"columnSearchFilter"`
 	}{Filter: filter, Feature: feature.Name})
 	if err != nil {
-		return nil, fmt.Errorf("failed to request allAwsCloudAccountsWithFeatures: %w", err)
+		return nil, graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "allAwsCloudAccountsWithFeatures(%q, %q): %s", filter, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -118,7 +119,7 @@ func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal allAwsCloudAccountsWithFeatures: %v", err)
+		return nil, graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Result, nil
@@ -148,16 +149,16 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 		features = nil
 	}
 
-	buf, err := a.GQL.Request(ctx, validateAndCreateAwsCloudAccountQuery, struct {
+	query := validateAndCreateAwsCloudAccountQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID             string         `json:"nativeId"`
 		Name           string         `json:"accountName"`
 		Features       []string       `json:"features,omitempty"`
 		FeaturesWithPG []core.Feature `json:"featuresWithPG,omitempty"`
 	}{ID: id, Name: name, Features: plainFeatures, FeaturesWithPG: features})
 	if err != nil {
-		return CloudAccountInitiate{}, fmt.Errorf("failed to request validateAndCreateAwsCloudAccount: %w", err)
+		return CloudAccountInitiate{}, graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "validateAndCreateAwsCloudAccount(%q, %q, %v, %v): %s", id, name, plainFeatures, features, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -179,7 +180,7 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return CloudAccountInitiate{}, fmt.Errorf("failed to unmarshal validateAndCreateAwsCloudAccount: %v", err)
+		return CloudAccountInitiate{}, graphql.UnmarshalError(query, err)
 	}
 	if msg := payload.Data.Result.ValidateResponse.InvalidAwsAdminAccount.Message; msg != "" {
 		return CloudAccountInitiate{}, fmt.Errorf("invalid admin account: %v", msg)
@@ -208,7 +209,8 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 	for _, reg := range regions {
 		regionEnums = append(regionEnums, reg.ToRegionEnum())
 	}
-	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountProtectionQuery, struct {
+	query := finalizeAwsCloudAccountProtectionQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Cloud          Cloud            `json:"cloudType"`
 		ID             string           `json:"nativeId"`
 		Name           string           `json:"accountName"`
@@ -220,10 +222,8 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 		StackName      string           `json:"stackName"`
 	}{Cloud: cloud, ID: id, Name: name, Regions: regionEnums, ExternalID: init.ExternalID, FeatureVersion: init.FeatureVersions, Features: plainFeatures, FeaturesWithPG: features, StackName: init.StackName})
 	if err != nil {
-		return fmt.Errorf("failed to request finalizeAwsCloudAccountProtection: %w", err)
+		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "finalizeAwsCloudAccountProtection(%q, %q, %q, %q, %v, %v, %v, %q): %s", id, name, regions, init.ExternalID,
-		init.FeatureVersions, plainFeatures, features, init.StackName, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -238,7 +238,7 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal finalizeAwsCloudAccountProtection: %v", err)
+		return graphql.UnmarshalError(query, err)
 	}
 
 	// On success the message starts with "successfully".
@@ -273,14 +273,14 @@ func plainFeatures(features []core.Feature) []string {
 func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feature core.Feature) (cloudFormationURL string, err error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, prepareAwsCloudAccountDeletionQuery, struct {
+	query := prepareAwsCloudAccountDeletionQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID `json:"cloudAccountId"`
 		Feature string    `json:"feature"`
 	}{ID: id, Feature: feature.Name})
 	if err != nil {
-		return "", fmt.Errorf("failed to request prepareAwsCloudAccountDeletion: %w", err)
+		return "", graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "prepareAwsCloudAccountDeletion(%q, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -290,7 +290,7 @@ func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feat
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", fmt.Errorf("failed to unmarshal prepareAwsCloudAccountDeletion: %v", err)
+		return "", graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Query.URL, nil
@@ -302,14 +302,14 @@ func (a API) PrepareCloudAccountDeletion(ctx context.Context, id uuid.UUID, feat
 func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, feature core.Feature) error {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, finalizeAwsCloudAccountDeletionQuery, struct {
+	query := finalizeAwsCloudAccountDeletionQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID `json:"cloudAccountId"`
 		Feature string    `json:"feature"`
 	}{ID: id, Feature: feature.Name})
 	if err != nil {
-		return fmt.Errorf("failed to request finalizeAwsCloudAccountDeletion: %w", err)
+		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "finalizeAwsCloudAccountDeletion(%q, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -319,7 +319,7 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal finalizeAwsCloudAccountDeletion: %v", err)
+		return graphql.UnmarshalError(query, err)
 	}
 
 	// On success the message starts with "successfully".
@@ -334,14 +334,14 @@ func (a API) FinalizeCloudAccountDeletion(ctx context.Context, id uuid.UUID, fea
 func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, accountName string) error {
 	a.GQL.Log().Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, updateAwsCloudAccountQuery, struct {
+	query := updateAwsCloudAccountQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID          uuid.UUID `json:"cloudAccountId"`
 		AccountName string    `json:"awsAccountName"`
 	}{ID: id, AccountName: accountName})
 	if err != nil {
-		return fmt.Errorf("failed to request updateAwsCloudAccount: %w", err)
+		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "updateAwsCloudAccount(%q, %q): %s", id, accountName, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -349,7 +349,7 @@ func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, accountName s
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal updateAwsCloudAccount: %v", err)
+		return graphql.UnmarshalError(query, err)
 	}
 
 	return nil
@@ -365,16 +365,16 @@ func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAcc
 	for _, reg := range regions {
 		regionEnums = append(regionEnums, reg.ToRegionEnum())
 	}
-	buf, err := a.GQL.Request(ctx, updateAwsCloudAccountFeatureQuery, struct {
+	query := updateAwsCloudAccountFeatureQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Action  core.CloudAccountAction `json:"action"`
 		ID      uuid.UUID               `json:"cloudAccountId"`
 		Regions []RegionEnum            `json:"awsRegions"`
 		Feature string                  `json:"feature"`
 	}{Action: action, ID: id, Regions: regionEnums, Feature: feature.Name})
 	if err != nil {
-		return fmt.Errorf("failed to request updateAwsCloudAccountFeature: %w", err)
+		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "updateAwsCloudAccountFeature(%q, %q, %q, %q): %s", action, id, regions, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -384,7 +384,7 @@ func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAcc
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal updateAwsCloudAccountFeature: %v", err)
+		return graphql.UnmarshalError(query, err)
 	}
 
 	// On success the message starts with "successfully".
@@ -400,14 +400,14 @@ func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAcc
 func (a API) PrepareFeatureUpdateForAwsCloudAccount(ctx context.Context, id uuid.UUID, features []core.Feature) (cfmURL string, tmplURL string, err error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, prepareFeatureUpdateForAwsCloudAccountQuery, struct {
+	query := prepareFeatureUpdateForAwsCloudAccountQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID       uuid.UUID `json:"cloudAccountId"`
 		Features []string  `json:"features"`
 	}{ID: id, Features: core.FeatureNames(features)})
 	if err != nil {
-		return "", "", fmt.Errorf("failed to request prepareFeatureUpdateForAwsCloudAccount: %w", err)
+		return "", "", graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "prepareFeatureUpdateForAwsCloudAccount(%q, %v): %s", id, core.FeatureNames(features), string(buf))
 
 	var payload struct {
 		Data struct {
@@ -418,7 +418,7 @@ func (a API) PrepareFeatureUpdateForAwsCloudAccount(ctx context.Context, id uuid
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", "", fmt.Errorf("failed to unmarshal prepareFeatureUpdateForAwsCloudAccount: %v", err)
+		return "", "", graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Result.CloudFormationURL, payload.Data.Result.TemplateURL, nil
