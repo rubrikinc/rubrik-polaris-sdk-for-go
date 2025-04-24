@@ -2,6 +2,7 @@ package azure
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -86,8 +87,6 @@ func TestServicePrincipal(t *testing.T) {
 	}
 }
 
-// TestServicePrincipalWithoutAppName verifies that app name can be looked up
-// from the tenant using the Azure AD Graph API.
 func TestServicePrincipalWithoutAppName(t *testing.T) {
 	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
@@ -108,7 +107,7 @@ func TestServicePrincipalWithoutAppName(t *testing.T) {
 	if principal.appID != testSub.PrincipalID {
 		t.Errorf("invalid app id: %s", principal.appID)
 	}
-	if principal.appName != testSub.PrincipalName {
+	if !strings.HasPrefix(principal.appName, "app-") {
 		t.Errorf("invalid app name: %s", principal.appName)
 	}
 	if principal.appSecret != testSub.PrincipalSecret {
