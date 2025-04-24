@@ -39,8 +39,8 @@ type SSOGroup struct {
 		Name string    `json:"name"`
 	} `json:"roles"`
 	Users []struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
+		ID    string `json:"id"`
+		Email string `json:"email"`
 	} `json:"users"`
 }
 
