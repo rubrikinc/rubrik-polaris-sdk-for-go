@@ -22,6 +22,7 @@ package azure
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,9 +31,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Azure/azure-sdk-for-go/services/graphrbac/1.6/graphrbac"
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/google/uuid"
 )
@@ -51,36 +49,9 @@ type servicePrincipal struct {
 // passed to the function creating the ServicePrincipalFunc.
 type ServicePrincipalFunc func(ctx context.Context) (servicePrincipal, error)
 
-// appDisplayNameFromGraph looks up the app display name for the specified
-// service principal in Azure AD Graph.
-func appDisplayNameFromGraph(ctx context.Context, authorizer autorest.Authorizer, appID, tenantID uuid.UUID) (string, error) {
-	client := graphrbac.NewServicePrincipalsClient(tenantID.String())
-	client.Authorizer = authorizer
-
-	// This filter should allow the query to run with very few permissions.
-	filter := fmt.Sprintf("servicePrincipalNames/any(c:c eq '%s')", appID)
-	result, err := client.ListComplete(ctx, filter)
-	if err != nil {
-		return "", fmt.Errorf("failed to get Azure service principal names using Graph: %s", err)
-	}
-	if !result.NotDone() {
-		return "", errors.New("failed to find Azure service principal using Graph")
-	}
-	if result.Value().AppDisplayName == nil {
-		return "", errors.New("failed to lookup Azure service principal app display name using Graph")
-	}
-
-	return *result.Value().AppDisplayName, nil
-}
-
 // azureServicePrincipalFromAzEnv creates a service principal from the
-// environment and information read from the Azure cloud.
+// environment.
 func azurePrincipalFromAzEnv(ctx context.Context, tenantDomain string) (servicePrincipal, error) {
-	graphAuthorizer, err := auth.NewAuthorizerFromEnvironmentWithResource(azure.PublicCloud.GraphEndpoint)
-	if err != nil {
-		return servicePrincipal{}, fmt.Errorf("failed to create Azure Graph authorizer from env: %s", err)
-	}
-
 	settings, err := auth.GetSettingsFromEnvironment()
 	if err != nil {
 		return servicePrincipal{}, fmt.Errorf("failed to get Azure auth settings from env: %s", err)
@@ -96,14 +67,9 @@ func azurePrincipalFromAzEnv(ctx context.Context, tenantDomain string) (serviceP
 		return servicePrincipal{}, fmt.Errorf("failed to parse Azure tenant id: %s", err)
 	}
 
-	appName, err := appDisplayNameFromGraph(ctx, graphAuthorizer, appID, tenantID)
-	if err != nil {
-		return servicePrincipal{}, fmt.Errorf("failed to lookup app display name: %s", err)
-	}
-
 	principal := servicePrincipal{
 		appID:        appID,
-		appName:      appName,
+		appName:      generateAppName(appID, tenantID),
 		appSecret:    settings.Values[auth.ClientSecret],
 		tenantID:     tenantID,
 		tenantDomain: tenantDomain,
@@ -112,14 +78,8 @@ func azurePrincipalFromAzEnv(ctx context.Context, tenantDomain string) (serviceP
 	return principal, nil
 }
 
-// azurePrincipalFromAzFile creates a service principal from the SDK auth file
-// and information read from the Azure cloud.
+// azurePrincipalFromAzFile creates a service principal from the SDK auth file.
 func azurePrincipalFromAzFile(ctx context.Context, tenantDomain string) (servicePrincipal, error) {
-	graphAuthorizer, err := auth.NewAuthorizerFromFile(azure.PublicCloud.GraphEndpoint)
-	if err != nil {
-		return servicePrincipal{}, fmt.Errorf("failed to create Azure Graph authorizer from file: %s", err)
-	}
-
 	settings, err := auth.GetSettingsFromFile()
 	if err != nil {
 		return servicePrincipal{}, fmt.Errorf("failed to get Azure auth settings from file: %s", err)
@@ -135,14 +95,9 @@ func azurePrincipalFromAzFile(ctx context.Context, tenantDomain string) (service
 		return servicePrincipal{}, fmt.Errorf("failed to parse Azure tenant id: %s", err)
 	}
 
-	appName, err := appDisplayNameFromGraph(ctx, graphAuthorizer, appID, tenantID)
-	if err != nil {
-		return servicePrincipal{}, fmt.Errorf("failed to lookup app display name: %s", err)
-	}
-
 	principal := servicePrincipal{
 		appID:        appID,
-		appName:      appName,
+		appName:      generateAppName(appID, tenantID),
 		appSecret:    settings.Values[auth.ClientSecret],
 		tenantID:     tenantID,
 		tenantDomain: tenantDomain,
@@ -216,26 +171,10 @@ func decodePrincipalV0(ctx context.Context, data, tenantDomain string) (serviceP
 		tenantDomain: tenantDomain,
 	}
 
-	// If the appName is empty, we try to look up the name using Graph.
+	// We used to allow appName to be blank, in which case we would look it
+	// up using the Azure AD Graph API. This API has been deprecated.
 	if principal.appName == "" {
-		graphConfig := auth.ClientCredentialsConfig{
-			ClientID:     v0.AppID,
-			ClientSecret: v0.AppSecret,
-			TenantID:     v0.TenantID,
-			Resource:     azure.PublicCloud.GraphEndpoint,
-			AADEndpoint:  azure.PublicCloud.ActiveDirectoryEndpoint,
-		}
-		graphAuthorizer, err := graphConfig.Authorizer()
-		if err != nil {
-			err = fmt.Errorf("failed to get Azure Graph authorizer: %s", err)
-			return servicePrincipal{}, principalAzureError{err: err}
-		}
-
-		appName, err := appDisplayNameFromGraph(ctx, graphAuthorizer, appID, tenantID)
-		if err != nil {
-			return servicePrincipal{}, fmt.Errorf("failed to lookup app display name: %s", err)
-		}
-		principal.appName = appName
+		principal.appName = generateAppName(appID, tenantID)
 	}
 
 	return principal, nil
@@ -280,26 +219,10 @@ func decodePrincipalV1(ctx context.Context, data, tenantDomain string) (serviceP
 		tenantDomain: tenantDomain,
 	}
 
-	// If the appName is empty, we try to look up the name using Graph.
+	// We used to allow appName to be blank, in which case we would look it
+	// up using the Azure AD Graph API. This API has been deprecated.
 	if principal.appName == "" {
-		graphConfig := auth.ClientCredentialsConfig{
-			ClientID:     v1.AppID,
-			ClientSecret: v1.AppSecret,
-			TenantID:     v1.TenantID,
-			Resource:     azure.PublicCloud.GraphEndpoint,
-			AADEndpoint:  azure.PublicCloud.ActiveDirectoryEndpoint,
-		}
-		graphAuthorizer, err := graphConfig.Authorizer()
-		if err != nil {
-			err = fmt.Errorf("failed to get Azure Graph authorizer: %s", err)
-			return servicePrincipal{}, principalAzureError{err: err}
-		}
-
-		appName, err := appDisplayNameFromGraph(ctx, graphAuthorizer, appID, tenantID)
-		if err != nil {
-			return servicePrincipal{}, fmt.Errorf("failed to lookup app display name: %s", err)
-		}
-		principal.appName = appName
+		principal.appName = generateAppName(appID, tenantID)
 	}
 
 	return principal, nil
@@ -340,26 +263,10 @@ func decodePrincipalV2(ctx context.Context, data, tenantDomain string) (serviceP
 		tenantDomain: tenantDomain,
 	}
 
-	// If the appName is empty, we try to look up the name using Graph.
+	// We used to allow appName to be blank, in which case we would look it
+	// up using the Azure AD Graph API. This API has been deprecated.
 	if principal.appName == "" {
-		graphConfig := auth.ClientCredentialsConfig{
-			ClientID:     v2.AppID,
-			ClientSecret: v2.AppSecret,
-			TenantID:     v2.TenantID,
-			Resource:     azure.PublicCloud.GraphEndpoint,
-			AADEndpoint:  azure.PublicCloud.ActiveDirectoryEndpoint,
-		}
-		graphAuthorizer, err := graphConfig.Authorizer()
-		if err != nil {
-			err = fmt.Errorf("failed to get Azure Graph authorizer: %s", err)
-			return servicePrincipal{}, principalAzureError{err: err}
-		}
-
-		appName, err := appDisplayNameFromGraph(ctx, graphAuthorizer, appID, tenantID)
-		if err != nil {
-			return servicePrincipal{}, fmt.Errorf("failed to lookup app display name: %s", err)
-		}
-		principal.appName = appName
+		principal.appName = generateAppName(appID, tenantID)
 	}
 
 	return principal, nil
@@ -487,8 +394,7 @@ func SDKAuthFile(authFile, tenantDomain string) ServicePrincipalFunc {
 }
 
 // ServicePrincipal returns a ServicePrincipalFunc that initializes the service
-// principal with the specified values. AppName can be blank, in which case it
-// will be looked up using Azure AD Graph.
+// principal with the specified values.
 func ServicePrincipal(appID uuid.UUID, appName string, appSecret string, tenantID uuid.UUID, tenantDomain string) ServicePrincipalFunc {
 	return func(ctx context.Context) (servicePrincipal, error) {
 		principal := servicePrincipal{
@@ -499,27 +405,17 @@ func ServicePrincipal(appID uuid.UUID, appName string, appSecret string, tenantI
 			tenantDomain: tenantDomain,
 		}
 
-		// If the appName is empty, we try to look up the name using Graph.
+		// We used to allow appName to be blank, in which case we would look it
+		// up using the Azure AD Graph API. This API has been deprecated.
 		if principal.appName == "" {
-			graphConfig := auth.ClientCredentialsConfig{
-				ClientID:     appID.String(),
-				ClientSecret: appSecret,
-				TenantID:     tenantID.String(),
-				Resource:     azure.PublicCloud.GraphEndpoint,
-				AADEndpoint:  azure.PublicCloud.ActiveDirectoryEndpoint,
-			}
-			graphAuthorizer, err := graphConfig.Authorizer()
-			if err != nil {
-				return servicePrincipal{}, fmt.Errorf("failed to get Azure Graph authorizer: %s", err)
-			}
-
-			appName, err := appDisplayNameFromGraph(ctx, graphAuthorizer, appID, tenantID)
-			if err != nil {
-				return servicePrincipal{}, fmt.Errorf("failed to lookup app display name: %s", err)
-			}
-			principal.appName = appName
+			principal.appName = generateAppName(appID, tenantID)
 		}
 
 		return principal, nil
 	}
+}
+
+// generateAppName generates an app name from the app and tenant IDs.
+func generateAppName(appID, tenantID uuid.UUID) string {
+	return fmt.Sprintf("app-%x", sha256.Sum224([]byte(fmt.Sprintf("%s%s", appID.String(), tenantID.String()))))
 }
