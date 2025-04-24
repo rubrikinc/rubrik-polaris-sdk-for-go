@@ -27,8 +27,9 @@ import (
 // String is a type that can be redacted.
 type String string
 
-// Redact returns a copy of value where all String values have been replaced
-// with the redaction text. The redaction text defaults to REDACTED.
+// Redact returns a copy of value where all String values of exported fields
+// have been replaced with the redaction text. The redaction text defaults to
+// "REDACTED".
 func Redact[T any](value T, options ...Option) T {
 	// Untyped nil value.
 	switch any(value).(type) {
@@ -42,7 +43,7 @@ func Redact[T any](value T, options ...Option) T {
 	}
 
 	// Typed nil value.
-	if (v.Kind() == reflect.Interface || v.Kind() == reflect.Map || v.Kind() == reflect.Ptr || v.Kind() == reflect.Slice) && v.IsNil() {
+	if (v.Kind() == reflect.Interface || v.Kind() == reflect.Map || v.Kind() == reflect.Pointer || v.Kind() == reflect.Slice) && v.IsNil() {
 		return value
 	}
 

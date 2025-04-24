@@ -20,8 +20,8 @@
 
 package secret
 
-var _ Option = DebugMode(false)
-var _ Option = RedactionText("<REDACTED>")
+var _ Option = (*DebugMode)(nil)
+var _ Option = (*RedactionText)(nil)
 
 // Option can be provided to the Redact function to modify its behavior.
 type Option interface {
