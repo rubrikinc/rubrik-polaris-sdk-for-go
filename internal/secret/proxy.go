@@ -51,7 +51,9 @@ func proxyInterface(value reflect.Value, options *redactOptions) reflect.Value {
 	}
 
 	pv := reflect.New(value.Type()).Elem()
-	pv.Set(proxyValue(value.Elem(), options))
+	if !value.IsNil() {
+		pv.Set(proxyValue(value.Elem(), options))
+	}
 
 	return pv
 }
@@ -75,7 +77,9 @@ func proxyPointer(value reflect.Value, options *redactOptions) reflect.Value {
 	}
 
 	pv := reflect.New(value.Type()).Elem()
-	pv.Set(proxyValue(value.Elem(), options).Addr())
+	if !value.IsNil() {
+		pv.Set(proxyValue(value.Elem(), options).Addr())
+	}
 
 	return pv
 }
