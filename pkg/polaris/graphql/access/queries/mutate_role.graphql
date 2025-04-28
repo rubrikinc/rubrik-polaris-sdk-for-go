@@ -1,9 +1,14 @@
-mutation RubrikPolarisSDKRequest($roleId: String, $name: String!, $description: String!, $permissions: [PermissionInput!]!, $protectableClusters: [String!]!) {
+mutation RubrikPolarisSDKRequest(
+    $roleId:      String,
+    $name:        String!,
+    $description: String!,
+    $permissions: [PermissionInput!]!,
+) {
     result: mutateRole(
         roleId:              $roleId,
         name:                $name,
         description:         $description,
         permissions:         $permissions,
-        protectableClusters: $protectableClusters,
+        protectableClusters: [],
     )
 }

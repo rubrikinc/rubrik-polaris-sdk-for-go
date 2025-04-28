@@ -25,17 +25,21 @@
 package access
 
 // addRoleAssignment GraphQL query
-var addRoleAssignmentQuery = `mutation SdkGolangAddRoleAssignment($userIds: [String!]!, $groupIds: [String!], $roleIds: [String!]!) {
+var addRoleAssignmentQuery = `mutation SdkGolangAddRoleAssignment(
+    $userIds:  [String!]!,
+    $groupIds: [String!],
+    $roleIds:  [String!]!,
+) {
     result: addRoleAssignments(
-        userIds:  $userIds
-        groupIds: $groupIds
-        roleIds:  $roleIds
+        userIds:  $userIds,
+        groupIds: $groupIds,
+        roleIds:  $roleIds,
     )
 }`
 
 // createUser GraphQL query
 var createUserQuery = `mutation SdkGolangCreateUser($email: String!, $roleIds: [String!]!) {
-  result: createUser(email: $email, roleIds: $roleIds)
+    result: createUser(email: $email, roleIds: $roleIds)
 }`
 
 // deleteRole GraphQL query
@@ -45,7 +49,7 @@ var deleteRoleQuery = `mutation SdkGolangDeleteRole($roleId: String!) {
 
 // deleteUserFromAccount GraphQL query
 var deleteUserFromAccountQuery = `mutation SdkGolangDeleteUserFromAccount($ids: [String!]!) {
-  result: deleteUsersFromAccount(ids: $ids)
+    result: deleteUsersFromAccount(ids: $ids)
 }`
 
 // getAllRolesInOrgConnection GraphQL query
@@ -54,18 +58,17 @@ var getAllRolesInOrgConnectionQuery = `query SdkGolangGetAllRolesInOrgConnection
         after:      $after,
         nameFilter: $nameFilter,
     ) {
-        edges {
-            node {
-                id
-                name
-                description
-                isOrgAdmin
-                explicitlyAssignedPermissions {
-                    operation
-                    objectsForHierarchyTypes {
-                        objectIds
-                        snappableType
-                    }
+        nodes {
+            id
+            name
+            description
+            orgId
+            isOrgAdmin
+            explicitlyAssignedPermissions {
+                operation
+                objectsForHierarchyTypes {
+                    objectIds
+                    snappableType
                 }
             }
         }
@@ -83,7 +86,6 @@ var getRolesByIdsQuery = `query SdkGolangGetRolesByIds($roleIds: [String!]!) {
         name
         description
         isOrgAdmin
-        protectableClusters
         explicitlyAssignedPermissions {
             operation
             objectsForHierarchyTypes {
@@ -94,14 +96,45 @@ var getRolesByIdsQuery = `query SdkGolangGetRolesByIds($roleIds: [String!]!) {
     }
 }`
 
+// groupsInCurrentAndDescendantOrganization GraphQL query
+var groupsInCurrentAndDescendantOrganizationQuery = `query SdkGolangGroupsInCurrentAndDescendantOrganization($after: String, $filter: GroupFilterInput) {
+    result: groupsInCurrentAndDescendantOrganization(
+        after:  $after,
+        filter: $filter,
+    ) {
+        nodes {
+            groupId
+            groupName
+            domainName
+            roles {
+                id
+                name
+            }
+            users {
+                id
+                email
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
 // mutateRole GraphQL query
-var mutateRoleQuery = `mutation SdkGolangMutateRole($roleId: String, $name: String!, $description: String!, $permissions: [PermissionInput!]!, $protectableClusters: [String!]!) {
+var mutateRoleQuery = `mutation SdkGolangMutateRole(
+    $roleId:      String,
+    $name:        String!,
+    $description: String!,
+    $permissions: [PermissionInput!]!,
+) {
     result: mutateRole(
         roleId:              $roleId,
         name:                $name,
         description:         $description,
         permissions:         $permissions,
-        protectableClusters: $protectableClusters,
+        protectableClusters: [],
     )
 }`
 
@@ -111,17 +144,15 @@ var roleTemplatesQuery = `query SdkGolangRoleTemplates($after: String, $nameFilt
         after:      $after,
         nameFilter: $nameFilter,
     ) {
-        edges {
-            node {
-                id
-                name
-                description
-                explicitlyAssignedPermissions {
-                    operation
-                    objectsForHierarchyTypes {
-                        objectIds
-                        snappableType
-                    }
+        nodes {
+            id
+            name
+            description
+            explicitlyAssignedPermissions {
+                operation
+                objectsForHierarchyTypes {
+                    objectIds
+                    snappableType
                 }
             }
         }
@@ -133,7 +164,11 @@ var roleTemplatesQuery = `query SdkGolangRoleTemplates($after: String, $nameFilt
 }`
 
 // updateRoleAssignments GraphQL query
-var updateRoleAssignmentsQuery = `mutation SdkGolangUpdateRoleAssignments($userIds: [String!]!, $groupIds: [String!], $roleIds: [String!]!) {
+var updateRoleAssignmentsQuery = `mutation SdkGolangUpdateRoleAssignments(
+    $userIds:  [String!]!,
+    $groupIds: [String!],
+    $roleIds:  [String!]!,
+) {
     result: updateRoleAssignments(
         userIds:  $userIds,
         groupIds: $groupIds,
@@ -142,28 +177,21 @@ var updateRoleAssignmentsQuery = `mutation SdkGolangUpdateRoleAssignments($userI
 }`
 
 // usersInCurrentAndDescendantOrganization GraphQL query
-var usersInCurrentAndDescendantOrganizationQuery = `query SdkGolangUsersInCurrentAndDescendantOrganization($after: String, $emailFilter: String) {
-    result: usersInCurrentAndDescendantOrganization(after: $after, filter: {emailFilter: $emailFilter}) {
-        edges {
-            node {
+var usersInCurrentAndDescendantOrganizationQuery = `query SdkGolangUsersInCurrentAndDescendantOrganization($after: String, $filter: UserFilterInput) {
+    result: usersInCurrentAndDescendantOrganization(
+        after:  $after,
+        filter: $filter,
+    ) {
+        nodes {
+            id
+            email
+            domain
+            status
+            isAccountOwner
+            groups
+            roles {
                 id
-                email
-                status
-                isAccountOwner
-                roles {
-                    id
-                    name
-                    description
-                    isOrgAdmin
-                    protectableClusters
-                    explicitlyAssignedPermissions {
-                        operation
-                        objectsForHierarchyTypes {
-                            objectIds
-                            snappableType
-                        }
-                    }
-                }
+                name
             }
         }
         pageInfo {

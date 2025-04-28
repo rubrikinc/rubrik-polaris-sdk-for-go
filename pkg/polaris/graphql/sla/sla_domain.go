@@ -30,7 +30,8 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// CreateDomainParams holds the parameters for a global SLA domain create operation.
+// CreateDomainParams holds the parameters for a global SLA domain create
+// operation.
 type CreateDomainParams struct {
 	ArchivalSpecs []ArchivalSpec `json:"archivalSpecs,omitempty"`
 	BackupWindows []BackupWindow `json:"backupWindows,omitempty"`
@@ -164,11 +165,11 @@ type BasicSnapshotSchedule struct {
 
 // CreateDomain creates a new global SLA domain. Returns the ID of the
 // new global SLA domain.
-func CreateDomain(ctx context.Context, gql *graphql.Client, createParams CreateDomainParams) (uuid.UUID, error) {
+func CreateDomain(ctx context.Context, gql *graphql.Client, params CreateDomainParams) (uuid.UUID, error) {
 	gql.Log().Print(log.Trace)
 
 	query := createGlobalSlaQuery
-	buf, err := gql.Request(ctx, query, createParams)
+	buf, err := gql.Request(ctx, query, params)
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
@@ -206,12 +207,12 @@ type BoolValue struct {
 	Value bool `json:"value"`
 }
 
-// UpdateGlobalSLADomain updates an existing global SLA domain.
-func UpdateDomain(ctx context.Context, gql *graphql.Client, updateParams UpdateDomainParams) error {
+// UpdateDomain updates an existing global SLA domain.
+func UpdateDomain(ctx context.Context, gql *graphql.Client, params UpdateDomainParams) error {
 	gql.Log().Print(log.Trace)
 
 	query := updateGlobalSlaQuery
-	buf, err := gql.Request(ctx, query, updateParams)
+	buf, err := gql.Request(ctx, query, params)
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
@@ -273,11 +274,11 @@ type AssignDomainParams struct {
 
 // AssignDomain assigns the specified RSC global SLA domain to the specified
 // objects.
-func AssignDomain(ctx context.Context, gql *graphql.Client, assignParams AssignDomainParams) error {
+func AssignDomain(ctx context.Context, gql *graphql.Client, params AssignDomainParams) error {
 	gql.Log().Print(log.Trace)
 
 	query := assignSlaQuery
-	buf, err := gql.Request(ctx, query, assignParams)
+	buf, err := gql.Request(ctx, query, params)
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
@@ -294,7 +295,7 @@ func AssignDomain(ctx context.Context, gql *graphql.Client, assignParams AssignD
 		return graphql.UnmarshalError(query, err)
 	}
 	if !payload.Data.Result.Success {
-		return graphql.ResponseError(query, fmt.Errorf("failed to assign SLA domain to objects: %s", assignParams.ObjectIDs))
+		return graphql.ResponseError(query, fmt.Errorf("failed to assign SLA domain to objects: %s", params.ObjectIDs))
 	}
 
 	return nil

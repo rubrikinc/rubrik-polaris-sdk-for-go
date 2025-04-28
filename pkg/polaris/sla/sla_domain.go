@@ -93,7 +93,7 @@ func (a API) Domains(ctx context.Context, nameFilter string) ([]sla.Domain, erro
 func (a API) DomainObjects(ctx context.Context, domainID uuid.UUID, nameFilter string) ([]sla.Object, error) {
 	a.log.Print(log.Trace)
 
-	objects, err := sla.ListDomainObjects(ctx, a.client, domainID, sla.ProtectedObjectFilter{
+	objects, err := sla.ListDomainObjects(ctx, a.client, domainID, sla.ObjectFilter{
 		ObjectName:                  nameFilter,
 		ProtectionStatus:            sla.StatusUnspecified,
 		OnlyDirectlyAssignedObjects: true,
