@@ -185,6 +185,7 @@ var usersInCurrentAndDescendantOrganizationQuery = `query SdkGolangUsersInCurren
         nodes {
             id
             email
+            domain
             status
             isAccountOwner
             groups

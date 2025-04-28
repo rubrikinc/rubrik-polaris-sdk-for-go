@@ -21,6 +21,7 @@
 package access
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -50,13 +51,24 @@ func (a API) UserByID(ctx context.Context, userID string) (access.User, error) {
 }
 
 // UserByEmail returns the user with the specified email address.
-func (a API) UserByEmail(ctx context.Context, userEmail string) (access.User, error) {
+// Domain is optional and can be used to differentiate between users with the
+// same email address in different domains.
+func (a API) UserByEmail(ctx context.Context, userEmail string, domain access.UserDomain) (access.User, error) {
 	a.client.Log().Print(log.Trace)
 
-	users, err := a.Users(ctx, userEmail)
-	if err != nil {
-		return access.User{}, err
+	filter := access.UserFilter{
+		EmailFilter: userEmail,
 	}
+	if domain != "" {
+		filter.UserDomains = []access.UserDomain{domain}
+	}
+	users, err := access.ListUsers(ctx, a.client, filter)
+	if err != nil {
+		return access.User{}, fmt.Errorf("failed to get users with filter %q: %s", userEmail, err)
+	}
+	slices.SortFunc(users, func(a, b access.User) int {
+		return cmp.Or(cmp.Compare(a.Email, b.Email), cmp.Compare(a.Domain, b.Domain))
+	})
 
 	for _, user := range users {
 		if user.Email == userEmail {

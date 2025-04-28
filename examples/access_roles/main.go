@@ -88,7 +88,7 @@ func main() {
 	}
 	fmt.Printf("User %q roles:\n", user.Email)
 	for _, role := range user.Roles {
-		fmt.Printf("ID: %s, Name: %q, Description: %q\n", role.ID, role.Name, role.Description)
+		fmt.Printf("ID: %s, Name: %q\n", role.ID, role.Name)
 	}
 
 	// Remove user from RSC.

@@ -34,11 +34,8 @@ import (
 type UserDomain string
 
 const (
-	DomainLocal   UserDomain = "LOCAL"
-	DomainSSO     UserDomain = "SSO"
-	DomainLDAP    UserDomain = "LDAP"
-	DomainClient  UserDomain = "CLIENT"
-	DomainSupport UserDomain = "SUPPORT"
+	DomainLocal UserDomain = "LOCAL"
+	DomainSSO   UserDomain = "SSO"
 )
 
 // UserRef is a reference to a User in RSC. A UserRef holds the ID and Email
@@ -51,10 +48,11 @@ type UserRef struct {
 // User represents a user in RSC.
 type User struct {
 	UserRef
-	Status         string    `json:"status"`
-	IsAccountOwner bool      `json:"isAccountOwner"`
-	Groups         []string  `json:"groups"`
-	Roles          []RoleRef `json:"roles"`
+	Domain         UserDomain `json:"domain"`
+	Status         string     `json:"status"`
+	IsAccountOwner bool       `json:"isAccountOwner"`
+	Groups         []string   `json:"groups"`
+	Roles          []RoleRef  `json:"roles"`
 }
 
 // HasRole returns true if the user has the specified role, false otherwise.

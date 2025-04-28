@@ -71,7 +71,7 @@ func TestUserManagement(t *testing.T) {
 	}
 
 	// Get user by email address.
-	user2, err := accessClient.UserByEmail(ctx, testConfig.NewUserEmail)
+	user2, err := accessClient.UserByEmail(ctx, testConfig.NewUserEmail, gqlaccess.DomainLocal)
 	if err != nil {
 		t.Error(err)
 	}
@@ -89,16 +89,16 @@ func TestUserManagement(t *testing.T) {
 	}
 
 	// Verify that UserByID returns ErrNotFound for non-existing UUIDs.
-	if _, err := accessClient.UserByEmail(ctx, "c4c53ec0-aa02-4582-9443-bc4be0045653"); err == nil || !errors.Is(err, graphql.ErrNotFound) {
+	if _, err := accessClient.UserByEmail(ctx, "c4c53ec0-aa02-4582-9443-bc4be0045653", gqlaccess.DomainLocal); err == nil || !errors.Is(err, graphql.ErrNotFound) {
 		t.Errorf("expected graphql.ErrNotFound: %s", err)
 	}
 
 	// Verify that UserByEmail returns ErrNotFound for non-exact matches.
-	if _, err := accessClient.UserByEmail(ctx, "name@example.com"); err == nil || !errors.Is(err, graphql.ErrNotFound) {
+	if _, err := accessClient.UserByEmail(ctx, "name@example.com", gqlaccess.DomainLocal); err == nil || !errors.Is(err, graphql.ErrNotFound) {
 		t.Errorf("expected graphql.ErrNotFound: %s", err)
 	}
 	email := testConfig.NewUserEmail[:len(testConfig.NewUserEmail)-1]
-	if _, err := accessClient.UserByEmail(ctx, email); err == nil || !errors.Is(err, graphql.ErrNotFound) {
+	if _, err := accessClient.UserByEmail(ctx, email, gqlaccess.DomainLocal); err == nil || !errors.Is(err, graphql.ErrNotFound) {
 		t.Errorf("expected graphql.ErrNotFound: %s", err)
 	}
 
