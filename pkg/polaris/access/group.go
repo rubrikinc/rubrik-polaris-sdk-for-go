@@ -116,7 +116,7 @@ func (a API) AssignSSOGroupRoles(ctx context.Context, ssoGroupID string, roleIDs
 }
 
 // UnassignSSOGroupRole unassigns the role from the SSO group with the specified
-// SSO group ID.
+// SSO group ID. Returns graphql.ErrNotFound if the user does not exist.
 func (a API) UnassignSSOGroupRole(ctx context.Context, ssoGroupID string, roleID uuid.UUID) error {
 	a.client.Log().Print(log.Trace)
 
@@ -142,7 +142,8 @@ func (a API) UnassignSSOGroupRole(ctx context.Context, ssoGroupID string, roleID
 }
 
 // UnassignSSOGroupRoles unassigns the roles from the SSO group with the
-// specified SSO group ID.
+// specified SSO group ID. Returns graphql.ErrNotFound if the user does not
+// exist.
 func (a API) UnassignSSOGroupRoles(ctx context.Context, ssoGroupID string, roleIDs []uuid.UUID) error {
 	a.client.Log().Print(log.Trace)
 

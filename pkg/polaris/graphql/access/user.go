@@ -41,14 +41,20 @@ const (
 	DomainSupport UserDomain = "SUPPORT"
 )
 
+// UserRef is a reference to a User in RSC. A UserRef holds the ID and Email
+// of a user.
+type UserRef struct {
+	ID    string `json:"id"`
+	Email string `json:"email"`
+}
+
 // User represents a user in RSC.
 type User struct {
-	ID             string   `json:"id"`
-	Email          string   `json:"email"`
-	Status         string   `json:"status"`
-	IsAccountOwner bool     `json:"isAccountOwner"`
-	Groups         []string `json:"groups"`
-	Roles          []Role   `json:"roles"`
+	UserRef
+	Status         string    `json:"status"`
+	IsAccountOwner bool      `json:"isAccountOwner"`
+	Groups         []string  `json:"groups"`
+	Roles          []RoleRef `json:"roles"`
 }
 
 // HasRole returns true if the user has the specified role, false otherwise.

@@ -31,10 +31,16 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Role represents a user role in RSC.
+// RoleRef is a reference to a Role in RSC. A RoleRef holds the ID and Name
+// of a role.
+type RoleRef struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+// Role represents a role in RSC.
 type Role struct {
-	ID                  uuid.UUID    `json:"id"`
-	Name                string       `json:"name"`
+	RoleRef
 	Description         string       `json:"description"`
 	AssignedPermissions []Permission `json:"explicitlyAssignedPermissions"`
 	IsOrgAdmin          bool         `json:"isOrgAdmin"`

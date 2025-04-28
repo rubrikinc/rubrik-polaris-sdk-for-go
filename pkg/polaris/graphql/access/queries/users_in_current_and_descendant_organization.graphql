@@ -12,15 +12,6 @@ query RubrikPolarisSDKRequest($after: String, $filter: UserFilterInput) {
             roles {
                 id
                 name
-                description
-                isOrgAdmin
-                explicitlyAssignedPermissions {
-                    operation
-                    objectsForHierarchyTypes {
-                        objectIds
-                        snappableType
-                    }
-                }
             }
         }
         pageInfo {

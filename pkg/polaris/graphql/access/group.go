@@ -31,17 +31,11 @@ import (
 
 // SSOGroup represents an SSO group in RSC.
 type SSOGroup struct {
-	ID         string `json:"groupId"`
-	Name       string `json:"groupName"`
-	DomainName string `json:"domainName"`
-	Roles      []struct {
-		ID   uuid.UUID `json:"id"`
-		Name string    `json:"name"`
-	} `json:"roles"`
-	Users []struct {
-		ID    string `json:"id"`
-		Email string `json:"email"`
-	} `json:"users"`
+	ID         string    `json:"groupId"`
+	Name       string    `json:"groupName"`
+	DomainName string    `json:"domainName"`
+	Roles      []RoleRef `json:"roles"`
+	Users      []UserRef `json:"users"`
 }
 
 // HasRole returns true if the SSO group has the specified role, false

@@ -191,15 +191,6 @@ var usersInCurrentAndDescendantOrganizationQuery = `query SdkGolangUsersInCurren
             roles {
                 id
                 name
-                description
-                isOrgAdmin
-                explicitlyAssignedPermissions {
-                    operation
-                    objectsForHierarchyTypes {
-                        objectIds
-                        snappableType
-                    }
-                }
             }
         }
         pageInfo {

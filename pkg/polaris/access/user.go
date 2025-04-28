@@ -139,6 +139,7 @@ func (a API) AssignUserRoles(ctx context.Context, userID string, roleIDs []uuid.
 }
 
 // UnassignUserRole unassigns the role from the user with the specified user ID.
+// Returns graphql.ErrNotFound if the user does not exist.
 func (a API) UnassignUserRole(ctx context.Context, userID string, roleID uuid.UUID) error {
 	a.client.Log().Print(log.Trace)
 
@@ -164,7 +165,7 @@ func (a API) UnassignUserRole(ctx context.Context, userID string, roleID uuid.UU
 }
 
 // UnassignUserRoles unassigns the roles from the user with the specified user
-// ID.
+// ID. Returns graphql.ErrNotFound if the user does not exist.
 func (a API) UnassignUserRoles(ctx context.Context, userID string, roleIDs []uuid.UUID) error {
 	a.client.Log().Print(log.Trace)
 
