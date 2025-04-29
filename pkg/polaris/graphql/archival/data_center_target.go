@@ -45,7 +45,6 @@ func GetTarget[R GetTargetResult](ctx context.Context, gql *graphql.Client, targ
 	if err != nil {
 		return result, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -96,7 +95,6 @@ func ListTargets[R ListTargetResult](ctx context.Context, gql *graphql.Client, f
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
 		}
-		graphql.LogResponse(gql.Log(), query, buf)
 
 		var payload struct {
 			Data struct {
@@ -144,11 +142,10 @@ func CreateTarget[R CreateTargetResult[P], P CreateTargetParams](ctx context.Con
 
 	var result R
 	query, queryParams := result.CreateQuery(createParams)
-	buf, err := gql.RequestWithoutLogging(ctx, query, queryParams)
+	buf, err := gql.Request(ctx, query, queryParams)
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -184,11 +181,10 @@ func UpdateTarget[R UpdateTargetResult[P], P UpdateTargetParams](ctx context.Con
 
 	var result R
 	query, queryParams := result.UpdateQuery(targetID, updateParams)
-	buf, err := gql.RequestWithoutLogging(ctx, query, queryParams)
+	buf, err := gql.Request(ctx, query, queryParams)
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -214,7 +210,6 @@ func DisableTarget(ctx context.Context, gql *graphql.Client, targetID uuid.UUID)
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -242,7 +237,6 @@ func DeleteTarget(ctx context.Context, gql *graphql.Client, targetID uuid.UUID) 
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {

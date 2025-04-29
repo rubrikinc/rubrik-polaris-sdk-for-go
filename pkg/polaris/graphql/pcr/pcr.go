@@ -52,7 +52,6 @@ func GetRegistry[P GetRegistryParams[R], R GetRegistryResult](ctx context.Contex
 	if err != nil {
 		return defValue, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -87,7 +86,6 @@ func SetRegistry[P SetRegistryParams[R], R SetRegistryResult](ctx context.Contex
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -113,7 +111,6 @@ func RemoveRegistry(ctx context.Context, gql *graphql.Client, cloudAccountID uui
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {

@@ -20,7 +20,10 @@
 
 package archival
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/secret"
+)
 
 // AWSCloudAccount represents an AWS data center cloud account.
 // Note, these cloud accounts are separate from the cloud native cloud accounts.
@@ -50,10 +53,10 @@ func (r AWSCloudAccount) Validate() bool {
 // CreateAWSCloudAccountParams holds the parameters for an AWS data center
 // cloud account create operation.
 type CreateAWSCloudAccountParams struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	AccessKey   string `json:"accessKey"`
-	SecretKey   string `json:"secretKey"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	AccessKey   secret.String `json:"accessKey"`
+	SecretKey   secret.String `json:"secretKey"`
 }
 
 // CreateAWSCloudAccountResult holds the result of an AWS data center cloud

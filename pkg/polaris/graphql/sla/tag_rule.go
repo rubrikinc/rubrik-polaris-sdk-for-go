@@ -161,7 +161,6 @@ func ListTagRules(ctx context.Context, gql *graphql.Client, objectType string, f
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -202,7 +201,6 @@ func CreateTagRule(ctx context.Context, gql *graphql.Client, params CreateTagRul
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -241,7 +239,6 @@ func UpdateTagRule(ctx context.Context, gql *graphql.Client, tagRuleID uuid.UUID
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -266,7 +263,6 @@ func DeleteTagRule(ctx context.Context, gql *graphql.Client, tagRuleID uuid.UUID
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {

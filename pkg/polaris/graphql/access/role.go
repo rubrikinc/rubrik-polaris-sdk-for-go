@@ -71,7 +71,6 @@ func RolesByIDs(ctx context.Context, gql *graphql.Client, roleIDs []uuid.UUID) (
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -100,7 +99,6 @@ func ListRoles(ctx context.Context, gql *graphql.Client, nameFilter string) ([]R
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
 		}
-		graphql.LogResponse(gql.Log(), query, buf)
 
 		var payload struct {
 			Data struct {
@@ -142,7 +140,6 @@ func CreateRole(ctx context.Context, gql *graphql.Client, params CreateRoleParam
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -175,7 +172,6 @@ func UpdateRole(ctx context.Context, gql *graphql.Client, params UpdateRoleParam
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -203,7 +199,6 @@ func DeleteRole(ctx context.Context, gql *graphql.Client, id uuid.UUID) error {
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -236,7 +231,6 @@ func AssignRoles(ctx context.Context, gql *graphql.Client, params AssignRolePara
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -266,7 +260,6 @@ func ReplaceRoles(ctx context.Context, gql *graphql.Client, params ReplaceRolePa
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {

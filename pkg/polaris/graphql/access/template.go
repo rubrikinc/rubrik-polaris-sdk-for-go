@@ -55,7 +55,6 @@ func ListRoleTemplates(ctx context.Context, gql *graphql.Client, nameFilter stri
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
 		}
-		graphql.LogResponse(gql.Log(), query, buf)
 
 		var payload struct {
 			Data struct {

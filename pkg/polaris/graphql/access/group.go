@@ -72,7 +72,6 @@ func ListSSOGroups(ctx context.Context, gql *graphql.Client, filter SSOGroupFilt
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
 		}
-		graphql.LogResponse(gql.Log(), query, buf)
 
 		var payload struct {
 			Data struct {

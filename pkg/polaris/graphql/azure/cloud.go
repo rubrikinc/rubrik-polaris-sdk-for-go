@@ -146,7 +146,6 @@ func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, incl
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -185,7 +184,6 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 	if err != nil {
 		return "", graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -225,7 +223,6 @@ func (a API) DeleteCloudAccountWithoutOAuth(ctx context.Context, id uuid.UUID, f
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -275,7 +272,6 @@ func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -340,7 +336,6 @@ func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feat
 	if err != nil {
 		return PermissionConfig{}, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -373,7 +368,6 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id 
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -406,7 +400,6 @@ func (a API) StartDisableCloudAccountJob(ctx context.Context, id uuid.UUID, feat
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
