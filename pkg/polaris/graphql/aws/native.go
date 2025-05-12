@@ -41,8 +41,8 @@ type NativeAccount struct {
 	} `json:"regionSpecs"`
 	Status     string         `json:"status"`
 	Assignment sla.Assignment `json:"slaAssignment"`
-	Configured sla.Domain     `json:"configuredSlaDomain"`
-	Effective  sla.Domain     `json:"effectiveSlaDomain"`
+	Configured sla.DomainRef  `json:"configuredSlaDomain"`
+	Effective  sla.DomainRef  `json:"effectiveSlaDomain"`
 }
 
 // NativeAccount returns the native account with the specified RSC native

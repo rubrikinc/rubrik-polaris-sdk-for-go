@@ -81,9 +81,3 @@ type API struct {
 func Wrap(gql *graphql.Client) API {
 	return API{GQL: gql, log: gql.Log()}
 }
-
-// Tag represents an AWS tag.
-type Tag struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}

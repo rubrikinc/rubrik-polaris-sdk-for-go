@@ -66,7 +66,7 @@ type Feature struct {
 type FeatureResourceGroup struct {
 	Name     string           `json:"name"`
 	NativeID string           `json:"nativeId"`
-	Tags     []Tag            `json:"tags"`
+	Tags     []core.Tag       `json:"tags"`
 	Region   NativeRegionEnum `json:"region"`
 }
 
@@ -78,15 +78,9 @@ type ResourceGroup struct {
 	Region  CloudAccountRegionEnum `json:"region"`
 }
 
-// Tag represents the tags present in the resource group.
-type Tag struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
 // TagList represents a list of Tags.
 type TagList struct {
-	Tags []Tag `json:"tagList"`
+	Tags []core.Tag `json:"tagList"`
 }
 
 // FeatureUserAssignedManagedIdentity represents a user-assigned managed

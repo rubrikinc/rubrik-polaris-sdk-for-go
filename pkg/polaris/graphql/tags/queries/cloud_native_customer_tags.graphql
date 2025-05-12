@@ -1,0 +1,9 @@
+query RubrikPolarisSDKRequest($cloudVendor: CloudVendor!, $cloudAccountId: UUID) {
+    result: cloudNativeCustomerTags(cloudVendor: $cloudVendor, cloudAccountId: $cloudAccountId) {
+        customerTags {
+            key
+            value
+        }
+        shouldOverrideResourceTags
+    }
+}

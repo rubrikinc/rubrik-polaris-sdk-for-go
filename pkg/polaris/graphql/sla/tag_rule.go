@@ -165,7 +165,7 @@ func ListTagRules(ctx context.Context, gql *graphql.Client, objectType string, f
 	var payload struct {
 		Data struct {
 			Result struct {
-				TagRules []TagRule
+				TagRules []TagRule `json:"tagRules"`
 			} `json:"result"`
 		} `json:"data"`
 	}

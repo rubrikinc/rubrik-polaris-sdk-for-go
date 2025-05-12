@@ -23,6 +23,7 @@ package archival
 import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 // AzureTargetMapping holds the result of an Azure target mapping list
@@ -48,7 +49,7 @@ type AzureTargetMapping struct {
 			StorageTier          string             `json:"storageTier"`
 			NativeID             uuid.UUID          `json:"subscriptionNativeId"`
 			StorageAccountRegion azure.RegionEnum   `json:"storageAccountRegion"`
-			StorageAccountTags   []azure.Tag        `json:"storageAccountTags"`
+			StorageAccountTags   []core.Tag         `json:"storageAccountTags"`
 			CMKInfo              []AzureCustomerKey `json:"cmkInfo"`
 		} `json:"cloudNativeCompanion"`
 	}
@@ -137,5 +138,5 @@ type AzureCustomerKey struct {
 
 // AzureTags represents a collection of Azure tags.
 type AzureTags struct {
-	TagList []azure.Tag `json:"tagList"`
+	TagList []core.Tag `json:"tagList"`
 }
