@@ -48,7 +48,7 @@ import (
 	"time"
 
 	internalerrors "github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/errors"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/secret"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/token"
 )

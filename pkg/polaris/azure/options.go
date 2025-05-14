@@ -25,6 +25,7 @@ import (
 	"fmt"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 type options struct {
@@ -85,9 +86,9 @@ func ResourceGroup(name, region string, tags map[string]string) OptionFunc {
 			return fmt.Errorf("invalid name for resource group")
 		}
 
-		tagList := make([]azure.Tag, 0, len(tags))
+		tagList := make([]core.Tag, 0, len(tags))
 		for key, value := range tags {
-			tagList = append(tagList, azure.Tag{Key: key, Value: value})
+			tagList = append(tagList, core.Tag{Key: key, Value: value})
 		}
 
 		opts.resourceGroup = &azure.ResourceGroup{

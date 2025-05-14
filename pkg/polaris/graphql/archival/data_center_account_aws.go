@@ -22,7 +22,7 @@ package archival
 
 import (
 	"github.com/google/uuid"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/secret"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 )
 
 // AWSCloudAccount represents an AWS data center cloud account.

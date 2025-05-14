@@ -29,8 +29,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/secret"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 

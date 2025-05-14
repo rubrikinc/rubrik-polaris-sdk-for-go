@@ -29,6 +29,13 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+// DomainRef is a reference to a global SLA domain in RSC. A DomainRef holds
+// the ID and name of an SLA domain.
+type DomainRef struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // Domain represents a global SLA domain.
 type Domain struct {
 	ArchivalSpecs []struct {

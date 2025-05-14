@@ -42,8 +42,8 @@ type NativeProject struct {
 	ProjectNumber    string         `json:"projectNumber"`
 	OrganizationName string         `json:"organizationName"`
 	Assignment       sla.Assignment `json:"slaAssignment"`
-	Configured       sla.Domain     `json:"configuredSlaDomain"`
-	Effective        sla.Domain     `json:"effectiveSlaDomain"`
+	Configured       sla.DomainRef  `json:"configuredSlaDomain"`
+	Effective        sla.DomainRef  `json:"effectiveSlaDomain"`
 }
 
 // NativeProject returns the native project with the specified RSC native
