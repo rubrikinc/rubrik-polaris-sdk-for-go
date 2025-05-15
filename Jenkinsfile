@@ -96,16 +96,7 @@ pipeline {
         }
         stage('Test') {
             steps {
-                sh 'CGO_ENABLED=0 go test -count=1 -coverprofile=coverage.txt -p=1 -timeout=120m -v ./...'
-            }
-        }
-        stage('Coverage') {
-            environment {
-                GOPATH = "/tmp/go"
-            }
-            steps {
-                sh 'go run github.com/t-yuki/gocover-cobertura@latest < coverage.txt > coverage.xml'
-                cobertura coberturaReportFile: 'coverage.xml'
+                sh 'CGO_ENABLED=0 go test -count=1 -p=1 -timeout=120m -v ./...'
             }
         }
     }
