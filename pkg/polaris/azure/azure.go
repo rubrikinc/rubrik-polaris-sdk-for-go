@@ -425,6 +425,9 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 	if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
 		account, err := a.Subscription(ctx, CloudAccountID(account.ID), feature)
 		if err != nil {
+			if errors.Is(err, graphql.ErrNotFound) {
+				return true, nil
+			}
 			return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
 		}
 
