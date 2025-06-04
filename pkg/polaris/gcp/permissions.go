@@ -23,8 +23,10 @@ package gcp
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/option"
@@ -67,7 +69,8 @@ func (a API) gcpCheckPermissions(ctx context.Context, creds *google.Credentials,
 		return fmt.Errorf("failed to get permissions: %v", err)
 	}
 
-	client, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(creds))
+	ctx = context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Transport: &http.Transport{DialContext: ipv4Dialer()}})
+	client, err := cloudresourcemanager.NewService(ctx, option.WithHTTPClient(oauth2.NewClient(ctx, creds.TokenSource)))
 	if err != nil {
 		return fmt.Errorf("failed to create GCP Cloud Resource Manager client: %v", err)
 	}

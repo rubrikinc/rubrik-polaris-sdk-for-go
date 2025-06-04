@@ -24,10 +24,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -57,11 +60,18 @@ func Credentials(credentials *google.Credentials) ProjectFunc {
 	}
 }
 
+func ipv4Dialer() func(ctx context.Context, network, address string) (net.Conn, error) {
+	return func(ctx context.Context, network, address string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, "tcp4", address)
+	}
+}
+
 // Default returns a ProjectFunc that initializes the project with values from
 // the default credentials and the cloud using the default credentials project
 // id.
 func Default() ProjectFunc {
 	return func(ctx context.Context) (project, error) {
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Transport: &http.Transport{DialContext: ipv4Dialer()}})
 		creds, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/cloud-platform")
 		if err != nil {
 			return project{}, fmt.Errorf("failed to find the default GCP credentials: %v", err)
@@ -75,6 +85,7 @@ func Default() ProjectFunc {
 // the specified key file and the cloud using the key file project id.
 func KeyFile(keyFile string) ProjectFunc {
 	return func(ctx context.Context) (project, error) {
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Transport: &http.Transport{DialContext: ipv4Dialer()}})
 		creds, err := readCredentials(ctx, keyFile)
 		if err != nil {
 			return project{}, fmt.Errorf("failed to read credentials: %v", err)
@@ -88,6 +99,7 @@ func KeyFile(keyFile string) ProjectFunc {
 // values from the specified key file and the cloud using the given project id.
 func KeyFileWithProject(keyFile, projectID string) ProjectFunc {
 	return func(ctx context.Context) (project, error) {
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Transport: &http.Transport{DialContext: ipv4Dialer()}})
 		creds, err := readCredentials(ctx, keyFile)
 		if err != nil {
 			return project{}, fmt.Errorf("failed to read credentials: %v", err)
@@ -136,8 +148,7 @@ func gcpProject(ctx context.Context, creds *google.Credentials, id string) (proj
 	if id == "" {
 		return project{}, errors.New("project id cannot be empty")
 	}
-
-	client, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(creds))
+	client, err := cloudresourcemanager.NewService(ctx, option.WithHTTPClient(oauth2.NewClient(ctx, creds.TokenSource)))
 	if err != nil {
 		return project{}, fmt.Errorf("failed to create GCP Cloud Resource Manager client: %v", err)
 	}
