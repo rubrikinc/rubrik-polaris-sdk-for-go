@@ -71,7 +71,9 @@ type FeatureResourceGroup struct {
 }
 
 // ResourceGroup holds the information for a resource group when a particular
-// feature is onboarded.
+// feature is onboarded. Note, when using the ResourceGroup type as input to a
+// GraphQL mutation, the TagList.Tags field cannot be nil. An empty slice is
+// fine.
 type ResourceGroup struct {
 	Name    string                 `json:"name"`
 	TagList TagList                `json:"tags"`
@@ -346,15 +348,25 @@ func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feat
 // UpgradeCloudAccountPermissionsWithoutOAuth notifies RSC that the permissions
 // for the Azure service principal have been updated for the specified RSC cloud
 // account id and feature.
-func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
+// The resource group is optional and only required when the Azure SQL DB
+// feature is upgraded to support resource groups, otherwise nil can be passed
+// in.
+func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature, resourceGroup *ResourceGroup) error {
 	a.log.Print(log.Trace)
 
 	query := upgradeAzureCloudAccountPermissionsWithoutOauthQuery
 	var queryFeature any = feature.Name
 	if len(feature.PermissionGroups) > 0 {
 		query = upgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroupsQuery
-		queryFeature = feature
+		queryFeature = struct {
+			core.Feature
+			ResourceGroup *ResourceGroup `json:"resourceGroup,omitempty"`
+		}{
+			Feature:       feature,
+			ResourceGroup: resourceGroup,
+		}
 	}
+
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID `json:"cloudAccountId"`
 		Feature any       `json:"feature"`

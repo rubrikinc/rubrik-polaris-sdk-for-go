@@ -453,3 +453,45 @@ func (a API) EnabledFeaturesForAccount(ctx context.Context) ([]Feature, error) {
 
 	return features, nil
 }
+
+// FeatureFlag holds the name and state of a single RSC feature flag.
+type FeatureFlag struct {
+	Name    string `json:"name"`
+	Enabled bool   `json:"variant"`
+}
+
+// FeatureFlags returns all the RSC feature flags.
+func (a API) FeatureFlags(ctx context.Context) ([]FeatureFlag, error) {
+	a.log.Print(log.Trace)
+
+	query := featureFlagAllQuery
+	buf, err := a.GQL.Request(ctx, query, struct{}{})
+	if err != nil {
+		return nil, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Flags []struct {
+					Name    string `json:"name"`
+					Variant string `json:"variant"`
+				} `json:"flags"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, graphql.UnmarshalError(query, err)
+	}
+
+	flags := make([]FeatureFlag, 0, len(payload.Data.Result.Flags))
+	for _, flag := range payload.Data.Result.Flags {
+		enabled := false
+		if flag.Variant == "true" {
+			enabled = true
+		}
+		flags = append(flags, FeatureFlag{Name: flag.Name, Enabled: enabled})
+	}
+
+	return flags, nil
+}

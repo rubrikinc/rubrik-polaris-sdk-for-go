@@ -109,7 +109,7 @@ func (f Feature) HasRegion(region string) bool {
 // SupportResourceGroup returns true if the feature supports being onboarded
 // with a resource group.
 func (f Feature) SupportResourceGroup() bool {
-	return !f.Equal(core.FeatureAzureSQLDBProtection) && !f.Equal(core.FeatureAzureSQLMIProtection) && !f.Equal(core.FeatureCloudNativeBlobProtection)
+	return !f.Equal(core.FeatureAzureSQLMIProtection) && !f.Equal(core.FeatureCloudNativeBlobProtection)
 }
 
 // SupportUserAssignedManagedIdentity returns true if the feature supports
@@ -449,13 +449,15 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 		return fmt.Errorf("failed to get subscription: %w", err)
 	}
 
+	// If the feature has permission groups, we check if the permission groups
+	// has changed, if they have changed, we update the permission groups.
 	if len(feature.PermissionGroups) > 0 {
 		azureFeature, ok := account.Feature(feature)
 		if !ok {
 			return fmt.Errorf("failed to get feature %s", feature)
 		}
 		if !feature.DeepEqual(azureFeature.Feature) {
-			if err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature); err != nil {
+			if err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature, nil); err != nil {
 				return fmt.Errorf("failed to update subscription feature permission groups: %s", err)
 			}
 		}

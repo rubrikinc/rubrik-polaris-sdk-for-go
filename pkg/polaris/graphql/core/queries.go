@@ -41,6 +41,16 @@ var deploymentVersionQuery = `query SdkGolangDeploymentVersion {
     deploymentVersion
 }`
 
+// featureFlagAll GraphQL query
+var featureFlagAllQuery = `query SdkGolangFeatureFlagAll {
+    result: featureFlagAll(entityType: ACCOUNT, entityContext: []) {
+        flags {
+            name
+            variant
+        }
+    }
+}`
+
 // getKorgTaskchainStatus GraphQL query
 var getKorgTaskchainStatusQuery = `query SdkGolangGetKorgTaskchainStatus($taskchainId: String!){
     getKorgTaskchainStatus(taskchainId: $taskchainId){
