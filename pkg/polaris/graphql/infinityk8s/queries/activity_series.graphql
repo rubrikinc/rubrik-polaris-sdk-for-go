@@ -1,0 +1,20 @@
+query RubrikPolarisSDKRequest(
+    $input: ActivitySeriesInput!
+) {
+    activitySeries(input: $input) {
+        activityConnection {
+            nodes {
+                activityInfo
+                message
+                status
+                time
+                severity
+            }
+            pageInfo {
+                endCursor
+                hasNextPage
+            }
+            count
+        }
+    }
+}
