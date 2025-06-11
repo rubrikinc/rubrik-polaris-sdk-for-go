@@ -23,6 +23,7 @@ package archival
 import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
 // AWSTargetMapping holds the result of an AWS target mapping list operation.
@@ -43,7 +44,7 @@ type AWSTargetMapping struct {
 		Region       aws.RegionEnum `json:"region"`
 		KMSMasterKey string         `json:"kmsMasterKeyId"`
 		LocTemplate  string         `json:"cloudNativeLocTemplateType"`
-		BucketTags   []aws.Tag      `json:"bucketTags"`
+		BucketTags   []core.Tag     `json:"bucketTags"`
 	}
 }
 
@@ -122,5 +123,5 @@ func (r UpdateAWSStorageSettingResult) UpdateQuery(targetMappingID uuid.UUID, up
 
 // AWSTags represents a collection of AWS tags.
 type AWSTags struct {
-	TagList []aws.Tag `json:"tagList"`
+	TagList []core.Tag `json:"tagList"`
 }

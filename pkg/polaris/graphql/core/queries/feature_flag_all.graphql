@@ -1,0 +1,8 @@
+query RubrikPolarisSDKRequest {
+    result: featureFlagAll(entityType: ACCOUNT, entityContext: []) {
+        flags {
+            name
+            variant
+        }
+    }
+}

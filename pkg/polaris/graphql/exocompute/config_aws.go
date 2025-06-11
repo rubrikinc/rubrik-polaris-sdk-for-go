@@ -224,7 +224,6 @@ func AWSVPCsByRegion(ctx context.Context, gql *graphql.Client, cloudAccountID uu
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {

@@ -42,11 +42,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
+	"regexp"
 	"strings"
 	"time"
 
 	internalerrors "github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/errors"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testnet"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/token"
 )
@@ -95,30 +97,32 @@ func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSe
 }
 
 // NewTestClient returns a new Client intended to be used by unit tests.
-func NewTestClient(username, password string, logger log.Logger) (*Client, *testnet.TestListener) {
-	testClient, listener := testnet.NewPipeNet()
-	tokenSource := token.NewUserSourceWithLogger(testClient, "http://test/api/session", username, password, logger)
+func NewTestClient(testServer *httptest.Server) *Client {
+	tokenSource := token.NewTestUserSource(testServer, "username", "password")
+	return NewTestClientWithTokenSource(testServer, tokenSource)
+}
 
-	client := &Client{
-		gqlURL: "http://test/api/graphql",
+// NewTestClientWithTokenSource returns a new Client with a custom token source
+// intended to be used by unit tests.
+func NewTestClientWithTokenSource(testServer *httptest.Server, tokenSource token.Source) *Client {
+	return &Client{
+		gqlURL: testServer.URL + "/api/graphql",
 		client: &http.Client{
-			Transport: token.NewRoundTripper(testClient.Transport, tokenSource),
+			Transport: token.NewRoundTripper(testServer.Client().Transport, tokenSource),
 		},
-		log: logger,
+		log: &log.DiscardLogger{},
 	}
-
-	return client, listener
 }
 
 // DeploymentVersion returns the deployed version of RSC.
 func (c *Client) DeploymentVersion(ctx context.Context) (Version, error) {
 	c.log.Print(log.Trace)
 
-	buf, err := c.Request(ctx, "query SdkGolangDeploymentVersion { deploymentVersion }", struct{}{})
+	query := "query SdkGolangDeploymentVersion { deploymentVersion }"
+	buf, err := c.Request(ctx, query, struct{}{})
 	if err != nil {
-		return "", fmt.Errorf("failed to request deploymentVersion: %w", err)
+		return "", RequestError(query, err)
 	}
-	c.log.Printf(log.Debug, "deploymentVersion(): %s", string(buf))
 
 	var payload struct {
 		Data struct {
@@ -126,7 +130,7 @@ func (c *Client) DeploymentVersion(ctx context.Context) (Version, error) {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", fmt.Errorf("failed to unmarshal deploymentVersion: %v", err)
+		return "", UnmarshalError(query, err)
 	}
 
 	return Version(payload.Data.DeploymentVersion), nil
@@ -147,17 +151,40 @@ const requestRetryAttempts = 10
 // Request posts the specified GraphQL query/mutation with the given variables
 // to the Polaris platform. Returns the response JSON text as is. If the request
 // fails due to temporary error, it will be retried automatically.
-func (c *Client) Request(ctx context.Context, query string, variables interface{}) ([]byte, error) {
+func (c *Client) Request(ctx context.Context, query string, variables any) ([]byte, error) {
 	c.log.Print(log.Trace)
 
-	// Log variables before calling the query/mutation.
-	buf, err := json.Marshal(variables)
+	// Log query and variables.
+	buf, err := json.MarshalIndent(secret.Redact(variables), "", "    ")
 	if err != nil {
-		buf = []byte(fmt.Sprintf("marshaling of variables failed: %s", err))
+		return nil, fmt.Errorf("failed to marshal query variables for logging: %s", err)
 	}
-	c.log.Printf(log.Debug, "%s params: %s", QueryName(query), string(buf))
+	c.log.Printf(log.Debug, "%s request:\n%s\n%s", QueryName(query), query, string(buf))
 
-	return c.RequestWithoutLogging(ctx, query, variables)
+	// Do request.
+	res, err := c.RequestWithoutLogging(ctx, query, variables)
+	if err != nil {
+		return nil, err
+	}
+
+	// Log the data field of the response.
+	var gql struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(res, &gql); err != nil {
+		c.log.Printf(log.Debug, "%s response:\n%s", QueryName(query), string(res))
+		return res, nil
+	}
+	buf, err = json.MarshalIndent(struct {
+		Data json.RawMessage `json:"data"`
+	}{Data: gql.Data}, "", "    ")
+	if err != nil {
+		c.log.Printf(log.Debug, "%s response:\n%s", QueryName(query), string(res))
+		return res, nil
+	}
+	c.log.Printf(log.Debug, "%s response:\n%s", QueryName(query), string(buf))
+
+	return res, nil
 }
 
 // RequestWithoutLogging posts the specified GraphQL query/mutation with the
@@ -275,11 +302,6 @@ func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variable
 	return buf, nil
 }
 
-// LogResponse logs the response from a GraphQL query/mutation.
-func LogResponse(logger log.Logger, query string, response []byte) {
-	logger.Printf(log.Debug, "%s response: %s", query, string(response))
-}
-
 // RequestError returns a standard formatted error detailing the failure when
 // calling a query/mutation.
 func RequestError(query string, err error) error {
@@ -306,8 +328,6 @@ func ResponseError(query string, err error) error {
 // returns:
 //
 //	"RubrikPolarisSDKRequest".
-//
-// TODO: do we need to improve this since it currently is just a best effort extraction?
 func operationName(query string) string {
 	// Trim leading white spaces
 	query = strings.TrimSpace(query)
@@ -330,4 +350,16 @@ func operationName(query string) string {
 	}
 
 	return strings.TrimSpace(query[i:j])
+}
+
+var queryPattern *regexp.Regexp = regexp.MustCompile(`^(?:mutation|query) +SdkGolang(.+?) *?(?:\(|{)`)
+
+// QueryName returns the name of the specified GraphQL query.
+func QueryName(query string) string {
+	groups := queryPattern.FindStringSubmatch(query)
+	if len(groups) != 2 {
+		return "<invalid-query>"
+	}
+
+	return strings.ToLower(groups[1][:1]) + groups[1][1:]
 }

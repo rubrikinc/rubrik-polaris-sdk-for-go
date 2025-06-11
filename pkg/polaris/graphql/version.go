@@ -37,15 +37,3 @@ var versionPatterns = []*regexp.Regexp{
 func VersionOlderThan(version string, versionTags ...string) bool {
 	return Version(version).Before(versionTags...)
 }
-
-var queryPattern *regexp.Regexp = regexp.MustCompile(`^(?:mutation|query) +SdkGolang(.+?) *?(?:\(|{)`)
-
-// QueryName returns the name of the specified GraphQL query.
-func QueryName(query string) string {
-	groups := queryPattern.FindStringSubmatch(query)
-	if len(groups) != 2 {
-		return "<invalid-query>"
-	}
-
-	return strings.ToLower(groups[1][:1]) + groups[1][1:]
-}

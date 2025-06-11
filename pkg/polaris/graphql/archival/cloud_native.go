@@ -63,7 +63,6 @@ func ListTargetMappings[R ListTargetMappingResult](ctx context.Context, gql *gra
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -100,7 +99,6 @@ func CreateCloudNativeStorageSetting[R CreateStorageSettingResult[P], P CreateSt
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -141,7 +139,6 @@ func UpdateCloudNativeStorageSetting[R UpdateStorageSettingResult[P], P UpdateSt
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -167,7 +164,6 @@ func DeleteTargetMapping(ctx context.Context, gql *graphql.Client, targetMapping
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {

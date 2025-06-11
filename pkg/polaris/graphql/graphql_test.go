@@ -23,12 +23,13 @@ package graphql
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"text/template"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testnet"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 )
 
 func TestRequestUnauthenticated(t *testing.T) {
@@ -37,23 +38,21 @@ func TestRequestUnauthenticated(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
 
 	// Respond with status code 401 and additional details in the body.
-	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(401)
 		if err := tmpl.Execute(w, nil); err != nil {
-			panic(err)
+			cancel(err)
 		}
-	})
-	defer srv.Shutdown(context.Background())
+	}))
+	defer srv.Close()
 
-	_, err = client.Request(context.Background(), "me { name }", nil)
-	if err == nil {
-		t.Fatal("graphql request should fail")
-	}
-	if !strings.HasSuffix(err.Error(), "JWT validation failed: Missing or invalid credentials (code: 16)") {
-		t.Fatal(err)
+	_, err = NewTestClient(srv).Request(ctx, "me { name }", nil)
+	if err == nil || !strings.HasSuffix(err.Error(), "JWT validation failed: Missing or invalid credentials (code: 16)") {
+		t.Fatalf("invalid error: %v", err)
 	}
 }
 
@@ -63,63 +62,55 @@ func TestRequestWithInternalServerErrorJSONBody(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
 
 	// Respond with status code 500 and additional details in the JSON body.
-	srv := testnet.ServeJSONWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
 		if err := tmpl.Execute(w, nil); err != nil {
-			panic(err)
+			cancel(err)
 		}
-	})
-	defer srv.Shutdown(context.Background())
+	}))
+	defer srv.Close()
 
-	_, err = client.Request(context.Background(), "me { name }", nil)
-	if err == nil {
-		t.Fatal("graphql request should fail")
-	}
-	if !strings.HasSuffix(err.Error(),
-		"INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING (code: 500, traceId: 9D7LJciYbUSaTTaLQuJcMA==)") {
-		t.Fatal(err)
+	_, err = NewTestClient(srv).Request(ctx, "me { name }", nil)
+	if err == nil || !strings.HasSuffix(err.Error(), "INTERNAL: invalid status transition of feature CLOUDACCOUNTS from CONNECTED to CONNECTING (code: 500, traceId: 9D7LJciYbUSaTTaLQuJcMA==)") {
+		t.Fatalf("invalid error: %v", err)
 	}
 }
 
 func TestRequestWithInternalServerErrorNoBody(t *testing.T) {
-	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
 
 	// Respond with status code 500 and no additional details.
-	srv := testnet.ServeWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := httptest.NewServer(handler.Token(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
-	})
-	defer srv.Shutdown(context.Background())
+	}))
+	defer srv.Close()
 
-	_, err := client.Request(context.Background(), "me { name }", nil)
-	if err == nil {
-		t.Fatal("graphql request should fail")
-	}
-	if !strings.HasSuffix(err.Error(), "graphql response has no body (status code 500)") {
-		t.Fatal(err)
+	_, err := NewTestClient(srv).Request(ctx, "me { name }", nil)
+	if err == nil || !strings.HasSuffix(err.Error(), "graphql response has no body (status code 500)") {
+		t.Fatalf("invalid error: %v", err)
 	}
 }
 
 func TestRequestWithInternalServerErrorTextBody(t *testing.T) {
-	client, lis := NewTestClient("john", "doe", log.DiscardLogger{})
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
 
 	// Respond with status code 500 and additional details in the text body.
-	srv := testnet.ServeWithStaticToken(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := httptest.NewServer(handler.Token(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(500)
 		w.Write([]byte("database is corrupt"))
-	})
-	defer srv.Shutdown(context.Background())
+	}))
+	defer srv.Close()
 
-	_, err := client.Request(context.Background(), "me { name }", nil)
-	if err == nil {
-		t.Fatal("graphql request should fail")
-	}
-	if !strings.HasSuffix(err.Error(),
-		"graphql response has Content-Type text/plain (status code 500): \"database is corrupt\"") {
-		t.Fatal(err)
+	_, err := NewTestClient(srv).Request(context.Background(), "me { name }", nil)
+	if err == nil || !strings.HasSuffix(err.Error(), "graphql response has Content-Type text/plain (status code 500): \"database is corrupt\"") {
+		t.Fatalf("invalid error: %v", err)
 	}
 }
 

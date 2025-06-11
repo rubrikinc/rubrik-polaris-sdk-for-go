@@ -23,6 +23,9 @@
 package access
 
 import (
+	"strings"
+
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -37,4 +40,20 @@ type API struct {
 // Wrap the RSC client in the access API.
 func Wrap(client *polaris.Client) API {
 	return API{client: client.GQL, log: client.GQL.Log()}
+}
+
+// joinUUIDs joins a slice of UUIDs into a comma-separated string.
+func joinUUIDs(ids []uuid.UUID) string {
+	if len(ids) == 0 {
+		return ""
+	}
+
+	var str strings.Builder
+	for _, id := range ids {
+		str.WriteString(", ")
+		str.WriteString("\"")
+		str.WriteString(id.String())
+		str.WriteString("\"")
+	}
+	return str.String()[2:]
 }

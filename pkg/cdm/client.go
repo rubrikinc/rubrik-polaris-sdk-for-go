@@ -37,6 +37,21 @@ type Client struct {
 	Log    log.Logger
 }
 
+// NewClient creates a new client without any cluster credentials.
+func NewClient(nodeIP string, allowInsecureTLS bool) *Client {
+	return NewClientWithLogger(nodeIP, allowInsecureTLS, log.DiscardLogger{})
+}
+
+// NewClientWithLogger creates a new client without any cluster credentials.
+// The client logs to the provided logger.
+func NewClientWithLogger(nodeIP string, allowInsecureTLS bool, logger log.Logger) *Client {
+	return &Client{
+		client: newClient(allowInsecureTLS),
+		nodeIP: nodeIP,
+		Log:    logger,
+	}
+}
+
 // NewClientFromCredentials creates a new client from the provided Rubrik
 // cluster credentials.
 func NewClientFromCredentials(nodeIP, username, password string, allowInsecureTLS bool) (*Client, error) {
@@ -130,6 +145,19 @@ func (c *Client) Post(ctx context.Context, version APIVersion, endpoint string, 
 	c.Log.Print(log.Trace)
 
 	req, err := c.request(ctx, http.MethodPost, c.nodeIP, version, endpoint, payload)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return c.doRequest(req)
+}
+
+// Put sends a PUT request to the provided Rubrik API endpoint and returns the
+// response and status code.
+func (c *Client) Put(ctx context.Context, version APIVersion, endpoint string, payload any) ([]byte, int, error) {
+	c.Log.Print(log.Trace)
+
+	req, err := c.request(ctx, http.MethodPut, c.nodeIP, version, endpoint, payload)
 	if err != nil {
 		return nil, 0, err
 	}

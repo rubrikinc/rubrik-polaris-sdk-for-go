@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -56,6 +57,19 @@ func NewUserSourceWithLogger(client *http.Client, tokenURL, username, password s
 		log:      logger,
 		client:   client,
 		tokenURL: tokenURL,
+		username: username,
+		password: password,
+	}
+}
+
+// NewTestUserSource returns a new test token source that uses a client matching
+// the specified test server to obtain tokens. Intended to be used in unit
+// tests.
+func NewTestUserSource(testServer *httptest.Server, username, password string) *UserSource {
+	return &UserSource{
+		log:      &log.DiscardLogger{},
+		client:   testServer.Client(),
+		tokenURL: testServer.URL + "/api/session",
 		username: username,
 		password: password,
 	}

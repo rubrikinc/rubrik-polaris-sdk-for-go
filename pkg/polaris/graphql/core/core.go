@@ -41,10 +41,11 @@ import (
 type CloudVendor string
 
 const (
-	CloudVendorAWS   CloudVendor = "AWS"
-	CloudVendorAzure CloudVendor = "AZURE"
-	CloudVendorGCP   CloudVendor = "GCP"
-	CloudVendorAll   CloudVendor = "ALL_VENDORS"
+	CloudVendorUnspecified CloudVendor = ""
+	CloudVendorAWS         CloudVendor = "AWS"
+	CloudVendorAzure       CloudVendor = "AZURE"
+	CloudVendorGCP         CloudVendor = "GCP"
+	CloudVendorAll         CloudVendor = "ALL_VENDORS"
 )
 
 // CloudAccountAction represents a Polaris cloud account action.
@@ -255,21 +256,6 @@ const (
 	TaskChainUndoing   TaskChainState = "UNDOING"
 )
 
-// SLAAssignment represents the type of SLA assignment in Polaris.
-type SLAAssignment string
-
-const (
-	Derived    SLAAssignment = "Derived"
-	Direct     SLAAssignment = "Direct"
-	Unassigned SLAAssignment = "Unassigned"
-)
-
-// SLADomain represents a Polaris SLA domain.
-type SLADomain struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
 // API wraps around GraphQL clients to give them the Polaris Core API.
 type API struct {
 	Version string // Deprecated: use GQL.DeploymentVersion
@@ -297,13 +283,13 @@ type TaskChain struct {
 func (a API) KorgTaskChainStatus(ctx context.Context, taskChainID uuid.UUID) (TaskChain, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, getKorgTaskchainStatusQuery, struct {
+	query := getKorgTaskchainStatusQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		TaskChainID uuid.UUID `json:"taskchainId,omitempty"`
 	}{TaskChainID: taskChainID})
 	if err != nil {
-		return TaskChain{}, fmt.Errorf("failed to request getKorgTaskchainStatus: %w", err)
+		return TaskChain{}, graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "getKorgTaskchainStatus(%q): %s", taskChainID, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -313,7 +299,7 @@ func (a API) KorgTaskChainStatus(ctx context.Context, taskChainID uuid.UUID) (Ta
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return TaskChain{}, fmt.Errorf("failed to unmarshal getKorgTaskchainStatus: %s", err)
+		return TaskChain{}, graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Query.TaskChain, nil
@@ -360,8 +346,6 @@ func (a API) WaitForTaskChain(ctx context.Context, taskChainID uuid.UUID, wait t
 func (a API) WaitForFeatureDisableTaskChain(ctx context.Context, taskChainID uuid.UUID, featureStatus func(ctx context.Context) (bool, error)) error {
 	a.log.Print(log.Trace)
 
-	ctx, cancel := context.WithTimeout(ctx, 9*time.Minute)
-	defer cancel()
 	for {
 		// Check the status of the task chain.
 		taskChain, err := a.KorgTaskChainStatus(ctx, taskChainID)
@@ -401,11 +385,11 @@ func (a API) WaitForFeatureDisableTaskChain(ctx context.Context, taskChainID uui
 func (a API) DeploymentVersion(ctx context.Context) (string, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, deploymentVersionQuery, struct{}{})
+	query := deploymentVersionQuery
+	buf, err := a.GQL.Request(ctx, query, struct{}{})
 	if err != nil {
-		return "", fmt.Errorf("failed to request deploymentVersion: %w", err)
+		return "", graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "deploymentVersion(): %s", string(buf))
 
 	var payload struct {
 		Data struct {
@@ -413,7 +397,7 @@ func (a API) DeploymentVersion(ctx context.Context) (string, error) {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", fmt.Errorf("failed to unmarshal deploymentVersion: %v", err)
+		return "", graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.DeploymentVersion, nil
@@ -423,11 +407,11 @@ func (a API) DeploymentVersion(ctx context.Context) (string, error) {
 func (a API) DeploymentIPAddresses(ctx context.Context) ([]string, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, allDeploymentIpAddressesQuery, struct{}{})
+	query := allDeploymentIpAddressesQuery
+	buf, err := a.GQL.Request(ctx, query, struct{}{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to request allDeploymentIpAddresses: %w", err)
+		return nil, graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "allDeploymentIpAddresses(): %s", string(buf))
 
 	var payload struct {
 		Data struct {
@@ -435,7 +419,7 @@ func (a API) DeploymentIPAddresses(ctx context.Context) ([]string, error) {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal allDeploymentIpAddresses: %v", err)
+		return nil, graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.DeploymentIPAddresses, nil
@@ -445,9 +429,10 @@ func (a API) DeploymentIPAddresses(ctx context.Context) ([]string, error) {
 func (a API) EnabledFeaturesForAccount(ctx context.Context) ([]Feature, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, allEnabledFeaturesForAccountQuery, struct{}{})
+	query := allEnabledFeaturesForAccountQuery
+	buf, err := a.GQL.Request(ctx, query, struct{}{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to request allEnabledFeaturesForAccount: %w", err)
+		return nil, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
@@ -458,7 +443,7 @@ func (a API) EnabledFeaturesForAccount(ctx context.Context) ([]Feature, error) {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal allEnabledFeaturesForAccount: %v", err)
+		return nil, graphql.UnmarshalError(query, err)
 	}
 
 	var features []Feature
@@ -467,4 +452,46 @@ func (a API) EnabledFeaturesForAccount(ctx context.Context) ([]Feature, error) {
 	}
 
 	return features, nil
+}
+
+// FeatureFlag holds the name and state of a single RSC feature flag.
+type FeatureFlag struct {
+	Name    string `json:"name"`
+	Enabled bool   `json:"variant"`
+}
+
+// FeatureFlags returns all the RSC feature flags.
+func (a API) FeatureFlags(ctx context.Context) ([]FeatureFlag, error) {
+	a.log.Print(log.Trace)
+
+	query := featureFlagAllQuery
+	buf, err := a.GQL.Request(ctx, query, struct{}{})
+	if err != nil {
+		return nil, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Flags []struct {
+					Name    string `json:"name"`
+					Variant string `json:"variant"`
+				} `json:"flags"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, graphql.UnmarshalError(query, err)
+	}
+
+	flags := make([]FeatureFlag, 0, len(payload.Data.Result.Flags))
+	for _, flag := range payload.Data.Result.Flags {
+		enabled := false
+		if flag.Variant == "true" {
+			enabled = true
+		}
+		flags = append(flags, FeatureFlag{Name: flag.Name, Enabled: enabled})
+	}
+
+	return flags, nil
 }

@@ -197,7 +197,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 			continue
 		}
 
-		err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Feature)
+		err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Feature, nil)
 		if err != nil {
 			return fmt.Errorf("failed to update permissions: %s", err)
 		}
@@ -241,7 +241,7 @@ func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain
 				continue
 			}
 
-			err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Feature)
+			err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Feature, nil)
 			if err != nil {
 				return fmt.Errorf("failed to update permissions: %s", err)
 			}

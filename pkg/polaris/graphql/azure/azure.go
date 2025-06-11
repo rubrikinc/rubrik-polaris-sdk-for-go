@@ -30,8 +30,8 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -63,20 +63,18 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 	a.log.Print(log.Trace)
 
 	query := setAzureCloudAccountCustomerAppCredentialsQuery
-	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
-		Cloud         Cloud     `json:"azureCloudType"`
-		ID            uuid.UUID `json:"appId"`
-		Name          string    `json:"appName"`
-		SecretKey     string    `json:"appSecretKey"`
-		TenantID      uuid.UUID `json:"appTenantId"`
-		TenantDomain  string    `json:"tenantDomainName"`
-		ShouldReplace bool      `json:"shouldReplace"`
-	}{Cloud: cloud, ID: appID, Name: appName, TenantID: appTenantID, TenantDomain: appTenantDomain, SecretKey: appSecretKey, ShouldReplace: shouldReplace})
+	buf, err := a.GQL.Request(ctx, query, struct {
+		Cloud         Cloud         `json:"azureCloudType"`
+		ID            uuid.UUID     `json:"appId"`
+		Name          string        `json:"appName"`
+		SecretKey     secret.String `json:"appSecretKey"`
+		TenantID      uuid.UUID     `json:"appTenantId"`
+		TenantDomain  string        `json:"tenantDomainName"`
+		ShouldReplace bool          `json:"shouldReplace"`
+	}{Cloud: cloud, ID: appID, Name: appName, TenantID: appTenantID, TenantDomain: appTenantDomain, SecretKey: secret.String(appSecretKey), ShouldReplace: shouldReplace})
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "%s(%q, %q, %q, <REDACTED>, %q, %q, %t): %s", graphql.QueryName(query), cloud, appID,
-		appName, appTenantID, appTenantDomain, shouldReplace, string(buf))
 
 	var payload struct {
 		Data struct {

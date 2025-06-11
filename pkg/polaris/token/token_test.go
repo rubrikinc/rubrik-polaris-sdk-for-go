@@ -23,13 +23,26 @@ package token
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"text/template"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testnet"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 )
+
+// dummyExpiredToken is a JWT token that is already expired.
+var dummyExpiredToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMj" +
+	"M0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2M" +
+	"jI0OTExNTR9.y3TkH5_8Pv7Vde1I-ll2BJ29dX4tYKGIhrAA314VGa0"
+
+// dummyValidToken is a JWT token that is still valid.
+var dummyValidToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0" +
+	"NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ3Nzg" +
+	"zNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0"
 
 func TestTokenExpired(t *testing.T) {
 	tok := token{}
@@ -37,8 +50,7 @@ func TestTokenExpired(t *testing.T) {
 		t.Fatal("empty token should be expired")
 	}
 
-	tok, err := fromJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiw" +
-		"iaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MjI0OTExNTR9.y3TkH5_8Pv7Vde1I-ll2BJ29dX4tYKGIhrAA314VGa0")
+	tok, err := fromJWT(dummyExpiredToken)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,8 +58,7 @@ func TestTokenExpired(t *testing.T) {
 		t.Error("token should be expired")
 	}
 
-	tok, err = fromJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwi" +
-		"aWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0")
+	tok, err = fromJWT(dummyValidToken)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,8 +68,7 @@ func TestTokenExpired(t *testing.T) {
 }
 
 func TestTokenSetAsHeader(t *testing.T) {
-	tok, err := fromJWT("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiw" +
-		"iaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MjI0OTExNTR9.y3TkH5_8Pv7Vde1I-ll2BJ29dX4tYKGIhrAA314VGa0")
+	tok, err := fromJWT(dummyExpiredToken)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,28 +78,24 @@ func TestTokenSetAsHeader(t *testing.T) {
 	}
 	tok.setAsAuthHeader(req)
 
-	if auth := req.Header.Get("Authorization"); auth != "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIx"+
-		"MjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MjI0OTExNTR9.y3TkH5_8Pv7Vde1I-ll2BJ29"+
-		"dX4tYKGIhrAA314VGa0" {
+	if auth := req.Header.Get("Authorization"); auth != fmt.Sprintf("Bearer %s", dummyExpiredToken) {
 		t.Errorf("invalid Authorization header: %s", auth)
 	}
 }
 
 func TestTokenSource(t *testing.T) {
-	ctx := context.Background()
-
-	client, lis := testnet.NewPipeNet()
-	src := NewUserSource(client, "http://test/api", "john", "doe")
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
 
 	// Respond with 200 and a valid token as long as the correct username and
 	// password are received.
-	srv := testnet.ServeJSON(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := httptest.NewServer(handler.JSON(func(w http.ResponseWriter, req *http.Request) {
 		var payload struct {
 			Username string
 			Password string
 		}
 		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			cancel(err)
 			return
 		}
 
@@ -98,44 +104,49 @@ func TestTokenSource(t *testing.T) {
 			return
 		}
 
-		json.NewEncoder(w).Encode(struct {
+		if err := json.NewEncoder(w).Encode(struct {
 			AccessToken string `json:"access_token"`
-		}{AccessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0I" +
-			"joxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUzMDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0"})
-	})
-	defer srv.Shutdown(ctx)
+		}{AccessToken: dummyValidToken}); err != nil {
+			cancel(err)
+		}
+	}))
+	defer srv.Close()
 
 	// Request token and verify that it's not expired.
-	token, err := src.token(ctx)
+	token, err := NewTestUserSource(srv, "john", "doe").token(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if token.expired() {
 		t.Fatal("invalid token, already expired")
 	}
+
+	// Request token with invalid credentials.
+	_, err = NewTestUserSource(srv, "jane", "doe").token(ctx)
+	if err == nil || !strings.HasPrefix(err.Error(), "failed to acquire local user access token:") {
+		t.Fatalf("invalid error: %v", err)
+	}
 }
 
 func TestTokenSourceWithBadCredentials(t *testing.T) {
-	ctx := context.Background()
-
 	tmpl, err := template.ParseFiles("testdata/auth_error_response.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	client, lis := testnet.NewPipeNet()
-	src := NewUserSource(client, "http://test/api", "john", "doe")
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
 
 	// Respond with status code 401 and additional details in the body.
-	srv := testnet.ServeJSON(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := httptest.NewServer(handler.JSON(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(401)
 		if err := tmpl.Execute(w, nil); err != nil {
-			panic(err)
+			cancel(err)
 		}
-	})
-	defer srv.Shutdown(ctx)
+	}))
+	defer srv.Close()
 
-	_, err = src.token(ctx)
+	_, err = NewTestUserSource(srv, "john", "doe").token(ctx)
 	if err == nil {
 		t.Fatal("token request should fail")
 	}
@@ -145,18 +156,16 @@ func TestTokenSourceWithBadCredentials(t *testing.T) {
 }
 
 func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
-	ctx := context.Background()
-
-	client, lis := testnet.NewPipeNet()
-	src := NewUserSource(client, "http://test/api", "john", "doe")
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
 
 	// Respond with status code 500 and no additional details.
-	srv := testnet.Serve(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
-	})
-	defer srv.Shutdown(ctx)
+	}))
+	defer srv.Close()
 
-	_, err := src.token(ctx)
+	_, err := NewTestUserSource(srv, "john", "doe").token(ctx)
 	if err == nil {
 		t.Fatal("token request should fail")
 	}
@@ -166,20 +175,18 @@ func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
 }
 
 func TestTokenSourceWithInternalServerErrorTextBody(t *testing.T) {
-	ctx := context.Background()
-
-	client, lis := testnet.NewPipeNet()
-	src := NewUserSource(client, "http://test/api", "john", "doe")
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
 
 	// Respond with status code 500 and no additional details.
-	srv := testnet.Serve(lis, func(w http.ResponseWriter, req *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Add("Content-Type", "text/plain")
 		w.WriteHeader(500)
 		w.Write([]byte("user database is corrupt"))
-	})
-	defer srv.Shutdown(ctx)
+	}))
+	defer srv.Close()
 
-	_, err := src.token(ctx)
+	_, err := NewTestUserSource(srv, "john", "doe").token(ctx)
 	if err == nil {
 		t.Fatal("token request should fail")
 	}

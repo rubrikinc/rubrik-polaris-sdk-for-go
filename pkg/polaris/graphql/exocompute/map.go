@@ -49,7 +49,6 @@ func ListCloudAccountMappings(ctx context.Context, gql *graphql.Client, cloudVen
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -86,7 +85,6 @@ func MapCloudAccounts[P MapCloudAccountsParams[R], R MapCloudAccountsResult](ctx
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {
@@ -125,7 +123,6 @@ func UnmapCloudAccounts[P UnmapCloudAccountsParams[R], R UnmapCloudAccountsResul
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(gql.Log(), query, buf)
 
 	var payload struct {
 		Data struct {

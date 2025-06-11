@@ -1,0 +1,29 @@
+mutation RubrikPolarisSDKRequest(
+    $archivalSpecs:              [ArchivalSpecInput!],
+    $backupWindows:              [BackupWindowInput!],
+    $description:                String,
+    $firstFullBackupWindows:     [BackupWindowInput!],
+    $localRetentionLimit:        SlaDurationInput,
+    $name:                       String!,
+    $objectSpecificConfigsInput: ObjectSpecificConfigsInput,
+    $objectTypes:                [SlaObjectType!]!,
+    $isRetentionLockedSla:       Boolean,
+    $retentionLockMode:          RetentionLockMode,
+    $snapshotSchedule:           GlobalSnapshotScheduleInput!
+) {
+    result: createGlobalSla(input: {
+        archivalSpecs:              $archivalSpecs,
+        backupWindows:              $backupWindows,
+        description:                $description,
+        firstFullBackupWindows:     $firstFullBackupWindows,
+        localRetentionLimit:        $localRetentionLimit,
+        name:                       $name,
+        objectSpecificConfigsInput: $objectSpecificConfigsInput,
+        objectTypes:                $objectTypes,
+        isRetentionLockedSla:       $isRetentionLockedSla,
+        retentionLockMode:          $retentionLockMode,
+        snapshotSchedule:           $snapshotSchedule
+    }) {
+        id
+    }
+}
