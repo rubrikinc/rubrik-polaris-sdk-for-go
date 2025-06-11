@@ -1,0 +1,17 @@
+mutation RubrikPolarisSDKRequest(
+    $tagRuleName:             String!,
+    $objectType:              CloudNativeTagObjectType!,
+    $tag:                     TagType!,
+    $cloudNativeAccountIds:   CloudNativeIds,
+    $applyToAllCloudAccounts: Boolean
+) {
+    result: createCloudNativeTagRule(input: {
+        tagRuleName:             $tagRuleName,
+        objectType:              $objectType,
+        tag:                     $tag,
+        cloudNativeAccountIds:   $cloudNativeAccountIds,
+        applyToAllCloudAccounts: $applyToAllCloudAccounts
+    }) {
+        tagRuleId
+    }
+}

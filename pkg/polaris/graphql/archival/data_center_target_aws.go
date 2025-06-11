@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 )
 
 // AWSTarget holds the result of an AWS target list operation. AWS target is
@@ -78,8 +79,8 @@ type CreateAWSTargetParams struct {
 	StorageClass           string                         `json:"storageClass"`
 	RetrievalTier          string                         `json:"awsRetrievalTier,omitempty"`
 	KMSMasterKeyID         string                         `json:"kmsMasterKeyId,omitempty"`
-	RSAKey                 string                         `json:"rsaKey,omitempty"`
-	EncryptionPassword     string                         `json:"encryptionPassword,omitempty"`
+	RSAKey                 secret.String                  `json:"rsaKey,omitempty"`
+	EncryptionPassword     secret.String                  `json:"encryptionPassword,omitempty"`
 	CloudComputeSettings   *AWSTargetCloudComputeSettings `json:"cloudComputeSettings,omitempty"`
 	IsConsolidationEnabled bool                           `json:"isConsolidationEnabled"`
 	ProxySettings          *AWSTargetProxySettings        `json:"proxySettings,omitempty"`
@@ -144,11 +145,11 @@ type AWSTargetCloudComputeSettings struct {
 
 // AWSTargetProxySettings holds the proxy settings for an AWS target.
 type AWSTargetProxySettings struct {
-	Username    string `json:"username"`
-	Password    string `json:"password"`
-	ProxyServer string `json:"proxyServer"`
-	Protocol    string `json:"protocol"`
-	PortNumber  int    `json:"portNumber"`
+	Username    string        `json:"username"`
+	Password    secret.String `json:"password"`
+	ProxyServer string        `json:"proxyServer"`
+	Protocol    string        `json:"protocol"`
+	PortNumber  int           `json:"portNumber"`
 }
 
 // AWSTargetImmutabilitySettings holds the immutability settings for an AWS

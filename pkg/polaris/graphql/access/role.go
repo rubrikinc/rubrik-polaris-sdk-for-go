@@ -23,20 +23,27 @@ package access
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Role represents a user role in RSC.
+// RoleRef is a reference to a Role in RSC. A RoleRef holds the ID and Name
+// of a role.
+type RoleRef struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+// Role represents a role in RSC.
 type Role struct {
-	ID                            uuid.UUID    `json:"id"`
-	Name                          string       `json:"name"`
-	Description                   string       `json:"description"`
-	ExplicitlyAssignedPermissions []Permission `json:"explicitlyAssignedPermissions"`
-	IsOrgAdmin                    bool         `json:"isOrgAdmin"`
-	ProtectableClusters           []string     `json:"protectableClusters"`
+	RoleRef
+	Description         string       `json:"description"`
+	AssignedPermissions []Permission `json:"explicitlyAssignedPermissions"`
+	IsOrgAdmin          bool         `json:"isOrgAdmin"`
 }
 
 // Permission represents the ability of a user to perform an operation on one
@@ -53,63 +60,17 @@ type ObjectsForHierarchyType struct {
 	ObjectIDs     []string `json:"objectIds"`
 }
 
-// AllRolesInOrg returns all roles in the user's organization matching the
-// specified name filter.
-func (a API) AllRolesInOrg(ctx context.Context, nameFilter string) ([]Role, error) {
-	a.log.Print(log.Trace)
+// RolesByIDs returns the roles with the specified role IDs.
+func RolesByIDs(ctx context.Context, gql *graphql.Client, roleIDs []uuid.UUID) ([]Role, error) {
+	gql.Log().Print(log.Trace)
 
-	var roles []Role
-	var cursor string
-	for {
-		buf, err := a.GQL.Request(ctx, getAllRolesInOrgConnectionQuery, struct {
-			After      string `json:"after,omitempty"`
-			NameFilter string `json:"nameFilter,omitempty"`
-		}{After: cursor, NameFilter: nameFilter})
-		if err != nil {
-			return nil, fmt.Errorf("failed to request getAllRolesInOrgConnection: %w", err)
-		}
-		a.log.Printf(log.Debug, "getAllRolesInOrgConnection(%q): %s", nameFilter, string(buf))
-
-		var payload struct {
-			Data struct {
-				Result struct {
-					Edges []struct {
-						Node Role `json:"node"`
-					} `json:"edges"`
-					PageInfo struct {
-						EndCursor   string `json:"endCursor"`
-						HasNextPage bool   `json:"hasNextPage"`
-					} `json:"pageInfo"`
-				} `json:"result"`
-			} `json:"data"`
-		}
-		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal getAllRolesInOrgConnection response: %v", err)
-		}
-		for _, account := range payload.Data.Result.Edges {
-			roles = append(roles, account.Node)
-		}
-
-		if !payload.Data.Result.PageInfo.HasNextPage {
-			break
-		}
-		cursor = payload.Data.Result.PageInfo.EndCursor
-	}
-
-	return roles, nil
-}
-
-// RolesByIDs returns the roles with the specified ids.
-func (a API) RolesByIDs(ctx context.Context, IDs []uuid.UUID) ([]Role, error) {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(ctx, getRolesByIdsQuery, struct {
+	query := getRolesByIdsQuery
+	buf, err := gql.Request(ctx, query, struct {
 		IDs []uuid.UUID `json:"roleIds"`
-	}{IDs: IDs})
+	}{IDs: roleIDs})
 	if err != nil {
-		return nil, fmt.Errorf("failed to request getRolesByIds: %w", err)
+		return nil, graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "getRolesByIds(%v): %s", IDs, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -117,161 +78,32 @@ func (a API) RolesByIDs(ctx context.Context, IDs []uuid.UUID) ([]Role, error) {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal getRolesByIds response: %v", err)
+		return nil, graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Result, nil
 }
 
-// MutateRole creates or updates a role. To create a role pass in the empty
-// string for id.
-func (a API) MutateRole(ctx context.Context, id string, name, description string, permissions []Permission, protectableClusters []string) (uuid.UUID, error) {
-	a.log.Print(log.Trace)
+// ListRoles returns all roles matching the specified role name filter.
+func ListRoles(ctx context.Context, gql *graphql.Client, nameFilter string) ([]Role, error) {
+	gql.Log().Print(log.Trace)
 
-	if protectableClusters == nil {
-		protectableClusters = []string{}
-	}
-
-	buf, err := a.GQL.Request(ctx, mutateRoleQuery, struct {
-		ID                  string       `json:"roleId,omitempty"`
-		Name                string       `json:"name"`
-		Description         string       `json:"description"`
-		Permissions         []Permission `json:"permissions"`
-		ProtectableClusters []string     `json:"protectableClusters"`
-	}{ID: id, Name: name, Description: description, Permissions: permissions, ProtectableClusters: protectableClusters})
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to request mutateRole: %w", err)
-	}
-	a.log.Printf(log.Debug, "mutateRole(%q, %q, %q, %v, %v): %s", id, name, description, permissions, protectableClusters, string(buf))
-
-	var payload struct {
-		Data struct {
-			Result uuid.UUID `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to unmarshal mutateRole response: %v", err)
-	}
-
-	return payload.Data.Result, nil
-}
-
-// DeleteRole deletes the role with the specified id.
-func (a API) DeleteRole(ctx context.Context, id uuid.UUID) error {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(ctx, deleteRoleQuery, struct {
-		ID uuid.UUID `json:"roleId"`
-	}{ID: id})
-	if err != nil {
-		return fmt.Errorf("failed to request deleteRole: %w", err)
-	}
-	a.log.Printf(log.Debug, "deleteRole(%q): %s", id, string(buf))
-
-	var payload struct {
-		Data struct {
-			Result bool `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal deleteRole response: %v", err)
-	}
-	if !payload.Data.Result {
-		return fmt.Errorf("failed to delete role: %s", id)
-	}
-
-	return nil
-}
-
-// AddRoleAssignment assigns the roles to the users with the specified ids.
-func (a API) AddRoleAssignment(ctx context.Context, roleIDs []uuid.UUID, userIDs, groupIDs []string) error {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(ctx, addRoleAssignmentQuery, struct {
-		RoleIDs  []uuid.UUID `json:"roleIds"`
-		UserIDs  []string    `json:"userIds"`
-		GroupIDs []string    `json:"groupIds,omitempty"`
-	}{RoleIDs: roleIDs, UserIDs: userIDs, GroupIDs: groupIDs})
-	if err != nil {
-		return fmt.Errorf("failed to request addRoleAssignment: %w", err)
-	}
-	a.log.Printf(log.Debug, "addRoleAssignment(%v, %v, %v): %s", roleIDs, userIDs, groupIDs, string(buf))
-
-	var payload struct {
-		Data struct {
-			Result bool `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal addRoleAssignment response: %v", err)
-	}
-	if !payload.Data.Result {
-		return fmt.Errorf("failed to add assignments for roles: %v", roleIDs)
-	}
-
-	return nil
-}
-
-// UpdateRoleAssignment updates the role assignments for the users with the
-// specified ids.
-func (a API) UpdateRoleAssignment(ctx context.Context, userIDs, groupIDs []string, roleIDs []uuid.UUID) error {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(ctx, updateRoleAssignmentsQuery, struct {
-		UserIDs  []string    `json:"userIds"`
-		GroupIDs []string    `json:"groupIds"`
-		RoleIDs  []uuid.UUID `json:"roleIds"`
-	}{UserIDs: userIDs, GroupIDs: groupIDs, RoleIDs: roleIDs})
-	if err != nil {
-		return fmt.Errorf("failed to request updateRoleAssignments: %w", err)
-	}
-	a.log.Printf(log.Debug, "updateRoleAssignments(%v, %v, %v): %s", roleIDs, userIDs, groupIDs, string(buf))
-
-	var payload struct {
-		Data struct {
-			Result bool `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal updateRoleAssignments response: %v", err)
-	}
-	if !payload.Data.Result {
-		return fmt.Errorf("failed to update assignments for roles: %v", roleIDs)
-	}
-
-	return nil
-}
-
-// RoleTemplate represents a named role template in RSC.
-type RoleTemplate struct {
-	ID                  uuid.UUID    `json:"id"`
-	Name                string       `json:"name"`
-	Description         string       `json:"description"`
-	AssignedPermissions []Permission `json:"explicitlyAssignedPermissions"`
-}
-
-// RoleTemplates returns the role templates matching the specified name filter.
-func (a API) RoleTemplates(ctx context.Context, nameFilter string) ([]RoleTemplate, error) {
-	a.log.Print(log.Trace)
-
-	var templates []RoleTemplate
 	var cursor string
+	var nodes []Role
 	for {
-		buf, err := a.GQL.Request(ctx, roleTemplatesQuery, struct {
+		query := getAllRolesInOrgConnectionQuery
+		buf, err := gql.Request(ctx, query, struct {
 			After      string `json:"after,omitempty"`
 			NameFilter string `json:"nameFilter,omitempty"`
 		}{After: cursor, NameFilter: nameFilter})
 		if err != nil {
-			return nil, fmt.Errorf("failed to request roleTemplates: %w", err)
+			return nil, graphql.RequestError(query, err)
 		}
-		a.log.Printf(log.Debug, "roleTemplates(%q): %s", nameFilter, string(buf))
 
 		var payload struct {
 			Data struct {
 				Result struct {
-					Edges []struct {
-						Node RoleTemplate `json:"node"`
-					} `json:"edges"`
+					Nodes    []Role `json:"nodes"`
 					PageInfo struct {
 						EndCursor   string `json:"endCursor"`
 						HasNextPage bool   `json:"hasNextPage"`
@@ -280,17 +112,166 @@ func (a API) RoleTemplates(ctx context.Context, nameFilter string) ([]RoleTempla
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal roleTemplates response: %v", err)
+			return nil, graphql.UnmarshalError(query, err)
 		}
-		for _, edge := range payload.Data.Result.Edges {
-			templates = append(templates, edge.Node)
-		}
-
+		nodes = append(nodes, payload.Data.Result.Nodes...)
 		if !payload.Data.Result.PageInfo.HasNextPage {
 			break
 		}
 		cursor = payload.Data.Result.PageInfo.EndCursor
 	}
 
-	return templates, nil
+	return nodes, nil
+}
+
+// CreateRoleParams holds the parameters for a role create operation.
+type CreateRoleParams struct {
+	Name        string       `json:"name"`
+	Description string       `json:"description"`
+	Permissions []Permission `json:"permissions"`
+}
+
+// CreateRole creates a new role. Returns the ID of the new role.
+func CreateRole(ctx context.Context, gql *graphql.Client, params CreateRoleParams) (uuid.UUID, error) {
+	gql.Log().Print(log.Trace)
+
+	query := mutateRoleQuery
+	buf, err := gql.Request(ctx, query, params)
+	if err != nil {
+		return uuid.Nil, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result string `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, graphql.UnmarshalError(query, err)
+	}
+	id, err := uuid.Parse(payload.Data.Result)
+	if err != nil {
+		return uuid.Nil, graphql.ResponseError(query, fmt.Errorf("failed to parse role ID: %s", err))
+	}
+
+	return id, nil
+}
+
+// UpdateRoleParams holds the parameters for a role update operation.
+type UpdateRoleParams struct {
+	ID uuid.UUID `json:"roleId"`
+	CreateRoleParams
+}
+
+// UpdateRole updates the role with the specified ID.
+func UpdateRole(ctx context.Context, gql *graphql.Client, params UpdateRoleParams) error {
+	gql.Log().Print(log.Trace)
+
+	query := mutateRoleQuery
+	buf, err := gql.Request(ctx, query, params)
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result string `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if payload.Data.Result == "" {
+		return graphql.ResponseError(query, fmt.Errorf("failed to update role %q", params.ID))
+	}
+
+	return nil
+}
+
+// DeleteRole deletes the role with the specified ID.
+func DeleteRole(ctx context.Context, gql *graphql.Client, id uuid.UUID) error {
+	gql.Log().Print(log.Trace)
+
+	query := deleteRoleQuery
+	buf, err := gql.Request(ctx, deleteRoleQuery, struct {
+		ID uuid.UUID `json:"roleId"`
+	}{ID: id})
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result bool `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result {
+		return graphql.ResponseError(query, fmt.Errorf("failed to delete role %q", id))
+	}
+
+	return nil
+}
+
+// AssignRoleParams holds the parameters for a role assign operation.
+type AssignRoleParams struct {
+	RoleIDs  []uuid.UUID `json:"roleIds"`
+	UserIDs  []string    `json:"userIds,omitempty"`
+	GroupIDs []string    `json:"groupIds,omitempty"`
+}
+
+// AssignRoles assigns the roles to the users and groups with the specified IDs.
+func AssignRoles(ctx context.Context, gql *graphql.Client, params AssignRoleParams) error {
+	gql.Log().Print(log.Trace)
+
+	query := addRoleAssignmentQuery
+	buf, err := gql.Request(ctx, query, params)
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result bool `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result {
+		return graphql.ResponseError(query, errors.New("failed to assign roles"))
+	}
+
+	return nil
+}
+
+// ReplaceRoleParams holds the parameters for a role replace operation.
+type ReplaceRoleParams AssignRoleParams
+
+// ReplaceRoles replaces the role assignment for the users and groups with the
+// specified IDs.
+func ReplaceRoles(ctx context.Context, gql *graphql.Client, params ReplaceRoleParams) error {
+	gql.Log().Print(log.Trace)
+
+	query := updateRoleAssignmentsQuery
+	buf, err := gql.Request(ctx, query, params)
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result bool `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result {
+		return graphql.ResponseError(query, errors.New("failed to replace roles"))
+	}
+
+	return nil
 }

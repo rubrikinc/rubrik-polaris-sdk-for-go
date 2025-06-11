@@ -66,27 +66,23 @@ type Feature struct {
 type FeatureResourceGroup struct {
 	Name     string           `json:"name"`
 	NativeID string           `json:"nativeId"`
-	Tags     []Tag            `json:"tags"`
+	Tags     []core.Tag       `json:"tags"`
 	Region   NativeRegionEnum `json:"region"`
 }
 
 // ResourceGroup holds the information for a resource group when a particular
-// feature is onboarded.
+// feature is onboarded. Note, when using the ResourceGroup type as input to a
+// GraphQL mutation, the TagList.Tags field cannot be nil. An empty slice is
+// fine.
 type ResourceGroup struct {
 	Name    string                 `json:"name"`
 	TagList TagList                `json:"tags"`
 	Region  CloudAccountRegionEnum `json:"region"`
 }
 
-// Tag represents the tags present in the resource group.
-type Tag struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
 // TagList represents a list of Tags.
 type TagList struct {
-	Tags []Tag `json:"tagList"`
+	Tags []core.Tag `json:"tagList"`
 }
 
 // FeatureUserAssignedManagedIdentity represents a user-assigned managed
@@ -146,7 +142,6 @@ func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, incl
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -185,7 +180,6 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 	if err != nil {
 		return "", graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -225,7 +219,6 @@ func (a API) DeleteCloudAccountWithoutOAuth(ctx context.Context, id uuid.UUID, f
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -275,7 +268,6 @@ func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -340,7 +332,6 @@ func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feat
 	if err != nil {
 		return PermissionConfig{}, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -357,15 +348,25 @@ func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feat
 // UpgradeCloudAccountPermissionsWithoutOAuth notifies RSC that the permissions
 // for the Azure service principal have been updated for the specified RSC cloud
 // account id and feature.
-func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
+// The resource group is optional and only required when the Azure SQL DB
+// feature is upgraded to support resource groups, otherwise nil can be passed
+// in.
+func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature, resourceGroup *ResourceGroup) error {
 	a.log.Print(log.Trace)
 
 	query := upgradeAzureCloudAccountPermissionsWithoutOauthQuery
 	var queryFeature any = feature.Name
 	if len(feature.PermissionGroups) > 0 {
 		query = upgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroupsQuery
-		queryFeature = feature
+		queryFeature = struct {
+			core.Feature
+			ResourceGroup *ResourceGroup `json:"resourceGroup,omitempty"`
+		}{
+			Feature:       feature,
+			ResourceGroup: resourceGroup,
+		}
 	}
+
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID `json:"cloudAccountId"`
 		Feature any       `json:"feature"`
@@ -373,7 +374,6 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id 
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {
@@ -406,7 +406,6 @@ func (a API) StartDisableCloudAccountJob(ctx context.Context, id uuid.UUID, feat
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
-	graphql.LogResponse(a.log, query, buf)
 
 	var payload struct {
 		Data struct {

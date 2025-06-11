@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($ruleId: UUID!) {
+    result: deleteCloudNativeTagRule(input: {
+        ruleId: $ruleId
+    })
+}

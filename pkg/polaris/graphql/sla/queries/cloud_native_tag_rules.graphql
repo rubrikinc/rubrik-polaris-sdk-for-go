@@ -1,0 +1,23 @@
+query RubrikPolarisSDKRequest($objectType: CloudNativeTagObjectType!, $filters: [CloudNativeFilter!]) {
+    result: cloudNativeTagRules(sortBy: NAME, sortOrder: ASC, objectType: $objectType, filters: $filters) {
+        tagRules {
+            id
+            name
+            objectType
+            tag {
+                matchAllValues
+                tagKey
+                tagValue
+            }
+            applyToAllCloudAccounts
+            cloudNativeAccounts {
+                id
+                name
+            }
+            effectiveSla {
+                id
+                name
+            }
+        }
+    }
+}

@@ -41,6 +41,16 @@ var deploymentVersionQuery = `query SdkGolangDeploymentVersion {
     deploymentVersion
 }`
 
+// featureFlagAll GraphQL query
+var featureFlagAllQuery = `query SdkGolangFeatureFlagAll {
+    result: featureFlagAll(entityType: ACCOUNT, entityContext: []) {
+        flags {
+            name
+            variant
+        }
+    }
+}`
+
 // getKorgTaskchainStatus GraphQL query
 var getKorgTaskchainStatusQuery = `query SdkGolangGetKorgTaskchainStatus($taskchainId: String!){
     getKorgTaskchainStatus(taskchainId: $taskchainId){
@@ -49,5 +59,18 @@ var getKorgTaskchainStatusQuery = `query SdkGolangGetKorgTaskchainStatus($taskch
             state
             taskchainUuid
         }
+    }
+}`
+
+// registerCluster GraphQL query
+var registerClusterQuery = `mutation SdkGolangRegisterCluster($managedByPolaris: Boolean, $nodeConfigs: [NodeRegistrationConfigsInput!], $isOfflineRegistration: Boolean) {
+    result: generateClusterRegistrationToken(input: {
+        managedByPolaris:      $managedByPolaris,
+        nodeConfigs:           $nodeConfigs,
+        isOfflineRegistration: $isOfflineRegistration,
+    }) {
+        token
+        pubkey
+        productType
     }
 }`

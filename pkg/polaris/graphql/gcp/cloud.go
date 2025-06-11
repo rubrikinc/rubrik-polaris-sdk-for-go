@@ -24,11 +24,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
-
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -63,14 +63,14 @@ type CloudAccountWithFeature struct {
 func (a API) CloudAccountProjectsByFeature(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountWithFeature, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, allGcpCloudAccountProjectsByFeatureQuery, struct {
+	query := allGcpCloudAccountProjectsByFeatureQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Feature string `json:"feature"`
 		Filter  string `json:"projectSearchText"`
 	}{Feature: feature.Name, Filter: filter})
 	if err != nil {
-		return nil, fmt.Errorf("failed to request allGcpCloudAccountProjectsByFeature: %w", err)
+		return nil, graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "allGcpCloudAccountProjectsByFeature(%q, %q): %s", feature.Name, filter, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -78,7 +78,7 @@ func (a API) CloudAccountProjectsByFeature(ctx context.Context, feature core.Fea
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal allGcpCloudAccountProjectsByFeature: %v", err)
+		return nil, graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Accounts, nil
@@ -88,17 +88,18 @@ func (a API) CloudAccountProjectsByFeature(ctx context.Context, feature core.Fea
 func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, projectName string, projectNumber int64, orgName, jwtConfig string, feature core.Feature) error {
 	a.log.Print(log.Trace)
 
-	_, err := a.GQL.RequestWithoutLogging(ctx, gcpCloudAccountAddManualAuthProjectQuery, struct {
-		ID           string `json:"gcpNativeProjectId"`
-		Name         string `json:"gcpProjectName"`
-		Number       int64  `json:"gcpProjectNumber"`
-		OrgName      string `json:"organizationName,omitempty"`
-		JwtConfig    string `json:"serviceAccountJwtConfig,omitempty"`
-		JwtConfigOpt string `json:"serviceAccountJwtConfigOptional,omitempty"`
-		Feature      string `json:"feature"`
-	}{ID: projectID, Name: projectName, Number: projectNumber, OrgName: orgName, JwtConfig: jwtConfig, JwtConfigOpt: jwtConfig, Feature: feature.Name})
+	query := gcpCloudAccountAddManualAuthProjectQuery
+	_, err := a.GQL.Request(ctx, query, struct {
+		ID           string        `json:"gcpNativeProjectId"`
+		Name         string        `json:"gcpProjectName"`
+		Number       int64         `json:"gcpProjectNumber"`
+		OrgName      string        `json:"organizationName,omitempty"`
+		JwtConfig    secret.String `json:"serviceAccountJwtConfig,omitempty"`
+		JwtConfigOpt secret.String `json:"serviceAccountJwtConfigOptional,omitempty"`
+		Feature      string        `json:"feature"`
+	}{ID: projectID, Name: projectName, Number: projectNumber, OrgName: orgName, JwtConfig: secret.String(jwtConfig), JwtConfigOpt: secret.String(jwtConfig), Feature: feature.Name})
 	if err != nil {
-		return fmt.Errorf("failed to request gcpCloudAccountAddManualAuthProject: %w", err)
+		return graphql.RequestError(query, err)
 	}
 
 	return nil
@@ -109,14 +110,14 @@ func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, pr
 func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, gcpCloudAccountDeleteProjectsQuery, struct {
+	query := gcpCloudAccountDeleteProjectsQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID  uuid.UUID   `json:"nativeProtectionProjectId"`
 		IDs []uuid.UUID `json:"nativeProtectionProjectUuids"`
 	}{ID: id, IDs: []uuid.UUID{id}})
 	if err != nil {
-		return fmt.Errorf("failed to request gcpCloudAccountDeleteProjects: %w", err)
+		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "gcpCloudAccountDeleteProjects(%q): %s", id, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -130,13 +131,13 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal gcpCloudAccountDeleteProjects: %v", err)
+		return graphql.UnmarshalError(query, err)
 	}
 	if len(payload.Data.Result.Status) != 1 {
-		return errors.New("expected a single result")
+		return graphql.ResponseError(query, errors.New("expected a single result"))
 	}
 	if !payload.Data.Result.Status[0].Success {
-		return errors.New(payload.Data.Result.Status[0].Error)
+		return graphql.ResponseError(query, errors.New(payload.Data.Result.Status[0].Error))
 	}
 
 	return nil
@@ -147,13 +148,13 @@ func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error 
 func (a API) FeaturePermissionsForCloudAccount(ctx context.Context, feature core.Feature) (permissions []string, err error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, allFeaturePermissionsForGcpCloudAccountQuery, struct {
+	query := allFeaturePermissionsForGcpCloudAccountQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		Feature string `json:"feature"`
 	}{Feature: feature.Name})
 	if err != nil {
-		return nil, fmt.Errorf("failed to request allFeaturePermissionsForGcpCloudAccount: %w", err)
+		return nil, graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "allFeaturePermissionsForGcpCloudAccount(%q): %s", feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -163,7 +164,7 @@ func (a API) FeaturePermissionsForCloudAccount(ctx context.Context, feature core
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal allFeaturePermissionsForGcpCloudAccount: %v", err)
+		return nil, graphql.UnmarshalError(query, err)
 	}
 
 	permissions = make([]string, 0, len(payload.Data.Permissions))
@@ -180,14 +181,14 @@ func (a API) FeaturePermissionsForCloudAccount(ctx context.Context, feature core
 func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(ctx, upgradeGcpCloudAccountPermissionsWithoutOauthQuery, struct {
+	query := upgradeGcpCloudAccountPermissionsWithoutOauthQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID `json:"cloudAccountId"`
 		Feature string    `json:"feature"`
 	}{ID: id, Feature: feature.Name})
 	if err != nil {
-		return fmt.Errorf("failed to request upgradeGcpCloudAccountPermissionsWithoutOauth: %w", err)
+		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "upgradeGcpCloudAccountPermissionsWithoutOauth(%q, %q): %s", id, feature.Name, string(buf))
 
 	var payload struct {
 		Data struct {
@@ -201,10 +202,10 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal upgradeGcpCloudAccountPermissionsWithoutOauth: %v", err)
+		return graphql.UnmarshalError(query, err)
 	}
 	if !payload.Data.Result.Status.Success {
-		return errors.New(payload.Data.Result.Status.Error)
+		return graphql.ResponseError(query, errors.New(payload.Data.Result.Status.Error))
 	}
 
 	return nil
