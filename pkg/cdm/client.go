@@ -46,7 +46,7 @@ func NewClient(nodeIP string, allowInsecureTLS bool) *Client {
 // The client logs to the provided logger.
 func NewClientWithLogger(nodeIP string, allowInsecureTLS bool, logger log.Logger) *Client {
 	return &Client{
-		client: newClient(allowInsecureTLS),
+		client: newClientWithLogger(allowInsecureTLS, logger),
 		nodeIP: nodeIP,
 		Log:    logger,
 	}
