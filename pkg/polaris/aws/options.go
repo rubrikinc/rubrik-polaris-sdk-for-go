@@ -27,9 +27,10 @@ import (
 )
 
 type options struct {
-	name             string
-	regions          []aws.Region
-	outpostAccountID string
+	name                  string
+	regions               []aws.Region
+	outpostAccountID      string
+	outpostAccountProfile AccountFunc
 }
 
 // OptionFunc gives the value passed to the function creating the OptionFunc
@@ -54,11 +55,21 @@ func Region(region string) OptionFunc {
 	}
 }
 
-// OutpostAccountID returns an OptionFunc that gives the specified AWS account id
+// OutpostAccount returns an OptionFunc that gives the specified AWS account id
 // for the outpost feature to the options instance.
-func OutpostAccountID(outpostAccountID string) OptionFunc {
+func OutpostAccount(outpostAccountID string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
 		opts.outpostAccountID = outpostAccountID
+		return nil
+	}
+}
+
+// OutpostAccountWithProfile returns an OptionFunc that gives the specified AWS account id
+// for the outpost feature to the options instance and the aws profile to use to access it.
+func OutpostAccountWithProfile(outpostAccountID, outpostAccountProfile string) OptionFunc {
+	return func(ctx context.Context, opts *options) error {
+		opts.outpostAccountID = outpostAccountID
+		opts.outpostAccountProfile = Profile(outpostAccountProfile)
 		return nil
 	}
 }

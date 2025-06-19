@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -334,7 +335,12 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 	}
-	hasOutpostFeature, _ := checkFeaturesForOutpost(features)
+
+	hasOutpostFeature := slices.ContainsFunc(
+		features, func(f core.Feature) bool {
+			return f.Equal(core.FeatureOutpost)
+		},
+	)
 
 	if config.config != nil {
 		err = a.addAccountWithCFT(ctx, features, config, options)
@@ -360,20 +366,25 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 	return akkount.ID, nil
 }
 
-func (a API) addAccountOutpost(ctx context.Context, config account, options options) error {
+func (a API) addAccountOutpost(ctx context.Context, options options) error {
 	a.log.Print(log.Trace)
+
+	outpostAccount, err := options.outpostAccountProfile(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get outpost account: %s", err)
+	}
 
 	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, options.outpostAccountID, options.outpostAccountID, []core.Feature{core.FeatureOutpost})
 	if err != nil {
 		return fmt.Errorf("failed to validate account: %s", err)
 	}
 
-	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, options.outpostAccountID, options.outpostAccountID, []core.Feature{core.FeatureOutpost}, options.regions, accountInit)
+	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, outpostAccount.cloud, options.outpostAccountID, options.outpostAccountID, []core.Feature{core.FeatureOutpost}, options.regions, accountInit)
 	if err != nil {
 		return fmt.Errorf("failed to add account: %s", err)
 	}
 
-	err = awsUpdateStack(ctx, a.client.Log(), *config.config, accountInit.StackName, accountInit.TemplateURL)
+	err = awsUpdateStack(ctx, a.client.Log(), *outpostAccount.config, accountInit.StackName, accountInit.TemplateURL)
 	if err != nil {
 		return fmt.Errorf("failed to update CloudFormation stack: %s", err)
 	}
@@ -403,13 +414,23 @@ func (a API) addAccount(ctx context.Context, features []core.Feature, config acc
 func (a API) addAccountWithCFT(ctx context.Context, features []core.Feature, config account, options options) error {
 	a.log.Print(log.Trace)
 
-	hasOutpostFeature, hasOtherFeatures := checkFeaturesForOutpost(features)
+	hasOutpostFeature := slices.ContainsFunc(
+		features, func(f core.Feature) bool {
+			return f.Equal(core.FeatureOutpost)
+		},
+	)
+
+	hasOtherFeatures := slices.ContainsFunc(
+		features, func(f core.Feature) bool {
+			return !f.Equal(core.FeatureOutpost)
+		},
+	)
 
 	if hasOutpostFeature {
 		if options.outpostAccountID == "" {
 			return errors.New("outpost account id is not allowed to be empty")
 		}
-		if err := a.addAccountOutpost(ctx, config, options); err != nil {
+		if err := a.addAccountOutpost(ctx, options); err != nil {
 			return err
 		}
 
@@ -881,17 +902,4 @@ func (a API) TrustPolicies(ctx context.Context, id IdentityFunc, features []core
 	}
 
 	return trustPolicies, nil
-}
-
-// checkFeatures examines a slice of features and returns whether it contains
-// the Outpost feature and whether it contains any other features.
-func checkFeaturesForOutpost(features []core.Feature) (hasOutpostFeature bool, hasOtherFeatures bool) {
-	for _, f := range features {
-		if f.Equal(core.FeatureOutpost) {
-			hasOutpostFeature = true
-		} else {
-			hasOtherFeatures = true
-		}
-	}
-	return
 }
