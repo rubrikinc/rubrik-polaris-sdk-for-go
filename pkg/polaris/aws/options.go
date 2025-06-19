@@ -55,7 +55,7 @@ func Region(region string) OptionFunc {
 }
 
 // OutpostAccountID returns an OptionFunc that gives the specified AWS account id
-// to the options instance.
+// for the outpost feature to the options instance.
 func OutpostAccountID(outpostAccountID string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
 		opts.outpostAccountID = outpostAccountID
