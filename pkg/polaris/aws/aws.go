@@ -174,15 +174,13 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 		for _, region := range feature.Regions {
 			regions = append(regions, region.Name())
 		}
-		features = append(
-			features, Feature{
-				Feature:  core.Feature{Name: feature.Feature, PermissionGroups: feature.PermissionGroups},
-				Regions:  regions,
-				RoleArn:  feature.RoleArn,
-				StackArn: feature.StackArn,
-				Status:   feature.Status,
-			},
-		)
+		features = append(features, Feature{
+			Feature:  core.Feature{Name: feature.Feature, PermissionGroups: feature.PermissionGroups},
+			Regions:  regions,
+			RoleArn:  feature.RoleArn,
+			StackArn: feature.StackArn,
+			Status:   feature.Status,
+		})
 	}
 
 	return CloudAccount{
@@ -620,20 +618,18 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 			return fmt.Errorf("failed to disable exocompute feature: %s", err)
 		}
 
-		if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(
-			ctx, jobID, func(ctx context.Context) (bool, error) {
-				account, err := a.Account(ctx, CloudAccountID(account.ID), feature)
-				if err != nil {
-					return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
-				}
+		if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
+			account, err := a.Account(ctx, CloudAccountID(account.ID), feature)
+			if err != nil {
+				return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
+			}
 
-				feature, ok := account.Feature(feature)
-				if !ok {
-					return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
-				}
-				return feature.Status == core.StatusDisabled, nil
-			},
-		); err != nil {
+			feature, ok := account.Feature(feature)
+			if !ok {
+				return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
+			}
+			return feature.Status == core.StatusDisabled, nil
+		}); err != nil {
 			return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
 		}
 	}
@@ -663,20 +659,18 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 		return fmt.Errorf("failed to disable protection feature %s: %s", protectionFeature, err)
 	}
 
-	if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(
-		ctx, jobID, func(ctx context.Context) (bool, error) {
-			account, err := a.Account(ctx, CloudAccountID(cloudAccountID), feature)
-			if err != nil {
-				return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
-			}
+	if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
+		account, err := a.Account(ctx, CloudAccountID(cloudAccountID), feature)
+		if err != nil {
+			return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
+		}
 
-			feature, ok := account.Feature(feature)
-			if !ok {
-				return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
-			}
-			return feature.Status == core.StatusDisabled, nil
-		},
-	); err != nil {
+		feature, ok := account.Feature(feature)
+		if !ok {
+			return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
+		}
+		return feature.Status == core.StatusDisabled, nil
+	}); err != nil {
 		return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
 	}
 
@@ -746,16 +740,12 @@ func (a API) Artifacts(ctx context.Context, cloud string, features []core.Featur
 			a.log.Printf(log.Info, "Ignoring artifact: %s", key)
 		}
 	}
-	sort.Slice(
-		profiles, func(i, j int) bool {
-			return profiles[i] < profiles[j]
-		},
-	)
-	sort.Slice(
-		roles, func(i, j int) bool {
-			return roles[i] < roles[j]
-		},
-	)
+	sort.Slice(profiles, func(i, j int) bool {
+		return profiles[i] < profiles[j]
+	})
+	sort.Slice(roles, func(i, j int) bool {
+		return roles[i] < roles[j]
+	})
 
 	return profiles, roles, nil
 }
@@ -811,23 +801,19 @@ func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features 
 		if !strings.HasSuffix(key, instanceProfileSuffix) {
 			key = key + instanceProfileSuffix
 		}
-		externalArtifacts = append(
-			externalArtifacts, aws.ExternalArtifact{
-				ExternalArtifactKey:   key,
-				ExternalArtifactValue: value,
-			},
-		)
+		externalArtifacts = append(externalArtifacts, aws.ExternalArtifact{
+			ExternalArtifactKey:   key,
+			ExternalArtifactValue: value,
+		})
 	}
 	for key, value := range roles {
 		if !strings.HasSuffix(key, roleArnSuffix) {
 			key = key + roleArnSuffix
 		}
-		externalArtifacts = append(
-			externalArtifacts, aws.ExternalArtifact{
-				ExternalArtifactKey:   key,
-				ExternalArtifactValue: value,
-			},
-		)
+		externalArtifacts = append(externalArtifacts, aws.ExternalArtifact{
+			ExternalArtifactKey:   key,
+			ExternalArtifactValue: value,
+		})
 	}
 
 	// RegisterFeatureArtifacts fails with an error referring to RBK30300003
@@ -839,15 +825,11 @@ func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features 
 	now := time.Now()
 	var mappings []aws.NativeIDToRSCIDMapping
 	for {
-		mappings, err = aws.Wrap(a.client).RegisterFeatureArtifacts(
-			ctx, aws.Cloud(account.Cloud), []aws.AccountFeatureArtifact{
-				{
-					NativeID:  account.NativeID,
-					Features:  core.FeatureNames(features),
-					Artifacts: externalArtifacts,
-				},
-			},
-		)
+		mappings, err = aws.Wrap(a.client).RegisterFeatureArtifacts(ctx, aws.Cloud(account.Cloud), []aws.AccountFeatureArtifact{{
+			NativeID:  account.NativeID,
+			Features:  core.FeatureNames(features),
+			Artifacts: externalArtifacts,
+		}})
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("failed to register feature artifacts: %s", err)
 		}
@@ -884,14 +866,10 @@ func (a API) TrustPolicies(ctx context.Context, id IdentityFunc, features []core
 		return nil, err
 	}
 
-	policies, err := aws.Wrap(a.client).TrustPolicy(
-		ctx, aws.Cloud(account.Cloud), features, []aws.TrustPolicyAccount{
-			{
-				ID:         account.NativeID,
-				ExternalID: externalID,
-			},
-		},
-	)
+	policies, err := aws.Wrap(a.client).TrustPolicy(ctx, aws.Cloud(account.Cloud), features, []aws.TrustPolicyAccount{{
+		ID:         account.NativeID,
+		ExternalID: externalID,
+	}})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get trust policies: %s", err)
 	}
