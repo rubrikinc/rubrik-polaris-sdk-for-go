@@ -27,11 +27,13 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -332,9 +334,18 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 	}
 
+	hasOutpostFeature := slices.ContainsFunc(
+		features, func(f core.Feature) bool {
+			return f.Equal(core.FeatureOutpost)
+		},
+	)
+
 	if config.config != nil {
 		err = a.addAccountWithCFT(ctx, features, config, options)
 	} else {
+		if hasOutpostFeature {
+			return uuid.Nil, errors.New("outpost feature requires CloudFormation")
+		}
 		err = a.addAccount(ctx, features, config, options)
 	}
 	if err != nil {
@@ -351,6 +362,27 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 	}
 
 	return akkount.ID, nil
+}
+
+func (a API) addAccountOutpost(ctx context.Context, config account, options options) error {
+	a.log.Print(log.Trace)
+
+	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, options.outpostAccountID, options.outpostAccountID, []core.Feature{core.FeatureOutpost})
+	if err != nil {
+		return fmt.Errorf("failed to validate account: %s", err)
+	}
+
+	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, options.outpostAccountID, options.outpostAccountID, []core.Feature{core.FeatureOutpost}, options.regions, accountInit)
+	if err != nil {
+		return fmt.Errorf("failed to add account: %s", err)
+	}
+
+	err = awsUpdateStack(ctx, a.client.Log(), *config.config, accountInit.StackName, accountInit.TemplateURL)
+	if err != nil {
+		return fmt.Errorf("failed to update CloudFormation stack: %s", err)
+	}
+
+	return nil
 }
 
 func (a API) addAccount(ctx context.Context, features []core.Feature, config account, options options) error {
@@ -374,6 +406,44 @@ func (a API) addAccount(ctx context.Context, features []core.Feature, config acc
 
 func (a API) addAccountWithCFT(ctx context.Context, features []core.Feature, config account, options options) error {
 	a.log.Print(log.Trace)
+
+	hasOutpostFeature := slices.ContainsFunc(
+		features, func(f core.Feature) bool {
+			return f.Equal(core.FeatureOutpost)
+		},
+	)
+
+	hasOtherFeatures := slices.ContainsFunc(
+		features, func(f core.Feature) bool {
+			return !f.Equal(core.FeatureOutpost)
+		},
+	)
+
+	if hasOutpostFeature {
+		if options.outpostAccountID == "" {
+			return errors.New("outpost account id is not allowed to be empty")
+		}
+
+		// Default to using the config account
+		outpostAccount := config
+
+		if options.outpostAccountProfile != nil {
+			var err error
+			outpostAccount, err = options.outpostAccountProfile(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to get outpost account: %s", err)
+			}
+		}
+
+		if err := a.addAccountOutpost(ctx, outpostAccount, options); err != nil {
+			return err
+		}
+
+		// If Outpost is the only feature, we can exit early
+		if !hasOtherFeatures {
+			return nil
+		}
+	}
 
 	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.id, config.name, features)
 	if err != nil {
