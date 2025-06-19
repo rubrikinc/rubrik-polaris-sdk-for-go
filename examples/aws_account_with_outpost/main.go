@@ -67,7 +67,7 @@ func main() {
 		aws.Default(),
 		features,
 		aws.Regions("us-east-2"),
-		aws.OutpostAccountID("123456789012"),
+		aws.OutpostAccountWithProfile("123456789012", "outpost"),
 	)
 	if err != nil {
 		log.Fatal(err)
