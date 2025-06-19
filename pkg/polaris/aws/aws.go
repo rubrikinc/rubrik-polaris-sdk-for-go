@@ -366,25 +366,20 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 	return akkount.ID, nil
 }
 
-func (a API) addAccountOutpost(ctx context.Context, options options) error {
+func (a API) addAccountOutpost(ctx context.Context, config account, options options) error {
 	a.log.Print(log.Trace)
-
-	outpostAccount, err := options.outpostAccountProfile(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get outpost account: %s", err)
-	}
 
 	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, options.outpostAccountID, options.outpostAccountID, []core.Feature{core.FeatureOutpost})
 	if err != nil {
 		return fmt.Errorf("failed to validate account: %s", err)
 	}
 
-	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, outpostAccount.cloud, options.outpostAccountID, options.outpostAccountID, []core.Feature{core.FeatureOutpost}, options.regions, accountInit)
+	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, options.outpostAccountID, options.outpostAccountID, []core.Feature{core.FeatureOutpost}, options.regions, accountInit)
 	if err != nil {
 		return fmt.Errorf("failed to add account: %s", err)
 	}
 
-	err = awsUpdateStack(ctx, a.client.Log(), *outpostAccount.config, accountInit.StackName, accountInit.TemplateURL)
+	err = awsUpdateStack(ctx, a.client.Log(), *config.config, accountInit.StackName, accountInit.TemplateURL)
 	if err != nil {
 		return fmt.Errorf("failed to update CloudFormation stack: %s", err)
 	}
@@ -430,7 +425,19 @@ func (a API) addAccountWithCFT(ctx context.Context, features []core.Feature, con
 		if options.outpostAccountID == "" {
 			return errors.New("outpost account id is not allowed to be empty")
 		}
-		if err := a.addAccountOutpost(ctx, options); err != nil {
+
+		// Default to using the config account
+		outpostAccount := config
+
+		if options.outpostAccountProfile != nil {
+			var err error
+			outpostAccount, err = options.outpostAccountProfile(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to get outpost account: %s", err)
+			}
+		}
+
+		if err := a.addAccountOutpost(ctx, outpostAccount, options); err != nil {
 			return err
 		}
 
