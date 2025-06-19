@@ -67,6 +67,9 @@ func main() {
 		aws.Default(),
 		features,
 		aws.Regions("us-east-2"),
+		// The account ID of the outpost account and the profile to use to access it.
+		// If the outpost account is the same account as the one default profile, you can
+		// use aws.OutpostAccount("123456789012") instead of aws.OutpostAccountWithProfile(...).
 		aws.OutpostAccountWithProfile("123456789012", "outpost"),
 	)
 	if err != nil {
