@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -147,42 +148,64 @@ func FeatureNames(features []Feature) []string {
 }
 
 var (
-	FeatureInvalid                       = Feature{Name: ""}
-	FeatureAll                           = Feature{Name: "ALL"}
-	FeatureAppFlows                      = Feature{Name: "APP_FLOWS"}
-	FeatureArchival                      = Feature{Name: "ARCHIVAL"}
-	FeatureAzureSQLDBProtection          = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
-	FeatureAzureSQLMIProtection          = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
-	FeatureCloudAccounts                 = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
-	FeatureCloudNativeArchival           = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
-	FeatureCloudNativeArchivalEncryption = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
-	FeatureCloudNativeBlobProtection     = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
-	FeatureCloudNativeProtection         = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
-	FeatureCloudNativeS3Protection       = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
-	FeatureExocompute                    = Feature{Name: "EXOCOMPUTE"}
-	FeatureGCPSharedVPCHost              = Feature{Name: "GCP_SHARED_VPC_HOST"}
-	FeatureKubernetesProtection          = Feature{Name: "KUBERNETES_PROTECTION"}
-	FeatureRDSProtection                 = Feature{Name: "RDS_PROTECTION"}
-	FeatureServerAndApps                 = Feature{Name: "SERVERS_AND_APPS"}
+	FeatureInvalid                                 = Feature{Name: ""}
+	FeatureAll                                     = Feature{Name: "ALL"}
+	FeatureAppFlows                                = Feature{Name: "APP_FLOWS"}
+	FeatureArchival                                = Feature{Name: "ARCHIVAL"}
+	FeatureAzureSQLDBProtection                    = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
+	FeatureAzureSQLMIProtection                    = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
+	FeatureCloudAccounts                           = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
+	FeatureCloudNativeArchival                     = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
+	FeatureCloudNativeArchivalEncryption           = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
+	FeatureCloudNativeBlobProtection               = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
+	FeatureCloudNativeProtection                   = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
+	FeatureCloudNativeS3Protection                 = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
+	FeatureExocompute                              = Feature{Name: "EXOCOMPUTE"}
+	FeatureGCPSharedVPCHost                        = Feature{Name: "GCP_SHARED_VPC_HOST"}
+	FeatureKubernetesProtection                    = Feature{Name: "KUBERNETES_PROTECTION"}
+	FeatureRDSProtection                           = Feature{Name: "RDS_PROTECTION"}
+	FeatureServerAndApps                           = Feature{Name: "SERVERS_AND_APPS"}
+	FeatureOutpost                                 = Feature{Name: "OUTPOST"}                                     // Data Scanning Exocompute AWS
+	FeatureLaminarInternal                         = Feature{Name: "LAMINAR_INTERNAL"}                            // Data Scanning Data AWS
+	FeatureLaminarCrossAccount                     = Feature{Name: "LAMINAR_CROSS_ACCOUNT"}                       // Data Scanning Metadata AWS
+	FeatureLaminarTargetManagedIdentity            = Feature{Name: "LAMINAR_TARGET_MANAGED_IDENTITY"}             // Data Scanning Metadata Azure
+	FeatureLaminarTargetApplication                = Feature{Name: "LAMINAR_TARGET_APPLICATION"}                  // Data Scanning Data Azure
+	FeatureLaminarOutpostManagedIdentity           = Feature{Name: "LAMINAR_OUTPOST_MANAGED_IDENTITY"}            // Data Scanning Exocompute Azure
+	FeatureLaminarOutpostApplication               = Feature{Name: "LAMINAR_OUTPOST_APPLICATION"}                 // Data Scanning Exocompute Azure
+	FeatureCyberRecoveryDataClassificationMetadata = Feature{Name: "CYBER_RECOVERY_DATA_CLASSIFICATION_METADATA"} // Data Scanning Cyber Recovery Metadata
+	FeatureCyberRecoveryDataClassificationData     = Feature{Name: "CYBER_RECOVERY_DATA_CLASSIFICATION_DATA"}     // Data Scanning Cyber Recovery Data
+	FeatureDSPMMetadata                            = Feature{Name: "DSPM_METADATA"}                               // DSPM Metadata
+	FeatureDSPMMData                               = Feature{Name: "DSPM_DATA"}                                   // DSPM Data
 )
 
 var validFeatures = map[string]struct{}{
-	FeatureAll.Name:                           {},
-	FeatureAppFlows.Name:                      {},
-	FeatureArchival.Name:                      {},
-	FeatureAzureSQLDBProtection.Name:          {},
-	FeatureAzureSQLMIProtection.Name:          {},
-	FeatureCloudAccounts.Name:                 {}, // Deprecated: no replacement.
-	FeatureCloudNativeArchival.Name:           {},
-	FeatureCloudNativeArchivalEncryption.Name: {},
-	FeatureCloudNativeBlobProtection.Name:     {},
-	FeatureCloudNativeProtection.Name:         {},
-	FeatureCloudNativeS3Protection.Name:       {},
-	FeatureExocompute.Name:                    {},
-	FeatureGCPSharedVPCHost.Name:              {},
-	FeatureKubernetesProtection.Name:          {},
-	FeatureRDSProtection.Name:                 {},
-	FeatureServerAndApps.Name:                 {},
+	FeatureAll.Name:                                     {},
+	FeatureAppFlows.Name:                                {},
+	FeatureArchival.Name:                                {},
+	FeatureAzureSQLDBProtection.Name:                    {},
+	FeatureAzureSQLMIProtection.Name:                    {},
+	FeatureCloudAccounts.Name:                           {}, // Deprecated: no replacement.
+	FeatureCloudNativeArchival.Name:                     {},
+	FeatureCloudNativeArchivalEncryption.Name:           {},
+	FeatureCloudNativeBlobProtection.Name:               {},
+	FeatureCloudNativeProtection.Name:                   {},
+	FeatureCloudNativeS3Protection.Name:                 {},
+	FeatureExocompute.Name:                              {},
+	FeatureGCPSharedVPCHost.Name:                        {},
+	FeatureKubernetesProtection.Name:                    {},
+	FeatureRDSProtection.Name:                           {},
+	FeatureServerAndApps.Name:                           {},
+	FeatureOutpost.Name:                                 {},
+	FeatureLaminarInternal.Name:                         {},
+	FeatureLaminarCrossAccount.Name:                     {},
+	FeatureLaminarTargetManagedIdentity.Name:            {},
+	FeatureLaminarTargetApplication.Name:                {},
+	FeatureLaminarOutpostManagedIdentity.Name:           {},
+	FeatureLaminarOutpostApplication.Name:               {},
+	FeatureCyberRecoveryDataClassificationMetadata.Name: {},
+	FeatureCyberRecoveryDataClassificationData.Name:     {},
+	FeatureDSPMMetadata.Name:                            {},
+	FeatureDSPMMData.Name:                               {},
 }
 
 // ContainsFeature returns true if the features slice contains the specified
