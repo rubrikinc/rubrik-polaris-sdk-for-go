@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -172,13 +173,15 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 		for _, region := range feature.Regions {
 			regions = append(regions, region.Name())
 		}
-		features = append(features, Feature{
-			Feature:  core.Feature{Name: feature.Feature, PermissionGroups: feature.PermissionGroups},
-			Regions:  regions,
-			RoleArn:  feature.RoleArn,
-			StackArn: feature.StackArn,
-			Status:   feature.Status,
-		})
+		features = append(
+			features, Feature{
+				Feature:  core.Feature{Name: feature.Feature, PermissionGroups: feature.PermissionGroups},
+				Regions:  regions,
+				RoleArn:  feature.RoleArn,
+				StackArn: feature.StackArn,
+				Status:   feature.Status,
+			},
+		)
 	}
 
 	return CloudAccount{
@@ -331,10 +334,14 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 	}
+	hasOutpostFeature, _ := checkFeaturesForOutpost(features)
 
 	if config.config != nil {
 		err = a.addAccountWithCFT(ctx, features, config, options)
 	} else {
+		if hasOutpostFeature {
+			return uuid.Nil, errors.New("outpost feature requires CloudFormation")
+		}
 		err = a.addAccount(ctx, features, config, options)
 	}
 	if err != nil {
@@ -351,6 +358,27 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 	}
 
 	return akkount.ID, nil
+}
+
+func (a API) addAccountOutpost(ctx context.Context, config account, options options) error {
+	a.log.Print(log.Trace)
+
+	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, options.outpostAccountID, options.outpostAccountID, []core.Feature{core.FeatureOutpost})
+	if err != nil {
+		return fmt.Errorf("failed to validate account: %s", err)
+	}
+
+	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, options.outpostAccountID, options.outpostAccountID, []core.Feature{core.FeatureOutpost}, options.regions, accountInit)
+	if err != nil {
+		return fmt.Errorf("failed to add account: %s", err)
+	}
+
+	err = awsUpdateStack(ctx, a.client.Log(), *config.config, accountInit.StackName, accountInit.TemplateURL)
+	if err != nil {
+		return fmt.Errorf("failed to update CloudFormation stack: %s", err)
+	}
+
+	return nil
 }
 
 func (a API) addAccount(ctx context.Context, features []core.Feature, config account, options options) error {
@@ -374,6 +402,22 @@ func (a API) addAccount(ctx context.Context, features []core.Feature, config acc
 
 func (a API) addAccountWithCFT(ctx context.Context, features []core.Feature, config account, options options) error {
 	a.log.Print(log.Trace)
+
+	hasOutpostFeature, hasOtherFeatures := checkFeaturesForOutpost(features)
+
+	if hasOutpostFeature {
+		if options.outpostAccountID == "" {
+			return errors.New("outpost account id is not allowed to be empty")
+		}
+		if err := a.addAccountOutpost(ctx, config, options); err != nil {
+			return err
+		}
+
+		// If Outpost is the only feature, we can exit early
+		if !hasOtherFeatures {
+			return nil
+		}
+	}
 
 	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.id, config.name, features)
 	if err != nil {
@@ -548,18 +592,20 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 			return fmt.Errorf("failed to disable exocompute feature: %s", err)
 		}
 
-		if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
-			account, err := a.Account(ctx, CloudAccountID(account.ID), feature)
-			if err != nil {
-				return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
-			}
+		if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(
+			ctx, jobID, func(ctx context.Context) (bool, error) {
+				account, err := a.Account(ctx, CloudAccountID(account.ID), feature)
+				if err != nil {
+					return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
+				}
 
-			feature, ok := account.Feature(feature)
-			if !ok {
-				return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
-			}
-			return feature.Status == core.StatusDisabled, nil
-		}); err != nil {
+				feature, ok := account.Feature(feature)
+				if !ok {
+					return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
+				}
+				return feature.Status == core.StatusDisabled, nil
+			},
+		); err != nil {
 			return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
 		}
 	}
@@ -589,18 +635,20 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 		return fmt.Errorf("failed to disable protection feature %s: %s", protectionFeature, err)
 	}
 
-	if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
-		account, err := a.Account(ctx, CloudAccountID(cloudAccountID), feature)
-		if err != nil {
-			return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
-		}
+	if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(
+		ctx, jobID, func(ctx context.Context) (bool, error) {
+			account, err := a.Account(ctx, CloudAccountID(cloudAccountID), feature)
+			if err != nil {
+				return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
+			}
 
-		feature, ok := account.Feature(feature)
-		if !ok {
-			return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
-		}
-		return feature.Status == core.StatusDisabled, nil
-	}); err != nil {
+			feature, ok := account.Feature(feature)
+			if !ok {
+				return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
+			}
+			return feature.Status == core.StatusDisabled, nil
+		},
+	); err != nil {
 		return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
 	}
 
@@ -670,12 +718,16 @@ func (a API) Artifacts(ctx context.Context, cloud string, features []core.Featur
 			a.log.Printf(log.Info, "Ignoring artifact: %s", key)
 		}
 	}
-	sort.Slice(profiles, func(i, j int) bool {
-		return profiles[i] < profiles[j]
-	})
-	sort.Slice(roles, func(i, j int) bool {
-		return roles[i] < roles[j]
-	})
+	sort.Slice(
+		profiles, func(i, j int) bool {
+			return profiles[i] < profiles[j]
+		},
+	)
+	sort.Slice(
+		roles, func(i, j int) bool {
+			return roles[i] < roles[j]
+		},
+	)
 
 	return profiles, roles, nil
 }
@@ -731,19 +783,23 @@ func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features 
 		if !strings.HasSuffix(key, instanceProfileSuffix) {
 			key = key + instanceProfileSuffix
 		}
-		externalArtifacts = append(externalArtifacts, aws.ExternalArtifact{
-			ExternalArtifactKey:   key,
-			ExternalArtifactValue: value,
-		})
+		externalArtifacts = append(
+			externalArtifacts, aws.ExternalArtifact{
+				ExternalArtifactKey:   key,
+				ExternalArtifactValue: value,
+			},
+		)
 	}
 	for key, value := range roles {
 		if !strings.HasSuffix(key, roleArnSuffix) {
 			key = key + roleArnSuffix
 		}
-		externalArtifacts = append(externalArtifacts, aws.ExternalArtifact{
-			ExternalArtifactKey:   key,
-			ExternalArtifactValue: value,
-		})
+		externalArtifacts = append(
+			externalArtifacts, aws.ExternalArtifact{
+				ExternalArtifactKey:   key,
+				ExternalArtifactValue: value,
+			},
+		)
 	}
 
 	// RegisterFeatureArtifacts fails with an error referring to RBK30300003
@@ -755,11 +811,15 @@ func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features 
 	now := time.Now()
 	var mappings []aws.NativeIDToRSCIDMapping
 	for {
-		mappings, err = aws.Wrap(a.client).RegisterFeatureArtifacts(ctx, aws.Cloud(account.Cloud), []aws.AccountFeatureArtifact{{
-			NativeID:  account.NativeID,
-			Features:  core.FeatureNames(features),
-			Artifacts: externalArtifacts,
-		}})
+		mappings, err = aws.Wrap(a.client).RegisterFeatureArtifacts(
+			ctx, aws.Cloud(account.Cloud), []aws.AccountFeatureArtifact{
+				{
+					NativeID:  account.NativeID,
+					Features:  core.FeatureNames(features),
+					Artifacts: externalArtifacts,
+				},
+			},
+		)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("failed to register feature artifacts: %s", err)
 		}
@@ -796,10 +856,14 @@ func (a API) TrustPolicies(ctx context.Context, id IdentityFunc, features []core
 		return nil, err
 	}
 
-	policies, err := aws.Wrap(a.client).TrustPolicy(ctx, aws.Cloud(account.Cloud), features, []aws.TrustPolicyAccount{{
-		ID:         account.NativeID,
-		ExternalID: externalID,
-	}})
+	policies, err := aws.Wrap(a.client).TrustPolicy(
+		ctx, aws.Cloud(account.Cloud), features, []aws.TrustPolicyAccount{
+			{
+				ID:         account.NativeID,
+				ExternalID: externalID,
+			},
+		},
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get trust policies: %s", err)
 	}
@@ -817,4 +881,17 @@ func (a API) TrustPolicies(ctx context.Context, id IdentityFunc, features []core
 	}
 
 	return trustPolicies, nil
+}
+
+// checkFeatures examines a slice of features and returns whether it contains
+// the Outpost feature and whether it contains any other features.
+func checkFeaturesForOutpost(features []core.Feature) (hasOutpostFeature bool, hasOtherFeatures bool) {
+	for _, f := range features {
+		if f.Equal(core.FeatureOutpost) {
+			hasOutpostFeature = true
+		} else {
+			hasOtherFeatures = true
+		}
+	}
+	return
 }
