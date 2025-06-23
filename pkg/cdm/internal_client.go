@@ -51,10 +51,6 @@ type client struct {
 	log    log.Logger
 }
 
-func newClient(allowInsecureTLS bool) *client {
-	return newClientWithLogger(allowInsecureTLS, log.DiscardLogger{})
-}
-
 func newClientWithLogger(allowInsecureTLS bool, logger log.Logger) *client {
 	httpClient := &http.Client{}
 	if allowInsecureTLS {
