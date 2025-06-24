@@ -30,6 +30,9 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"strings"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 type APIVersion string
@@ -45,9 +48,10 @@ type authorization func(*http.Request)
 type client struct {
 	auth   authorization
 	client *http.Client
+	log    log.Logger
 }
 
-func newClient(allowInsecureTLS bool) *client {
+func newClientWithLogger(allowInsecureTLS bool, logger log.Logger) *client {
 	httpClient := &http.Client{}
 	if allowInsecureTLS {
 		httpClient.Transport = &http.Transport{
@@ -57,10 +61,15 @@ func newClient(allowInsecureTLS bool) *client {
 
 	return &client{
 		client: httpClient,
+		log:    logger,
 	}
 }
 
 func newClientFromCredentials(username, password string, allowInsecureTLS bool) (*client, error) {
+	return newClientFromCredentialsWithLogger(username, password, allowInsecureTLS, log.DiscardLogger{})
+}
+
+func newClientFromCredentialsWithLogger(username, password string, allowInsecureTLS bool, logger log.Logger) (*client, error) {
 	if username == "" {
 		return nil, errors.New("username required")
 	}
@@ -80,10 +89,15 @@ func newClientFromCredentials(username, password string, allowInsecureTLS bool) 
 			req.SetBasicAuth(username, password)
 		},
 		client: httpClient,
+		log:    logger,
 	}, nil
 }
 
 func newClientFromToken(token string, allowInsecureTLS bool) (*client, error) {
+	return newClientFromTokenWithLogger(token, allowInsecureTLS, log.DiscardLogger{})
+}
+
+func newClientFromTokenWithLogger(token string, allowInsecureTLS bool, logger log.Logger) (*client, error) {
 	if token == "" {
 		return nil, errors.New("authentication token required")
 	}
@@ -100,10 +114,13 @@ func newClientFromToken(token string, allowInsecureTLS bool) (*client, error) {
 			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 		},
 		client: httpClient,
+		log:    logger,
 	}, nil
 }
 
 func (c *client) request(ctx context.Context, method, nodeIP string, version APIVersion, endpoint string, payload any) (*http.Request, error) {
+	c.log.Print(log.Trace)
+
 	if version != V1 && version != V2 && version != Internal {
 		return nil, fmt.Errorf("invalid API version: %s", version)
 	}
@@ -138,9 +155,21 @@ func (c *client) request(ctx context.Context, method, nodeIP string, version API
 }
 
 func (c *client) doRequest(req *http.Request) ([]byte, int, error) {
-	res, err := c.client.Do(req)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to perform request: %s", err)
+	c.log.Print(log.Trace)
+
+	res, reqErr := c.client.Do(req)
+	defer func() {
+		var status string
+		if res != nil {
+			status = res.Status
+		}
+		if reqErr != nil {
+			status = strings.TrimSpace(fmt.Sprintf("%s %s", status, reqErr))
+		}
+		c.log.Printf(log.Debug, "request %s %s - %s", req.Method, req.URL, status)
+	}()
+	if reqErr != nil {
+		return nil, 0, fmt.Errorf("failed to perform request: %s", reqErr)
 	}
 	defer func() {
 		_ = res.Body.Close()

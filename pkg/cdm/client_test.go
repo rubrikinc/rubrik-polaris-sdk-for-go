@@ -28,18 +28,19 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// testClient
 func testClient(testServer *httptest.Server) *Client {
 	u, err := url.Parse(testServer.URL)
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse test server url: %s", err))
 	}
 
+	logger := &log.DiscardLogger{}
 	return &Client{
 		client: &client{
 			client: testServer.Client(),
+			log:    logger,
 		},
 		nodeIP: u.Host,
-		Log:    &log.DiscardLogger{},
+		Log:    logger,
 	}
 }
