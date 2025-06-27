@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/kr/pretty"
@@ -25,13 +24,8 @@ import (
 
 func main() {
 	cleanup := flag.Bool("cleanup", false, "Perform cleanup tasks post CI")
-	precheck := flag.Bool("precheck", false, "Check pre-requirements for running CI tests")
 	provider := flag.String("provider", "", "Use a specific cloud service provider: AWS, Azure or GCP")
 	flag.Parse()
-	if *cleanup == *precheck {
-		flag.Usage()
-		os.Exit(1)
-	}
 
 	// Load configuration and create a client
 	polAccount, err := polaris.DefaultServiceAccount(true)
@@ -49,13 +43,18 @@ func main() {
 	}
 
 	ctx := context.Background()
-	if *precheck {
-		err = check(ctx, client, strings.ToLower(*provider))
-	} else {
-		err = clean(ctx, client, strings.ToLower(*provider))
-	}
-	if err != nil {
+	err = check(ctx, client, strings.ToLower(*provider))
+	switch {
+	case err != nil && !*cleanup:
 		log.Fatal(err)
+	case err != nil:
+		log.Print(err)
+	}
+
+	if *cleanup {
+		if err := clean(ctx, client, strings.ToLower(*provider)); err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
