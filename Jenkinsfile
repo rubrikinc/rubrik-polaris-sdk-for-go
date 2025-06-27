@@ -105,7 +105,7 @@ pipeline {
         stage('Pre-test') {
             when { expression { env.TEST_INTEGRATION == "true" } }
             steps {
-                sh 'go run ./cmd/testenv -precheck'
+                sh 'go run ./cmd/testenv -cleanup'
             }
         }
         stage('Test') {
