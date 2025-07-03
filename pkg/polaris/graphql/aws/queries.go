@@ -45,6 +45,34 @@ var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWi
     }
 }`
 
+// allAwsCloudAccountsWithFeaturesByStatus GraphQL query
+var allAwsCloudAccountsWithFeaturesByStatusQuery = `query SdkGolangAllAwsCloudAccountsWithFeaturesByStatus($feature: CloudAccountFeature!, $columnSearchFilter: String!, $statusFilters: [CloudAccountStatus!]!) {
+    result: allAwsCloudAccountsWithFeaturesAndStatus(awsCloudAccountsArg: {columnSearchFilter: $columnSearchFilter, statusFilters: $statusFilters, feature: $feature}) {
+        awsCloudAccount {
+            cloudType
+            id
+            nativeId
+            message
+            accountName
+        }
+        featureDetails {
+            feature
+            permissionsGroups
+            roleArn
+            stackArn
+            status
+            awsRegions
+            roleChainingDetails
+            mappedAccounts {
+                account {
+                    id
+                    accountName
+                }
+            }
+        }
+    }
+}`
+
 // allAwsPermissionPolicies GraphQL query
 var allAwsPermissionPoliciesQuery = `query SdkGolangAllAwsPermissionPolicies($cloudType: AwsCloudType!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!], $ec2RecoveryRolePath: String) {
     result: allAwsPermissionPolicies(input: {
