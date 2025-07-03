@@ -37,7 +37,7 @@ type AWSTargetMapping struct {
 	} `json:"connectionStatus"`
 	TargetTemplate struct {
 		CloudAccount struct {
-			ID uuid.UUID `json:"id"`
+			ID uuid.UUID `json:"cloudAccountId"`
 		} `json:"cloudAccount"`
 		BucketPrefix string         `json:"bucketPrefix"`
 		StorageClass string         `json:"storageClass"`
