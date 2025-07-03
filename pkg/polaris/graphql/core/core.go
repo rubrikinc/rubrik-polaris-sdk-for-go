@@ -175,7 +175,7 @@ var (
 	FeatureCyberRecoveryDataClassificationMetadata = Feature{Name: "CYBER_RECOVERY_DATA_CLASSIFICATION_METADATA"} // Data Scanning Cyber Recovery Metadata
 	FeatureCyberRecoveryDataClassificationData     = Feature{Name: "CYBER_RECOVERY_DATA_CLASSIFICATION_DATA"}     // Data Scanning Cyber Recovery Data
 	FeatureDSPMMetadata                            = Feature{Name: "DSPM_METADATA"}                               // DSPM Metadata
-	FeatureDSPMMData                               = Feature{Name: "DSPM_DATA"}                                   // DSPM Data
+	FeatureDSPMData                                = Feature{Name: "DSPM_DATA"}                                   // DSPM Data
 )
 
 var validFeatures = map[string]struct{}{
@@ -205,7 +205,7 @@ var validFeatures = map[string]struct{}{
 	FeatureCyberRecoveryDataClassificationMetadata.Name: {},
 	FeatureCyberRecoveryDataClassificationData.Name:     {},
 	FeatureDSPMMetadata.Name:                            {},
-	FeatureDSPMMData.Name:                               {},
+	FeatureDSPMData.Name:                                {},
 }
 
 // ContainsFeature returns true if the features slice contains the specified

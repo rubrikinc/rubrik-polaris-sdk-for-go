@@ -294,6 +294,24 @@ func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) 
 	return accounts, nil
 }
 
+// AccountsByFeatureStatus return all accounts with the specified feature matching the filter and status.
+// The filter can be used to search for account id, account name and role arn.
+func (a API) AccountsByFeatureStatus(ctx context.Context, feature core.Feature, filter string, statusFilters []core.Status) ([]CloudAccount, error) {
+	a.log.Print(log.Trace)
+
+	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeaturesAndStatus(ctx, feature, filter, statusFilters)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get accounts: %s", err)
+	}
+
+	accounts := make([]CloudAccount, 0, len(accountsWithFeatures))
+	for _, accountWithFeatures := range accountsWithFeatures {
+		accounts = append(accounts, toCloudAccount(accountWithFeatures))
+	}
+
+	return accounts, nil
+}
+
 // AddAccount adds the AWS account to RSC for the given features. Returns the
 // RSC cloud account id of the added account. If name isn't given as an option
 // it's derived from information in the cloud. The result can vary slightly
