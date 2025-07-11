@@ -317,8 +317,14 @@ func (a API) WaitForTaskChain(ctx context.Context, taskChainID uuid.UUID, wait t
 		taskChain, err := a.KorgTaskChainStatus(ctx, taskChainID)
 		if err != nil {
 			var gqlErr graphql.GQLError
-			if !errors.As(err, &gqlErr) || len(gqlErr.Errors) < 1 || gqlErr.Errors[0].Extensions.Code != 403 {
+			if !errors.As(err, &gqlErr) || len(gqlErr.Errors) < 1 {
 				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %s: %s", taskChainID, err)
+			}
+			for _, e := range gqlErr.Errors {
+				if e.Extensions.Code == 403 || e.Extensions.Code == 500 {
+					continue // Could be a RBAC error that eventually goes away, keep retrying.
+				}
+				return TaskChainInvalid, fmt.Errorf("unexpected error code when getting tashchain status for %s: %v", taskChainID, err)
 			}
 			if attempt++; attempt > waitAttempts {
 				return TaskChainInvalid, fmt.Errorf("failed to get tashchain status for %s after %d attempts: %s", taskChainID, attempt, err)
@@ -350,10 +356,15 @@ func (a API) WaitForFeatureDisableTaskChain(ctx context.Context, taskChainID uui
 		// Check the status of the task chain.
 		taskChain, err := a.KorgTaskChainStatus(ctx, taskChainID)
 		if err != nil {
-			// If the error isn't a 403, objects not authorized, we abort the wait.
 			var gqlErr graphql.GQLError
-			if !errors.As(err, &gqlErr) || len(gqlErr.Errors) < 1 || gqlErr.Errors[0].Extensions.Code != 403 {
+			if !errors.As(err, &gqlErr) || len(gqlErr.Errors) < 1 {
 				return fmt.Errorf("failed to retrieve taskchain status: %s", err)
+			}
+			for _, e := range gqlErr.Errors {
+				if e.Extensions.Code == 403 || e.Extensions.Code == 500 {
+					continue // Could be a RBAC error that eventually goes away, keep retrying.
+				}
+				return fmt.Errorf("unexpected error code when getting tashchain status for %s: %v", taskChainID, err)
 			}
 
 			// If the task chain RBAC is not yet ready, we fall back to checking
