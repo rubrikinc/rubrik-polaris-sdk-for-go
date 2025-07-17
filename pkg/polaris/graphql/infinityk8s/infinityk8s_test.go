@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/infinityk8s"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -386,18 +387,24 @@ func TestIntegration(t *testing.T) {
 	}
 
 	// 13. Translate FID to internal_id and back.
-	interalID, err := infinityK8sClient.K8sObjectInternalID(ctx, rsFID)
+	internalID, err := infinityK8sClient.K8sObjectInternalIDByType(
+		ctx,
+		rsFID,
+		cdmID,
+		infinityk8s.K8sObjectTypeInventory,
+	)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	logger.Printf(log.Info, "get internal id response: %v", interalID)
+	logger.Printf(log.Info, "get internal id response: %v", internalID)
 
 	// Get the object FID from RSC
-	fid, err := infinityK8sClient.K8sObjectFID(
+	fid, err := infinityK8sClient.K8sObjectFIDByType(
 		ctx,
-		interalID,
+		internalID,
 		cdmID,
+		infinityk8s.K8sObjectTypeInventory,
 	)
 	if err != nil {
 		t.Error(err)
@@ -549,5 +556,63 @@ func TestIntegrationTranslation(t *testing.T) {
 			internalID.String(),
 			slaInternalID.String(),
 		)
+	}
+}
+
+func TestMissingObjectK8sObjectFIDByType(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	infinityK8sClient := infinityk8s.Wrap(client)
+	logger := infinityK8sClient.GQL.Log()
+	logger.SetLogLevel(log.Debug)
+
+	// 1. Translate Global SLA FID to internal_id and back.
+	missingInternalID := uuid.MustParse("313297f1-0b9d-4a1f-826c-ccc607dae06b")
+	clusterUUID := uuid.MustParse("10ae4970-e22f-4d92-a04f-cbf241103190")
+	_, err := infinityK8sClient.K8sObjectFIDByType(
+		ctx,
+		missingInternalID,
+		clusterUUID,
+		infinityk8s.K8sObjectTypeInventory,
+	)
+	t.Logf("error: %v", err)
+	if err == nil {
+		t.Error("expected error, got nil")
+		return
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Errorf("expected not found error, got %v", err)
+		return
+	}
+}
+
+func TestMissingK8sProtectionSet(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	infinityK8sClient := infinityk8s.Wrap(client)
+	logger := infinityK8sClient.GQL.Log()
+	logger.SetLogLevel(log.Debug)
+
+	// 1. Get ProtectionSet.
+	_, err := infinityK8sClient.K8sProtectionSet(
+		ctx,
+		uuid.MustParse("313297f1-0b9d-4a1f-826c-ccc607dae06b"),
+	)
+	t.Logf("error: %v", err)
+	if err == nil {
+		t.Error("expected error, got nil")
+		return
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Errorf("expected not found error, got %v", err)
+		return
 	}
 }

@@ -27,6 +27,7 @@ package infinityk8s
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -361,6 +362,12 @@ func (a API) K8sProtectionSet(
 		}{FID: fid},
 	)
 	if err != nil {
+		var gqlErr graphql.GQLError
+		if errors.As(err, &gqlErr) && len(gqlErr.Errors) > 0 {
+			if gqlErr.Errors[0].Extensions.Code == 404 {
+				err = fmt.Errorf("%s: %w", gqlErr.Error(), graphql.ErrNotFound)
+			}
+		}
 		return KubernetesProtectionSet{}, fmt.Errorf(
 			"failed to request kubernetesProtectionSet: %w",
 			err,
@@ -697,6 +704,7 @@ func (a API) CreateK8sProtectionSetSnapshot(
 
 // K8sObjectFID fetches the RSC FID for the object corresponding to the
 // provided internal id and CDM cluster id.
+// Deprecated: use K8sObjectFIDByType instead.
 func (a API) K8sObjectFID(
 	ctx context.Context,
 	internalID uuid.UUID,
@@ -740,6 +748,7 @@ func (a API) K8sObjectFID(
 
 // K8sObjectInternalID fetches the object Internal ID on CDM for the
 // given RSC FID.
+// Deprecated: use K8sObjectInternalIDByType instead.
 func (a API) K8sObjectInternalID(
 	ctx context.Context,
 	fid uuid.UUID,
@@ -802,6 +811,12 @@ func (a API) K8sObjectFIDByType(
 		},
 	)
 	if err != nil {
+		var gqlErr graphql.GQLError
+		if errors.As(err, &gqlErr) && len(gqlErr.Errors) > 0 {
+			if gqlErr.Errors[0].Extensions.Code == 404 {
+				err = fmt.Errorf("%s: %w", gqlErr.Error(), graphql.ErrNotFound)
+			}
+		}
 		return uuid.Nil, fmt.Errorf("failed to request k8sObjectFidByType: %w", err)
 	}
 	a.log.Printf(
