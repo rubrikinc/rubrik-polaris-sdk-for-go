@@ -301,6 +301,19 @@ func Wrap(client *polaris.Client) API {
 	return API{GQL: client.GQL, log: client.GQL.Log()}
 }
 
+// handleGraphQLError processes GraphQL errors and wraps 404 errors with
+// graphql.ErrNotFound.
+// It returns a formatted error with the operation name.
+func handleGraphQLError(err error, operation string) error {
+	var gqlErr graphql.GQLError
+	if errors.As(err, &gqlErr) && len(gqlErr.Errors) > 0 {
+		if gqlErr.Errors[0].Extensions.Code == 404 {
+			err = fmt.Errorf("%s: %w", gqlErr.Error(), graphql.ErrNotFound)
+		}
+	}
+	return fmt.Errorf("failed to request %s: %w", operation, err)
+}
+
 // K8sObjectType is the type of the Kubernetes object. One between SLA,
 // INVENTORY or SNAPSHOTS.
 type K8sObjectType string
@@ -362,15 +375,9 @@ func (a API) K8sProtectionSet(
 		}{FID: fid},
 	)
 	if err != nil {
-		var gqlErr graphql.GQLError
-		if errors.As(err, &gqlErr) && len(gqlErr.Errors) > 0 {
-			if gqlErr.Errors[0].Extensions.Code == 404 {
-				err = fmt.Errorf("%s: %w", gqlErr.Error(), graphql.ErrNotFound)
-			}
-		}
-		return KubernetesProtectionSet{}, fmt.Errorf(
-			"failed to request kubernetesProtectionSet: %w",
+		return KubernetesProtectionSet{}, handleGraphQLError(
 			err,
+			"kubernetesProtectionSet",
 		)
 	}
 	a.log.Printf(log.Debug, "kubernetesProtectionSet(%v): %s", fid, string(buf))
@@ -811,13 +818,7 @@ func (a API) K8sObjectFIDByType(
 		},
 	)
 	if err != nil {
-		var gqlErr graphql.GQLError
-		if errors.As(err, &gqlErr) && len(gqlErr.Errors) > 0 {
-			if gqlErr.Errors[0].Extensions.Code == 404 {
-				err = fmt.Errorf("%s: %w", gqlErr.Error(), graphql.ErrNotFound)
-			}
-		}
-		return uuid.Nil, fmt.Errorf("failed to request k8sObjectFidByType: %w", err)
+		return uuid.Nil, handleGraphQLError(err, "k8sObjectFidByType")
 	}
 	a.log.Printf(
 		log.Debug,
