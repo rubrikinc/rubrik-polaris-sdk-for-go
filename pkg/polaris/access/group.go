@@ -48,7 +48,7 @@ func (a API) SSOGroupByID(ctx context.Context, id string) (access.SSOGroup, erro
 		}
 	}
 
-	return access.SSOGroup{}, fmt.Errorf("failed to find SSO group %q: %w", id, graphql.ErrNotFound)
+	return access.SSOGroup{}, fmt.Errorf("SSO group %q %w", id, graphql.ErrNotFound)
 }
 
 // SSOGroupByName returns the SSO group with the specified SSO group name.
@@ -67,7 +67,7 @@ func (a API) SSOGroupByName(ctx context.Context, name string) (access.SSOGroup, 
 		}
 	}
 
-	return access.SSOGroup{}, fmt.Errorf("failed to find SSO group %q: %w", name, graphql.ErrNotFound)
+	return access.SSOGroup{}, fmt.Errorf("SSO group %q %w", name, graphql.ErrNotFound)
 }
 
 // SSOGroups returns the SSO groups matching the specified SSO group name

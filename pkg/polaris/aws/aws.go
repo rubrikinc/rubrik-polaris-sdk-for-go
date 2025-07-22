@@ -897,17 +897,26 @@ func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features 
 	return accountID, nil
 }
 
+// TrustPolicyMap maps the role key to the trust policy.
+type TrustPolicyMap map[string]string
+
 // TrustPolicies returns the trust policies required by RSC for the specified
 // features. If the external ID is empty, RSC will generate an external ID.
-func (a API) TrustPolicies(ctx context.Context, id IdentityFunc, features []core.Feature, externalID string) (map[string]string, error) {
+// The same endpoint is used both for reading and writing the trust policy,
+// a side effect of this is that the first call always set the trust policy.
+// Once the trust policy has been set, it cannot be changed.
+// If the account cannot be found, graphql.ErrNotFound is returned.
+func (a API) TrustPolicies(ctx context.Context, cloud aws.Cloud, accountID uuid.UUID, features []core.Feature, externalID string) (TrustPolicyMap, error) {
 	a.log.Print(log.Trace)
 
-	account, err := a.Account(ctx, id, core.FeatureAll)
+	// We need to look up the account to obtain the AWS native account ID.
+	// The call returns graphql.NotFound if the cloud account isn't found.
+	account, err := a.AccountByID(ctx, core.FeatureAll, accountID)
 	if err != nil {
 		return nil, err
 	}
 
-	policies, err := aws.Wrap(a.client).TrustPolicy(ctx, aws.Cloud(account.Cloud), features, []aws.TrustPolicyAccount{{
+	policies, err := aws.Wrap(a.client).TrustPolicy(ctx, cloud, features, []aws.TrustPolicyAccount{{
 		ID:         account.NativeID,
 		ExternalID: externalID,
 	}})
@@ -915,10 +924,10 @@ func (a API) TrustPolicies(ctx context.Context, id IdentityFunc, features []core
 		return nil, fmt.Errorf("failed to get trust policies: %s", err)
 	}
 	if len(policies) != 1 {
-		return nil, fmt.Errorf("expected trust policies for a single account")
+		return nil, errors.New("expected trust policies for a single account")
 	}
 
-	trustPolicies := make(map[string]string)
+	trustPolicies := make(TrustPolicyMap)
 	for _, artifact := range policies[0].Artifacts {
 		if msg := artifact.ErrorMessage; msg != "" {
 			return nil, fmt.Errorf("failed to get trust policies: %s", msg)
