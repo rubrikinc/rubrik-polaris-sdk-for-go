@@ -65,10 +65,6 @@ func newClientWithLogger(allowInsecureTLS bool, logger log.Logger) *client {
 	}
 }
 
-func newClientFromCredentials(username, password string, allowInsecureTLS bool) (*client, error) {
-	return newClientFromCredentialsWithLogger(username, password, allowInsecureTLS, log.DiscardLogger{})
-}
-
 func newClientFromCredentialsWithLogger(username, password string, allowInsecureTLS bool, logger log.Logger) (*client, error) {
 	if username == "" {
 		return nil, errors.New("username required")
