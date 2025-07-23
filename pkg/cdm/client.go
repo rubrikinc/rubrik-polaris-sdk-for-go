@@ -55,11 +55,17 @@ func NewClientWithLogger(nodeIP string, allowInsecureTLS bool, logger log.Logger
 // NewClientFromCredentials creates a new client from the provided Rubrik
 // cluster credentials.
 func NewClientFromCredentials(nodeIP, username, password string, allowInsecureTLS bool) (*Client, error) {
+	return NewClientFromCredentialsWithLogger(nodeIP, username, password, allowInsecureTLS, log.DiscardLogger{})
+}
+
+// NewClientFromCredentialsWithLogger creates a new client from the provided
+// Rubrik cluster credentials.
+func NewClientFromCredentialsWithLogger(nodeIP, username, password string, allowInsecureTLS bool, logger log.Logger) (*Client, error) {
 	if nodeIP == "" {
 		return nil, errors.New("node ip required")
 	}
 
-	client, err := newClientFromCredentials(username, password, allowInsecureTLS)
+	client, err := newClientFromCredentialsWithLogger(username, password, allowInsecureTLS, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +73,7 @@ func NewClientFromCredentials(nodeIP, username, password string, allowInsecureTL
 	return &Client{
 		client: client,
 		nodeIP: nodeIP,
-		Log:    log.DiscardLogger{},
+		Log:    logger,
 	}, nil
 }
 
