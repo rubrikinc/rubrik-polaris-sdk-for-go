@@ -25,6 +25,7 @@
 package core
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -461,6 +462,9 @@ func (a API) EnabledFeaturesForAccount(ctx context.Context) ([]Feature, error) {
 	for _, feature := range payload.Data.Result.Features {
 		features = append(features, Feature{Name: feature})
 	}
+	slices.SortFunc(features, func(i, j Feature) int {
+		return cmp.Compare(i.Name, j.Name)
+	})
 
 	return features, nil
 }

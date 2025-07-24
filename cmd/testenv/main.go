@@ -230,7 +230,7 @@ func clean(ctx context.Context, client *polaris.Client, provider string) error {
 			// Remove all features for the subscription.
 			for _, feature := range azureAcc.Features {
 				if err := azureClient.RemoveSubscription(ctx, azure.CloudAccountID(azureAcc.ID), feature.Feature, false); err != nil {
-					return fmt.Errorf("failed to remove Azure cloud account fetaure %v: %s", feature.Name, err)
+					return fmt.Errorf("failed to remove Azure cloud account feature %v: %s", feature.Name, err)
 				}
 			}
 
