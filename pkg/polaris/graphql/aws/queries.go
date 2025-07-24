@@ -191,19 +191,30 @@ var finalizeAwsCloudAccountDeletionQuery = `mutation SdkGolangFinalizeAwsCloudAc
 }`
 
 // finalizeAwsCloudAccountProtection GraphQL query
-var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloudAccountProtection($nativeId: String!, $accountName: String!, $awsRegions: [AwsCloudAccountRegion!], $externalId: String!, $featureVersion: [AwsCloudAccountFeatureVersionInput!]!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!], $stackName: String!) {
+var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloudAccountProtection(
+    $nativeId:       String!,
+    $accountName:    String!,
+    $awsRegions:     [AwsCloudAccountRegion!],
+    $externalId:     String!,
+    $featureVersion: [AwsCloudAccountFeatureVersionInput!]!,
+    $features:       [CloudAccountFeature!],
+    $featuresWithPG: [FeatureWithPermissionsGroups!],
+    $stackName:      String!,
+    $cloudType:      AwsCloudType,
+) {
     finalizeAwsCloudAccountProtection(input: {
         action: CREATE,
         awsChildAccounts: [{
             accountName: $accountName,
-            nativeId: $nativeId,
+            cloudType:   $cloudType,
+            nativeId:    $nativeId,
         }],
-        awsRegions: $awsRegions,
-        externalId: $externalId,
-        featureVersion: $featureVersion,
-        features: $features,
+        awsRegions:                    $awsRegions,
+        externalId:                    $externalId,
+        featureVersion:                $featureVersion,
+        features:                      $features,
         featuresWithPermissionsGroups: $featuresWithPG,
-        stackName: $stackName,
+        stackName:                     $stackName,
     }) {
        awsChildAccounts {
            accountName
