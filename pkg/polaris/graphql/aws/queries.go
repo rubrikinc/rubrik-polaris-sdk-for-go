@@ -25,52 +25,41 @@
 package aws
 
 // allAwsCloudAccountsWithFeatures GraphQL query
-var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWithFeatures($feature: CloudAccountFeature!, $columnSearchFilter: String!) {
-    result: allAwsCloudAccountsWithFeatures(awsCloudAccountsArg: {columnSearchFilter: $columnSearchFilter, statusFilters: [], feature: $feature}) {
-        awsCloudAccount {
-            cloudType
-            id
-            nativeId
-            message
-            accountName
-        }
-        featureDetails {
-            feature
-            permissionsGroups
-            roleArn
-            stackArn
-            status
-            awsRegions
-        }
+var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWithFeatures(
+  $feature: CloudAccountFeature!
+  $columnSearchFilter: String!
+  $statusFilters: [CloudAccountStatus]!
+) {
+  result: allAwsCloudAccountsWithFeatures(
+    awsCloudAccountsArg: {
+      columnSearchFilter: $columnSearchFilter
+      statusFilters: $statusFilters
+      feature: $feature
     }
-}`
-
-// allAwsCloudAccountsWithFeaturesByStatus GraphQL query
-var allAwsCloudAccountsWithFeaturesByStatusQuery = `query SdkGolangAllAwsCloudAccountsWithFeaturesByStatus($feature: CloudAccountFeature!, $columnSearchFilter: String!, $statusFilters: [CloudAccountStatus!]!) {
-    result: allAwsCloudAccountsWithFeaturesAndStatus(awsCloudAccountsArg: {columnSearchFilter: $columnSearchFilter, statusFilters: $statusFilters, feature: $feature}) {
-        awsCloudAccount {
-            cloudType
-            id
-            nativeId
-            message
-            accountName
-        }
-        featureDetails {
-            feature
-            permissionsGroups
-            roleArn
-            stackArn
-            status
-            awsRegions
-            roleChainingDetails
-            mappedAccounts {
-                account {
-                    id
-                    accountName
-                }
-            }
-        }
+  ) {
+    awsCloudAccount {
+      cloudType
+      id
+      nativeId
+      message
+      accountName
     }
+    featureDetails {
+      feature
+      permissionsGroups
+      roleArn
+      stackArn
+      status
+      awsRegions
+      roleChainingDetails
+      mappedAccounts {
+        account {
+          id
+          name
+        }
+      }
+    }
+  }
 }`
 
 // allAwsPermissionPolicies GraphQL query

@@ -103,7 +103,7 @@ func awsUpdateStack(ctx context.Context, logger log.Logger, config aws.Config, s
 		stack, err := client.UpdateStack(ctx, &cloudformation.UpdateStackInput{
 			StackName:    &stackName,
 			TemplateURL:  &templateURL,
-			Capabilities: []types.Capability{types.CapabilityCapabilityIam},
+			Capabilities: []types.Capability{types.CapabilityCapabilityNamedIam},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to update CloudFormation stack %q in region %q: %v", stackName, config.Region, err)
@@ -121,7 +121,7 @@ func awsUpdateStack(ctx context.Context, logger log.Logger, config aws.Config, s
 		stack, err := client.CreateStack(ctx, &cloudformation.CreateStackInput{
 			StackName:    &stackName,
 			TemplateURL:  &templateURL,
-			Capabilities: []types.Capability{types.CapabilityCapabilityIam},
+			Capabilities: []types.Capability{types.CapabilityCapabilityNamedIam},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create CloudFormation stack %q in region %q: %v", stackName, config.Region, err)

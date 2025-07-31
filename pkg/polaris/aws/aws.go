@@ -120,7 +120,7 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 		return id, nil
 	}
 
-	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, core.FeatureCloudNativeProtection, identity.id)
+	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, core.FeatureCloudNativeProtection, identity.id, []core.Status{})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 	}
@@ -278,28 +278,10 @@ func (a API) AccountByName(ctx context.Context, feature core.Feature, name strin
 
 // Accounts return all accounts with the specified feature matching the filter.
 // The filter can be used to search for account id, account name and role arn.
-func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
+func (a API) Accounts(ctx context.Context, feature core.Feature, filter string, statusFilters ...core.Status) ([]CloudAccount, error) {
 	a.log.Print(log.Trace)
 
-	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, filter)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get accounts: %s", err)
-	}
-
-	accounts := make([]CloudAccount, 0, len(accountsWithFeatures))
-	for _, accountWithFeatures := range accountsWithFeatures {
-		accounts = append(accounts, toCloudAccount(accountWithFeatures))
-	}
-
-	return accounts, nil
-}
-
-// AccountsByFeatureStatus return all accounts with the specified feature matching the filter and status.
-// The filter can be used to search for account id, account name and role arn.
-func (a API) AccountsByFeatureStatus(ctx context.Context, feature core.Feature, filter string, statusFilters []core.Status) ([]CloudAccount, error) {
-	a.log.Print(log.Trace)
-
-	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeaturesAndStatus(ctx, feature, filter, statusFilters)
+	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, filter, statusFilters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get accounts: %s", err)
 	}
@@ -359,6 +341,39 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 	)
 
 	if config.config != nil {
+
+		hasOtherFeatures := slices.ContainsFunc(
+			features, func(f core.Feature) bool {
+				return !f.Equal(core.FeatureOutpost)
+			},
+		)
+
+		if hasOutpostFeature {
+			if options.outpostAccountID == "" {
+				return uuid.Nil, errors.New("outpost account id is not allowed to be empty")
+			}
+
+			// Default to using the config account
+			outpostConfig := config
+
+			if options.outpostAccountProfile != nil {
+				var err error
+				outpostConfig, err = options.outpostAccountProfile(ctx)
+				if err != nil {
+					return uuid.Nil, fmt.Errorf("failed to get outpost account: %s", err)
+				}
+			}
+			outpostConfig.id = options.outpostAccountID
+			outpostConfig.name = options.name
+			if err := a.addAccountWithCFT(ctx, features, outpostConfig, options); err != nil {
+				return uuid.Nil, err
+			}
+
+			// If Outpost is the only feature, we can exit early
+			if !hasOtherFeatures {
+				return akkount.ID, nil
+			}
+		}
 		err = a.addAccountWithCFT(ctx, features, config, options)
 	} else {
 		if hasOutpostFeature {
@@ -382,27 +397,6 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 	return akkount.ID, nil
 }
 
-func (a API) addAccountOutpost(ctx context.Context, config account, options options) error {
-	a.log.Print(log.Trace)
-
-	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, options.outpostAccountID, options.outpostAccountID, []core.Feature{core.FeatureOutpost})
-	if err != nil {
-		return fmt.Errorf("failed to validate account: %s", err)
-	}
-
-	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, options.outpostAccountID, options.outpostAccountID, []core.Feature{core.FeatureOutpost}, options.regions, accountInit)
-	if err != nil {
-		return fmt.Errorf("failed to add account: %s", err)
-	}
-
-	err = awsUpdateStack(ctx, a.client.Log(), *config.config, accountInit.StackName, accountInit.TemplateURL)
-	if err != nil {
-		return fmt.Errorf("failed to update CloudFormation stack: %s", err)
-	}
-
-	return nil
-}
-
 func (a API) addAccount(ctx context.Context, features []core.Feature, config account, options options) error {
 	a.log.Print(log.Trace)
 
@@ -424,44 +418,6 @@ func (a API) addAccount(ctx context.Context, features []core.Feature, config acc
 
 func (a API) addAccountWithCFT(ctx context.Context, features []core.Feature, config account, options options) error {
 	a.log.Print(log.Trace)
-
-	hasOutpostFeature := slices.ContainsFunc(
-		features, func(f core.Feature) bool {
-			return f.Equal(core.FeatureOutpost)
-		},
-	)
-
-	hasOtherFeatures := slices.ContainsFunc(
-		features, func(f core.Feature) bool {
-			return !f.Equal(core.FeatureOutpost)
-		},
-	)
-
-	if hasOutpostFeature {
-		if options.outpostAccountID == "" {
-			return errors.New("outpost account id is not allowed to be empty")
-		}
-
-		// Default to using the config account
-		outpostAccount := config
-
-		if options.outpostAccountProfile != nil {
-			var err error
-			outpostAccount, err = options.outpostAccountProfile(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to get outpost account: %s", err)
-			}
-		}
-
-		if err := a.addAccountOutpost(ctx, outpostAccount, options); err != nil {
-			return err
-		}
-
-		// If Outpost is the only feature, we can exit early
-		if !hasOtherFeatures {
-			return nil
-		}
-	}
 
 	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.id, config.name, features)
 	if err != nil {

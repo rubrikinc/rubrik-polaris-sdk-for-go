@@ -22,6 +22,7 @@ package aws
 
 import (
 	"context"
+	"errors"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 )
@@ -59,6 +60,9 @@ func Region(region string) OptionFunc {
 // for the outpost feature to the options instance.
 func OutpostAccount(outpostAccountID string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
+		if !verifyAccountID(outpostAccountID) {
+			return errors.New("invalid AWS account id")
+		}
 		opts.outpostAccountID = outpostAccountID
 		return nil
 	}
@@ -68,6 +72,9 @@ func OutpostAccount(outpostAccountID string) OptionFunc {
 // for the outpost feature to the options instance and the aws profile to use to access it.
 func OutpostAccountWithProfile(outpostAccountID, outpostAccountProfile string) OptionFunc {
 	return func(ctx context.Context, opts *options) error {
+		if !verifyAccountID(outpostAccountID) {
+			return errors.New("invalid AWS account id")
+		}
 		opts.outpostAccountID = outpostAccountID
 		opts.outpostAccountProfile = Profile(outpostAccountProfile)
 		return nil

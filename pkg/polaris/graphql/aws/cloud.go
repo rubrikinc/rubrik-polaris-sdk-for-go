@@ -102,37 +102,10 @@ func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature
 // CloudAccountsWithFeatures returns the cloud accounts matching the specified
 // filter. The filter can be used to search for AWS account id, account name
 // and role arn.
-func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature, filter string) ([]CloudAccountWithFeatures, error) {
+func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature, filter string, statusFilters []core.Status) ([]CloudAccountWithFeatures, error) {
 	a.log.Print(log.Trace)
 
 	query := allAwsCloudAccountsWithFeaturesQuery
-	buf, err := a.GQL.Request(ctx, query, struct {
-		Feature string `json:"feature"`
-		Filter  string `json:"columnSearchFilter"`
-	}{Filter: filter, Feature: feature.Name})
-	if err != nil {
-		return nil, graphql.RequestError(query, err)
-	}
-
-	var payload struct {
-		Data struct {
-			Result []CloudAccountWithFeatures `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, graphql.UnmarshalError(query, err)
-	}
-
-	return payload.Data.Result, nil
-}
-
-// CloudAccountsWithFeaturesAndStatus returns the cloud accounts matching the specified
-// filter. The filter can be used to search for AWS account id, account name
-// and role arn, and additionally by status
-func (a API) CloudAccountsWithFeaturesAndStatus(ctx context.Context, feature core.Feature, filter string, statusFilters []core.Status) ([]CloudAccountWithFeatures, error) {
-	a.log.Print(log.Trace)
-
-	query := allAwsCloudAccountsWithFeaturesByStatusQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Feature       string        `json:"feature"`
 		Filter        string        `json:"columnSearchFilter"`
