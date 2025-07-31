@@ -160,22 +160,22 @@ var (
 	FeatureCloudNativeBlobProtection               = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
 	FeatureCloudNativeProtection                   = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
 	FeatureCloudNativeS3Protection                 = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
+	FeatureCyberRecoveryDataClassificationData     = Feature{Name: "CYBER_RECOVERY_DATA_CLASSIFICATION_DATA"}
+	FeatureCyberRecoveryDataClassificationMetadata = Feature{Name: "CYBER_RECOVERY_DATA_CLASSIFICATION_METADATA"}
+	FeatureDSPMData                                = Feature{Name: "DSPM_DATA"}
+	FeatureDSPMMetadata                            = Feature{Name: "DSPM_METADATA"}
 	FeatureExocompute                              = Feature{Name: "EXOCOMPUTE"}
 	FeatureGCPSharedVPCHost                        = Feature{Name: "GCP_SHARED_VPC_HOST"}
 	FeatureKubernetesProtection                    = Feature{Name: "KUBERNETES_PROTECTION"}
+	FeatureLaminarCrossAccount                     = Feature{Name: "LAMINAR_CROSS_ACCOUNT"}
+	FeatureLaminarInternal                         = Feature{Name: "LAMINAR_INTERNAL"}
+	FeatureLaminarOutpostApplication               = Feature{Name: "LAMINAR_OUTPOST_APPLICATION"}
+	FeatureLaminarOutpostManagedIdentity           = Feature{Name: "LAMINAR_OUTPOST_MANAGED_IDENTITY"}
+	FeatureLaminarTargetApplication                = Feature{Name: "LAMINAR_TARGET_APPLICATION"}
+	FeatureLaminarTargetManagedIdentity            = Feature{Name: "LAMINAR_TARGET_MANAGED_IDENTITY"}
+	FeatureOutpost                                 = Feature{Name: "OUTPOST"}
 	FeatureRDSProtection                           = Feature{Name: "RDS_PROTECTION"}
 	FeatureServerAndApps                           = Feature{Name: "SERVERS_AND_APPS"}
-	FeatureOutpost                                 = Feature{Name: "OUTPOST"}                                     // Data Scanning Exocompute AWS
-	FeatureLaminarInternal                         = Feature{Name: "LAMINAR_INTERNAL"}                            // Data Scanning Data AWS
-	FeatureLaminarCrossAccount                     = Feature{Name: "LAMINAR_CROSS_ACCOUNT"}                       // Data Scanning Metadata AWS
-	FeatureLaminarTargetManagedIdentity            = Feature{Name: "LAMINAR_TARGET_MANAGED_IDENTITY"}             // Data Scanning Metadata Azure
-	FeatureLaminarTargetApplication                = Feature{Name: "LAMINAR_TARGET_APPLICATION"}                  // Data Scanning Data Azure
-	FeatureLaminarOutpostManagedIdentity           = Feature{Name: "LAMINAR_OUTPOST_MANAGED_IDENTITY"}            // Data Scanning Exocompute Azure
-	FeatureLaminarOutpostApplication               = Feature{Name: "LAMINAR_OUTPOST_APPLICATION"}                 // Data Scanning Exocompute Azure
-	FeatureCyberRecoveryDataClassificationMetadata = Feature{Name: "CYBER_RECOVERY_DATA_CLASSIFICATION_METADATA"} // Data Scanning Cyber Recovery Metadata
-	FeatureCyberRecoveryDataClassificationData     = Feature{Name: "CYBER_RECOVERY_DATA_CLASSIFICATION_DATA"}     // Data Scanning Cyber Recovery Data
-	FeatureDSPMMetadata                            = Feature{Name: "DSPM_METADATA"}                               // DSPM Metadata
-	FeatureDSPMData                                = Feature{Name: "DSPM_DATA"}                                   // DSPM Data
 )
 
 var validFeatures = map[string]struct{}{
@@ -190,22 +190,22 @@ var validFeatures = map[string]struct{}{
 	FeatureCloudNativeBlobProtection.Name:               {},
 	FeatureCloudNativeProtection.Name:                   {},
 	FeatureCloudNativeS3Protection.Name:                 {},
+	FeatureCyberRecoveryDataClassificationData.Name:     {},
+	FeatureCyberRecoveryDataClassificationMetadata.Name: {},
+	FeatureDSPMData.Name:                                {},
+	FeatureDSPMMetadata.Name:                            {},
 	FeatureExocompute.Name:                              {},
 	FeatureGCPSharedVPCHost.Name:                        {},
 	FeatureKubernetesProtection.Name:                    {},
+	FeatureLaminarCrossAccount.Name:                     {},
+	FeatureLaminarInternal.Name:                         {},
+	FeatureLaminarOutpostApplication.Name:               {},
+	FeatureLaminarOutpostManagedIdentity.Name:           {},
+	FeatureLaminarTargetApplication.Name:                {},
+	FeatureLaminarTargetManagedIdentity.Name:            {},
+	FeatureOutpost.Name:                                 {},
 	FeatureRDSProtection.Name:                           {},
 	FeatureServerAndApps.Name:                           {},
-	FeatureOutpost.Name:                                 {},
-	FeatureLaminarInternal.Name:                         {},
-	FeatureLaminarCrossAccount.Name:                     {},
-	FeatureLaminarTargetManagedIdentity.Name:            {},
-	FeatureLaminarTargetApplication.Name:                {},
-	FeatureLaminarOutpostManagedIdentity.Name:           {},
-	FeatureLaminarOutpostApplication.Name:               {},
-	FeatureCyberRecoveryDataClassificationMetadata.Name: {},
-	FeatureCyberRecoveryDataClassificationData.Name:     {},
-	FeatureDSPMMetadata.Name:                            {},
-	FeatureDSPMData.Name:                                {},
 }
 
 // ContainsFeature returns true if the features slice contains the specified
