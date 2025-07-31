@@ -24,11 +24,14 @@ query RubrikPolarisSDKRequest(
       stackArn
       status
       awsRegions
-      roleChainingDetails
+      roleChainingDetails {
+        roleArn
+        roleUrl
+      }
       mappedAccounts {
         account {
           id
-          name
+          accountName
         }
       }
     }

@@ -278,7 +278,25 @@ func (a API) AccountByName(ctx context.Context, feature core.Feature, name strin
 
 // Accounts return all accounts with the specified feature matching the filter.
 // The filter can be used to search for account id, account name and role arn.
-func (a API) Accounts(ctx context.Context, feature core.Feature, filter string, statusFilters ...core.Status) ([]CloudAccount, error) {
+func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
+	a.log.Print(log.Trace)
+
+	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, filter, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get accounts: %s", err)
+	}
+
+	accounts := make([]CloudAccount, 0, len(accountsWithFeatures))
+	for _, accountWithFeatures := range accountsWithFeatures {
+		accounts = append(accounts, toCloudAccount(accountWithFeatures))
+	}
+
+	return accounts, nil
+}
+
+// Accounts return all accounts with the specified feature matching the filter.
+// The filter can be used to search for account id, account name and role arn.
+func (a API) AccountsByFeatureStatus(ctx context.Context, feature core.Feature, filter string, statusFilters []core.Status) ([]CloudAccount, error) {
 	a.log.Print(log.Trace)
 
 	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, filter, statusFilters)
@@ -364,7 +382,7 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 				}
 			}
 			outpostConfig.id = options.outpostAccountID
-			outpostConfig.name = options.name
+			outpostConfig.name = config.name
 			if err := a.addAccountWithCFT(ctx, features, outpostConfig, options); err != nil {
 				return uuid.Nil, err
 			}

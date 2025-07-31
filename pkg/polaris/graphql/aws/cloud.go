@@ -45,15 +45,29 @@ type CloudAccount struct {
 	SeamlessFlowEnabled bool      `json:"seamlessFlowEnabled"`
 }
 
+type MappedAccount struct {
+	Account struct {
+		ID   uuid.UUID `json:"id"`
+		Name string    `json:"accountName"`
+	} `json:"account"`
+}
+
+type RoleChainingDetails struct {
+	RoleArn string `json:"roleArn"`
+	RoleUrl string `json:"roleUrl"`
+}
+
 // Feature represents an RSC Cloud Account feature for AWS, e.g. Cloud Native
 // Protection.
 type Feature struct {
-	Feature          string                 `json:"feature"`
-	PermissionGroups []core.PermissionGroup `json:"permissionsGroups"`
-	Regions          []RegionEnum           `json:"awsRegions"`
-	RoleArn          string                 `json:"roleArn"`
-	StackArn         string                 `json:"stackArn"`
-	Status           core.Status            `json:"status"`
+	Feature             string                 `json:"feature"`
+	PermissionGroups    []core.PermissionGroup `json:"permissionsGroups"`
+	Regions             []RegionEnum           `json:"awsRegions"`
+	RoleArn             string                 `json:"roleArn"`
+	StackArn            string                 `json:"stackArn"`
+	Status              core.Status            `json:"status"`
+	MappedAccounts      []MappedAccount        `json:"mappedAccounts"`
+	RoleChainingDetails []RoleChainingDetails  `json:"roleChainingDetails"`
 }
 
 // FeatureVersion maps an RSC Cloud Account feature to a version number.
@@ -104,6 +118,10 @@ func (a API) CloudAccountWithFeatures(ctx context.Context, id uuid.UUID, feature
 // and role arn.
 func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature, filter string, statusFilters []core.Status) ([]CloudAccountWithFeatures, error) {
 	a.log.Print(log.Trace)
+
+	if statusFilters == nil {
+		statusFilters = []core.Status{}
+	}
 
 	query := allAwsCloudAccountsWithFeaturesQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
