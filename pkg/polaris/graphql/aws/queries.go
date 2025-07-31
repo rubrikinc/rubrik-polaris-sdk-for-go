@@ -28,7 +28,7 @@ package aws
 var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWithFeatures(
   $feature: CloudAccountFeature!
   $columnSearchFilter: String!
-  $statusFilters: [CloudAccountStatus]!
+  $statusFilters: [CloudAccountStatus!]!
 ) {
   result: allAwsCloudAccountsWithFeatures(
     awsCloudAccountsArg: {
@@ -51,11 +51,14 @@ var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWi
       stackArn
       status
       awsRegions
-      roleChainingDetails
+      roleChainingDetails {
+        roleArn
+        roleUrl
+      }
       mappedAccounts {
         account {
           id
-          name
+          accountName
         }
       }
     }
