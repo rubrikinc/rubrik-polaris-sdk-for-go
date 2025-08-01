@@ -78,13 +78,27 @@ func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 	return Feature{}, false
 }
 
+type MappedAccount struct {
+	Account struct {
+		ID   uuid.UUID
+		Name string
+	}
+}
+
+type RoleChainingDetails struct {
+	RoleArn string
+	RoleUrl string
+}
+
 // Feature for Amazon Web Services accounts.
 type Feature struct {
 	core.Feature
-	Regions  []string
-	RoleArn  string
-	StackArn string
-	Status   core.Status
+	Regions             []string
+	RoleArn             string
+	StackArn            string
+	Status              core.Status
+	MappedAccounts      []MappedAccount
+	RoleChainingDetails []RoleChainingDetails
 }
 
 // HasRegion returns true if the feature is enabled for the specified region.
@@ -120,7 +134,7 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 		return id, nil
 	}
 
-	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, core.FeatureCloudNativeProtection, identity.id, []core.Status{})
+	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, core.FeatureCloudNativeProtection, identity.id, nil)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 	}
@@ -174,12 +188,33 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 		for _, region := range feature.Regions {
 			regions = append(regions, region.Name())
 		}
+		mappedAccounts := make([]MappedAccount, 0, len(feature.MappedAccounts))
+		for _, mappedAccount := range feature.MappedAccounts {
+			mappedAccounts = append(mappedAccounts, MappedAccount{
+				Account: struct {
+					ID   uuid.UUID
+					Name string
+				}{
+					ID:   mappedAccount.Account.ID,
+					Name: mappedAccount.Account.Name,
+				},
+			})
+		}
+		roleChainingDetails := make([]RoleChainingDetails, 0, len(feature.RoleChainingDetails))
+		for _, roleChainingDetail := range feature.RoleChainingDetails {
+			roleChainingDetails = append(roleChainingDetails, RoleChainingDetails{
+				RoleArn: roleChainingDetail.RoleArn,
+				RoleUrl: roleChainingDetail.RoleUrl,
+			})
+		}
 		features = append(features, Feature{
-			Feature:  core.Feature{Name: feature.Feature, PermissionGroups: feature.PermissionGroups},
-			Regions:  regions,
-			RoleArn:  feature.RoleArn,
-			StackArn: feature.StackArn,
-			Status:   feature.Status,
+			Feature:             core.Feature{Name: feature.Feature, PermissionGroups: feature.PermissionGroups},
+			Regions:             regions,
+			RoleArn:             feature.RoleArn,
+			StackArn:            feature.StackArn,
+			Status:              feature.Status,
+			MappedAccounts:      mappedAccounts,
+			RoleChainingDetails: roleChainingDetails,
 		})
 	}
 
