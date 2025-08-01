@@ -25,24 +25,44 @@
 package aws
 
 // allAwsCloudAccountsWithFeatures GraphQL query
-var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWithFeatures($feature: CloudAccountFeature!, $columnSearchFilter: String!) {
-    result: allAwsCloudAccountsWithFeatures(awsCloudAccountsArg: {columnSearchFilter: $columnSearchFilter, statusFilters: [], feature: $feature}) {
-        awsCloudAccount {
-            cloudType
-            id
-            nativeId
-            message
-            accountName
-        }
-        featureDetails {
-            feature
-            permissionsGroups
-            roleArn
-            stackArn
-            status
-            awsRegions
-        }
+var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWithFeatures(
+  $feature: CloudAccountFeature!
+  $columnSearchFilter: String!
+  $statusFilters: [CloudAccountStatus!]!
+) {
+  result: allAwsCloudAccountsWithFeatures(
+    awsCloudAccountsArg: {
+      columnSearchFilter: $columnSearchFilter
+      statusFilters: $statusFilters
+      feature: $feature
     }
+  ) {
+    awsCloudAccount {
+      cloudType
+      id
+      nativeId
+      message
+      accountName
+    }
+    featureDetails {
+      feature
+      permissionsGroups
+      roleArn
+      stackArn
+      status
+      awsRegions
+      roleChainingDetails {
+        roleArn
+        roleUrl
+      }
+      mappedAccounts {
+        account {
+          id
+          accountName
+        }
+      }
+    }
+  }
 }`
 
 // allAwsPermissionPolicies GraphQL query

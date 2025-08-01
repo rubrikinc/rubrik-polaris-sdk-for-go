@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -147,42 +148,64 @@ func FeatureNames(features []Feature) []string {
 }
 
 var (
-	FeatureInvalid                       = Feature{Name: ""}
-	FeatureAll                           = Feature{Name: "ALL"}
-	FeatureAppFlows                      = Feature{Name: "APP_FLOWS"}
-	FeatureArchival                      = Feature{Name: "ARCHIVAL"}
-	FeatureAzureSQLDBProtection          = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
-	FeatureAzureSQLMIProtection          = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
-	FeatureCloudAccounts                 = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
-	FeatureCloudNativeArchival           = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
-	FeatureCloudNativeArchivalEncryption = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
-	FeatureCloudNativeBlobProtection     = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
-	FeatureCloudNativeProtection         = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
-	FeatureCloudNativeS3Protection       = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
-	FeatureExocompute                    = Feature{Name: "EXOCOMPUTE"}
-	FeatureGCPSharedVPCHost              = Feature{Name: "GCP_SHARED_VPC_HOST"}
-	FeatureKubernetesProtection          = Feature{Name: "KUBERNETES_PROTECTION"}
-	FeatureRDSProtection                 = Feature{Name: "RDS_PROTECTION"}
-	FeatureServerAndApps                 = Feature{Name: "SERVERS_AND_APPS"}
+	FeatureInvalid                                 = Feature{Name: ""}
+	FeatureAll                                     = Feature{Name: "ALL"}
+	FeatureAppFlows                                = Feature{Name: "APP_FLOWS"}
+	FeatureArchival                                = Feature{Name: "ARCHIVAL"}
+	FeatureAzureSQLDBProtection                    = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
+	FeatureAzureSQLMIProtection                    = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
+	FeatureCloudAccounts                           = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
+	FeatureCloudNativeArchival                     = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
+	FeatureCloudNativeArchivalEncryption           = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
+	FeatureCloudNativeBlobProtection               = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
+	FeatureCloudNativeProtection                   = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
+	FeatureCloudNativeS3Protection                 = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
+	FeatureCyberRecoveryDataClassificationData     = Feature{Name: "CYBER_RECOVERY_DATA_CLASSIFICATION_DATA"}
+	FeatureCyberRecoveryDataClassificationMetadata = Feature{Name: "CYBER_RECOVERY_DATA_CLASSIFICATION_METADATA"}
+	FeatureDSPMData                                = Feature{Name: "DSPM_DATA"}
+	FeatureDSPMMetadata                            = Feature{Name: "DSPM_METADATA"}
+	FeatureExocompute                              = Feature{Name: "EXOCOMPUTE"}
+	FeatureGCPSharedVPCHost                        = Feature{Name: "GCP_SHARED_VPC_HOST"}
+	FeatureKubernetesProtection                    = Feature{Name: "KUBERNETES_PROTECTION"}
+	FeatureLaminarCrossAccount                     = Feature{Name: "LAMINAR_CROSS_ACCOUNT"}
+	FeatureLaminarInternal                         = Feature{Name: "LAMINAR_INTERNAL"}
+	FeatureLaminarOutpostApplication               = Feature{Name: "LAMINAR_OUTPOST_APPLICATION"}
+	FeatureLaminarOutpostManagedIdentity           = Feature{Name: "LAMINAR_OUTPOST_MANAGED_IDENTITY"}
+	FeatureLaminarTargetApplication                = Feature{Name: "LAMINAR_TARGET_APPLICATION"}
+	FeatureLaminarTargetManagedIdentity            = Feature{Name: "LAMINAR_TARGET_MANAGED_IDENTITY"}
+	FeatureOutpost                                 = Feature{Name: "OUTPOST"}
+	FeatureRDSProtection                           = Feature{Name: "RDS_PROTECTION"}
+	FeatureServerAndApps                           = Feature{Name: "SERVERS_AND_APPS"}
 )
 
 var validFeatures = map[string]struct{}{
-	FeatureAll.Name:                           {},
-	FeatureAppFlows.Name:                      {},
-	FeatureArchival.Name:                      {},
-	FeatureAzureSQLDBProtection.Name:          {},
-	FeatureAzureSQLMIProtection.Name:          {},
-	FeatureCloudAccounts.Name:                 {}, // Deprecated: no replacement.
-	FeatureCloudNativeArchival.Name:           {},
-	FeatureCloudNativeArchivalEncryption.Name: {},
-	FeatureCloudNativeBlobProtection.Name:     {},
-	FeatureCloudNativeProtection.Name:         {},
-	FeatureCloudNativeS3Protection.Name:       {},
-	FeatureExocompute.Name:                    {},
-	FeatureGCPSharedVPCHost.Name:              {},
-	FeatureKubernetesProtection.Name:          {},
-	FeatureRDSProtection.Name:                 {},
-	FeatureServerAndApps.Name:                 {},
+	FeatureAll.Name:                                     {},
+	FeatureAppFlows.Name:                                {},
+	FeatureArchival.Name:                                {},
+	FeatureAzureSQLDBProtection.Name:                    {},
+	FeatureAzureSQLMIProtection.Name:                    {},
+	FeatureCloudAccounts.Name:                           {}, // Deprecated: no replacement.
+	FeatureCloudNativeArchival.Name:                     {},
+	FeatureCloudNativeArchivalEncryption.Name:           {},
+	FeatureCloudNativeBlobProtection.Name:               {},
+	FeatureCloudNativeProtection.Name:                   {},
+	FeatureCloudNativeS3Protection.Name:                 {},
+	FeatureCyberRecoveryDataClassificationData.Name:     {},
+	FeatureCyberRecoveryDataClassificationMetadata.Name: {},
+	FeatureDSPMData.Name:                                {},
+	FeatureDSPMMetadata.Name:                            {},
+	FeatureExocompute.Name:                              {},
+	FeatureGCPSharedVPCHost.Name:                        {},
+	FeatureKubernetesProtection.Name:                    {},
+	FeatureLaminarCrossAccount.Name:                     {},
+	FeatureLaminarInternal.Name:                         {},
+	FeatureLaminarOutpostApplication.Name:               {},
+	FeatureLaminarOutpostManagedIdentity.Name:           {},
+	FeatureLaminarTargetApplication.Name:                {},
+	FeatureLaminarTargetManagedIdentity.Name:            {},
+	FeatureOutpost.Name:                                 {},
+	FeatureRDSProtection.Name:                           {},
+	FeatureServerAndApps.Name:                           {},
 }
 
 // ContainsFeature returns true if the features slice contains the specified

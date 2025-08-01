@@ -27,11 +27,13 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -76,13 +78,27 @@ func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 	return Feature{}, false
 }
 
+type MappedAccount struct {
+	Account struct {
+		ID   uuid.UUID
+		Name string
+	}
+}
+
+type RoleChainingDetails struct {
+	RoleArn string
+	RoleUrl string
+}
+
 // Feature for Amazon Web Services accounts.
 type Feature struct {
 	core.Feature
-	Regions  []string
-	RoleArn  string
-	StackArn string
-	Status   core.Status
+	Regions             []string
+	RoleArn             string
+	StackArn            string
+	Status              core.Status
+	MappedAccounts      []MappedAccount
+	RoleChainingDetails []RoleChainingDetails
 }
 
 // HasRegion returns true if the feature is enabled for the specified region.
@@ -118,7 +134,7 @@ func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, 
 		return id, nil
 	}
 
-	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, core.FeatureCloudNativeProtection, identity.id)
+	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, core.FeatureCloudNativeProtection, identity.id, nil)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 	}
@@ -172,12 +188,33 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 		for _, region := range feature.Regions {
 			regions = append(regions, region.Name())
 		}
+		mappedAccounts := make([]MappedAccount, 0, len(feature.MappedAccounts))
+		for _, mappedAccount := range feature.MappedAccounts {
+			mappedAccounts = append(mappedAccounts, MappedAccount{
+				Account: struct {
+					ID   uuid.UUID
+					Name string
+				}{
+					ID:   mappedAccount.Account.ID,
+					Name: mappedAccount.Account.Name,
+				},
+			})
+		}
+		roleChainingDetails := make([]RoleChainingDetails, 0, len(feature.RoleChainingDetails))
+		for _, roleChainingDetail := range feature.RoleChainingDetails {
+			roleChainingDetails = append(roleChainingDetails, RoleChainingDetails{
+				RoleArn: roleChainingDetail.RoleArn,
+				RoleUrl: roleChainingDetail.RoleUrl,
+			})
+		}
 		features = append(features, Feature{
-			Feature:  core.Feature{Name: feature.Feature, PermissionGroups: feature.PermissionGroups},
-			Regions:  regions,
-			RoleArn:  feature.RoleArn,
-			StackArn: feature.StackArn,
-			Status:   feature.Status,
+			Feature:             core.Feature{Name: feature.Feature, PermissionGroups: feature.PermissionGroups},
+			Regions:             regions,
+			RoleArn:             feature.RoleArn,
+			StackArn:            feature.StackArn,
+			Status:              feature.Status,
+			MappedAccounts:      mappedAccounts,
+			RoleChainingDetails: roleChainingDetails,
 		})
 	}
 
@@ -279,7 +316,25 @@ func (a API) AccountByName(ctx context.Context, feature core.Feature, name strin
 func (a API) Accounts(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
 	a.log.Print(log.Trace)
 
-	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, filter)
+	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, filter, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get accounts: %s", err)
+	}
+
+	accounts := make([]CloudAccount, 0, len(accountsWithFeatures))
+	for _, accountWithFeatures := range accountsWithFeatures {
+		accounts = append(accounts, toCloudAccount(accountWithFeatures))
+	}
+
+	return accounts, nil
+}
+
+// Accounts return all accounts with the specified feature matching the filter.
+// The filter can be used to search for account id, account name and role arn.
+func (a API) AccountsByFeatureStatus(ctx context.Context, feature core.Feature, filter string, statusFilters []core.Status) ([]CloudAccount, error) {
+	a.log.Print(log.Trace)
+
+	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, feature, filter, statusFilters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get accounts: %s", err)
 	}
@@ -332,9 +387,65 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 	}
 
+	hasOutpostFeature := slices.ContainsFunc(
+		features, func(f core.Feature) bool {
+			return f.Equal(core.FeatureOutpost)
+		},
+	)
+
 	if config.config != nil {
+		hasOtherFeatures := slices.ContainsFunc(
+			features, func(f core.Feature) bool {
+				return !f.Equal(core.FeatureOutpost)
+			},
+		)
+		if hasOutpostFeature {
+			if options.outpostAccountID == "" {
+				return uuid.Nil, errors.New("outpost account id is not allowed to be empty")
+			}
+
+			// Default to using the config account
+			outpostConfig := config
+
+			if options.outpostAccountProfile != nil {
+				var err error
+				outpostConfig, err = options.outpostAccountProfile(ctx)
+				if err != nil {
+					return uuid.Nil, fmt.Errorf("failed to get outpost account: %s", err)
+				}
+			}
+			outpostConfig.id = options.outpostAccountID
+			outpostConfig.name = config.name
+			outpostFeatureIdx := slices.IndexFunc(features, func(f core.Feature) bool {
+				return f.Equal(core.FeatureOutpost)
+			})
+			// Outpost Account Needs to exist prior to adding the feature since the account
+			// will be referenced in the CFT template.
+			if err := a.addAccountWithCFT(ctx, []core.Feature{features[outpostFeatureIdx]}, outpostConfig, options); err != nil {
+				return uuid.Nil, err
+			}
+
+			// Remove the outpost feature from the list of features to add
+			features = slices.DeleteFunc(features, func(f core.Feature) bool {
+				return f.Equal(core.FeatureOutpost)
+			})
+
+			// If Outpost is the only feature, we can exit early
+			if !hasOtherFeatures {
+				if akkount.ID == uuid.Nil {
+					akkount, err = a.Account(ctx, AccountID(config.id), core.FeatureAll)
+					if err != nil {
+						return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
+					}
+				}
+				return akkount.ID, nil
+			}
+		}
 		err = a.addAccountWithCFT(ctx, features, config, options)
 	} else {
+		if hasOutpostFeature {
+			return uuid.Nil, errors.New("outpost feature requires CloudFormation")
+		}
 		err = a.addAccount(ctx, features, config, options)
 	}
 	if err != nil {
