@@ -359,13 +359,11 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 	)
 
 	if config.config != nil {
-
 		hasOtherFeatures := slices.ContainsFunc(
 			features, func(f core.Feature) bool {
 				return !f.Equal(core.FeatureOutpost)
 			},
 		)
-
 		if hasOutpostFeature {
 			if options.outpostAccountID == "" {
 				return uuid.Nil, errors.New("outpost account id is not allowed to be empty")
@@ -383,12 +381,28 @@ func (a API) AddAccount(ctx context.Context, account AccountFunc, features []cor
 			}
 			outpostConfig.id = options.outpostAccountID
 			outpostConfig.name = config.name
-			if err := a.addAccountWithCFT(ctx, features, outpostConfig, options); err != nil {
+			outpostFeatureIdx := slices.IndexFunc(features, func(f core.Feature) bool {
+				return f.Equal(core.FeatureOutpost)
+			})
+			// Outpost Account Needs to exist prior to adding the feature since the account
+			// will be referenced in the CFT template.
+			if err := a.addAccountWithCFT(ctx, []core.Feature{features[outpostFeatureIdx]}, outpostConfig, options); err != nil {
 				return uuid.Nil, err
 			}
 
+			// Remove the outpost feature from the list of features to add
+			features = slices.DeleteFunc(features, func(f core.Feature) bool {
+				return f.Equal(core.FeatureOutpost)
+			})
+
 			// If Outpost is the only feature, we can exit early
 			if !hasOtherFeatures {
+				if akkount.ID == uuid.Nil {
+					akkount, err = a.Account(ctx, AccountID(config.id), core.FeatureAll)
+					if err != nil {
+						return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
+					}
+				}
 				return akkount.ID, nil
 			}
 		}
