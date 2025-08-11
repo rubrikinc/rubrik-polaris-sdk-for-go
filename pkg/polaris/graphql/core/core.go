@@ -160,8 +160,8 @@ var (
 	FeatureCloudNativeBlobProtection               = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
 	FeatureCloudNativeProtection                   = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
 	FeatureCloudNativeS3Protection                 = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
-	FeatureCyberRecoveryDataClassificationData     = Feature{Name: "CYBER_RECOVERY_DATA_CLASSIFICATION_DATA"}
-	FeatureCyberRecoveryDataClassificationMetadata = Feature{Name: "CYBER_RECOVERY_DATA_CLASSIFICATION_METADATA"}
+	FeatureCyberRecoveryDataClassificationData     = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_DATA"}
+	FeatureCyberRecoveryDataClassificationMetadata = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_METADATA"}
 	FeatureDSPMData                                = Feature{Name: "DSPM_DATA"}
 	FeatureDSPMMetadata                            = Feature{Name: "DSPM_METADATA"}
 	FeatureExocompute                              = Feature{Name: "EXOCOMPUTE"}
