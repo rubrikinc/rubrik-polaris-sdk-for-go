@@ -25,6 +25,7 @@ package log
 import (
 	"fmt"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -87,10 +88,10 @@ type Logger interface {
 	SetLogLevel(level LogLevel)
 
 	// Print writes to the implementing logger.
-	Print(level LogLevel, args ...interface{})
+	Print(level LogLevel, args ...any)
 
 	// Printf writes to the implementing logger.
-	Printf(level LogLevel, format string, args ...interface{})
+	Printf(level LogLevel, format string, args ...any)
 }
 
 // DiscardLogger discards everything written. Note that this logger never
@@ -102,23 +103,23 @@ func (l DiscardLogger) SetLogLevel(level LogLevel) {
 }
 
 // Print discards the given arguments.
-func (l DiscardLogger) Print(level LogLevel, args ...interface{}) {
+func (l DiscardLogger) Print(level LogLevel, args ...any) {
 }
 
 // Printf discards the given arguments.
-func (l DiscardLogger) Printf(level LogLevel, format string, args ...interface{}) {
+func (l DiscardLogger) Printf(level LogLevel, format string, args ...any) {
 }
 
-// StandardLogger uses the standard logger from Golang's log package. The Fatal
-// log level maps to log.Fatal, the Error log level maps to log.Panic and all
-// other log levels map to log.Print.
+// StandardLogger uses the standard logger from Go's log package. The Fatal
+// log level maps to log.Fatal and all other log levels map to log.Print.
 type StandardLogger struct {
 	level LogLevel
+	*log.Logger
 }
 
 // NewStandardLogger returns a standard logger with level set to Warn.
 func NewStandardLogger() *StandardLogger {
-	return &StandardLogger{level: Warn}
+	return &StandardLogger{level: Warn, Logger: log.New(os.Stderr, "", log.LstdFlags|log.Lmicroseconds)}
 }
 
 // SetLogLevel sets the log level to the specified level.
@@ -128,7 +129,7 @@ func (l *StandardLogger) SetLogLevel(level LogLevel) {
 
 // Print writes to the standard logger. Arguments are handled in the manner of
 // fmt.Print.
-func (l *StandardLogger) Print(level LogLevel, args ...interface{}) {
+func (l *StandardLogger) Print(level LogLevel, args ...any) {
 	if level < l.level {
 		return
 	}
@@ -138,19 +139,18 @@ func (l *StandardLogger) Print(level LogLevel, args ...interface{}) {
 		pkgFuncName = " " + name + " "
 	}
 
-	args = append([]interface{}{formatLogLevel(level), pkgFuncName}, args...)
+	args = append([]any{formatLogLevel(level), pkgFuncName}, args...)
 	switch level {
 	case Fatal:
-		log.Fatal(args...)
-
+		l.Fatal(args...)
 	default:
-		log.Print(args...)
+		l.Logger.Print(args...)
 	}
 }
 
 // Printf writes to the standard logger. Arguments are handled in the manner of
 // fmt.Print.
-func (l *StandardLogger) Printf(level LogLevel, format string, args ...interface{}) {
+func (l *StandardLogger) Printf(level LogLevel, format string, args ...any) {
 	if level < l.level {
 		return
 	}
@@ -160,12 +160,11 @@ func (l *StandardLogger) Printf(level LogLevel, format string, args ...interface
 		pkgFuncName = " " + name + " "
 	}
 
-	args = append([]interface{}{formatLogLevel(level), pkgFuncName}, args...)
+	args = append([]any{formatLogLevel(level), pkgFuncName}, args...)
 	switch level {
 	case Fatal:
-		log.Fatalf("%s%s"+format, args...)
-
+		l.Fatalf("%s%s"+format, args...)
 	default:
-		log.Printf("%s%s"+format, args...)
+		l.Logger.Printf("%s%s"+format, args...)
 	}
 }
