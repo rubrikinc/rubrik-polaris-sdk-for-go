@@ -906,45 +906,7 @@ type TrustPolicyMap map[string]string
 // a side effect of this is that the first call always set the trust policy.
 // Once the trust policy has been set, it cannot be changed.
 // If the account cannot be found, graphql.ErrNotFound is returned.
-func (a API) TrustPolicies(ctx context.Context, accountID uuid.UUID, externalID string) (TrustPolicyMap, error) {
-	a.log.Print(log.Trace)
-
-	// We need to look up the account to obtain the AWS cloud type and AWS
-	// account ID and features. The call returns graphql.NotFound if the cloud
-	// account isn't found.
-	account, err := a.AccountByID(ctx, core.FeatureAll, accountID)
-	if err != nil {
-		return nil, err
-	}
-	var features []core.Feature
-	for _, feature := range account.Features {
-		features = append(features, feature.Feature)
-	}
-
-	policies, err := aws.Wrap(a.client).TrustPolicy(ctx, aws.Cloud(account.Cloud), features, []aws.TrustPolicyAccount{{
-		ID:         account.NativeID,
-		ExternalID: externalID,
-	}})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get trust policies: %s", err)
-	}
-	if len(policies) != 1 {
-		return nil, errors.New("expected trust policies for a single account")
-	}
-
-	trustPolicies := make(TrustPolicyMap)
-	for _, artifact := range policies[0].Artifacts {
-		if msg := artifact.ErrorMessage; msg != "" {
-			return nil, fmt.Errorf("failed to get trust policies: %s", msg)
-		}
-		artifact.ExternalArtifactKey = strings.TrimSuffix(artifact.ExternalArtifactKey, roleArnSuffix)
-		trustPolicies[artifact.ExternalArtifactKey] = artifact.TrustPolicyDoc
-	}
-
-	return trustPolicies, nil
-}
-
-func (a API) TrustPolicies2(ctx context.Context, accountID uuid.UUID, features []core.Feature, externalID string) (TrustPolicyMap, error) {
+func (a API) TrustPolicies(ctx context.Context, cloud aws.Cloud, accountID uuid.UUID, features []core.Feature, externalID string) (TrustPolicyMap, error) {
 	a.log.Print(log.Trace)
 
 	// We need to look up the account to obtain the AWS cloud type and AWS
@@ -955,7 +917,7 @@ func (a API) TrustPolicies2(ctx context.Context, accountID uuid.UUID, features [
 		return nil, err
 	}
 
-	policies, err := aws.Wrap(a.client).TrustPolicy(ctx, aws.Cloud(account.Cloud), features, []aws.TrustPolicyAccount{{
+	policies, err := aws.Wrap(a.client).TrustPolicy(ctx, cloud, features, []aws.TrustPolicyAccount{{
 		ID:         account.NativeID,
 		ExternalID: externalID,
 	}})

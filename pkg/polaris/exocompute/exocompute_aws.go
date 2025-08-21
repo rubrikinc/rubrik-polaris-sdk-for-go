@@ -33,15 +33,21 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+// AWSConfiguration holds a single AWS exocompute configuration.
+type AWSConfiguration struct {
+	exocompute.AWSConfiguration
+	CloudAccountID uuid.UUID
+}
+
 // AWSConfigurationByID returns the AWS exocompute configuration with the
 // specified ID. If a configuration with the specified ID isn't found,
 // graphql.ErrNotFound is returned.
-func (a API) AWSConfigurationByID(ctx context.Context, configID uuid.UUID) (exocompute.AWSConfiguration, error) {
+func (a API) AWSConfigurationByID(ctx context.Context, configID uuid.UUID) (AWSConfiguration, error) {
 	a.log.Print(log.Trace)
 
 	configs, err := a.AWSConfigurations(ctx)
 	if err != nil {
-		return exocompute.AWSConfiguration{}, err
+		return AWSConfiguration{}, err
 	}
 	for _, config := range configs {
 		if config.ID == configID {
@@ -49,15 +55,15 @@ func (a API) AWSConfigurationByID(ctx context.Context, configID uuid.UUID) (exoc
 		}
 	}
 
-	return exocompute.AWSConfiguration{}, fmt.Errorf("exocompute configuration %s %w", configID, graphql.ErrNotFound)
+	return AWSConfiguration{}, fmt.Errorf("exocompute configuration %s %w", configID, graphql.ErrNotFound)
 }
 
 // AWSConfigurationsByCloudAccountID returns all AWS exocompute configurations
 // for the cloud account with the specified ID.
-func (a API) AWSConfigurationsByCloudAccountID(ctx context.Context, cloudAccountID uuid.UUID) ([]exocompute.AWSConfiguration, error) {
+func (a API) AWSConfigurationsByCloudAccountID(ctx context.Context, cloudAccountID uuid.UUID) ([]AWSConfiguration, error) {
 	a.log.Print(log.Trace)
 
-	var configs []exocompute.AWSConfiguration
+	var configs []AWSConfiguration
 	configsForAccounts, err := exocompute.ListConfigurations(ctx, a.client, exocompute.AWSConfigurationsFilter{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get exocompute configurations: %s", err)
@@ -66,14 +72,19 @@ func (a API) AWSConfigurationsByCloudAccountID(ctx context.Context, cloudAccount
 		return configsForAccount.CloudAccount.ID == cloudAccountID
 	})
 	if i != -1 {
-		configs = configsForAccounts[i].Configs
+		for _, config := range configsForAccounts[i].Configs {
+			configs = append(configs, AWSConfiguration{
+				CloudAccountID:   cloudAccountID,
+				AWSConfiguration: config,
+			})
+		}
 	}
 
 	return configs, nil
 }
 
 // AWSConfigurations returns all AWS exocompute configurations.
-func (a API) AWSConfigurations(ctx context.Context) ([]exocompute.AWSConfiguration, error) {
+func (a API) AWSConfigurations(ctx context.Context) ([]AWSConfiguration, error) {
 	a.log.Print(log.Trace)
 
 	configsForAccounts, err := exocompute.ListConfigurations(ctx, a.client, exocompute.AWSConfigurationsFilter{})
@@ -81,9 +92,14 @@ func (a API) AWSConfigurations(ctx context.Context) ([]exocompute.AWSConfigurati
 		return nil, fmt.Errorf("failed to get exocompute configurations: %s", err)
 	}
 
-	var configs []exocompute.AWSConfiguration
+	var configs []AWSConfiguration
 	for _, configsForAccount := range configsForAccounts {
-		configs = append(configs, configsForAccount.Configs...)
+		for _, config := range configsForAccount.Configs {
+			configs = append(configs, AWSConfiguration{
+				CloudAccountID:   configsForAccount.CloudAccount.ID,
+				AWSConfiguration: config,
+			})
+		}
 	}
 
 	return configs, nil
