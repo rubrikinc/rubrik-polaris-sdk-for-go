@@ -1,0 +1,14 @@
+query RubrikPolarisSDKRequest($input: InstancePropertiesReq!) {
+  cloudClusterInstanceProperties(input: $input) {
+    instanceProperties {
+      instanceType
+      vendor
+      vcpuCount
+      memoryGib
+      capacityTb
+      processorType
+      vmType
+      instanceTypeString
+    }
+  }
+}

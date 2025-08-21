@@ -1,0 +1,17 @@
+query AwsCCSecurityGroupQuery(
+  $cloudAccountId: UUID!
+  $awsRegion: AwsRegion!
+  $awsVpc: String!
+) {
+  result: awsCloudAccountListSecurityGroups(
+    cloudAccountUuid: $cloudAccountId
+    region: $awsRegion
+    vpcID: $awsVpc
+    feature: SERVERS_AND_APPS
+  ) {
+    result {
+      securityGroupId
+      name
+    }
+  }
+}
