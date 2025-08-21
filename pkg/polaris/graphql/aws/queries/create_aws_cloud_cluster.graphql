@@ -1,0 +1,7 @@
+mutation RubrikPolarisSDKRequest($input: CreateAwsClusterInput!) {
+  result: createAwsCluster(input: $input) {
+    message
+    success
+    jobId
+  }
+}

@@ -929,3 +929,145 @@ func (a API) TrustPolicies(ctx context.Context, id IdentityFunc, features []core
 
 	return trustPolicies, nil
 }
+
+func (a API) CreateCloudCluster(ctx context.Context, id uuid.UUID, input aws.CreateAwsClusterInput, useLatestCdmVersion bool) error {
+	a.log.Print(log.Trace)
+
+	// Ensure account exists and has Server and Apps feature
+	account, err := a.AccountByID(ctx, core.FeatureServerAndApps, id)
+	if err != nil {
+		return err
+	}
+
+	// If CloudAccountID is not specified, use the account ID from the account lookup
+	if input.CloudAccountID == uuid.Nil {
+		input.CloudAccountID = account.ID
+	}
+
+	// validate region in input
+	inputRegion := aws.RegionFromName(input.Region)
+
+	// Get Available CDM versions
+	cdmVersions, err := aws.Wrap(a.client).AllAwsCdmVersions(ctx, input.CloudAccountID, inputRegion)
+	if err != nil {
+		return fmt.Errorf("failed to get cdm versions: %s", err)
+	}
+
+	// Validate CDM version is available
+	validCdmVersion := false
+	supportedInstanceTypes := []aws.AwsCCInstanceType{}
+	if useLatestCdmVersion {
+		for _, version := range cdmVersions {
+			if version.IsLatest {
+				input.VmConfig.CdmVersion = version.Version
+				input.VmConfig.CdmProduct = version.ProductCodes[0]
+				supportedInstanceTypes = version.SupportedInstanceTypes
+				validCdmVersion = true
+				break
+			}
+		}
+	} else {
+		for _, version := range cdmVersions {
+			if version.Version == input.VmConfig.CdmVersion {
+				supportedInstanceTypes = version.SupportedInstanceTypes
+				input.VmConfig.CdmProduct = version.ProductCodes[0]
+				validCdmVersion = true
+				break
+			}
+		}
+	}
+
+	if !validCdmVersion {
+		return fmt.Errorf("cdm version %s is not available for account %s", input.VmConfig.CdmVersion, account.NativeID)
+	}
+
+	// ensure specified instance type is supported
+	validInstanceType := slices.Contains(supportedInstanceTypes, input.VmConfig.InstanceType)
+	if !validInstanceType {
+		return fmt.Errorf("instance type %s is not supported for cdm version %s. Supported Instance types are: %v", input.VmConfig.InstanceType, input.VmConfig.CdmVersion, supportedInstanceTypes)
+	}
+
+	// Get Available configured regions
+	regions, err := aws.Wrap(a.client).AwsCloudAccountRegions(ctx, account.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get cloud account regions from RSC: %s", err)
+	}
+
+	// Validate the input region is configured
+	_, validRegion := regions[inputRegion]
+	if !validRegion {
+		return fmt.Errorf("region %s is not configured for RSC AWS account %s", input.Region, account.ID)
+	}
+
+	// Validate that the VPC exists in RSC metadata via AwsCloudAccountListVpcs
+	vpcs, err := aws.Wrap(a.client).AwsCloudAccountListVpcs(ctx, input.CloudAccountID, inputRegion)
+	if err != nil {
+		return fmt.Errorf("failed to get vpcs from RSC: %s", err)
+	}
+
+	vpcSyncedToRsc := slices.ContainsFunc(vpcs, func(vpc aws.AwsCloudAccountListVpcs) bool {
+		return vpc.VpcID == input.VmConfig.Vpc
+	})
+	if !vpcSyncedToRsc {
+		return fmt.Errorf("vpc %s does not exist in RSC AWS account %s for region %s. Check the VPC ID and region. If this was recently created, wait a few minutes and try again", input.VmConfig.Vpc, account.NativeID, input.Region)
+	}
+
+	// Validate Instance Profile exists in RSC metadata via AllAwsInstanceProfileNames
+	instanceProfiles, err := aws.Wrap(a.client).AllAwsInstanceProfileNames(ctx, account.ID, inputRegion)
+	if err != nil {
+		return fmt.Errorf("failed to get instance profiles: %s", err)
+	}
+	validInstanceProfile := slices.Contains(instanceProfiles, input.VmConfig.InstanceProfileName)
+	if !validInstanceProfile {
+		return fmt.Errorf("instance profile %s does not exist in RSC AWS account %s", input.VmConfig.InstanceProfileName, account.NativeID)
+	}
+
+	// Validate Subnet exists in RSC metadata via AwsCloudAccountListSubnets
+	subnets, err := aws.Wrap(a.client).AwsCloudAccountListSubnets(ctx, input.CloudAccountID, inputRegion, input.VmConfig.Vpc)
+	if err != nil {
+		return fmt.Errorf("failed to get subnets: %s", err)
+	}
+	validSubnet := slices.ContainsFunc(subnets, func(subnet aws.AwsCloudAccountSubnets) bool {
+		return subnet.SubnetID == input.VmConfig.Subnet
+	})
+	if !validSubnet {
+		return fmt.Errorf("subnet %s does not exist in RSC AWS account %s", input.VmConfig.Subnet, account.NativeID)
+	}
+
+	// Validate Security Groups
+	securityGroups, err := aws.Wrap(a.client).AwsCloudAccountListSecurityGroups(ctx, input.CloudAccountID, inputRegion, input.VmConfig.Vpc)
+	if err != nil {
+		return fmt.Errorf("failed to get security groups: %s", err)
+	}
+	validSecurityGroups := slices.ContainsFunc(securityGroups, func(securityGroup aws.AwsCloudAccountSecurityGroups) bool {
+		return securityGroup.SecurityGroupID == input.VmConfig.SecurityGroups[0]
+	})
+	if !validSecurityGroups {
+		return fmt.Errorf("security group %s does not exist in RSC AWS account %s", input.VmConfig.SecurityGroups[0], account.NativeID)
+	}
+
+	// Validate CloudCluster Request
+	ok, err := aws.Wrap(a.client).ValidateCreateAwsClusterInput(ctx, input)
+	if err != nil {
+		return fmt.Errorf("failed to validate create cloud cluster: %s", err)
+	}
+
+	if ok {
+		jobID, err := aws.Wrap(a.client).CreateAwsCloudCluster(ctx, input)
+		if err != nil {
+			return fmt.Errorf("failed to create cloud cluster: %s", err)
+		}
+		status, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
+		if err != nil {
+			return err
+		}
+		taskChain := status == core.TaskChainSucceeded
+		if !taskChain {
+			return fmt.Errorf("cloud cluster create task chain failed")
+		}
+	} else {
+		return fmt.Errorf("cloud cluster create validation failed")
+	}
+
+	return nil
+}

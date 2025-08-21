@@ -1,0 +1,6 @@
+query RubrikPolarisSDKRequest($cloudAccountId: String!, $awsRegion: String!) {
+  result: allAwsInstanceProfileNames(
+    cloudAccountId: $cloudAccountId
+    region: $awsRegion
+  )
+}

@@ -1,0 +1,6 @@
+query RubrikPolarisSDKRequest($input: CreateAwsClusterInput!) {
+  result: validateCreateAwsClusterInput(input: $input) {
+    message
+    isSuccessful
+  }
+}
