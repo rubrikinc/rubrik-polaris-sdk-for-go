@@ -3,7 +3,6 @@ package log
 import (
 	"bytes"
 	"errors"
-	"log"
 	"strings"
 	"testing"
 )
@@ -100,10 +99,10 @@ func TestParseLogLevel(t *testing.T) {
 
 func TestStandardLogger(t *testing.T) {
 	buf := &bytes.Buffer{}
-	log.SetOutput(buf)
 
 	// Test that the default level is set to Warn
 	logger := NewStandardLogger()
+	logger.SetOutput(buf)
 	logger.Print(Info, "Print")
 	logger.Print(Warn, "Print")
 	line, err := nextLine(buf)
