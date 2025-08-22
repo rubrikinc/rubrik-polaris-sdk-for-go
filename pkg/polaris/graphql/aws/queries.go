@@ -98,6 +98,81 @@ var awsArtifactsToDeleteQuery = `query SdkGolangAwsArtifactsToDelete($awsNativeI
   }
 }`
 
+// awsCcCdmVersions GraphQL query
+var awsCcCdmVersionsQuery = `query SdkGolangAwsCcCdmVersions($input: AwsCdmVersionRequest!) {
+  result: allAwsCdmVersions(input: $input) {
+    version
+    isLatest
+    productCodes
+    supportedInstanceTypes
+  }
+}`
+
+// awsCcInstanceProfile GraphQL query
+var awsCcInstanceProfileQuery = `query SdkGolangAwsCcInstanceProfile($cloudAccountId: String!, $awsRegion: String!) {
+  result: allAwsInstanceProfileNames(
+    cloudAccountId: $cloudAccountId
+    region: $awsRegion
+  )
+}`
+
+// awsCcRegion GraphQL query
+var awsCcRegionQuery = `query SdkGolangAwsCcRegion($cloudAccountId: String!) {
+  result: allAwsRegions(cloudAccountId: $cloudAccountId)
+}`
+
+// awsCcSecurityGroups GraphQL query
+var awsCcSecurityGroupsQuery = `query AwsCCSecurityGroupQuery(
+  $cloudAccountId: UUID!
+  $awsRegion: AwsRegion!
+  $awsVpc: String!
+) {
+  result: awsCloudAccountListSecurityGroups(
+    cloudAccountUuid: $cloudAccountId
+    region: $awsRegion
+    vpcID: $awsVpc
+    feature: SERVERS_AND_APPS
+  ) {
+    result {
+      securityGroupId
+      name
+    }
+  }
+}`
+
+// awsCcSubnet GraphQL query
+var awsCcSubnetQuery = `query AwsCCSubnetQuery(
+  $cloudAccountId: UUID!
+  $awsRegion: AwsRegion!
+  $awsVpc: String!
+) {
+  result: awsCloudAccountListSubnets(
+    cloudAccountUuid: $cloudAccountId
+    region: $awsRegion
+    vpcID: $awsVpc
+    feature: SERVERS_AND_APPS
+  ) {
+    result {
+      subnetId
+      name
+    }
+  }
+}`
+
+// awsCcVpc GraphQL query
+var awsCcVpcQuery = `query SdkGolangAwsCcVpc($cloudAccountId: UUID!, $awsRegion: AwsRegion!) {
+  result: awsCloudAccountListVpcs(
+    cloudAccountUuid: $cloudAccountId
+    region: $awsRegion
+    feature: SERVERS_AND_APPS
+  ) {
+    result {
+      vpcId
+      name
+    }
+  }
+}`
+
 // awsCloudAccountWithFeatures GraphQL query
 var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatures($cloudAccountId: UUID!, $features: [CloudAccountFeature!]!) {
     result: awsCloudAccountWithFeatures(cloudAccountId: $cloudAccountId, awsCloudAccountArg: {features: $features}) {
@@ -194,6 +269,15 @@ var bulkDeleteAwsCloudAccountWithoutCftQuery = `mutation SdkGolangBulkDeleteAwsC
             success
         }
     }
+}`
+
+// createAwsCloudCluster GraphQL query
+var createAwsCloudClusterQuery = `mutation SdkGolangCreateAwsCloudCluster($input: CreateAwsClusterInput!) {
+  result: createAwsCluster(input: $input) {
+    message
+    success
+    jobId
+  }
 }`
 
 // deleteTargetMapping GraphQL query
@@ -370,4 +454,12 @@ var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreate
             }
         }
     }
+}`
+
+// validateAwsClusterCreateRequest GraphQL query
+var validateAwsClusterCreateRequestQuery = `query SdkGolangValidateAwsClusterCreateRequest($input: CreateAwsClusterInput!) {
+  result: validateCreateAwsClusterInput(input: $input) {
+    message
+    isSuccessful
+  }
 }`

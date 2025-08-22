@@ -1,0 +1,8 @@
+query RubrikPolarisSDKRequest($input: AwsCdmVersionRequest!) {
+  result: allAwsCdmVersions(input: $input) {
+    version
+    isLatest
+    productCodes
+    supportedInstanceTypes
+  }
+}

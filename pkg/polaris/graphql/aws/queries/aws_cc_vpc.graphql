@@ -1,0 +1,12 @@
+query RubrikPolarisSDKRequest($cloudAccountId: UUID!, $awsRegion: AwsRegion!) {
+  result: awsCloudAccountListVpcs(
+    cloudAccountUuid: $cloudAccountId
+    region: $awsRegion
+    feature: SERVERS_AND_APPS
+  ) {
+    result {
+      vpcId
+      name
+    }
+  }
+}

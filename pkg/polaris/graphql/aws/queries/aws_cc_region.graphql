@@ -1,0 +1,3 @@
+query RubrikPolarisSDKRequest($cloudAccountId: String!) {
+  result: allAwsRegions(cloudAccountId: $cloudAccountId)
+}
