@@ -1039,11 +1039,14 @@ func (a API) CreateCloudCluster(ctx context.Context, id uuid.UUID, input aws.Cre
 	if err != nil {
 		return fmt.Errorf("failed to get security groups: %s", err)
 	}
-	validSecurityGroups := slices.ContainsFunc(securityGroups, func(securityGroup aws.AwsCloudAccountSecurityGroups) bool {
-		return securityGroup.SecurityGroupID == input.VmConfig.SecurityGroups[0]
-	})
-	if !validSecurityGroups {
-		return fmt.Errorf("security group %s does not exist in RSC AWS account %s", input.VmConfig.SecurityGroups[0], account.NativeID)
+	// Validate Security Groups - check that all provided security groups exist
+	for _, inputSG := range input.VmConfig.SecurityGroups {
+		validSecurityGroup := slices.ContainsFunc(securityGroups, func(securityGroup aws.AwsCloudAccountSecurityGroups) bool {
+			return securityGroup.SecurityGroupID == inputSG
+		})
+		if !validSecurityGroup {
+			return fmt.Errorf("security group %s does not exist in RSC AWS account %s", inputSG, account.NativeID)
+		}
 	}
 
 	// Validate CloudCluster Request
