@@ -72,6 +72,14 @@ const (
 	PermissionGroupCustomerManagedCluster PermissionGroup = "CUSTOMER_MANAGED_BASIC"
 )
 
+// SortOrderEnum represents the valid sort order values.
+type SortOrderEnum string
+
+const (
+	SortOrderAsc  SortOrderEnum = "ASC"
+	SortOrderDesc SortOrderEnum = "DESC"
+)
+
 // Feature represents a Polaris cloud account feature with a set of permission
 // groups. If the PermissionGroups field is nil then the full set of permissions
 // are used for the feature.

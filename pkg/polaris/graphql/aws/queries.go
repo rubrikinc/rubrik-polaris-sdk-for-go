@@ -366,6 +366,19 @@ var registerAwsFeatureArtifactsQuery = `mutation SdkGolangRegisterAwsFeatureArti
     }
 }`
 
+// removeAwsCcCluster GraphQL query
+var removeAwsCcClusterQuery = `mutation RemoveClusterMutation(
+  $clusterUuid: UUID!
+  $expireInDays: Long
+  $isForce: Boolean!
+) {
+  removeCdmCluster(
+    clusterUUID: $clusterUuid
+    expireInDays: $expireInDays
+    isForce: $isForce
+  )
+}`
+
 // startAwsExocomputeDisableJob GraphQL query
 var startAwsExocomputeDisableJobQuery = `mutation SdkGolangStartAwsExocomputeDisableJob($cloudAccountId: UUID!) {
     result: startAwsExocomputeDisableJob(input: {cloudAccountId: $cloudAccountId}) {

@@ -1,0 +1,36 @@
+query AllClusterListTableQuery(
+  $first: Int
+  $after: String
+  $filter: ClusterFilterInput
+  $sortBy: ClusterSortByEnum
+  $sortOrder: SortOrder
+) {
+  allClusterConnection(
+    filter: $filter
+    sortBy: $sortBy
+    sortOrder: $sortOrder
+    first: $first
+    after: $after
+  ) {
+    edges {
+      cursor
+      node {
+        id
+        name
+        ccprovisionInfo {
+          progress
+          jobStatus
+          jobType
+          vendor
+        }
+      }
+    }
+    pageInfo {
+      startCursor
+      endCursor
+      hasNextPage
+      hasPreviousPage
+    }
+    count
+  }
+}

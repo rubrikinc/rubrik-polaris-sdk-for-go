@@ -1,0 +1,11 @@
+mutation RemoveClusterMutation(
+  $clusterUuid: UUID!
+  $expireInDays: Long
+  $isForce: Boolean!
+) {
+  removeCdmCluster(
+    clusterUUID: $clusterUuid
+    expireInDays: $expireInDays
+    isForce: $isForce
+  )
+}

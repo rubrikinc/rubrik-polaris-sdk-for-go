@@ -22,9 +22,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
-	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
@@ -55,28 +55,33 @@ func main() {
 	}
 
 	awsClient := aws.Wrap(client)
-	awsGqlClient := gqlaws.Wrap(client.GQL)
 
-	// find the existing account with servers and apps feature
-	accounts, err := awsGqlClient.CloudAccountsWithFeatures(ctx, core.FeatureServerAndApps, "", []core.Status{core.StatusConnected})
+	// RSC features and their permission groups.
+	features := []core.Feature{
+		core.FeatureServerAndApps.WithPermissionGroups(core.PermissionGroupBasic),
+	}
+
+	// Add the AWS default account to Polaris. Usually resolved using the
+	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
+	// AWS_DEFAULT_REGION.
+	id, err := awsClient.AddAccount(ctx, aws.Default(), features, aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Adding feature to existing account
-	id := ""
-	for _, account := range accounts {
-		if account.Account.NativeID == "123456789012" {
-			id = account.Account.ID.String()
-			break
-		}
+
+	// List the AWS accounts added to Polaris.
+	account, err := awsClient.Account(ctx, aws.CloudAccountID(id), core.FeatureAll)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	if id == "" {
-		log.Fatal("account not found")
+	fmt.Printf("ID: %v, Name: %v, NativeID: %v\n", account.ID, account.Name, account.NativeID)
+	for _, feature := range account.Features {
+		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Feature, feature.Regions, feature.Status)
 	}
-
 	// Create the Cloud Cluster
-	err = awsClient.CreateCloudCluster(ctx, uuid.MustParse(id), gqlaws.CreateAwsClusterInput{
+	clusterID, err := awsClient.CreateCloudCluster(ctx, gqlaws.CreateAwsClusterInput{
+		CloudAccountID:       account.ID,
 		Region:               gqlaws.RegionUsWest2.Name(),
 		IsEsType:             true,
 		UsePlacementGroups:   true,
@@ -111,4 +116,5 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Cloud Cluster ID: %v\n", clusterID)
 }

@@ -24,6 +24,44 @@
 
 package cloudcluster
 
+// allClustersConnection GraphQL query
+var allClustersConnectionQuery = `query AllClusterListTableQuery(
+  $first: Int
+  $after: String
+  $filter: ClusterFilterInput
+  $sortBy: ClusterSortByEnum
+  $sortOrder: SortOrder
+) {
+  allClusterConnection(
+    filter: $filter
+    sortBy: $sortBy
+    sortOrder: $sortOrder
+    first: $first
+    after: $after
+  ) {
+    edges {
+      cursor
+      node {
+        id
+        name
+        ccprovisionInfo {
+          progress
+          jobStatus
+          jobType
+          vendor
+        }
+      }
+    }
+    pageInfo {
+      startCursor
+      endCursor
+      hasNextPage
+      hasPreviousPage
+    }
+    count
+  }
+}`
+
 // cloudClusterInstanceProperties GraphQL query
 var cloudClusterInstancePropertiesQuery = `query SdkGolangCloudClusterInstanceProperties($input: InstancePropertiesReq!) {
   cloudClusterInstanceProperties(input: $input) {

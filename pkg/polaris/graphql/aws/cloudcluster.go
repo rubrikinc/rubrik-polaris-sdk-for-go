@@ -25,6 +25,8 @@ type AwsCdmVersionRequest struct {
 	Region         string    `json:"region"`
 }
 
+var uuidRegex = regexp.MustCompile(`([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`)
+
 // AllAwsCdmVersions returns all the available CDM versions for the specified
 // cloud account.
 func (a API) AllAwsCdmVersions(ctx context.Context, cloudAccountID uuid.UUID, region Region) ([]AwsCdmVersion, error) {
@@ -242,13 +244,13 @@ type CreateAwsClusterInput struct {
 }
 
 // ValidateCreateAwsClusterInput validates the aws cloud cluster create request
-func (a API) ValidateCreateAwsClusterInput(ctx context.Context, input CreateAwsClusterInput) (bool, error) {
+func (a API) ValidateCreateAwsClusterInput(ctx context.Context, input CreateAwsClusterInput) error {
 	query := validateAwsClusterCreateRequestQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Input CreateAwsClusterInput `json:"input"`
 	}{Input: input})
 	if err != nil {
-		return false, graphql.RequestError(query, err)
+		return graphql.RequestError(query, err)
 	}
 
 	var payload struct {
@@ -260,16 +262,15 @@ func (a API) ValidateCreateAwsClusterInput(ctx context.Context, input CreateAwsC
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return false, graphql.UnmarshalError(query, err)
+		return graphql.UnmarshalError(query, err)
 	}
 
 	// validate if the response is success
 	if !payload.Data.Result.IsSuccessful {
-		return false, graphql.ResponseError(query, errors.New(payload.Data.Result.Message))
+		return graphql.ResponseError(query, errors.New(payload.Data.Result.Message))
 	}
 
-	// return jonID and message,
-	return payload.Data.Result.IsSuccessful, nil
+	return nil
 }
 
 // CreateAwsCloudCluster create AWS Cloud Cluster in RSC
@@ -300,12 +301,37 @@ func (a API) CreateAwsCloudCluster(ctx context.Context, input CreateAwsClusterIn
 		return uuid.UUID{}, graphql.ResponseError(query, errors.New(payload.Data.Result.Message))
 	}
 	// use regex to find the UUID in the message string
-	re := regexp.MustCompile(`([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`)
-	match := re.FindString(payload.Data.Result.Message)
-	// return jonID
+	match := uuidRegex.FindString(payload.Data.Result.Message)
+
+	// return job ID
 	jobID, err := uuid.Parse(match)
 	if err != nil {
 		return uuid.UUID{}, err
 	}
 	return jobID, nil
+}
+
+// RemoveAwsCloudCluster deletes the specified AWS Cloud Cluster.
+func (a API) RemoveAwsCloudCluster(ctx context.Context, clusterID uuid.UUID, expireInDays int, isForce bool) error {
+	query := removeAwsCcClusterQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ClusterID    uuid.UUID `json:"clusterUuid"`
+		ExpireInDays int       `json:"expireInDays"`
+		IsForce      bool      `json:"isForce"`
+	}{ClusterID: clusterID, ExpireInDays: expireInDays, IsForce: isForce})
+
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct{} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+
+	return nil
 }
