@@ -38,8 +38,8 @@ import (
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/events"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -1041,28 +1041,56 @@ func (a API) CreateCloudCluster(ctx context.Context, input aws.CreateAwsClusterI
 		return uuid.Nil, fmt.Errorf("failed to validate create cloud cluster: %s", err)
 	}
 
-	jobID, err := aws.Wrap(a.client).CreateAwsCloudCluster(ctx, input)
+	_, err = aws.Wrap(a.client).CreateAwsCloudCluster(ctx, input)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create cloud cluster: %s", err)
 	}
-	status, err := core.Wrap(a.client).WaitForTaskChain(ctx, jobID, 10*time.Second)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	taskChain := status == core.TaskChainSucceeded
-	if !taskChain {
-		return uuid.Nil, fmt.Errorf("cloud cluster create task chain failed")
-	}
 
-	// get the cluster ID
-	clusters, err := cloudcluster.Wrap(a.client).AllCloudClusters(ctx, 1, "", cloudcluster.ClusterFilterInput{Name: []string{input.ClusterConfig.ClusterName}}, cloudcluster.SortByClusterName, "ASC")
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get cloud clusters: %s", err)
+	eventFilters := events.EventSeriesFilter{
+		ObjectName:        input.ClusterConfig.ClusterName,
+		ObjectType:        []events.EventObjectType{events.EventObjectTypeCluster},
+		LastUpdatedTimeGt: core.FormatTimestampToRFC3339(time.Now().Add(-15 * time.Minute)),
 	}
-	if len(clusters) != 1 {
-		return uuid.Nil, fmt.Errorf("expected a single cloud cluster")
-	}
+	for range 15 {
+		eventSeries, err := events.Wrap(a.client).EventSeries(ctx, "", eventFilters, 100, events.EventSeriesSortFieldLastUpdated, core.SortOrderDesc)
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("failed to get event series: %s", err)
+		}
 
-	// return the cloud cluster ID
-	return clusters[0].ID, nil
+		if len(eventSeries) == 0 {
+			time.Sleep(10 * time.Second)
+			continue
+		} else {
+			for _, event := range eventSeries {
+				if event.ObjectName == input.ClusterConfig.ClusterName {
+					switch event.LastActivityStatus {
+					case events.ActivityStatusQueued:
+					case events.ActivityStatusRunning:
+					case events.ActivityStatusTaskSuccess:
+						fmt.Printf("AWS cloud cluster create in progress: %s\n", event.Activities.Nodes[0].Message)
+						time.Sleep(60 * time.Second)
+						continue
+					case events.ActivityStatusSuccess:
+						return uuid.MustParse(event.ClusterUUID), nil
+					case events.ActivityStatusFailure:
+						return uuid.Nil, fmt.Errorf("cloud cluster create failed: %s", event.Activities.Nodes[0].Message)
+					case events.ActivityStatusCanceled:
+						return uuid.Nil, fmt.Errorf("cloud cluster create was canceled: %s", event.Activities.Nodes[0].Message)
+					case events.ActivityStatusCanceling:
+						return uuid.Nil, fmt.Errorf("cloud cluster create is canceling %s", event.Activities.Nodes[0].Message)
+					case events.ActivityStatusWarning:
+						return uuid.Nil, fmt.Errorf("cloud cluster create has warnings: %s", event.Activities.Nodes[0].Message)
+					case events.ActivityStatusPartialSuccess:
+						return uuid.Nil, fmt.Errorf("cloud cluster create has partial success: %s", event.Activities.Nodes[0].Message)
+					default:
+						return uuid.Nil, fmt.Errorf("cloud cluster create has unknown status: %s", event.LastActivityStatus)
+					}
+				}
+			}
+		}
+
+		// If we reach here, no matching event was found, wait and try again
+		time.Sleep(10 * time.Second)
+	}
+	return uuid.Nil, fmt.Errorf("failed to create cloud cluster: %s", input.ClusterConfig.ClusterName)
 }

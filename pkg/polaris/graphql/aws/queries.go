@@ -122,7 +122,7 @@ var awsCcRegionQuery = `query SdkGolangAwsCcRegion($cloudAccountId: String!) {
 }`
 
 // awsCcSecurityGroups GraphQL query
-var awsCcSecurityGroupsQuery = `query AwsCCSecurityGroupQuery(
+var awsCcSecurityGroupsQuery = `query SdkGolangAwsCcSecurityGroups(
   $cloudAccountId: UUID!
   $awsRegion: AwsRegion!
   $awsVpc: String!
@@ -141,7 +141,7 @@ var awsCcSecurityGroupsQuery = `query AwsCCSecurityGroupQuery(
 }`
 
 // awsCcSubnet GraphQL query
-var awsCcSubnetQuery = `query AwsCCSubnetQuery(
+var awsCcSubnetQuery = `query SdkGolangAwsCcSubnet(
   $cloudAccountId: UUID!
   $awsRegion: AwsRegion!
   $awsVpc: String!
@@ -367,12 +367,12 @@ var registerAwsFeatureArtifactsQuery = `mutation SdkGolangRegisterAwsFeatureArti
 }`
 
 // removeAwsCcCluster GraphQL query
-var removeAwsCcClusterQuery = `mutation RemoveClusterMutation(
+var removeAwsCcClusterQuery = `mutation SdkGolangRemoveAwsCcCluster(
   $clusterUuid: UUID!
   $expireInDays: Long
   $isForce: Boolean!
 ) {
-  removeCdmCluster(
+  result: removeCdmCluster(
     clusterUUID: $clusterUuid
     expireInDays: $expireInDays
     isForce: $isForce

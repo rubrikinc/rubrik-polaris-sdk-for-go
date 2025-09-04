@@ -156,3 +156,11 @@ func TestWaitForTaskChain(t *testing.T) {
 		t.Errorf("invalid task chain state: %v", state)
 	}
 }
+
+func TestFormatTimestampToRFC3339(t *testing.T) {
+	now := time.Now()
+	timestamp := FormatTimestampToRFC3339(now)
+	if timestamp != now.UTC().Format("2006-01-02T15:04:05.000Z") {
+		t.Errorf("invalid timestamp: %v", timestamp)
+	}
+}

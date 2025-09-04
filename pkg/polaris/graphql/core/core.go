@@ -570,3 +570,9 @@ func (a API) FeatureFlag(ctx context.Context, name string) (FeatureFlag, error) 
 
 	return FeatureFlag{Name: payload.Data.Flag.Name, Enabled: enabled}, nil
 }
+
+// FormatTimestamp converts a time.Time to RFC3339 format with milliseconds and Z suffix.
+func FormatTimestampToRFC3339(t time.Time) string {
+	return t.UTC().Format("2006-01-02T15:04:05.000Z")
+
+}

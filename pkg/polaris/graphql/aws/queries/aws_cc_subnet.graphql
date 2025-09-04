@@ -1,4 +1,4 @@
-query AwsCCSubnetQuery(
+query RubrikPolarisSDKRequest(
   $cloudAccountId: UUID!
   $awsRegion: AwsRegion!
   $awsVpc: String!

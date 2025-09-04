@@ -1,9 +1,9 @@
-mutation RemoveClusterMutation(
+mutation RubrikPolarisSDKRequest(
   $clusterUuid: UUID!
   $expireInDays: Long
   $isForce: Boolean!
 ) {
-  removeCdmCluster(
+  result: removeCdmCluster(
     clusterUUID: $clusterUuid
     expireInDays: $expireInDays
     isForce: $isForce
