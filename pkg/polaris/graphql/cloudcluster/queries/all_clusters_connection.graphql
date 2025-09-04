@@ -1,11 +1,11 @@
-query AllClusterListTableQuery(
+query RubrikPolarisSDKRequest(
   $first: Int
   $after: String
   $filter: ClusterFilterInput
   $sortBy: ClusterSortByEnum
   $sortOrder: SortOrder
 ) {
-  allClusterConnection(
+  result: allClusterConnection(
     filter: $filter
     sortBy: $sortBy
     sortOrder: $sortOrder

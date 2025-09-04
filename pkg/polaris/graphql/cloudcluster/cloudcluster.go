@@ -258,3 +258,48 @@ func (a API) AllCloudClusters(ctx context.Context, first int, after string, filt
 
 	return clusters, nil
 }
+
+// CloudClusterInstanceProperties represents the cloud cluster instance properties.
+type CloudClusterInstanceProperties struct {
+	InstanceType       string `json:"instanceType"`
+	Vendor             string `json:"vendor"`
+	VcpuCount          int    `json:"vcpuCount"`
+	MemoryGib          int    `json:"memoryGib"`
+	CapacityTb         int    `json:"capacityTb"`
+	ProcessorType      string `json:"processorType"`
+	VmType             string `json:"vmType"`
+	InstanceTypeString string `json:"instanceTypeString"`
+}
+
+// CloudClusterInstancePropertiesRequest represents the request for cloud cluster instance properties.
+type CloudClusterInstancePropertiesRequest struct {
+	CloudVendor  string `json:"cloudVendor"`
+	InstanceType string `json:"instanceType"`
+}
+
+// CloudClusterInstanceProperties returns the cloud cluster instance properties.
+func (a API) CloudClusterInstanceProperties(ctx context.Context, request CloudClusterInstancePropertiesRequest) (CloudClusterInstanceProperties, error) {
+	a.log.Print(log.Trace)
+
+	query := cloudClusterInstancePropertiesQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		Input CloudClusterInstancePropertiesRequest `json:"input"`
+	}{Input: request})
+
+	if err != nil {
+		return CloudClusterInstanceProperties{}, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				InstanceProperties CloudClusterInstanceProperties `json:"instanceProperties"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return CloudClusterInstanceProperties{}, graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result.InstanceProperties, nil
+}

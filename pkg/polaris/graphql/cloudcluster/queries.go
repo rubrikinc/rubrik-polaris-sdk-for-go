@@ -25,14 +25,14 @@
 package cloudcluster
 
 // allClustersConnection GraphQL query
-var allClustersConnectionQuery = `query AllClusterListTableQuery(
+var allClustersConnectionQuery = `query SdkGolangAllClustersConnection(
   $first: Int
   $after: String
   $filter: ClusterFilterInput
   $sortBy: ClusterSortByEnum
   $sortOrder: SortOrder
 ) {
-  allClusterConnection(
+  result: allClusterConnection(
     filter: $filter
     sortBy: $sortBy
     sortOrder: $sortOrder
@@ -64,7 +64,7 @@ var allClustersConnectionQuery = `query AllClusterListTableQuery(
 
 // cloudClusterInstanceProperties GraphQL query
 var cloudClusterInstancePropertiesQuery = `query SdkGolangCloudClusterInstanceProperties($input: InstancePropertiesReq!) {
-  cloudClusterInstanceProperties(input: $input) {
+  result: cloudClusterInstanceProperties(input: $input) {
     instanceProperties {
       instanceType
       vendor
