@@ -533,3 +533,32 @@ func (a API) FeatureFlags(ctx context.Context) ([]FeatureFlag, error) {
 
 	return flags, nil
 }
+
+// FeatureFlag retuns a specific RSC feature flag.
+func (a API) FeatureFlag(ctx context.Context, name string) (FeatureFlag, error) {
+	a.log.Print(log.Trace)
+
+	query := featureFlagQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		Name string `json:"flagName"`
+	}{Name: name})
+	if err != nil {
+		return FeatureFlag{}, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Flag struct {
+				Name    string `json:"name"`
+				Variant string `json:"variant"`
+			} `json:"featureFlag"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return FeatureFlag{}, graphql.UnmarshalError(query, err)
+	}
+
+	enabled := payload.Data.Flag.Variant == "true"
+
+	return FeatureFlag{Name: payload.Data.Flag.Name, Enabled: enabled}, nil
+}
