@@ -372,12 +372,48 @@ type CloudClusterProvisionInfo struct {
 	JobType   CcpJobType   `json:"jobType"`
 }
 
+type CloudClusterStorageConfig struct {
+	LocationName           string `json:"locationName"`
+	LocationID             string `json:"locationId"`
+	IsImmutable            bool   `json:"isImmutable"`
+	IsUsingManagedIdentity bool   `json:"isUsingManagedIdentity"`
+}
+
+type CloudClusterCloudInfo struct {
+	Name                   string                    `json:"name"`
+	Region                 string                    `json:"region"`
+	RegionID               string                    `json:"regionId"`
+	NetworkName            string                    `json:"networkName"`
+	NativeCloudAccountName string                    `json:"nativeCloudAccountName"`
+	Vendor                 string                    `json:"vendor"`
+	NativeCloudAccountID   string                    `json:"nativeCloudAccountId"`
+	CloudAccount           string                    `json:"cloudAccount"`
+	StorageConfig          CloudClusterStorageConfig `json:"storageConfig"`
+}
+
+type CloudClusterNode struct {
+	BrikID          string `json:"brikId"`
+	IpAddress       string `json:"ipAddress"`
+	NeedsInspection bool   `json:"needsInspection"`
+	CpuCores        int    `json:"cpuCores"`
+	Ram             int    `json:"ram"`
+	ClusterID       string `json:"clusterId"`
+	NetworkSpeed    int    `json:"networkSpeed"`
+	Hostname        string `json:"hostname"`
+	ID              string `json:"id"`
+}
+
 // CloudCluster represents the cloud cluster.
 type CloudCluster struct {
 	ID            uuid.UUID                 `json:"id"`
 	Name          string                    `json:"name"`
 	ProvisionInfo CloudClusterProvisionInfo `json:"ccprovisionInfo"`
 	Vendor        core.CloudVendor          `json:"vendor"`
+	CloudInfo     CloudClusterCloudInfo     `json:"cloudInfo"`
+	ClusterNodes  []CloudClusterNode        `json:"clusterNodeConnection"`
+	ProductType   ClusterProductEnum        `json:"productType"`
+	Timezone      ClusterTimezoneType       `json:"timezone"`
+	Version       string                    `json:"version"`
 }
 
 // AllCloudClusters returns all cloud clusters.
