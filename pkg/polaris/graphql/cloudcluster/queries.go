@@ -50,6 +50,40 @@ var allClustersConnectionQuery = `query SdkGolangAllClustersConnection(
           jobType
           vendor
         }
+        cloudInfo {
+          name
+          region
+          regionId
+          networkName
+          nativeCloudAccountName
+          vendor
+          nativeCloudAccountId
+          cloudAccount
+          storageConfig {
+            locationName
+            locationId
+            isImmutable
+            isUsingManagedIdentity
+          }
+        }
+        clusterNodeConnection {
+          edges {
+            node {
+              brikId
+              ipAddress
+              needsInspection
+              cpuCores
+              ram
+              clusterId
+              networkSpeed
+              hostname
+              id
+            }
+          }
+        }
+        productType
+        timezone
+        version
       }
     }
     pageInfo {
@@ -75,5 +109,62 @@ var cloudClusterInstancePropertiesQuery = `query SdkGolangCloudClusterInstancePr
       vmType
       instanceTypeString
     }
+  }
+}`
+
+// clusterDnsServers GraphQL query
+var clusterDnsServersQuery = `query SdkGolangClusterDnsServers($clusterUuid: UUID!) {
+  result: clusterDns(clusterUuid: $clusterUuid) {
+    servers
+    domains
+  }
+}`
+
+// clusterNtpServers GraphQL query
+var clusterNtpServersQuery = `query SdkGolangClusterNtpServers($input: GetClusterNtpServersInput!) {
+  result: clusterNtpServers(input: $input) {
+    data {
+      server
+      symmetricKey {
+        key
+        keyId
+        keyType
+      }
+    }
+  }
+}`
+
+// clusterSettings GraphQL query
+var clusterSettingsQuery = `query SdkGolangClusterSettings($id: UUID!) {
+  result: cluster(clusterUuid: $id) {
+    id
+    name
+    version
+    status
+    status
+    timezone
+    geoLocation {
+      address
+    }
+    ipmiInfo {
+      isAvailable
+      usesHttps
+      usesIkvm
+    }
+  }
+}`
+
+// updateClusterSettings GraphQL query
+var updateClusterSettingsQuery = `mutation SdkGolangUpdateClusterSettings($input: UpdateClusterSettingsInput!) {
+  result: updateClusterSettings(input: $input) {
+    geolocation {
+      address
+    }
+    clusterUuid
+    name
+    timezone {
+      timezone
+    }
+    version
   }
 }`

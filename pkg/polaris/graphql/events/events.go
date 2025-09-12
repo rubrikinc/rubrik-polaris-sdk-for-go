@@ -628,3 +628,65 @@ func (a API) EventSeries(ctx context.Context, after string, filters EventSeriesF
 
 	return events, nil
 }
+
+type ActivitySeries struct {
+	ID                   int                `json:"id"`
+	FID                  string             `json:"fid"`
+	ActivitySeriesID     string             `json:"activitySeriesId"`
+	LastUpdated          time.Time          `json:"lastUpdated"`
+	LastActivityType     ActivityType       `json:"lastActivityType"`
+	LastActivityStatus   ActivityStatus     `json:"lastActivityStatus"`
+	ObjectID             string             `json:"objectId"`
+	ObjectName           string             `json:"objectName"`
+	ObjectType           ActivityObjectType `json:"objectType"`
+	Severity             string             `json:"severity"`
+	Progress             string             `json:"progress"`
+	IsCancelable         bool               `json:"isCancelable"`
+	IsPolarisEventSeries bool               `json:"isPolarisEventSeries"`
+	Location             string             `json:"location"`
+	EffectiveThroughput  int                `json:"effectiveThroughput"`
+	DataTransferred      int                `json:"dataTransferred"`
+	LogicalSize          int                `json:"logicalSize"`
+	SlaDomainName        string             `json:"slaDomainName"`
+	Organizations        []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"organizations"`
+	ClusterUUID string `json:"clusterUuid"`
+	ClusterName string `json:"clusterName"`
+	Username    string `json:"username"`
+	Cluster     struct {
+		ID       string `json:"id"`
+		Name     string `json:"name"`
+		Timezone string `json:"timezone"`
+	} `json:"cluster"`
+	Activities struct {
+		Nodes []struct {
+			ID      string `json:"id"`
+			Message string `json:"message"`
+		} `json:"nodes"`
+	} `json:"activityConnection"`
+}
+
+func (a API) ActivitySeries(ctx context.Context, activitySeriesID string, clusterUUID string) (EventSeries, error) {
+	a.log.Print(log.Trace)
+
+	query := activitySeriesQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ActivitySeriesID string `json:"activitySeriesId"`
+		ClusterUUID      string `json:"clusterUuid,omitempty"`
+	}{ActivitySeriesID: activitySeriesID, ClusterUUID: clusterUUID})
+	if err != nil {
+		return EventSeries{}, graphql.RequestError(query, err)
+	}
+	var payload struct {
+		Data struct {
+			Result EventSeries `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return EventSeries{}, graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result, nil
+}

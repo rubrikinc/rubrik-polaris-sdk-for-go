@@ -24,6 +24,63 @@
 
 package events
 
+// activitySeries GraphQL query
+var activitySeriesQuery = `query SdkGolangActivitySeries($activitySeriesId: UUID!, $clusterUuid: UUID) {
+  result: activitySeries(
+    input: { activitySeriesId: $activitySeriesId, clusterUuid: $clusterUuid }
+  ) {
+    activityConnection {
+      nodes {
+        activityInfo
+        errorInfo
+        message
+        status
+        time
+        severity
+      }
+    }
+    id
+    fid
+    activitySeriesId
+    lastUpdated
+    lastActivityType
+    lastActivityStatus
+    objectId
+    objectName
+    objectType
+    severity
+    progress
+    isCancelable
+    isPolarisEventSeries
+    location
+    effectiveThroughput
+    dataTransferred
+    logicalSize
+    slaDomainName
+    organizations {
+      id
+      name
+    }
+    clusterUuid
+    clusterName
+    username
+    startTime
+    cluster {
+      id
+      name
+      version
+      defaultAddress
+      timezone
+      productType
+      clusterNodeConnection {
+        nodes {
+          ipAddress
+        }
+      }
+    }
+  }
+}`
+
 // eventSeries GraphQL query
 var eventSeriesQuery = `query SdkGolangEventSeries(
   $after: String

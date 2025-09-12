@@ -23,6 +23,40 @@ query RubrikPolarisSDKRequest(
           jobType
           vendor
         }
+        cloudInfo {
+          name
+          region
+          regionId
+          networkName
+          nativeCloudAccountName
+          vendor
+          nativeCloudAccountId
+          cloudAccount
+          storageConfig {
+            locationName
+            locationId
+            isImmutable
+            isUsingManagedIdentity
+          }
+        }
+        clusterNodeConnection {
+          edges {
+            node {
+              brikId
+              ipAddress
+              needsInspection
+              cpuCores
+              ram
+              clusterId
+              networkSpeed
+              hostname
+              id
+            }
+          }
+        }
+        productType
+        timezone
+        version
       }
     }
     pageInfo {

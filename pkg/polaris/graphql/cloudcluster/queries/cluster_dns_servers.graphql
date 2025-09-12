@@ -1,0 +1,6 @@
+query RubrikPolarisSDKRequest($clusterUuid: UUID!) {
+  result: clusterDns(clusterUuid: $clusterUuid) {
+    servers
+    domains
+  }
+}
