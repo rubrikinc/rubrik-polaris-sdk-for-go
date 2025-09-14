@@ -154,6 +154,13 @@ var clusterSettingsQuery = `query SdkGolangClusterSettings($id: UUID!) {
   }
 }`
 
+// updateClusterNtpServers GraphQL query
+var updateClusterNtpServersQuery = `mutation SdkGolangUpdateClusterNtpServers($input: UpdateClusterNtpServersInput!) {
+  result: updateClusterNtpServers(input: $input) {
+    success
+  }
+}`
+
 // updateClusterSettings GraphQL query
 var updateClusterSettingsQuery = `mutation SdkGolangUpdateClusterSettings($input: UpdateClusterSettingsInput!) {
   result: updateClusterSettings(input: $input) {
@@ -166,5 +173,14 @@ var updateClusterSettingsQuery = `mutation SdkGolangUpdateClusterSettings($input
       timezone
     }
     version
+  }
+}`
+
+// updateCusterDnsAndSearchDomains GraphQL query
+var updateCusterDnsAndSearchDomainsQuery = `mutation SdkGolangUpdateCusterDnsAndSearchDomains(
+  $input: UpdateDnsServersAndSearchDomainsInput!
+) {
+  result: updateDnsServersAndSearchDomains(input: $input) {
+    success
   }
 }`

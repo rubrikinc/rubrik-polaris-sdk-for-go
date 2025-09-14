@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($input: UpdateClusterNtpServersInput!) {
+  result: updateClusterNtpServers(input: $input) {
+    success
+  }
+}

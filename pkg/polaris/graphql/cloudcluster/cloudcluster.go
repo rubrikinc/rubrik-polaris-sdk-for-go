@@ -25,6 +25,7 @@ package cloudcluster
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -619,11 +620,11 @@ type GeoLocation struct {
 }
 
 type Timezone struct {
-	Timezone string `json:"timezone"`
+	Timezone ClusterTimezoneType `json:"timezone"`
 }
 
 type ClusterUpdate struct {
-	AcceptedEulaVersion string      `json:"acceptedEulaVersion"`
+	AcceptedEulaVersion string      `json:"acceptedEulaVersion,omitempty"`
 	Geolocation         GeoLocation `json:"geolocation"`
 	Name                string      `json:"name"`
 	Timezone            Timezone    `json:"timezone"`
@@ -641,8 +642,10 @@ func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSetti
 
 	query := updateClusterSettingsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Input UpdateClusterSettingsInput `json:"input"`
-	}{Input: input})
+		ID            string                     `json:"id"`
+		ClusterUUID   uuid.UUID                  `json:"clusterUuid"`
+		ClusterUpdate UpdateClusterSettingsInput `json:"clusterUpdate"`
+	}{ID: "me", ClusterUUID: input.ID, ClusterUpdate: input})
 
 	if err != nil {
 		return CloudClusterSettings{}, graphql.RequestError(query, err)
@@ -658,4 +661,41 @@ func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSetti
 	}
 
 	return payload.Data.Result, nil
+}
+
+type UpdateClusterDnsServersAndSearchDomainsInput struct {
+	ClusterID      uuid.UUID `json:"clusterId"`
+	DnsServers     []string  `json:"dnsServers"`
+	SearchDomains  []string  `json:"searchDomains"`
+	IsUsingDefault bool      `json:"isUsingDefault"`
+}
+
+// UpdateClusterDnsServersAndSearchDomains updates the cloud cluster DNS servers and search domains.
+func (a API) UpdateClusterDnsServersAndSearchDomains(ctx context.Context, input UpdateClusterDnsServersAndSearchDomainsInput) error {
+	a.log.Print(log.Trace)
+
+	query := updateCusterDnsAndSearchDomainsQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		Input UpdateClusterDnsServersAndSearchDomainsInput `json:"input"`
+	}{Input: input})
+
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Success bool `json:"success"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result.Success {
+		return graphql.ResponseError(query, errors.New("failed to update DNS servers and search domains"))
+	}
+
+	return nil
 }
