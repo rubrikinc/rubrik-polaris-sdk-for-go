@@ -371,6 +371,7 @@ type CloudClusterProvisionInfo struct {
 	Progress  int          `json:"progress"`
 	JobStatus CcpJobStatus `json:"jobStatus"`
 	JobType   CcpJobType   `json:"jobType"`
+	Vendor    string       `json:"vendor"`
 }
 
 type CloudClusterStorageConfig struct {
@@ -396,25 +397,30 @@ type CloudClusterNode struct {
 	BrikID          string `json:"brikId"`
 	IpAddress       string `json:"ipAddress"`
 	NeedsInspection bool   `json:"needsInspection"`
-	CpuCores        int    `json:"cpuCores"`
-	Ram             int    `json:"ram"`
+	CpuCores        int    `json:"cpuCores,omitempty"`
+	Ram             int64  `json:"ram,omitempty"`
 	ClusterID       string `json:"clusterId"`
-	NetworkSpeed    int    `json:"networkSpeed"`
-	Hostname        string `json:"hostname"`
+	NetworkSpeed    string `json:"networkSpeed,omitempty"`
+	Hostname        string `json:"hostname,omitempty"`
 	ID              string `json:"id"`
+}
+
+type CloudClusterNodeConnection struct {
+	Edges []struct {
+		Node CloudClusterNode `json:"node"`
+	} `json:"edges"`
 }
 
 // CloudCluster represents the cloud cluster.
 type CloudCluster struct {
-	ID            uuid.UUID                 `json:"id"`
-	Name          string                    `json:"name"`
-	ProvisionInfo CloudClusterProvisionInfo `json:"ccprovisionInfo"`
-	Vendor        core.CloudVendor          `json:"vendor"`
-	CloudInfo     CloudClusterCloudInfo     `json:"cloudInfo"`
-	ClusterNodes  []CloudClusterNode        `json:"clusterNodeConnection"`
-	ProductType   ClusterProductEnum        `json:"productType"`
-	Timezone      ClusterTimezoneType       `json:"timezone"`
-	Version       string                    `json:"version"`
+	ID            uuid.UUID                  `json:"id"`
+	Name          string                     `json:"name"`
+	ProvisionInfo CloudClusterProvisionInfo  `json:"ccprovisionInfo"`
+	CloudInfo     CloudClusterCloudInfo      `json:"cloudInfo,omitempty"`
+	ClusterNodes  CloudClusterNodeConnection `json:"clusterNodeConnection"`
+	ProductType   ClusterProductEnum         `json:"productType"`
+	Timezone      ClusterTimezoneType        `json:"timezone"`
+	Version       string                     `json:"version"`
 }
 
 // AllCloudClusters returns all cloud clusters.
@@ -439,7 +445,7 @@ func (a API) AllCloudClusters(ctx context.Context, first int, after string, filt
 				Edges []struct {
 					Node CloudCluster `json:"node"`
 				} `json:"edges"`
-			} `json:"allClusterConnection"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
