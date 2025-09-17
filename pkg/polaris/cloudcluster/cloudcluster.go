@@ -73,7 +73,7 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 
 	// Temporary client to drop the need for cross-client importing
 	// This will be refactored out when we have agreed on a solution.
-	awsClient := aws.NewAPI(a.client) // nolint:staticcheck
+	awsClient := aws.NewAPI(a.client) //nolint:all
 
 	// Ensure account exists and has Server and Apps feature
 	account, err := awsClient.AccountByID(ctx, core.FeatureAll, input.CloudAccountID)
