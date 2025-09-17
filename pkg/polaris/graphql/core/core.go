@@ -43,11 +43,11 @@ import (
 type CloudVendor string
 
 const (
-	CloudVendorUnspecified CloudVendor = ""
-	CloudVendorAWS         CloudVendor = "AWS"
-	CloudVendorAzure       CloudVendor = "AZURE"
-	CloudVendorGCP         CloudVendor = "GCP"
-	CloudVendorAll         CloudVendor = "ALL_VENDORS"
+	CloudVendorUnknown CloudVendor = "VENDOR_UNKNOWN"
+	CloudVendorAWS     CloudVendor = "AWS"
+	CloudVendorAzure   CloudVendor = "AZURE"
+	CloudVendorGCP     CloudVendor = "GCP"
+	CloudVendorOCI     CloudVendor = "OCI"
 )
 
 // CloudAccountAction represents a Polaris cloud account action.
@@ -68,8 +68,17 @@ type PermissionGroup string
 const (
 	PermissionGroupInvalid                PermissionGroup = "GROUP_UNSPECIFIED"
 	PermissionGroupBasic                  PermissionGroup = "BASIC"
+	PermissionGroupCCES                   PermissionGroup = "CLOUD_CLUSTER_ES"
 	PermissionGroupRSCManagedCluster      PermissionGroup = "RSC_MANAGED_CLUSTER"
 	PermissionGroupCustomerManagedCluster PermissionGroup = "CUSTOMER_MANAGED_BASIC"
+)
+
+// SortOrder represents the valid sort order values.
+type SortOrder string
+
+const (
+	SortOrderAsc  SortOrder = "ASC"
+	SortOrderDesc SortOrder = "DESC"
 )
 
 // Feature represents a Polaris cloud account feature with a set of permission
@@ -561,4 +570,9 @@ func (a API) FeatureFlag(ctx context.Context, name string) (FeatureFlag, error) 
 	enabled := payload.Data.Flag.Variant == "true"
 
 	return FeatureFlag{Name: payload.Data.Flag.Name, Enabled: enabled}, nil
+}
+
+// FormatTimestamp converts a time.Time to RFC3339 format with milliseconds and Z suffix.
+func FormatTimestamp(t time.Time) string {
+	return t.UTC().Format("2006-01-02T15:04:05.000Z")
 }

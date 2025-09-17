@@ -1,0 +1,12 @@
+query RubrikPolarisSDKRequest($id: String!) {
+  result: clusterNtpServers(input: { id: $id }) {
+    data {
+      server
+      symmetricKey {
+        key
+        keyId
+        keyType
+      }
+    }
+  }
+}

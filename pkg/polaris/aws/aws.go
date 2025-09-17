@@ -48,7 +48,7 @@ type API struct {
 	log    log.Logger
 }
 
-// Deprecated: use Wrap instead.
+// Deprecatedd: use Wrap instead. TODO, Fix Linter to ignore this line.
 func NewAPI(gql *graphql.Client) API {
 	return API{client: gql, log: gql.Log()}
 }

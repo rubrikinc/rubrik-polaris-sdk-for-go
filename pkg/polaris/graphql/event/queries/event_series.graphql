@@ -1,0 +1,62 @@
+query RubrikPolarisSDKRequest(
+  $after: String
+  $filters: ActivitySeriesFilter
+  $first: Int
+  $sortBy: ActivitySeriesSortField
+  $sortOrder: SortOrder
+) {
+  result: activitySeriesConnection(
+    after: $after
+    first: $first
+    filters: $filters
+    sortBy: $sortBy
+    sortOrder: $sortOrder
+  ) {
+    edges {
+      cursor
+      node {
+        id
+        fid
+        activitySeriesId
+        lastUpdated
+        lastActivityType
+        lastActivityStatus
+        objectId
+        objectName
+        objectType
+        severity
+        progress
+        isCancelable
+        isPolarisEventSeries
+        location
+        effectiveThroughput
+        dataTransferred
+        logicalSize
+        slaDomainName
+        organizations {
+          id
+          name
+        }
+        clusterUuid
+        clusterName
+        username
+        cluster {
+          id
+          name
+          timezone
+        }
+        activityConnection(first: 1) {
+          nodes {
+            id
+            message
+          }
+        }
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+}

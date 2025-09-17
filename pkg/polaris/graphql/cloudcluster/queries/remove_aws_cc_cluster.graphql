@@ -1,0 +1,11 @@
+mutation RubrikPolarisSDKRequest(
+  $clusterUuid: UUID!
+  $expireInDays: Long
+  $isForce: Boolean!
+) {
+  result: removeCdmCluster(
+    clusterUUID: $clusterUuid
+    expireInDays: $expireInDays
+    isForce: $isForce
+  )
+}
