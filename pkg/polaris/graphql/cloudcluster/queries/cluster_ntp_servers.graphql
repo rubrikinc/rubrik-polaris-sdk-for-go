@@ -1,5 +1,5 @@
-query RubrikPolarisSDKRequest($input: GetClusterNtpServersInput!) {
-  result: clusterNtpServers(input: $input) {
+query RubrikPolarisSDKRequest($id: String!) {
+  result: clusterNtpServers(input: { id: $id }) {
     data {
       server
       symmetricKey {

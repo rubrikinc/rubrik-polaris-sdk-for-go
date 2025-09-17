@@ -553,14 +553,13 @@ type GetClusterNtpServersInput struct {
 }
 
 // CloudClusterNtpServers returns the cloud cluster NTP servers.
-func (a API) CloudClusterNtpServers(ctx context.Context, clusterID uuid.UUID, ntpServerConfigs []CloudClusterNtpServers) ([]CloudClusterNtpServers, error) {
+func (a API) CloudClusterNtpServers(ctx context.Context, clusterID uuid.UUID) ([]CloudClusterNtpServers, error) {
 	a.log.Print(log.Trace)
 
 	query := clusterNtpServersQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		ClusterID        string                   `json:"id"`
-		NtpServerConfigs []CloudClusterNtpServers `json:"ntpServerConfigs"`
-	}{ClusterID: clusterID.String(), NtpServerConfigs: ntpServerConfigs})
+		ClusterID string `json:"id"`
+	}{ClusterID: clusterID.String()})
 
 	if err != nil {
 		return nil, graphql.RequestError(query, err)

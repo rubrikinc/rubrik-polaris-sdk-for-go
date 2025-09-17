@@ -198,8 +198,8 @@ var clusterDnsServersQuery = `query SdkGolangClusterDnsServers($clusterUuid: UUI
 }`
 
 // clusterNtpServers GraphQL query
-var clusterNtpServersQuery = `query SdkGolangClusterNtpServers($input: GetClusterNtpServersInput!) {
-  result: clusterNtpServers(input: $input) {
+var clusterNtpServersQuery = `query SdkGolangClusterNtpServers($id: String!) {
+  result: clusterNtpServers(input: { id: $id }) {
     data {
       server
       symmetricKey {
