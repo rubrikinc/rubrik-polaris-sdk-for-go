@@ -97,9 +97,9 @@ var allClustersConnectionQuery = `query SdkGolangAllClustersConnection(
 }`
 
 // awsCcCdmVersions GraphQL query
-var awsCcCdmVersionsQuery = `query SdkGolangAwsCcCdmVersions($cloudAccountID: String, $region: String) {
+var awsCcCdmVersionsQuery = `query SdkGolangAwsCcCdmVersions($cloudAccountId: String, $region: String) {
   result: allAwsCdmVersions(
-    input: { cloudAccountId: $cloudAccountID, region: $region }
+    input: { cloudAccountId: $cloudAccountId, region: $region }
   ) {
     version
     isLatest

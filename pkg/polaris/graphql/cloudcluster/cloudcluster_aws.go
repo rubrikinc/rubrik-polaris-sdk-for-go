@@ -64,9 +64,9 @@ var uuidRegex = regexp.MustCompile(`([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 func (a API) AllAwsCdmVersions(ctx context.Context, cloudAccountID uuid.UUID, region aws.Region) ([]AwsCdmVersion, error) {
 	query := awsCcCdmVersionsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID string         `json:"cloudAccountId"`
-		Region         aws.RegionEnum `json:"input"`
-	}{CloudAccountID: cloudAccountID.String(), Region: region.ToRegionEnum()})
+		CloudAccountID string `json:"cloudAccountId"`
+		Region         string `json:"region"`
+	}{CloudAccountID: cloudAccountID.String(), Region: region.Name()})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
