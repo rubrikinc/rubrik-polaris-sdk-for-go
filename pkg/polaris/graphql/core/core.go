@@ -68,6 +68,7 @@ type PermissionGroup string
 const (
 	PermissionGroupInvalid                PermissionGroup = "GROUP_UNSPECIFIED"
 	PermissionGroupBasic                  PermissionGroup = "BASIC"
+	PermissionGroupCCES                   PermissionGroup = "CLOUD_CLUSTER_ES"
 	PermissionGroupRSCManagedCluster      PermissionGroup = "RSC_MANAGED_CLUSTER"
 	PermissionGroupCustomerManagedCluster PermissionGroup = "CUSTOMER_MANAGED_BASIC"
 )

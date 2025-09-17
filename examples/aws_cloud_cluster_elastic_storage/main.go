@@ -22,13 +22,13 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cloudcluster"
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
+	gqlcloudcluster "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -55,10 +55,11 @@ func main() {
 	}
 
 	awsClient := aws.Wrap(client)
+	cloudClusterClient := cloudcluster.Wrap(client)
 
 	// RSC features and their permission groups.
 	features := []core.Feature{
-		core.FeatureServerAndApps.WithPermissionGroups(core.PermissionGroupBasic),
+		core.FeatureServerAndApps.WithPermissionGroups(core.PermissionGroupCCES),
 	}
 
 	// Add the AWS default account to Polaris. Usually resolved using the
@@ -75,19 +76,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("ID: %v, Name: %v, NativeID: %v\n", account.ID, account.Name, account.NativeID)
-	for _, feature := range account.Features {
-		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Feature, feature.Regions, feature.Status)
-	}
-
 	// Create the Cloud Cluster
-	clusterID, err := awsClient.CreateCloudCluster(ctx, cloudcluster.CreateAwsClusterInput{
+	clusterID, err := cloudClusterClient.CreateCloudCluster(ctx, gqlcloudcluster.CreateAwsClusterInput{
 		CloudAccountID:       account.ID,
 		Region:               gqlaws.RegionUsWest2.Name(),
 		IsEsType:             true,
 		UsePlacementGroups:   true,
 		KeepClusterOnFailure: false,
-		ClusterConfig: cloudcluster.AwsClusterConfig{
+		ClusterConfig: gqlcloudcluster.AwsClusterConfig{
 			ClusterName:      "cces-cluster",
 			UserEmail:        "hello@domain.com",
 			AdminPassword:    "RubrikGoForward!",
@@ -95,22 +91,22 @@ func main() {
 			DnsSearchDomains: []string{},
 			NtpServers:       []string{"169.254.169.123"},
 			NumNodes:         3,
-			AwsEsConfig: cloudcluster.AwsEsConfigInput{
+			AwsEsConfig: gqlcloudcluster.AwsEsConfigInput{
 				BucketName:         "rbrk-cces.do-not-delete",
 				ShouldCreateBucket: true,
 				EnableImmutability: false,
 				EnableObjectLock:   false,
 			},
 		},
-		Validations: []cloudcluster.ClusterCreateValidations{
-			cloudcluster.AllChecks,
+		Validations: []gqlcloudcluster.ClusterCreateValidations{
+			gqlcloudcluster.AllChecks,
 		},
-		VmConfig: cloudcluster.AwsVmConfig{
+		VmConfig: gqlcloudcluster.AwsVmConfig{
 			InstanceProfileName: "rubrik-cces-profile",
-			InstanceType:        cloudcluster.AwsInstanceTypeM6I_2XLarge,
+			InstanceType:        gqlcloudcluster.AwsInstanceTypeM6I_2XLarge,
 			SecurityGroups:      []string{"sg-1234567890"},
 			Subnet:              "subnet-1234567890",
-			VmType:              cloudcluster.CCVmConfigDense,
+			VmType:              gqlcloudcluster.CCVmConfigDense,
 			Vpc:                 "vpc-1234567890",
 		},
 	}, true)

@@ -21,7 +21,7 @@
 // Package cloudcluster provides a high level interface to the AWS part of the RSC
 // platform.
 
-package aws
+package cloudcluster
 
 import (
 	"context"
@@ -31,13 +31,30 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/event"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	gqlevent "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/event"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
+
+// API for cloud cluster management.
+type API struct {
+	client *graphql.Client
+	log    log.Logger
+}
+
+// Wrap the RSC client in the cloud cluster API.
+func Wrap(client *polaris.Client) API {
+	return API{
+		client: client.GQL,
+		log:    client.GQL.Log(),
+	}
+}
 
 type CloudCluster struct {
 	ID             uuid.UUID
@@ -54,8 +71,12 @@ type CloudCluster struct {
 func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAwsClusterInput, useLatestCdmVersion bool) (cluster CloudCluster, err error) {
 	a.log.Print(log.Trace)
 
+	// Temporary client to drop the need for cross-client importing
+	// This will be refactored out when we have agreed on a solution.
+	awsClient := aws.NewAPI(a.client)
+
 	// Ensure account exists and has Server and Apps feature
-	account, err := a.AccountByID(ctx, core.FeatureAll, input.CloudAccountID)
+	account, err := awsClient.AccountByID(ctx, core.FeatureAll, input.CloudAccountID)
 	if err != nil {
 		return CloudCluster{}, err
 	}
@@ -64,8 +85,8 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 	}
 
 	// validate region in input
-	inputRegion := aws.RegionFromName(input.Region)
-	if inputRegion == aws.RegionUnknown {
+	inputRegion := gqlaws.RegionFromName(input.Region)
+	if inputRegion == gqlaws.RegionUnknown {
 		return CloudCluster{}, fmt.Errorf("unknown region: %s", input.Region)
 	}
 
