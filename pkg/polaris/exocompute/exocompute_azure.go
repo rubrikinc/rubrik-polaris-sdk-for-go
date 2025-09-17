@@ -34,15 +34,21 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+// AzureConfiguration holds a single Azure exocompute configuration.
+type AzureConfiguration struct {
+	exocompute.AzureConfiguration
+	CloudAccountID uuid.UUID
+}
+
 // AzureConfigurationByID returns the Azure exocompute configuration with the
 // specified ID. If a configuration with the specified ID isn't found,
 // graphql.ErrNotFound is returned.
-func (a API) AzureConfigurationByID(ctx context.Context, configID uuid.UUID) (exocompute.AzureConfiguration, error) {
+func (a API) AzureConfigurationByID(ctx context.Context, configID uuid.UUID) (AzureConfiguration, error) {
 	a.log.Print(log.Trace)
 
 	configs, err := a.AzureConfigurations(ctx)
 	if err != nil {
-		return exocompute.AzureConfiguration{}, err
+		return AzureConfiguration{}, err
 	}
 	for _, config := range configs {
 		if config.ID == configID {
@@ -50,15 +56,15 @@ func (a API) AzureConfigurationByID(ctx context.Context, configID uuid.UUID) (ex
 		}
 	}
 
-	return exocompute.AzureConfiguration{}, fmt.Errorf("exocompute configuration %s %w", configID, graphql.ErrNotFound)
+	return AzureConfiguration{}, fmt.Errorf("exocompute configuration %s %w", configID, graphql.ErrNotFound)
 }
 
 // AzureConfigurationsByCloudAccountID returns all Azure exocompute
 // configurations for the cloud account with the specified ID.
-func (a API) AzureConfigurationsByCloudAccountID(ctx context.Context, cloudAccountID uuid.UUID) ([]exocompute.AzureConfiguration, error) {
+func (a API) AzureConfigurationsByCloudAccountID(ctx context.Context, cloudAccountID uuid.UUID) ([]AzureConfiguration, error) {
 	a.log.Print(log.Trace)
 
-	var configs []exocompute.AzureConfiguration
+	var configs []AzureConfiguration
 	configsForAccounts, err := exocompute.ListConfigurations(ctx, a.client, exocompute.AzureConfigurationsFilter{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get exocompute configurations: %s", err)
@@ -67,14 +73,19 @@ func (a API) AzureConfigurationsByCloudAccountID(ctx context.Context, cloudAccou
 		return configsForAccount.CloudAccount.ID == cloudAccountID
 	})
 	if i != -1 {
-		configs = configsForAccounts[i].Configs
+		for _, config := range configsForAccounts[i].Configs {
+			configs = append(configs, AzureConfiguration{
+				CloudAccountID:     cloudAccountID,
+				AzureConfiguration: config,
+			})
+		}
 	}
 
 	return configs, nil
 }
 
 // AzureConfigurations returns all Azure exocompute configurations.
-func (a API) AzureConfigurations(ctx context.Context) ([]exocompute.AzureConfiguration, error) {
+func (a API) AzureConfigurations(ctx context.Context) ([]AzureConfiguration, error) {
 	a.log.Print(log.Trace)
 
 	configsForAccounts, err := exocompute.ListConfigurations(ctx, a.client, exocompute.AzureConfigurationsFilter{})
@@ -82,9 +93,14 @@ func (a API) AzureConfigurations(ctx context.Context) ([]exocompute.AzureConfigu
 		return nil, fmt.Errorf("failed to get exocompute configurations: %s", err)
 	}
 
-	var configs []exocompute.AzureConfiguration
+	var configs []AzureConfiguration
 	for _, configsForAccount := range configsForAccounts {
-		configs = append(configs, configsForAccount.Configs...)
+		for _, config := range configsForAccount.Configs {
+			configs = append(configs, AzureConfiguration{
+				CloudAccountID:     configsForAccount.CloudAccount.ID,
+				AzureConfiguration: config,
+			})
+		}
 	}
 
 	return configs, nil
