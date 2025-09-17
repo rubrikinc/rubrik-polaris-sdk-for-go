@@ -62,4 +62,12 @@ func main() {
 			fmt.Println(flag.Name)
 		}
 	}
+
+	// Fetch single feature flag.
+	featureFlag, err := core.Wrap(client.GQL).FeatureFlag(ctx, "GPS_DASH_V2_ENABLED")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Feature flag %s is %v\n", featureFlag.Name, featureFlag.Enabled)
 }

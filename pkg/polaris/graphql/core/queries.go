@@ -41,6 +41,14 @@ var deploymentVersionQuery = `query SdkGolangDeploymentVersion {
     deploymentVersion
 }`
 
+// featureFlag GraphQL query
+var featureFlagQuery = `query SdkGolangFeatureFlag($flagName: FeatureFlagName!) {
+  featureFlag(flagName: $flagName, entityType: ACCOUNT, entityContext: []) {
+    name
+    variant
+  }
+}`
+
 // featureFlagAll GraphQL query
 var featureFlagAllQuery = `query SdkGolangFeatureFlagAll {
     result: featureFlagAll(entityType: ACCOUNT, entityContext: []) {
