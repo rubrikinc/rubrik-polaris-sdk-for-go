@@ -96,6 +96,83 @@ var allClustersConnectionQuery = `query SdkGolangAllClustersConnection(
   }
 }`
 
+// awsCcCdmVersions GraphQL query
+var awsCcCdmVersionsQuery = `query SdkGolangAwsCcCdmVersions($cloudAccountID: String, $region: String) {
+  result: allAwsCdmVersions(
+    input: { cloudAccountId: $cloudAccountID, region: $region }
+  ) {
+    version
+    isLatest
+    productCodes
+    supportedInstanceTypes
+  }
+}`
+
+// awsCcInstanceProfile GraphQL query
+var awsCcInstanceProfileQuery = `query SdkGolangAwsCcInstanceProfile($cloudAccountId: String!, $awsRegion: String!) {
+  result: allAwsInstanceProfileNames(
+    cloudAccountId: $cloudAccountId
+    region: $awsRegion
+  )
+}`
+
+// awsCcRegion GraphQL query
+var awsCcRegionQuery = `query SdkGolangAwsCcRegion($cloudAccountId: String!) {
+  result: allAwsRegions(cloudAccountId: $cloudAccountId)
+}`
+
+// awsCcSecurityGroups GraphQL query
+var awsCcSecurityGroupsQuery = `query SdkGolangAwsCcSecurityGroups(
+  $cloudAccountId: UUID!
+  $awsRegion: AwsRegion!
+  $awsVpc: String!
+) {
+  result: awsCloudAccountListSecurityGroups(
+    cloudAccountUuid: $cloudAccountId
+    region: $awsRegion
+    vpcID: $awsVpc
+    feature: SERVERS_AND_APPS
+  ) {
+    result {
+      securityGroupId
+      name
+    }
+  }
+}`
+
+// awsCcSubnet GraphQL query
+var awsCcSubnetQuery = `query SdkGolangAwsCcSubnet(
+  $cloudAccountId: UUID!
+  $awsRegion: AwsRegion!
+  $awsVpc: String!
+) {
+  result: awsCloudAccountListSubnets(
+    cloudAccountUuid: $cloudAccountId
+    region: $awsRegion
+    vpcID: $awsVpc
+    feature: SERVERS_AND_APPS
+  ) {
+    result {
+      subnetId
+      name
+    }
+  }
+}`
+
+// awsCcVpc GraphQL query
+var awsCcVpcQuery = `query SdkGolangAwsCcVpc($cloudAccountId: UUID!, $awsRegion: AwsRegion!) {
+  result: awsCloudAccountListVpcs(
+    cloudAccountUuid: $cloudAccountId
+    region: $awsRegion
+    feature: SERVERS_AND_APPS
+  ) {
+    result {
+      vpcId
+      name
+    }
+  }
+}`
+
 // cloudClusterInstanceProperties GraphQL query
 var cloudClusterInstancePropertiesQuery = `query SdkGolangCloudClusterInstanceProperties($input: InstancePropertiesReq!) {
   result: cloudClusterInstanceProperties(input: $input) {
@@ -154,25 +231,48 @@ var clusterSettingsQuery = `query SdkGolangClusterSettings($id: UUID!) {
   }
 }`
 
-// updateClusterNtpServers GraphQL query
-var updateClusterNtpServersQuery = `mutation SdkGolangUpdateClusterNtpServers($input: UpdateClusterNtpServersInput!) {
-  result: updateClusterNtpServers(input: $input) {
+// createAwsCloudCluster GraphQL query
+var createAwsCloudClusterQuery = `mutation SdkGolangCreateAwsCloudCluster($input: CreateAwsClusterInput!) {
+  result: createAwsCluster(input: $input) {
+    message
     success
+    jobId
   }
 }`
 
-// updateClusterSettings GraphQL query
-var updateClusterSettingsQuery = `mutation SdkGolangUpdateClusterSettings($input: UpdateClusterSettingsInput!) {
-  result: updateClusterSettings(input: $input) {
-    geolocation {
-      address
+// removeAwsCcCluster GraphQL query
+var removeAwsCcClusterQuery = `mutation SdkGolangRemoveAwsCcCluster(
+  $clusterUuid: UUID!
+  $expireInDays: Long
+  $isForce: Boolean!
+) {
+  result: removeCdmCluster(
+    clusterUUID: $clusterUuid
+    expireInDays: $expireInDays
+    isForce: $isForce
+  )
+}`
+
+// updateClusterNtpServers GraphQL query
+var updateClusterNtpServersQuery = `mutation SdkGolangUpdateClusterNtpServers(
+  $id: String!
+  $server: String!
+  $keyId: Int!
+  $key: String!
+  $keyType: String!
+) {
+  result: updateClusterNtpServers(
+    input: {
+      id: $id
+      ntpServerConfigs: [
+        {
+          server: $server
+          symmetricKey: { keyId: $keyId, key: $key, keyType: $keyType }
+        }
+      ]
     }
-    clusterUuid
-    name
-    timezone {
-      timezone
-    }
-    version
+  ) {
+    success
   }
 }`
 
@@ -182,5 +282,13 @@ var updateCusterDnsAndSearchDomainsQuery = `mutation SdkGolangUpdateCusterDnsAnd
 ) {
   result: updateDnsServersAndSearchDomains(input: $input) {
     success
+  }
+}`
+
+// validateAwsClusterCreateRequest GraphQL query
+var validateAwsClusterCreateRequestQuery = `query SdkGolangValidateAwsClusterCreateRequest($input: CreateAwsClusterInput!) {
+  result: validateCreateAwsClusterInput(input: $input) {
+    message
+    isSuccessful
   }
 }`

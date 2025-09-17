@@ -1,4 +1,4 @@
-// Copyright 2021 Rubrik, Inc.
+// Copyright 2025 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -79,14 +79,15 @@ func main() {
 	for _, feature := range account.Features {
 		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Feature, feature.Regions, feature.Status)
 	}
+
 	// Create the Cloud Cluster
-	clusterID, err := awsClient.CreateCloudCluster(ctx, gqlaws.CreateAwsClusterInput{
+	clusterID, err := awsClient.CreateCloudCluster(ctx, cloudcluster.CreateAwsClusterInput{
 		CloudAccountID:       account.ID,
 		Region:               gqlaws.RegionUsWest2.Name(),
 		IsEsType:             true,
 		UsePlacementGroups:   true,
 		KeepClusterOnFailure: false,
-		ClusterConfig: gqlaws.AwsClusterConfig{
+		ClusterConfig: cloudcluster.AwsClusterConfig{
 			ClusterName:      "cces-cluster",
 			UserEmail:        "hello@domain.com",
 			AdminPassword:    "RubrikGoForward!",
@@ -104,9 +105,9 @@ func main() {
 		Validations: []cloudcluster.ClusterCreateValidations{
 			cloudcluster.AllChecks,
 		},
-		VmConfig: gqlaws.AwsVmConfig{
+		VmConfig: cloudcluster.AwsVmConfig{
 			InstanceProfileName: "rubrik-cces-profile",
-			InstanceType:        gqlaws.AwsInstanceTypeM6I_2XLarge,
+			InstanceType:        cloudcluster.AwsInstanceTypeM6I_2XLarge,
 			SecurityGroups:      []string{"sg-1234567890"},
 			Subnet:              "subnet-1234567890",
 			VmType:              cloudcluster.CCVmConfigDense,

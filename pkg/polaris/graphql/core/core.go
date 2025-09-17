@@ -72,12 +72,12 @@ const (
 	PermissionGroupCustomerManagedCluster PermissionGroup = "CUSTOMER_MANAGED_BASIC"
 )
 
-// SortOrderEnum represents the valid sort order values.
-type SortOrderEnum string
+// SortOrder represents the valid sort order values.
+type SortOrder string
 
 const (
-	SortOrderAsc  SortOrderEnum = "ASC"
-	SortOrderDesc SortOrderEnum = "DESC"
+	SortOrderAsc  SortOrder = "ASC"
+	SortOrderDesc SortOrder = "DESC"
 )
 
 // Feature represents a Polaris cloud account feature with a set of permission
@@ -572,7 +572,7 @@ func (a API) FeatureFlag(ctx context.Context, name string) (FeatureFlag, error) 
 }
 
 // FormatTimestamp converts a time.Time to RFC3339 format with milliseconds and Z suffix.
-func FormatTimestampToRFC3339(t time.Time) string {
+func FormatTimestamp(t time.Time) string {
 	return t.UTC().Format("2006-01-02T15:04:05.000Z")
 
 }

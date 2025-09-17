@@ -69,61 +69,61 @@ const (
 	GCPClusterNameLengthCheck  ClusterCreateValidations = "GCP_CLUSTER_NAME_LENGTH_CHECK"
 )
 
-type ClusterProductEnum string
+type ClusterProduct string
 
 const (
-	CDM          ClusterProductEnum = "CDM"
-	CLOUD_DIRECT ClusterProductEnum = "CLOUD_DIRECT"
-	DATOS        ClusterProductEnum = "DATOS"
-	POLARIS      ClusterProductEnum = "POLARIS"
+	CDM          ClusterProduct = "CDM"
+	CLOUD_DIRECT ClusterProduct = "CLOUD_DIRECT"
+	DATOS        ClusterProduct = "DATOS"
+	POLARIS      ClusterProduct = "POLARIS"
 )
 
-type ClusterProductTypeEnum string
+type ClusterProductType string
 
 const (
-	CLOUD      ClusterProductTypeEnum = "Cloud"
-	RSC        ClusterProductTypeEnum = "Polaris"
-	EXOCOMPUTE ClusterProductTypeEnum = "ExoCompute"
-	ONPREM     ClusterProductTypeEnum = "OnPrem"
-	ROBO       ClusterProductTypeEnum = "Robo"
-	UNKNOWN    ClusterProductTypeEnum = "Unknown"
+	CLOUD      ClusterProductType = "Cloud"
+	RSC        ClusterProductType = "Polaris"
+	EXOCOMPUTE ClusterProductType = "ExoCompute"
+	ONPREM     ClusterProductType = "OnPrem"
+	ROBO       ClusterProductType = "Robo"
+	UNKNOWN    ClusterProductType = "Unknown"
 )
 
-type ClusterStatusEnum string
+type ClusterStatus string
 
 const (
-	ClusterConnected    ClusterStatusEnum = "Connected"
-	ClusterDisconnected ClusterStatusEnum = "Disconnected"
-	ClusterInitializing ClusterStatusEnum = "Initializing"
+	ClusterConnected    ClusterStatus = "Connected"
+	ClusterDisconnected ClusterStatus = "Disconnected"
+	ClusterInitializing ClusterStatus = "Initializing"
 )
 
-type ClusterSystemStatusEnum string
+type ClusterSystemStatus string
 
 const (
-	ClusterSystemStatusOK      ClusterSystemStatusEnum = "OK"
-	ClusterSystemStatusWARNING ClusterSystemStatusEnum = "WARNING"
-	ClusterSystemStatusFATAL   ClusterSystemStatusEnum = "FATAL"
+	ClusterSystemStatusOK      ClusterSystemStatus = "OK"
+	ClusterSystemStatusWARNING ClusterSystemStatus = "WARNING"
+	ClusterSystemStatusFATAL   ClusterSystemStatus = "FATAL"
 )
 
-type ClusterFilterInput struct {
-	ID              []string                  `json:"id"`
-	Name            []string                  `json:"name"`
-	Type            []ClusterProductTypeEnum  `json:"type"`
-	ConnectionState []ClusterStatusEnum       `json:"connectionState"`
-	SystemStatus    []ClusterSystemStatusEnum `json:"systemStatus"`
-	ProductType     []ClusterProductEnum      `json:"productType"`
+type ClusterFilter struct {
+	ID              []string              `json:"id"`
+	Name            []string              `json:"name"`
+	Type            []ClusterProductType  `json:"type"`
+	ConnectionState []ClusterStatus       `json:"connectionState"`
+	SystemStatus    []ClusterSystemStatus `json:"systemStatus"`
+	ProductType     []ClusterProduct      `json:"productType"`
 }
 
 // ClusterSortByEnum represents the valid sort by values.
-type ClusterSortByEnum string
+type ClusterSortBy string
 
 const (
-	SortByEstimatedRunway  ClusterSortByEnum = "ESTIMATED_RUNWAY"
-	SortByInstalledVersion ClusterSortByEnum = "INSTALLED_VERSION"
-	SortByClusterName      ClusterSortByEnum = "ClusterName"
-	SortByClusterType      ClusterSortByEnum = "ClusterType"
-	SortByClusterLocation  ClusterSortByEnum = "CLUSTER_LOCATION"
-	SortByRegisteredAt     ClusterSortByEnum = "RegisteredAt"
+	SortByEstimatedRunway  ClusterSortBy = "ESTIMATED_RUNWAY"
+	SortByInstalledVersion ClusterSortBy = "INSTALLED_VERSION"
+	SortByClusterName      ClusterSortBy = "ClusterName"
+	SortByClusterType      ClusterSortBy = "ClusterType"
+	SortByClusterLocation  ClusterSortBy = "CLUSTER_LOCATION"
+	SortByRegisteredAt     ClusterSortBy = "RegisteredAt"
 )
 
 // VmConfigType represents the valid VM config types.
@@ -418,22 +418,22 @@ type CloudCluster struct {
 	ProvisionInfo CloudClusterProvisionInfo  `json:"ccprovisionInfo"`
 	CloudInfo     CloudClusterCloudInfo      `json:"cloudInfo,omitempty"`
 	ClusterNodes  CloudClusterNodeConnection `json:"clusterNodeConnection"`
-	ProductType   ClusterProductEnum         `json:"productType"`
+	ProductType   ClusterProduct             `json:"productType"`
 	Timezone      ClusterTimezoneType        `json:"timezone"`
 	Version       string                     `json:"version"`
 }
 
 // AllCloudClusters returns all cloud clusters.
-func (a API) AllCloudClusters(ctx context.Context, first int, after string, filter ClusterFilterInput, sortBy ClusterSortByEnum, sortOrder core.SortOrderEnum) ([]CloudCluster, error) {
+func (a API) AllCloudClusters(ctx context.Context, first int, after string, filter ClusterFilter, sortBy ClusterSortBy, sortOrder core.SortOrder) ([]CloudCluster, error) {
 	a.log.Print(log.Trace)
 
 	query := allClustersConnectionQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		First     int                `json:"first"`
-		After     string             `json:"after,omitempty"`
-		Filter    ClusterFilterInput `json:"filter"`
-		SortBy    ClusterSortByEnum  `json:"sortBy"`
-		SortOrder core.SortOrderEnum `json:"sortOrder"`
+		First     int            `json:"first"`
+		After     string         `json:"after,omitempty"`
+		Filter    ClusterFilter  `json:"filter"`
+		SortBy    ClusterSortBy  `json:"sortBy"`
+		SortOrder core.SortOrder `json:"sortOrder"`
 	}{First: first, After: after, Filter: filter, SortBy: sortBy, SortOrder: sortOrder})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
@@ -479,13 +479,13 @@ type CloudClusterInstancePropertiesRequest struct {
 }
 
 // CloudClusterInstanceProperties returns the cloud cluster instance properties.
-func (a API) CloudClusterInstanceProperties(ctx context.Context, request CloudClusterInstancePropertiesRequest) (CloudClusterInstanceProperties, error) {
+func (a API) CloudClusterInstanceProperties(ctx context.Context, input CloudClusterInstancePropertiesRequest) (CloudClusterInstanceProperties, error) {
 	a.log.Print(log.Trace)
 
 	query := cloudClusterInstancePropertiesQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Input CloudClusterInstancePropertiesRequest `json:"input"`
-	}{Input: request})
+	}{Input: input})
 
 	if err != nil {
 		return CloudClusterInstanceProperties{}, graphql.RequestError(query, err)
@@ -553,13 +553,14 @@ type GetClusterNtpServersInput struct {
 }
 
 // CloudClusterNtpServers returns the cloud cluster NTP servers.
-func (a API) CloudClusterNtpServers(ctx context.Context, clusterID uuid.UUID) ([]CloudClusterNtpServers, error) {
+func (a API) CloudClusterNtpServers(ctx context.Context, clusterID uuid.UUID, ntpServerConfigs []CloudClusterNtpServers) ([]CloudClusterNtpServers, error) {
 	a.log.Print(log.Trace)
 
 	query := clusterNtpServersQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Input GetClusterNtpServersInput `json:"input"`
-	}{Input: GetClusterNtpServersInput{ClusterID: clusterID}})
+		ClusterID        string                   `json:"id"`
+		NtpServerConfigs []CloudClusterNtpServers `json:"ntpServerConfigs"`
+	}{ClusterID: clusterID.String(), NtpServerConfigs: ntpServerConfigs})
 
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
@@ -587,13 +588,13 @@ type IpmiInfo struct {
 
 // CloudClusterSettings represents the cloud cluster settings.
 type CloudClusterSettings struct {
-	ID          uuid.UUID         `json:"id"`
-	Name        string            `json:"name"`
-	Version     string            `json:"version"`
-	Status      ClusterStatusEnum `json:"status"`
-	GeoLocation string            `json:"geoLocation"`
-	Timezone    string            `json:"timezone"`
-	IpmiInfo    IpmiInfo          `json:"ipmiInfo,omitempty"`
+	ID          uuid.UUID     `json:"id"`
+	Name        string        `json:"name"`
+	Version     string        `json:"version"`
+	Status      ClusterStatus `json:"status"`
+	GeoLocation string        `json:"geoLocation"`
+	Timezone    string        `json:"timezone"`
+	IpmiInfo    IpmiInfo      `json:"ipmiInfo,omitempty"`
 }
 
 // CloudClusterSettings returns the cloud cluster settings.
@@ -604,54 +605,6 @@ func (a API) CloudClusterSettings(ctx context.Context, clusterID uuid.UUID) (Clo
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ClusterID uuid.UUID `json:"id"`
 	}{ClusterID: clusterID})
-
-	if err != nil {
-		return CloudClusterSettings{}, graphql.RequestError(query, err)
-	}
-
-	var payload struct {
-		Data struct {
-			Result CloudClusterSettings `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return CloudClusterSettings{}, graphql.UnmarshalError(query, err)
-	}
-
-	return payload.Data.Result, nil
-}
-
-type GeoLocation struct {
-	Address string `json:"address"`
-}
-
-type Timezone struct {
-	Timezone ClusterTimezoneType `json:"timezone"`
-}
-
-type ClusterUpdate struct {
-	AcceptedEulaVersion string      `json:"acceptedEulaVersion,omitempty"`
-	Geolocation         GeoLocation `json:"geolocation"`
-	Name                string      `json:"name"`
-	Timezone            Timezone    `json:"timezone"`
-}
-
-// UpdateClusterSettingsInput represents the input for updating the cloud cluster settings.
-type UpdateClusterSettingsInput struct {
-	ID    uuid.UUID     `json:"id"`
-	Input ClusterUpdate `json:"input"`
-}
-
-// UpdateClusterSettings updates the cloud cluster settings.
-func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSettingsInput) (CloudClusterSettings, error) {
-	a.log.Print(log.Trace)
-
-	query := updateClusterSettingsQuery
-	buf, err := a.GQL.Request(ctx, query, struct {
-		ID            string                     `json:"id"`
-		ClusterUUID   uuid.UUID                  `json:"clusterUuid"`
-		ClusterUpdate UpdateClusterSettingsInput `json:"clusterUpdate"`
-	}{ID: "me", ClusterUUID: input.ID, ClusterUpdate: input})
 
 	if err != nil {
 		return CloudClusterSettings{}, graphql.RequestError(query, err)

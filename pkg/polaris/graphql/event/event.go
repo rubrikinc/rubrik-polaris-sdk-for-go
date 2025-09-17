@@ -1,6 +1,6 @@
-//go:generate go run ../queries_gen.go events
+//go:generate go run ../queries_gen.go event
 
-// Copyright 2021 Rubrik, Inc.
+// Copyright 2025 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -20,9 +20,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package core provides a low-level interface to core GraphQL queries provided
-// by the Polaris platform. E.g., task chains and enum definitions.
-package events
+// Package event provides a low-level interface to the events GraphQL queries provided by the Polaris platform.
+package event
 
 import (
 	"context"
@@ -593,7 +592,7 @@ type EventSeries struct {
 }
 
 // EventSeries returns the event series matching the specified filter.
-func (a API) EventSeries(ctx context.Context, after string, filters EventSeriesFilter, first int, sortBy EventSeriesSortField, sortOrder core.SortOrderEnum) ([]EventSeries, error) {
+func (a API) EventSeries(ctx context.Context, after string, filters EventSeriesFilter, first int, sortBy EventSeriesSortField, sortOrder core.SortOrder) ([]EventSeries, error) {
 	a.log.Print(log.Trace)
 
 	query := eventSeriesQuery
@@ -602,7 +601,7 @@ func (a API) EventSeries(ctx context.Context, after string, filters EventSeriesF
 		Filters   EventSeriesFilter    `json:"filters,omitempty"`
 		First     int                  `json:"first"`
 		SortBy    EventSeriesSortField `json:"sortBy"`
-		SortOrder core.SortOrderEnum   `json:"sortOrder"`
+		SortOrder core.SortOrder       `json:"sortOrder"`
 	}{After: after, Filters: filters, First: first, SortBy: sortBy, SortOrder: sortOrder})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
@@ -629,6 +628,7 @@ func (a API) EventSeries(ctx context.Context, after string, filters EventSeriesF
 	return events, nil
 }
 
+// ActivitySeries represents an activity series.
 type ActivitySeries struct {
 	ID                   int                `json:"id"`
 	FID                  string             `json:"fid"`
@@ -668,11 +668,12 @@ type ActivitySeries struct {
 	} `json:"activityConnection"`
 }
 
+// ActivitySeries returns the activity series with the specified activity series ID.
 func (a API) ActivitySeries(ctx context.Context, activitySeriesID string, clusterUUID string) (EventSeries, error) {
 	a.log.Print(log.Trace)
 
 	query := activitySeriesQuery
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
 		ActivitySeriesID string `json:"activitySeriesId"`
 		ClusterUUID      string `json:"clusterUuid,omitempty"`
 	}{ActivitySeriesID: activitySeriesID, ClusterUUID: clusterUUID})

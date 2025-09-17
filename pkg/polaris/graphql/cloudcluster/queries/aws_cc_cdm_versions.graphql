@@ -1,0 +1,10 @@
+query RubrikPolarisSDKRequest($cloudAccountID: String, $region: String) {
+  result: allAwsCdmVersions(
+    input: { cloudAccountId: $cloudAccountID, region: $region }
+  ) {
+    version
+    isLatest
+    productCodes
+    supportedInstanceTypes
+  }
+}

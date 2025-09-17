@@ -1,4 +1,24 @@
-package aws
+// Copyright 2025 Rubrik, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
+package cloudcluster
 
 import (
 	"context"
@@ -9,7 +29,24 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
+)
+
+// AwsInstanceType represents the instance types for AWS Cloud Cluster.
+type AwsCCInstanceType string
+
+const (
+	AwsInstanceTypeUnspecified AwsCCInstanceType = "AWS_TYPE_UNSPECIFIED"
+	AwsInstanceTypeM5_4XLarge  AwsCCInstanceType = "M5_4XLARGE"
+	AwsInstanceTypeM6I_2XLarge AwsCCInstanceType = "M6I_2XLARGE"
+	AwsInstanceTypeM6I_4XLarge AwsCCInstanceType = "M6I_4XLARGE"
+	AwsInstanceTypeM6I_8XLarge AwsCCInstanceType = "M6I_8XLARGE"
+	AwsInstanceTypeR6I_4XLarge AwsCCInstanceType = "R6I_4XLARGE"
+	AwsInstanceTypeM6A_2XLarge AwsCCInstanceType = "M6A_2XLARGE"
+	AwsInstanceTypeM6A_4XLarge AwsCCInstanceType = "M6A_4XLARGE"
+	AwsInstanceTypeM6A_8XLarge AwsCCInstanceType = "M6A_8XLARGE"
+	AwsInstanceTypeR6A_4XLarge AwsCCInstanceType = "R6A_4XLARGE"
 )
 
 // AwsCdmVersion represents the CDM version for AWS Cloud Cluster.
@@ -20,25 +57,16 @@ type AwsCdmVersion struct {
 	SupportedInstanceTypes []AwsCCInstanceType `json:"supportedInstanceTypes"`
 }
 
-type AwsCdmVersionRequest struct {
-	CloudAccountID uuid.UUID `json:"cloudAccountId"`
-	Region         string    `json:"region"`
-}
-
 var uuidRegex = regexp.MustCompile(`([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`)
 
 // AllAwsCdmVersions returns all the available CDM versions for the specified
 // cloud account.
-func (a API) AllAwsCdmVersions(ctx context.Context, cloudAccountID uuid.UUID, region Region) ([]AwsCdmVersion, error) {
-
+func (a API) AllAwsCdmVersions(ctx context.Context, cloudAccountID uuid.UUID, region aws.Region) ([]AwsCdmVersion, error) {
 	query := awsCcCdmVersionsQuery
-	input := AwsCdmVersionRequest{
-		CloudAccountID: cloudAccountID,
-		Region:         region.Name(),
-	}
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Input AwsCdmVersionRequest `json:"input"`
-	}{Input: input})
+		CloudAccountID string         `json:"cloudAccountId"`
+		Region         aws.RegionEnum `json:"input"`
+	}{CloudAccountID: cloudAccountID.String(), Region: region.ToRegionEnum()})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
@@ -61,17 +89,12 @@ type AwsCloudAccountListVpcs struct {
 	Name  string `json:"name"`
 }
 
-type AwsCloudAccountVpcResult struct {
-	Result []AwsCloudAccountListVpcs `json:"result"`
-}
-
 // AwsCloudAccountListVpcs returns all the available VPCs for the specified cloud account.
-func (a API) AwsCloudAccountListVpcs(ctx context.Context, cloudAccountID uuid.UUID, region Region) ([]AwsCloudAccountListVpcs, error) {
-
+func (a API) AwsCloudAccountListVpcs(ctx context.Context, cloudAccountID uuid.UUID, region aws.Region) ([]AwsCloudAccountListVpcs, error) {
 	query := awsCcVpcQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID uuid.UUID  `json:"cloudAccountId"`
-		AwsRegion      RegionEnum `json:"awsRegion"`
+		CloudAccountID uuid.UUID      `json:"cloudAccountId"`
+		AwsRegion      aws.RegionEnum `json:"awsRegion"`
 	}{CloudAccountID: cloudAccountID, AwsRegion: region.ToRegionEnum()})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
@@ -79,7 +102,9 @@ func (a API) AwsCloudAccountListVpcs(ctx context.Context, cloudAccountID uuid.UU
 
 	var payload struct {
 		Data struct {
-			Result AwsCloudAccountVpcResult `json:"result"`
+			Result struct {
+				Result []AwsCloudAccountListVpcs `json:"result"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
@@ -90,7 +115,7 @@ func (a API) AwsCloudAccountListVpcs(ctx context.Context, cloudAccountID uuid.UU
 }
 
 // AwsCloudAccountRegions returns all the available regions for the specified cloud account.
-func (a API) AwsCloudAccountRegions(ctx context.Context, cloudAccountID uuid.UUID) (map[Region]struct{}, error) {
+func (a API) AwsCloudAccountRegions(ctx context.Context, cloudAccountID uuid.UUID) ([]aws.Region, error) {
 	query := awsCcRegionQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		CloudAccountID uuid.UUID `json:"cloudAccountId"`
@@ -108,32 +133,28 @@ func (a API) AwsCloudAccountRegions(ctx context.Context, cloudAccountID uuid.UUI
 		return nil, graphql.UnmarshalError(query, err)
 	}
 
-	regionMap := make(map[Region]struct{})
+	regions := make([]aws.Region, 0, len(payload.Data.Result))
 	for _, regionStr := range payload.Data.Result {
-		region := RegionFromNativeRegionEnum(regionStr)
-		regionMap[region] = struct{}{}
+		region := aws.RegionFromNativeRegionEnum(regionStr)
+		regions = append(regions, region)
 	}
 
-	return regionMap, nil
+	return regions, nil
 }
 
-// AwsCloudAccountSecurityGroups represents the security groups for AWS Cloud Cluster.
-type AwsCloudAccountSecurityGroups struct {
+// AwsCloudAccountSecurityGroup represents the security groups for AWS Cloud Cluster.
+type AwsCloudAccountSecurityGroup struct {
 	SecurityGroupID string `json:"securityGroupId"`
 	Name            string `json:"name"`
 }
 
-type AwsCloudAccountSecurityGroupsResult struct {
-	Result []AwsCloudAccountSecurityGroups `json:"result"`
-}
-
 // AwsCloudAccountListSecurityGroups returns all the available security groups for the specified cloud account.
-func (a API) AwsCloudAccountListSecurityGroups(ctx context.Context, cloudAccountID uuid.UUID, region Region, vpcID string) ([]AwsCloudAccountSecurityGroups, error) {
+func (a API) AwsCloudAccountListSecurityGroups(ctx context.Context, cloudAccountID uuid.UUID, region aws.Region, vpcID string) ([]AwsCloudAccountSecurityGroup, error) {
 	query := awsCcSecurityGroupsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID uuid.UUID  `json:"cloudAccountId"`
-		AwsRegion      RegionEnum `json:"awsRegion"`
-		AwsVpc         string     `json:"awsVpc"`
+		CloudAccountID uuid.UUID      `json:"cloudAccountId"`
+		AwsRegion      aws.RegionEnum `json:"awsRegion"`
+		AwsVpc         string         `json:"awsVpc"`
 	}{CloudAccountID: cloudAccountID, AwsRegion: region.ToRegionEnum(), AwsVpc: vpcID})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
@@ -141,7 +162,9 @@ func (a API) AwsCloudAccountListSecurityGroups(ctx context.Context, cloudAccount
 
 	var payload struct {
 		Data struct {
-			Result AwsCloudAccountSecurityGroupsResult `json:"result"`
+			Result struct {
+				Result []AwsCloudAccountSecurityGroup `json:"result"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
@@ -157,17 +180,13 @@ type AwsCloudAccountSubnets struct {
 	Name     string `json:"name"`
 }
 
-type AwsCloudAccountSubnetsResult struct {
-	Result []AwsCloudAccountSubnets `json:"result"`
-}
-
 // AwsCloudAccountListSubnets returns all the available subnets for the specified cloud account.
-func (a API) AwsCloudAccountListSubnets(ctx context.Context, cloudAccountID uuid.UUID, region Region, vpcID string) ([]AwsCloudAccountSubnets, error) {
+func (a API) AwsCloudAccountListSubnets(ctx context.Context, cloudAccountID uuid.UUID, region aws.Region, vpcID string) ([]AwsCloudAccountSubnets, error) {
 	query := awsCcSubnetQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID uuid.UUID  `json:"cloudAccountId"`
-		AwsRegion      RegionEnum `json:"awsRegion"`
-		AwsVpc         string     `json:"awsVpc"`
+		CloudAccountID uuid.UUID      `json:"cloudAccountId"`
+		AwsRegion      aws.RegionEnum `json:"awsRegion"`
+		AwsVpc         string         `json:"awsVpc"`
 	}{CloudAccountID: cloudAccountID, AwsRegion: region.ToRegionEnum(), AwsVpc: vpcID})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
@@ -175,7 +194,9 @@ func (a API) AwsCloudAccountListSubnets(ctx context.Context, cloudAccountID uuid
 
 	var payload struct {
 		Data struct {
-			Result AwsCloudAccountSubnetsResult `json:"result"`
+			Result struct {
+				Result []AwsCloudAccountSubnets `json:"result"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
@@ -186,7 +207,7 @@ func (a API) AwsCloudAccountListSubnets(ctx context.Context, cloudAccountID uuid
 }
 
 // AllAwsInstanceProfileNames returns all the available instance profiles for the specified cloud account.
-func (a API) AllAwsInstanceProfileNames(ctx context.Context, cloudAccountID uuid.UUID, region Region) ([]string, error) {
+func (a API) AllAwsInstanceProfileNames(ctx context.Context, cloudAccountID uuid.UUID, region aws.Region) ([]string, error) {
 	query := awsCcInstanceProfileQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		CloudAccountID uuid.UUID `json:"cloudAccountId"`
@@ -210,37 +231,37 @@ func (a API) AllAwsInstanceProfileNames(ctx context.Context, cloudAccountID uuid
 }
 
 type AwsVmConfig struct {
-	CdmProduct          string                    `json:"cdmProduct"`
-	CdmVersion          string                    `json:"cdmVersion"`
-	InstanceProfileName string                    `json:"instanceProfileName"`
-	InstanceType        AwsCCInstanceType         `json:"instanceType"`
-	SecurityGroups      []string                  `json:"securityGroups"`
-	Subnet              string                    `json:"subnet"`
-	VmType              cloudcluster.VmConfigType `json:"vmType"`
-	Vpc                 string                    `json:"vpc"`
+	CdmProduct          string            `json:"cdmProduct"`
+	CdmVersion          string            `json:"cdmVersion"`
+	InstanceProfileName string            `json:"instanceProfileName"`
+	InstanceType        AwsCCInstanceType `json:"instanceType"`
+	SecurityGroups      []string          `json:"securityGroups"`
+	Subnet              string            `json:"subnet"`
+	VmType              VmConfigType      `json:"vmType"`
+	Vpc                 string            `json:"vpc"`
 }
 
 type AwsClusterConfig struct {
-	ClusterName      string                        `json:"clusterName"`
-	UserEmail        string                        `json:"userEmail"`
-	AdminPassword    string                        `json:"adminPassword"`
-	DnsNameServers   []string                      `json:"dnsNameServers"`
-	DnsSearchDomains []string                      `json:"dnsSearchDomains"`
-	NtpServers       []string                      `json:"ntpServers"`
-	NumNodes         int                           `json:"numNodes"`
-	AwsEsConfig      cloudcluster.AwsEsConfigInput `json:"awsEsConfig"`
+	ClusterName      string           `json:"clusterName"`
+	UserEmail        string           `json:"userEmail"`
+	AdminPassword    secret.String    `json:"adminPassword"`
+	DnsNameServers   []string         `json:"dnsNameServers"`
+	DnsSearchDomains []string         `json:"dnsSearchDomains"`
+	NtpServers       []string         `json:"ntpServers"`
+	NumNodes         int              `json:"numNodes"`
+	AwsEsConfig      AwsEsConfigInput `json:"awsEsConfig"`
 }
 
 // CreateAwsClusterInput represents the input for creating an AWS Cloud Cluster.
 type CreateAwsClusterInput struct {
-	CloudAccountID       uuid.UUID                               `json:"cloudAccountId"`
-	ClusterConfig        AwsClusterConfig                        `json:"clusterConfig"`
-	IsEsType             bool                                    `json:"isEsType"`
-	KeepClusterOnFailure bool                                    `json:"keepClusterOnFailure"`
-	Region               string                                  `json:"region"`
-	UsePlacementGroups   bool                                    `json:"usePlacementGroups"`
-	Validations          []cloudcluster.ClusterCreateValidations `json:"validations"`
-	VmConfig             AwsVmConfig                             `json:"vmConfig"`
+	CloudAccountID       uuid.UUID                  `json:"cloudAccountId"`
+	ClusterConfig        AwsClusterConfig           `json:"clusterConfig"`
+	IsEsType             bool                       `json:"isEsType"`
+	KeepClusterOnFailure bool                       `json:"keepClusterOnFailure"`
+	Region               string                     `json:"region"`
+	UsePlacementGroups   bool                       `json:"usePlacementGroups"`
+	Validations          []ClusterCreateValidations `json:"validations"`
+	VmConfig             AwsVmConfig                `json:"vmConfig"`
 }
 
 // ValidateCreateAwsClusterInput validates the aws cloud cluster create request
@@ -273,14 +294,15 @@ func (a API) ValidateCreateAwsClusterInput(ctx context.Context, input CreateAwsC
 	return nil
 }
 
-// CreateAwsCloudCluster create AWS Cloud Cluster in RSC
+// CreateAwsCloudCluster create AWS Cloud Cluster in RSC.
+// The job ID returned is the taskchain ID and not the event ID needed to check the taskchain status.
 func (a API) CreateAwsCloudCluster(ctx context.Context, input CreateAwsClusterInput) (uuid.UUID, error) {
 	query := createAwsCloudClusterQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Input CreateAwsClusterInput `json:"input"`
 	}{Input: input})
 	if err != nil {
-		return uuid.UUID{}, graphql.RequestError(query, err)
+		return uuid.Nil, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
@@ -293,12 +315,12 @@ func (a API) CreateAwsCloudCluster(ctx context.Context, input CreateAwsClusterIn
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.UUID{}, graphql.UnmarshalError(query, err)
+		return uuid.Nil, graphql.UnmarshalError(query, err)
 	}
 
 	// validate if the response is success
 	if !payload.Data.Result.Success {
-		return uuid.UUID{}, graphql.ResponseError(query, errors.New(payload.Data.Result.Message))
+		return uuid.Nil, graphql.ResponseError(query, errors.New(payload.Data.Result.Message))
 	}
 	// use regex to find the UUID in the message string
 	match := uuidRegex.FindString(payload.Data.Result.Message)
@@ -306,13 +328,13 @@ func (a API) CreateAwsCloudCluster(ctx context.Context, input CreateAwsClusterIn
 	// return job ID
 	jobID, err := uuid.Parse(match)
 	if err != nil {
-		return uuid.UUID{}, err
+		return uuid.Nil, err
 	}
 	return jobID, nil
 }
 
 // RemoveAwsCloudCluster deletes the specified AWS Cloud Cluster.
-func (a API) RemoveAwsCloudCluster(ctx context.Context, clusterID uuid.UUID, expireInDays int, isForce bool) error {
+func (a API) RemoveAwsCloudCluster(ctx context.Context, clusterID uuid.UUID, expireInDays int, isForce bool) (bool, error) {
 	query := removeAwsCcClusterQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ClusterID    uuid.UUID `json:"clusterUuid"`
@@ -321,17 +343,17 @@ func (a API) RemoveAwsCloudCluster(ctx context.Context, clusterID uuid.UUID, exp
 	}{ClusterID: clusterID, ExpireInDays: expireInDays, IsForce: isForce})
 
 	if err != nil {
-		return graphql.RequestError(query, err)
+		return false, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
 		Data struct {
-			Result struct{} `json:"result"`
+			Result bool `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return graphql.UnmarshalError(query, err)
+		return false, graphql.UnmarshalError(query, err)
 	}
 
-	return nil
+	return payload.Data.Result, nil
 }

@@ -1,5 +1,21 @@
-mutation RubrikPolarisSDKRequest($input: UpdateClusterNtpServersInput!) {
-  result: updateClusterNtpServers(input: $input) {
+mutation RubrikPolarisSDKRequest(
+  $id: String!
+  $server: String!
+  $keyId: Int!
+  $key: String!
+  $keyType: String!
+) {
+  result: updateClusterNtpServers(
+    input: {
+      id: $id
+      ntpServerConfigs: [
+        {
+          server: $server
+          symmetricKey: { keyId: $keyId, key: $key, keyType: $keyType }
+        }
+      ]
+    }
+  ) {
     success
   }
 }

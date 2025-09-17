@@ -22,7 +22,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package events
+package event
 
 // activitySeries GraphQL query
 var activitySeriesQuery = `query SdkGolangActivitySeries($activitySeriesId: UUID!, $clusterUuid: UUID) {

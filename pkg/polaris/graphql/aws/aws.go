@@ -70,22 +70,6 @@ const (
 	S3  ProtectionFeature = "S3"
 )
 
-// AwsInstanceType represents the instance types for AWS Cloud Cluster.
-type AwsCCInstanceType string
-
-const (
-	AwsInstanceTypeUnspecified AwsCCInstanceType = "AWS_TYPE_UNSPECIFIED"
-	AwsInstanceTypeM5_4XLarge  AwsCCInstanceType = "M5_4XLARGE"
-	AwsInstanceTypeM6I_2XLarge AwsCCInstanceType = "M6I_2XLARGE"
-	AwsInstanceTypeM6I_4XLarge AwsCCInstanceType = "M6I_4XLARGE"
-	AwsInstanceTypeM6I_8XLarge AwsCCInstanceType = "M6I_8XLARGE"
-	AwsInstanceTypeR6I_4XLarge AwsCCInstanceType = "R6I_4XLARGE"
-	AwsInstanceTypeM6A_2XLarge AwsCCInstanceType = "M6A_2XLARGE"
-	AwsInstanceTypeM6A_4XLarge AwsCCInstanceType = "M6A_4XLARGE"
-	AwsInstanceTypeM6A_8XLarge AwsCCInstanceType = "M6A_8XLARGE"
-	AwsInstanceTypeR6A_4XLarge AwsCCInstanceType = "R6A_4XLARGE"
-)
-
 // API wraps around GraphQL client to give it the RSC AWS API.
 type API struct {
 	Version string // Deprecated: use GQL.DeploymentVersion
