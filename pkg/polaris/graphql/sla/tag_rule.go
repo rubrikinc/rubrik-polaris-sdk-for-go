@@ -37,6 +37,7 @@ type CloudNativeTagObjectType string
 const (
 	TagObjectAWSEBSVolume                  CloudNativeTagObjectType = "AWS_EBS_VOLUME"
 	TagObjectAWSEC2Instance                CloudNativeTagObjectType = "AWS_EC2_INSTANCE"
+	TagObjectAWSDynamoDBTable              CloudNativeTagObjectType = "AWS_DYNAMODB_TABLE"
 	TagObjectAWSRDSInstance                CloudNativeTagObjectType = "AWS_RDS_INSTANCE"
 	TagObjectAWSS3Bucket                   CloudNativeTagObjectType = "AWS_S3_BUCKET"
 	TagObjectAzureManagedDisk              CloudNativeTagObjectType = "AZURE_MANAGED_DISK"
@@ -54,6 +55,7 @@ func AllCloudNativeTagObjectTypesAsStrings() []string {
 		string(TagObjectAWSEBSVolume),
 		string(TagObjectAWSEC2Instance),
 		string(TagObjectAWSRDSInstance),
+		string(TagObjectAWSDynamoDBTable),
 		string(TagObjectAWSS3Bucket),
 		string(TagObjectAzureManagedDisk),
 		string(TagObjectAzureSQLDatabaseDB),
@@ -67,6 +69,7 @@ func AllCloudNativeTagObjectTypesAsStrings() []string {
 var managedObjectTypeMap = map[ManagedObjectType]CloudNativeTagObjectType{
 	AWSNativeEBSVolume:            TagObjectAWSEBSVolume,
 	AWSNativeEC2Instance:          TagObjectAWSEC2Instance,
+	AWSNativeDynamoDBTable:        TagObjectAWSDynamoDBTable,
 	AWSNativeRDSInstance:          TagObjectAWSRDSInstance,
 	AWSNativeS3Bucket:             TagObjectAWSS3Bucket,
 	AzureManagedDisk:              TagObjectAzureManagedDisk,
@@ -95,6 +98,7 @@ const (
 	AWSNativeEBSVolume                 ManagedObjectType = "AWS_NATIVE_EBS_VOLUME"
 	AWSNativeEC2Instance               ManagedObjectType = "AWS_NATIVE_EC2_INSTANCE"
 	AWSNativeRDSInstance               ManagedObjectType = "AWS_NATIVE_RDS_INSTANCE"
+	AWSNativeDynamoDBTable             ManagedObjectType = "AWS_DYNAMODB_TABLE"
 	AWSNativeS3Bucket                  ManagedObjectType = "AWS_NATIVE_S3_BUCKET"
 	AzureManagedDisk                   ManagedObjectType = "AZURE_MANAGED_DISK"
 	AzureResourceGroup                 ManagedObjectType = "AZURE_RESOURCE_GROUP"
