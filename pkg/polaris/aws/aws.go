@@ -653,6 +653,8 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 		return a.disableProtectionFeature(ctx, account.ID, aws.RDS, deleteSnapshots)
 	case feature.Equal(core.FeatureCloudNativeS3Protection):
 		return a.disableProtectionFeature(ctx, account.ID, aws.S3, deleteSnapshots)
+	case feature.Equal(core.FeatureCloudNativeDynamoDBProtection):
+		return a.disableProtectionFeature(ctx, account.ID, aws.DYNAMODB, deleteSnapshots)
 	case feature.Equal(core.FeatureExocompute):
 		jobID, err := aws.Wrap(a.client).StartExocomputeDisableJob(ctx, account.ID)
 		if err != nil {
@@ -691,6 +693,8 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 		feature = core.FeatureRDSProtection
 	case aws.S3:
 		feature = core.FeatureCloudNativeS3Protection
+	case aws.DYNAMODB:
+		feature = core.FeatureCloudNativeDynamoDBProtection
 	default:
 		return fmt.Errorf("invalid protection feature: %s", protectionFeature)
 	}

@@ -65,9 +65,10 @@ func ParseCloud(cloud string) (Cloud, error) {
 type ProtectionFeature string
 
 const (
-	EC2 ProtectionFeature = "EC2"
-	RDS ProtectionFeature = "RDS"
-	S3  ProtectionFeature = "S3"
+	EC2      ProtectionFeature = "EC2"
+	RDS      ProtectionFeature = "RDS"
+	S3       ProtectionFeature = "S3"
+	DYNAMODB ProtectionFeature = "DYNAMODB"
 )
 
 // API wraps around GraphQL client to give it the RSC AWS API.
