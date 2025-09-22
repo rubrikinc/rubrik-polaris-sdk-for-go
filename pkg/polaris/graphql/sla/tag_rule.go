@@ -98,7 +98,7 @@ const (
 	AWSNativeEBSVolume                 ManagedObjectType = "AWS_NATIVE_EBS_VOLUME"
 	AWSNativeEC2Instance               ManagedObjectType = "AWS_NATIVE_EC2_INSTANCE"
 	AWSNativeRDSInstance               ManagedObjectType = "AWS_NATIVE_RDS_INSTANCE"
-	AWSNativeDynamoDBTable             ManagedObjectType = "AWS_DYNAMODB_TABLE"
+	AWSNativeDynamoDBTable             ManagedObjectType = "AWS_NATIVE_DYNAMODB_TABLE"
 	AWSNativeS3Bucket                  ManagedObjectType = "AWS_NATIVE_S3_BUCKET"
 	AzureManagedDisk                   ManagedObjectType = "AZURE_MANAGED_DISK"
 	AzureResourceGroup                 ManagedObjectType = "AZURE_RESOURCE_GROUP"
