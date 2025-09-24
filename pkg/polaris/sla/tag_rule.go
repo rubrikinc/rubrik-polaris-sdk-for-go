@@ -46,6 +46,7 @@ var tagRuleObjectTypes = []string{
 	"AZURE_MANAGED_DISK",
 	"AZURE_SQL_MANAGED_INSTANCE_SERVER",
 	"AWS_EC2_INSTANCE",
+	"AWS_DYNAMODB_TABLE",
 }
 
 // TagRuleByID returns the tag rule with the specified ID.
