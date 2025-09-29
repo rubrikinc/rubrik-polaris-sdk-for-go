@@ -25,7 +25,7 @@ pipeline {
     tools {
         // Note that this version is only used to bootstrap the version
         // specified in go.mod.
-        go 'go-1.22'
+        go 'go-1.25'
     }
     triggers {
         cron(env.BRANCH_NAME == 'main' ? 'H 20 * * *' : '')
