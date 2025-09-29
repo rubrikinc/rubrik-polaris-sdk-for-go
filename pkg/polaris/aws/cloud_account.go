@@ -364,43 +364,6 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 	}
 }
 
-// toCloudAccountID returns the RSC cloud account id for the specified identity.
-// If the identity is an RSC cloud account id no remote endpoint is called.
-func (a API) toCloudAccountID(ctx context.Context, id IdentityFunc) (uuid.UUID, error) {
-	a.log.Print(log.Trace)
-
-	if id == nil {
-		return uuid.Nil, errors.New("id is not allowed to be nil")
-	}
-	identity, err := id(ctx)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to lookup identity: %s", err)
-	}
-
-	if identity.internal {
-		id, err := uuid.Parse(identity.id)
-		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to parse identity: %s", err)
-		}
-
-		return id, nil
-	}
-
-	accountsWithFeatures, err := aws.Wrap(a.client).CloudAccountsWithFeatures(ctx, core.FeatureAll, identity.id, nil)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
-	}
-
-	// Find the exact match.
-	for _, accountWithFeatures := range accountsWithFeatures {
-		if accountWithFeatures.Account.NativeID == identity.id {
-			return accountWithFeatures.Account.ID, nil
-		}
-	}
-
-	return uuid.Nil, fmt.Errorf("account %w", graphql.ErrNotFound)
-}
-
 // toNativeID returns the AWS account id for the specified identity. If the
 // identity is an AWS account id no remote endpoint is called.
 func (a API) toNativeID(ctx context.Context, id IdentityFunc) (string, error) {
