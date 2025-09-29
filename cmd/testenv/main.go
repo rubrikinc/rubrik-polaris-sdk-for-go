@@ -19,7 +19,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
-	polaris_log "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
+	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 func main() {
@@ -32,8 +32,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger := polaris_log.NewStandardLogger()
-	logger.SetLogLevel(polaris_log.Info)
+	logger := polarislog.NewStandardLogger()
+	logger.SetLogLevel(polarislog.Info)
 	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
 		log.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func clean(ctx context.Context, client *polaris.Client, provider string) error {
 			for _, feature := range awsAccount.Features {
 				features = append(features, feature.Feature)
 			}
-			return awsClient.RemoveAccount(ctx, aws.Profile(testAcc.Profile), features, false)
+			return awsClient.RemoveAccountWithCFT(ctx, aws.Profile(testAcc.Profile), features, false)
 		})
 
 		// AWS with a cross-account role
@@ -189,7 +189,7 @@ func clean(ctx context.Context, client *polaris.Client, provider string) error {
 			for _, feature := range awsAccount.Features {
 				features = append(features, feature.Feature)
 			}
-			return awsClient.RemoveAccount(ctx, aws.DefaultWithRole(testAcc.CrossAccountRole), features, false)
+			return awsClient.RemoveAccountWithCFT(ctx, aws.DefaultWithRole(testAcc.CrossAccountRole), features, false)
 		})
 	}
 

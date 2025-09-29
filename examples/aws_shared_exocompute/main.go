@@ -62,7 +62,7 @@ func main() {
 	// Add the AWS default account to RSC. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	accountID, err := awsClient.AddAccount(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection},
+	accountID, err := awsClient.AddAccountWithCFT(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection},
 		aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
@@ -92,7 +92,7 @@ func main() {
 	}
 
 	// Remove the AWS account from RSC.
-	err = awsClient.RemoveAccount(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection}, false)
+	err = awsClient.RemoveAccountWithCFT(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection}, false)
 	if err != nil {
 		log.Fatal(err)
 	}

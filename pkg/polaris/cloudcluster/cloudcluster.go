@@ -71,9 +71,7 @@ type CloudCluster struct {
 func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAwsClusterInput, useLatestCdmVersion bool) (cluster CloudCluster, err error) {
 	a.log.Print(log.Trace)
 
-	// Temporary client to drop the need for cross-client importing
-	// This will be refactored out when we have agreed on a solution.
-	awsClient := aws.NewAPI(a.client)
+	awsClient := aws.WrapGQL(a.client)
 
 	// Ensure account exists and has Server and Apps feature
 	account, err := awsClient.AccountByID(ctx, core.FeatureAll, input.CloudAccountID)

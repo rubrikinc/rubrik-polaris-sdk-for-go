@@ -231,6 +231,18 @@ func ContainsFeature(features []Feature, feature Feature) bool {
 	return false
 }
 
+// LookupFeature returns the specified feature if it exists in the feature
+// slice.
+func LookupFeature(features []Feature, feature Feature) (Feature, bool) {
+	for _, f := range features {
+		if f.Equal(feature) {
+			return f, true
+		}
+	}
+
+	return Feature{}, false
+}
+
 // Deprecated: use Feature.Name instead.
 func FormatFeature(feature Feature) string {
 	return strings.ReplaceAll(strings.ToLower(feature.Name), "_", "-")

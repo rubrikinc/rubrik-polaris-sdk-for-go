@@ -51,7 +51,7 @@ func main() {
 	}
 
 	// Add the AWS account to RSC.
-	id, err := aws.Wrap(client).AddAccount(ctx, aws.Default(),
+	id, err := aws.Wrap(client).AddAccountWithCFT(ctx, aws.Default(),
 		[]core.Feature{core.FeatureCloudNativeProtection, core.FeatureCloudNativeArchival}, aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
@@ -100,7 +100,7 @@ func main() {
 	}
 
 	// Remove the AWS account from RSC.
-	err = aws.Wrap(client).RemoveAccount(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection, core.FeatureCloudNativeArchival}, false)
+	err = aws.Wrap(client).RemoveAccountWithCFT(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeProtection, core.FeatureCloudNativeArchival}, false)
 	if err != nil {
 		log.Fatal(err)
 	}
