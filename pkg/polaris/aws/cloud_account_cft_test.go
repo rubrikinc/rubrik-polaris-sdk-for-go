@@ -28,7 +28,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -55,11 +54,6 @@ func TestAwsAccountAddAndRemoveWithCFT(t *testing.T) {
 	}
 
 	testAccount, err := testsetup.AWSAccount()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	testAccountID, err := uuid.Parse(testAccount.AccountID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +93,7 @@ func TestAwsAccountAddAndRemoveWithCFT(t *testing.T) {
 	}
 
 	// Update and verify regions for AWS account.
-	err = awsClient.UpdateAccount(ctx, testAccountID, core.FeatureCloudNativeProtection,
+	err = awsClient.UpdateAccount(ctx, account.ID, core.FeatureCloudNativeProtection,
 		Regions("us-west-2"))
 	if err != nil {
 		t.Fatal(err)

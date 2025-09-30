@@ -88,7 +88,7 @@ func (a API) AddAccountWithCFT(ctx context.Context, account AccountFunc, feature
 			return uuid.Nil, err
 		}
 	}
-	if len(features) == 0 {
+	if len(features) != 0 {
 		if err = a.addAccountWithCFT(ctx, features, config, options); err != nil {
 			return uuid.Nil, err
 		}

@@ -92,14 +92,14 @@ func awsWaitForStack(ctx context.Context, config aws.Config, stackName string) (
 func awsUpdateStack(ctx context.Context, logger log.Logger, config aws.Config, stackName, templateURL string) error {
 	client := cloudformation.NewFromConfig(config)
 
-	logger.Printf(log.Debug, "Accessing CloudFormation stack: %v", stackName)
+	logger.Printf(log.Info, "Accessing CloudFormation stack: %v", stackName)
 	exist, err := awsStackExist(ctx, config, stackName)
 	if err != nil {
 		return fmt.Errorf("failed to check if CloudFormation stack %q in region %q exist: %v", stackName, config.Region, err)
 	}
 
 	if exist {
-		logger.Printf(log.Debug, "Updating CloudFormation stack: %v", stackName)
+		logger.Printf(log.Info, "Updating CloudFormation stack: %v", stackName)
 		stack, err := client.UpdateStack(ctx, &cloudformation.UpdateStackInput{
 			StackName:    &stackName,
 			TemplateURL:  &templateURL,
@@ -117,7 +117,7 @@ func awsUpdateStack(ctx context.Context, logger log.Logger, config aws.Config, s
 			return fmt.Errorf("failed to update CloudFormation stack %q in region %q: id=%v, status=%v", stackName, config.Region, *stack.StackId, stackStatus)
 		}
 	} else {
-		logger.Printf(log.Debug, "Creating CloudFormation stack: %v", stackName)
+		logger.Printf(log.Info, "Creating CloudFormation stack: %v", stackName)
 		stack, err := client.CreateStack(ctx, &cloudformation.CreateStackInput{
 			StackName:    &stackName,
 			TemplateURL:  &templateURL,
