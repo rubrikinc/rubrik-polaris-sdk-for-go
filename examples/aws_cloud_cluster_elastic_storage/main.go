@@ -46,10 +46,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClientWithLogger(
-		polAccount,
-		polarislog.NewStandardLogger(),
-	)
+	client, err := polaris.NewClientWithLogger(polAccount, polarislog.NewStandardLogger())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -65,7 +62,7 @@ func main() {
 	// Add the AWS default account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	id, err := awsClient.AddAccount(ctx, aws.Default(), features, aws.Regions("us-east-2"))
+	id, err := awsClient.AddAccountWithCFT(ctx, aws.Default(), features, aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}

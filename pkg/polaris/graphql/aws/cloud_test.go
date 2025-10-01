@@ -74,7 +74,7 @@ func TestValidateAndCreateAWSCloudAccountWithDuplicate(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err = Wrap(graphql.NewTestClient(srv)).ValidateAndCreateCloudAccount(ctx,
+	_, err = Wrap(graphql.NewTestClient(srv)).ValidateAndCreateCloudAccount(ctx, CloudStandard,
 		"123456789012", "123456789012 : default", []core.Feature{core.FeatureCloudNativeProtection})
 	if err == nil {
 		t.Fatal("expected ValidateAndCreateCloudAccount to fail")

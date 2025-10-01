@@ -44,10 +44,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClientWithLogger(
-		polAccount,
-		polarislog.NewStandardLogger(),
-	)
+	client, err := polaris.NewClientWithLogger(polAccount, polarislog.NewStandardLogger())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -62,14 +59,11 @@ func main() {
 	// Add the AWS default account to Polaris. Usually resolved using the
 	// environment variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and
 	// AWS_DEFAULT_REGION.
-	id, err := awsClient.AddAccount(
-		ctx,
-		aws.Default(),
-		features,
-		aws.Regions("us-east-2"),
-		// The account ID of the outpost account and the profile to use to access it.
-		// If the outpost account is the same account as the one default profile, you can
-		// use aws.OutpostAccount("123456789012") instead of aws.OutpostAccountWithProfile(...).
+	id, err := awsClient.AddAccountWithCFT(ctx, aws.Default(), features, aws.Regions("us-east-2"),
+		// The account ID of the outpost account and the profile to use to
+		// access it. If the outpost account is the same account as the one
+		// default profile, you can use aws.OutpostAccount("123456789012")
+		// instead of aws.OutpostAccountWithProfile(...).
 		aws.OutpostAccountWithProfile("123456789012", "outpost"),
 	)
 	if err != nil {
@@ -88,21 +82,11 @@ func main() {
 
 	fmt.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
 	for _, feature := range account.Features {
-		fmt.Printf(
-			"Feature: %v, Regions: %v, Status: %v\n",
-			feature.Name,
-			feature.Regions,
-			feature.Status,
-		)
+		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
 	}
 
 	// Remove the AWS account from Polaris.
-	err = awsClient.RemoveAccount(
-		ctx,
-		aws.Default(),
-		[]core.Feature{core.FeatureOutpost},
-		false,
-	)
+	err = awsClient.RemoveAccountWithCFT(ctx, aws.Default(), []core.Feature{core.FeatureOutpost}, false)
 	if err != nil {
 		log.Fatal(err)
 	}

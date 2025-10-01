@@ -55,8 +55,7 @@ func main() {
 	// Use the default profile to add an AWS account to Polaris using a cross
 	// account role. The default profile can be configured using the environment
 	// variables AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_REGION.
-	id, err := awsClient.AddAccount(ctx,
-		aws.DefaultWithRole("arn:aws:iam::123456789012:role/MyCrossAccountRole"),
+	id, err := awsClient.AddAccountWithCFT(ctx, aws.DefaultWithRole("arn:aws:iam::123456789012:role/MyCrossAccountRole"),
 		[]core.Feature{core.FeatureCloudNativeProtection}, aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
@@ -74,8 +73,7 @@ func main() {
 	}
 
 	// Remove the AWS account from Polaris using a cross account role.
-	err = awsClient.RemoveAccount(ctx,
-		aws.DefaultWithRole("arn:aws:iam::123456789012:role/MyCrossAccountRole"),
+	err = awsClient.RemoveAccountWithCFT(ctx, aws.DefaultWithRole("arn:aws:iam::123456789012:role/MyCrossAccountRole"),
 		[]core.Feature{core.FeatureCloudNativeProtection}, false)
 	if err != nil {
 		log.Fatal(err)

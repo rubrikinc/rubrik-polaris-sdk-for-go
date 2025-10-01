@@ -555,6 +555,16 @@ func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipal
 	return a.AddServicePrincipal(ctx, principal, true)
 }
 
+var supportedFeatures = map[string]struct{}{
+	core.FeatureAzureSQLDBProtection.Name:          {},
+	core.FeatureAzureSQLMIProtection.Name:          {},
+	core.FeatureCloudNativeArchival.Name:           {},
+	core.FeatureCloudNativeArchivalEncryption.Name: {},
+	core.FeatureCloudNativeBlobProtection.Name:     {},
+	core.FeatureCloudNativeProtection.Name:         {},
+	core.FeatureExocompute.Name:                    {},
+}
+
 // toSubscriptions returns the unique subscriptions found in the rawTenants
 // slice. This function requires that the tenants include subscription details.
 func toSubscriptions(rawTenants []azure.CloudAccountTenant) []CloudAccount {
@@ -592,6 +602,9 @@ func toSubscriptions(rawTenants []azure.CloudAccountTenant) []CloudAccount {
 					TenantDomain: rawTenant.DomainName,
 				}
 				account = tenant.accounts[rawAccount.ID]
+			}
+			if _, ok := supportedFeatures[rawAccount.Feature.Feature]; !ok {
+				continue
 			}
 
 			feature := core.Feature{

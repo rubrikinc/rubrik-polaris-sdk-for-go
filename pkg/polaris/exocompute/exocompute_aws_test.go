@@ -34,7 +34,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// TestAwsExocompute verifies that the SDK can perform basic Exocompute
+// TestAwsExocomputeWithCFT verifies that the SDK can perform basic Exocompute
 // operations on a real RSC instance.
 //
 // To run this test against an RSC instance the following environment variables
@@ -47,7 +47,7 @@ import (
 //
 // The file referred to by TEST_AWSACCOUNT_FILE should contain a single
 // testAwsAccount JSON object.
-func TestAwsExocompute(t *testing.T) {
+func TestAwsExocomputeWithCFT(t *testing.T) {
 	ctx := context.Background()
 
 	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
@@ -64,14 +64,14 @@ func TestAwsExocompute(t *testing.T) {
 
 	// Adds the AWS account identified by the specified profile to RSC. Note
 	// that the profile needs to have a default region.
-	accountID, err := awsClient.AddAccount(ctx, aws.Profile(testAccount.Profile),
+	accountID, err := awsClient.AddAccountWithCFT(ctx, aws.Profile(testAccount.Profile),
 		[]core.Feature{core.FeatureCloudNativeProtection}, aws.Name(testAccount.AccountName), aws.Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Enable the exocompute feature for the account.
-	exoAccountID, err := awsClient.AddAccount(ctx, aws.Profile(testAccount.Profile),
+	exoAccountID, err := awsClient.AddAccountWithCFT(ctx, aws.Profile(testAccount.Profile),
 		[]core.Feature{core.FeatureExocompute.WithPermissionGroups(core.PermissionGroupBasic, core.PermissionGroupRSCManagedCluster)},
 		aws.Regions("us-east-2"))
 	if err != nil {
@@ -177,7 +177,7 @@ func TestAwsExocompute(t *testing.T) {
 	}
 
 	// Disable the exocompute feature for the account.
-	err = awsClient.RemoveAccount(ctx, aws.Profile(testAccount.Profile), []core.Feature{core.FeatureExocompute}, false)
+	err = awsClient.RemoveAccountWithCFT(ctx, aws.Profile(testAccount.Profile), []core.Feature{core.FeatureExocompute}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func TestAwsExocompute(t *testing.T) {
 	}
 
 	// Remove the AWS account from RSC.
-	err = awsClient.RemoveAccount(ctx, aws.Profile(testAccount.Profile), []core.Feature{core.FeatureCloudNativeProtection}, false)
+	err = awsClient.RemoveAccountWithCFT(ctx, aws.Profile(testAccount.Profile), []core.Feature{core.FeatureCloudNativeProtection}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
