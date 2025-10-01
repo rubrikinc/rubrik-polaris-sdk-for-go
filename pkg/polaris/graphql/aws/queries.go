@@ -333,12 +333,13 @@ var upgradeAwsCloudAccountFeaturesWithoutCftQuery = `mutation SdkGolangUpgradeAw
 }`
 
 // validateAndCreateAwsCloudAccount GraphQL query
-var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!]) {
+var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($cloudType: AwsCloudType!, $nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!]) {
     result: validateAndCreateAwsCloudAccount(input: {
         action: CREATE,
         awsChildAccounts: [{
             accountName: $accountName,
-            nativeId: $nativeId,
+            nativeId:    $nativeId,
+            cloudType:   $cloudType,
         }],
         features: $features,
         featuresWithPermissionsGroups: $featuresWithPG

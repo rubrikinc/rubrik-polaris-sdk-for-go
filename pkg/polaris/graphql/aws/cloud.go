@@ -160,7 +160,7 @@ type CloudAccountInitiate struct {
 // account to RSC. The returned CloudAccountInitiate value must be passed on to
 // FinalizeCloudAccountProtection which is the next step in the process of
 // adding an AWS account to RSC.
-func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string, features []core.Feature) (CloudAccountInitiate, error) {
+func (a API) ValidateAndCreateCloudAccount(ctx context.Context, cloud Cloud, id, name string, features []core.Feature) (CloudAccountInitiate, error) {
 	a.log.Print(log.Trace)
 
 	// Features and FeaturesWithPG are mutually exclusive.
@@ -171,11 +171,12 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, id, name string,
 
 	query := validateAndCreateAwsCloudAccountQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
+		Cloud          Cloud          `json:"cloudType"`
 		ID             string         `json:"nativeId"`
 		Name           string         `json:"accountName"`
 		Features       []string       `json:"features,omitempty"`
 		FeaturesWithPG []core.Feature `json:"featuresWithPG,omitempty"`
-	}{ID: id, Name: name, Features: plainFeatures, FeaturesWithPG: features})
+	}{Cloud: cloud, ID: id, Name: name, Features: plainFeatures, FeaturesWithPG: features})
 	if err != nil {
 		return CloudAccountInitiate{}, graphql.RequestError(query, err)
 	}

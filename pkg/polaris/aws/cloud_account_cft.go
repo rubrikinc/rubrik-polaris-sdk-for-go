@@ -148,7 +148,7 @@ func (a API) RemoveAccountWithCFT(ctx context.Context, account AccountFunc, feat
 func (a API) addAccountWithCFT(ctx context.Context, features []core.Feature, config account, options options) error {
 	a.log.Print(log.Trace)
 
-	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.id, config.name, features)
+	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.cloud, config.id, config.name, features)
 	if err != nil {
 		return fmt.Errorf("failed to validate account: %s", err)
 	}
