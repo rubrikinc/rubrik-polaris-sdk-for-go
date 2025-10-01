@@ -1,11 +1,13 @@
 mutation RubrikPolarisSDKRequest(
-    $cloudAccountId: UUID!,
-    $config:         AwsExocomputeConfigInput!
+    $cloudAccountId:     UUID!,
+    $config:             AwsExocomputeConfigInput!,
+    $triggerHealthCheck: Boolean,
 ) {
     result: createAwsExocomputeConfigs(input: {
-        cloudAccountId: $cloudAccountId,
-        configs:        [$config]}
-    ) {
+        cloudAccountId:     $cloudAccountId,
+        configs:            [$config],
+        triggerHealthCheck: $triggerHealthCheck,
+    }) {
         exocomputeConfigs {
             configUuid
             message

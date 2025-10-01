@@ -138,7 +138,7 @@ func TestAzureExocompute(t *testing.T) {
 		t.Fatalf("exocompute test data must contain at least one region")
 	}
 	exoConfigRegion := azure.RegionFromName(testSubscription.Exocompute.Regions[0])
-	exoID, err := exoClient.AddAzureConfiguration(ctx, accountID, AzureManaged(exoConfigRegion, testSubscription.Exocompute.SubnetID))
+	exoID, err := exoClient.AddAzureConfiguration(ctx, accountID, AzureManaged(exoConfigRegion, testSubscription.Exocompute.SubnetID, false))
 	if err != nil {
 		t.Fatal(err)
 	}

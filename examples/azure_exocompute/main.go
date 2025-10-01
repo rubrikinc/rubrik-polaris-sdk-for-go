@@ -86,8 +86,9 @@ func main() {
 	}
 
 	// Add an exocompute configuration to the cloud account.
+	subnetID := "/subscriptions/9318aeec-d357-11eb-9b37-5f4e9f79db5d/resourceGroups/terraform-test/providers/Microsoft.Network/virtualNetworks/terraform-test/subnets/default"
 	configID, err := exoClient.AddAzureConfiguration(ctx, accountID,
-		exocompute.AzureManaged(gqlazure.RegionEastUS2, "/subscriptions/9318aeec-d357-11eb-9b37-5f4e9f79db5d/resourceGroups/terraform-test/providers/Microsoft.Network/virtualNetworks/terraform-test/subnets/default"))
+		exocompute.AzureManaged(gqlazure.RegionEastUS2, subnetID, false))
 	if err != nil {
 		log.Fatal(err)
 	}

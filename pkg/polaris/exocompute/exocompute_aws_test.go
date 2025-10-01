@@ -107,8 +107,9 @@ func TestAwsExocomputeWithCFT(t *testing.T) {
 	}
 
 	// Add an exocompute configuration to the cloud account.
+	subnetIDs := []string{testAccount.Exocompute.Subnets[0].ID, testAccount.Exocompute.Subnets[1].ID}
 	exoID, err := exoClient.AddAWSConfiguration(ctx, accountID,
-		AWSManaged(gqlaws.RegionUsEast2, testAccount.Exocompute.VPCID, []string{testAccount.Exocompute.Subnets[0].ID, testAccount.Exocompute.Subnets[1].ID}))
+		AWSManaged(gqlaws.RegionUsEast2, testAccount.Exocompute.VPCID, subnetIDs, false))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,8 +153,9 @@ func TestAwsExocomputeWithCFT(t *testing.T) {
 	validateConfig(exoID, 0, 1)
 
 	// Update the exocompute configuration to use subnet 1 & 2.
+	subnetIDs = []string{testAccount.Exocompute.Subnets[1].ID, testAccount.Exocompute.Subnets[2].ID}
 	updatedExoID, err := exoClient.UpdateAWSConfiguration(ctx, accountID,
-		AWSManaged(gqlaws.RegionUsEast2, testAccount.Exocompute.VPCID, []string{testAccount.Exocompute.Subnets[1].ID, testAccount.Exocompute.Subnets[2].ID}))
+		AWSManaged(gqlaws.RegionUsEast2, testAccount.Exocompute.VPCID, subnetIDs, false))
 	if err != nil {
 		t.Fatal(err)
 	}
