@@ -44,7 +44,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	internalerrors "github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/errors"
@@ -59,6 +61,13 @@ type Client struct {
 	gqlURL  string
 	client  *http.Client
 	log     log.Logger
+}
+
+// Build into is used to derive SDK metrics headers.
+var buildInfoOnce sync.Once
+var sdkHeaders struct {
+	lang string
+	ver  string
 }
 
 // NewClient returns a new Client for the specified API URL.
@@ -244,6 +253,39 @@ func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variable
 	}
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("Accept", "application/json")
+
+	// Add SDK version information to the request.
+	buildInfoOnce.Do(func() {
+		buildInfo, ok := debug.ReadBuildInfo()
+		if !ok {
+			return
+		}
+		for _, dep := range buildInfo.Deps {
+			if dep.Path == "github.com/rubrikinc/rubrik-polaris-sdk-for-go" && dep.Replace == nil {
+				sdkHeaders.ver = strings.TrimPrefix(dep.Version, "v")
+				break
+			}
+		}
+		// Skip forks etc.
+		if sdkHeaders.ver == "" {
+			return
+		}
+		sdkHeaders.lang = "go"
+
+		// The terraform provider gets special treatment here, since we want
+		// to distinguish it from the SDK without exposing the possibility to
+		// set the version from outside.
+		if buildInfo.Main.Path == "github.com/rubrikinc/terraform-provider-polaris" {
+			sdkHeaders.ver = strings.TrimPrefix(buildInfo.Main.Version, "v")
+			sdkHeaders.lang = "terraform/go"
+		}
+	})
+
+	if sdkHeaders.ver != "" {
+		req.Header.Add("Sdk-Language", sdkHeaders.lang)
+		req.Header.Add("Sdk-Version", sdkHeaders.ver)
+	}
+
 	res, err := c.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to request graphql field: %v", err)
