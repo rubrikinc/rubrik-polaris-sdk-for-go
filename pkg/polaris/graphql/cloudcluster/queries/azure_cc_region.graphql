@@ -1,0 +1,6 @@
+query RubrikPolarisSDKRequest($cloudAccountId: String!) {
+  result: allAzureRegionsWithAzDetails(cloudAccountId: $cloudAccountId) {
+    location
+    logicalAvailabilityZones
+  }
+}

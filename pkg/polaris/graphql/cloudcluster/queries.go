@@ -173,6 +173,99 @@ var awsCcVpcQuery = `query SdkGolangAwsCcVpc($cloudAccountId: UUID!, $awsRegion:
   }
 }`
 
+// azureCcCdmVersions GraphQL query
+var azureCcCdmVersionsQuery = `query SdkGolangAzureCcCdmVersions($cloudAccountId: String!, $location: String) {
+  result: allAzureCdmVersions(
+    cdmVersionRequest: { cloudAccountId: $cloudAccountId, location: $location }
+  ) {
+    sku
+    version
+    tags {
+      key
+      value
+    }
+    supportedInstanceTypes
+    cdmVersion
+  }
+}`
+
+// azureCcManagedIdentities GraphQL query
+var azureCcManagedIdentitiesQuery = `query SdkGolangAzureCcManagedIdentities($cloudAccountId: String!) {
+  result: allAzureManagedIdentities(
+    managedIdentitiesRequest: { cloudAccountId: $cloudAccountId }
+  ) {
+    name
+    clientId
+    resourceGroup
+  }
+}`
+
+// azureCcMarketplaceTerms GraphQL query
+var azureCcMarketplaceTermsQuery = `query SdkGolangAzureCcMarketplaceTerms($cloudAccountId: String!, $cdmVersion: String!) {
+  result: azureMarketplaceTermsInfo(
+    input: { cdmVersion: $cdmVersion, cloudAccountId: $cloudAccountId }
+  ) {
+    termsAccepted
+    marketplaceSku
+    publisher
+    offer
+    marketplaceTermsLink
+    message
+  }
+}`
+
+// azureCcRegion GraphQL query
+var azureCcRegionQuery = `query SdkGolangAzureCcRegion($cloudAccountId: String!) {
+  result: allAzureRegionsWithAzDetails(cloudAccountId: $cloudAccountId) {
+    location
+    logicalAvailabilityZones
+  }
+}`
+
+// azureCcResourceGroup GraphQL query
+var azureCcResourceGroupQuery = `query SdkGolangAzureCcResourceGroup(
+  $cloudAccountId: UUID!
+  $azureSubscriptionNativeId: UUID!
+  $feature: CloudAccountFeature!
+) {
+  result: allResourceGroupsFromAzure(
+    cloudAccountId: $cloudAccountId
+    azureSubscriptionNativeId: $azureSubscriptionNativeId
+    feature: "SERVERS_AND_APPS"
+  ) {
+    name
+    region
+  }
+}`
+
+// azureCcStorageAccounts GraphQL query
+var azureCcStorageAccountsQuery = `query SdkGolangAzureCcStorageAccounts($cloudAccountId: String!, $region: String!) {
+  result: allAzureStorageAccountsByRegion(
+    input: { cloudAccountId: $cloudAccountId, region: $region }
+  ) {
+    name
+    resourceGroup
+  }
+}`
+
+// azureCcSubnet GraphQL query
+var azureCcSubnetQuery = `query SdkGolangAzureCcSubnet(
+  $cloudAccountId: UUID!
+  $region: AzureCloudAccountRegion!
+) {
+  result: allAzureCloudAccountSubnetsByRegion(
+    cloudAccountId: $cloudAccountId
+    region: $region
+  ) {
+    name
+    nativeId
+    vnet {
+      name
+      resourceGroupName
+    }
+  }
+}`
+
 // cloudClusterInstanceProperties GraphQL query
 var cloudClusterInstancePropertiesQuery = `query SdkGolangCloudClusterInstanceProperties($input: InstancePropertiesReq!) {
   result: cloudClusterInstanceProperties(input: $input) {
@@ -288,6 +381,14 @@ var updateCusterDnsAndSearchDomainsQuery = `mutation SdkGolangUpdateCusterDnsAnd
 // validateAwsClusterCreateRequest GraphQL query
 var validateAwsClusterCreateRequestQuery = `query SdkGolangValidateAwsClusterCreateRequest($input: CreateAwsClusterInput!) {
   result: validateCreateAwsClusterInput(input: $input) {
+    message
+    isSuccessful
+  }
+}`
+
+// validateAzureClusterCreateRequest GraphQL query
+var validateAzureClusterCreateRequestQuery = `query SdkGolangValidateAzureClusterCreateRequest($input: CreateAzureClusterInput!) {
+  result: validateCreateAzureClusterInput(input: $input) {
     message
     isSuccessful
   }

@@ -1,0 +1,8 @@
+query RubrikPolarisSDKRequest($cloudAccountId: String!, $region: String!) {
+  result: allAzureStorageAccountsByRegion(
+    input: { cloudAccountId: $cloudAccountId, region: $region }
+  ) {
+    name
+    resourceGroup
+  }
+}

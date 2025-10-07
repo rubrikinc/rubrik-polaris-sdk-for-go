@@ -1,0 +1,14 @@
+query RubrikPolarisSDKRequest($cloudAccountId: String!, $location: String) {
+  result: allAzureCdmVersions(
+    cdmVersionRequest: { cloudAccountId: $cloudAccountId, location: $location }
+  ) {
+    sku
+    version
+    tags {
+      key
+      value
+    }
+    supportedInstanceTypes
+    cdmVersion
+  }
+}

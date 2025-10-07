@@ -1,0 +1,6 @@
+query RubrikPolarisSDKRequest($input: CreateAzureClusterInput!) {
+  result: validateCreateAzureClusterInput(input: $input) {
+    message
+    isSuccessful
+  }
+}
