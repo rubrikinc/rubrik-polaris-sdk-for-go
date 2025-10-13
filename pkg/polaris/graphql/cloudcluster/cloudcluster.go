@@ -155,11 +155,12 @@ type AzureManagedIdentityName struct {
 type AzureEsConfigInput struct {
 	ContainerName         string                   `json:"containerName"`
 	EnableImmutability    bool                     `json:"enableImmutability"`
+	EndpointSuffix        string                   `json:"endpointSuffix,omitempty"`
 	ManagedIdentity       AzureManagedIdentityName `json:"managedIdentity"`
 	ResourceGroup         string                   `json:"resourceGroup"`
 	ShouldCreateContainer bool                     `json:"shouldCreateContainer"`
 	StorageAccount        string                   `json:"storageAccount"`
-	StorageSecret         string                   `json:"storageSecret"`
+	StorageSecret         string                   `json:"storageSecret,omitempty"`
 }
 
 // GcpEsConfigInput represents the input for creating a GCP ES config.

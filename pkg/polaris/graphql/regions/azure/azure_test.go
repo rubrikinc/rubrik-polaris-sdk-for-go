@@ -21,6 +21,7 @@
 package azure
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -75,5 +76,87 @@ func TestRegionsForReplication(t *testing.T) {
 	}
 	if region := RegionFromRegionForReplicationEnum("n/a"); region != RegionUnknown {
 		t.Errorf("invalid region: %v", region)
+	}
+}
+
+func TestRegionMarshalJSON(t *testing.T) {
+	tests := []struct {
+		region   Region
+		expected string
+	}{
+		{RegionEastUS, `"eastus"`},
+		{RegionWestUS, `"westus"`},
+		{RegionNorthEurope, `"northeurope"`},
+		{RegionUnknown, `"n/a"`},
+	}
+
+	for _, test := range tests {
+		data, err := json.Marshal(test.region)
+		if err != nil {
+			t.Errorf("failed to marshal region %v: %v", test.region, err)
+			continue
+		}
+		if string(data) != test.expected {
+			t.Errorf("marshal region %v: expected %s, got %s", test.region, test.expected, string(data))
+		}
+	}
+}
+
+func TestRegionUnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		json     string
+		expected Region
+	}{
+		{`"eastus"`, RegionEastUS},
+		{`"westus"`, RegionWestUS},
+		{`"northeurope"`, RegionNorthEurope},
+		{`"n/a"`, RegionUnknown},
+		{`""`, RegionUnknown},
+		{`"invalid-region"`, RegionUnknown},
+	}
+
+	for _, test := range tests {
+		var region Region
+		err := json.Unmarshal([]byte(test.json), &region)
+		if err != nil {
+			t.Errorf("failed to unmarshal JSON %s: %v", test.json, err)
+			continue
+		}
+		if region != test.expected {
+			t.Errorf("unmarshal JSON %s: expected %v, got %v", test.json, test.expected, region)
+		}
+	}
+}
+
+func TestRegionMarshalUnmarshalRoundTrip(t *testing.T) {
+	regions := []Region{
+		RegionEastUS,
+		RegionWestUS,
+		RegionNorthEurope,
+		RegionAustraliaEast,
+		RegionJapanEast,
+		RegionUnknown,
+	}
+
+	for _, original := range regions {
+		// Marshal to JSON
+		data, err := json.Marshal(original)
+		if err != nil {
+			t.Errorf("failed to marshal region %v: %v", original, err)
+			continue
+		}
+
+		// Unmarshal back to Region
+		var unmarshaled Region
+		err = json.Unmarshal(data, &unmarshaled)
+		if err != nil {
+			t.Errorf("failed to unmarshal JSON %s: %v", string(data), err)
+			continue
+		}
+
+		// Check if they match
+		if original != unmarshaled {
+			t.Errorf("round trip failed for region %v: got %v", original, unmarshaled)
+		}
 	}
 }

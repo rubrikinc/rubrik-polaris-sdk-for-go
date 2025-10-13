@@ -56,6 +56,10 @@ func Wrap(client *polaris.Client) API {
 	return API{client: client.GQL, log: client.GQL.Log()}
 }
 
+func WrapGQL(gql *graphql.Client) API {
+	return API{client: gql, log: gql.Log()}
+}
+
 // CloudAccountTenant represents an Azure tenant in RSC.
 type CloudAccountTenant struct {
 	Cloud             string
@@ -564,6 +568,7 @@ var supportedFeatures = map[string]struct{}{
 	core.FeatureCloudNativeBlobProtection.Name:     {},
 	core.FeatureCloudNativeProtection.Name:         {},
 	core.FeatureExocompute.Name:                    {},
+	core.FeatureServerAndApps.Name:                 {},
 }
 
 // toSubscriptions returns the unique subscriptions found in the rawTenants
