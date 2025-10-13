@@ -1,0 +1,7 @@
+mutation SdkGolangCreateAwsCloudCluster($input: CreateAzureClusterInput!) {
+  result: createAzureCluster(input: $input) {
+    message
+    success
+    jobId
+  }
+}

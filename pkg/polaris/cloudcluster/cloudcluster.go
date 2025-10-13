@@ -33,6 +33,7 @@ import (
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/event"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
@@ -191,9 +192,149 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 		return CloudCluster{}, fmt.Errorf("failed to create cloud cluster: %s", err)
 	}
 
+	cluster, err = a.monitorCloudClusterEvents(ctx, input.ClusterConfig.ClusterName, input.CloudAccountID, input.VmConfig.CdmVersion, input.VmConfig.CdmProduct, string(input.VmConfig.InstanceType), input.Region)
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("failed to monitor cloud cluster events: %s", err)
+	}
+
+	return cluster, nil
+}
+
+func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.CreateAzureClusterInput) (cluster CloudCluster, err error) {
+	a.log.Print(log.Trace)
+
+	// Validate Cloud Account exists and has Server and Apps feature
+	azureClient := azure.WrapGQL(a.client)
+	account, err := azureClient.Subscription(ctx, azure.CloudAccountID(input.CloudAccountID), core.FeatureAll)
+	if err != nil {
+		return CloudCluster{}, err
+	}
+	fmt.Printf("Account: %v\n", account)
+
+	if _, ok := account.Feature(core.FeatureServerAndApps); !ok {
+		return CloudCluster{}, fmt.Errorf("account %q missing feature %s", account.ID, core.FeatureServerAndApps.Name)
+	}
+
+	// Validate CDM version is available
+	cdmVersions, err := cloudcluster.Wrap(a.client).AllAzureCdmVersions(ctx, input.CloudAccountID, input.VMConfig.Location)
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("failed to get cdm versions: %s", err)
+	}
+
+	// Validate CDM version is available
+	validCdmVersion := false
+	cdmVersion := input.VMConfig.CDMVersion
+	var supportedInstanceTypes []cloudcluster.AzureCCESSupportedInstanceType
+	for _, version := range cdmVersions {
+		if version.CDMVersion == cdmVersion {
+			validCdmVersion = true
+			// We need to clobber the input version because GQL expects the
+			// internal version and SKU, not the cdm product version
+			input.VMConfig.CDMVersion = version.Version
+			input.VMConfig.CDMProduct = version.SKU
+			supportedInstanceTypes = version.SupportedInstanceTypes
+			break
+		}
+	}
+
+	if !validCdmVersion {
+		return CloudCluster{}, fmt.Errorf("cdm version %s is not available for account %s", cdmVersion, account.ID)
+	}
+
+	// ensure specified instance type is supported
+	validInstanceType := slices.Contains(supportedInstanceTypes, input.VMConfig.InstanceType)
+	if !validInstanceType {
+		return CloudCluster{}, fmt.Errorf("instance type %s is not supported for cdm version %s, supported Instance types are: %v", input.VMConfig.InstanceType, input.VMConfig.CDMVersion, supportedInstanceTypes)
+	}
+
+	// validate marketplace agreement
+	marketplaceTerms, err := cloudcluster.Wrap(a.client).AzureMarketplaceTerms(ctx, input.CloudAccountID, cdmVersion)
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("Error validating marketplace terms: %s", err)
+	}
+	if !marketplaceTerms.TermsAccepted {
+		return CloudCluster{}, fmt.Errorf("Marketplace terms have not been accepted for cdm version %s", cdmVersion)
+	}
+	if marketplaceTerms.MarketplaceSKU == "" {
+		return CloudCluster{}, fmt.Errorf("Marketplace sku is not available for cdm version %s", cdmVersion)
+	}
+
+	// Find ManagedIdentity by name and set client ID and Resource Group
+	managedIdentities, err := cloudcluster.Wrap(a.client).AzureCCManagedIdentities(ctx, input.CloudAccountID)
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("failed to get managed identities: %s", err)
+	}
+	var managedIdentity []cloudcluster.AzureCCManagedIdentity
+	for _, mi := range managedIdentities {
+		if mi.Name == input.ClusterConfig.AzureESConfig.ManagedIdentity.Name && mi.ResourceGroup == input.VMConfig.ResourceGroup {
+			managedIdentity = append(managedIdentity, mi)
+		}
+	}
+	if n := len(managedIdentity); n != 1 {
+		return CloudCluster{}, fmt.Errorf("Managed identity %s does not exist in RSC Azure account %s, we found %d matches", input.ClusterConfig.AzureESConfig.ManagedIdentity.Name, account.ID, n)
+	}
+
+	// update input managed identity with client ID and resource group
+	input.ClusterConfig.AzureESConfig.ManagedIdentity = cloudcluster.AzureManagedIdentityName{
+		Name:          input.ClusterConfig.AzureESConfig.ManagedIdentity.Name,
+		ResourceGroup: managedIdentity[0].ResourceGroup,
+		ClientID:      managedIdentity[0].ClientID,
+	}
+
+	// Validate Resource Group exists in RSC metadata via AzureCCResourceGroups
+	resourceGroups, err := cloudcluster.Wrap(a.client).AzureCCResourceGroups(ctx, input.CloudAccountID, account.NativeID)
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("failed to get resource groups: %s", err)
+	}
+	validResourceGroup := slices.ContainsFunc(resourceGroups, func(resourceGroup cloudcluster.AzureCCResourceGroup) bool {
+		return resourceGroup.Name == input.VMConfig.ResourceGroup
+	})
+	if !validResourceGroup {
+		return CloudCluster{}, fmt.Errorf("resource group %s does not exist in RSC Azure account %s", input.VMConfig.ResourceGroup, account.ID)
+	}
+
+	// Validate Subnet exists in RSC metadata via AzureCCSubnets
+	subnets, err := cloudcluster.Wrap(a.client).AzureCCSubnets(ctx, input.CloudAccountID, input.VMConfig.Location)
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("failed to get subnets: %s", err)
+	}
+	validSubnet := slices.ContainsFunc(subnets, func(subnet cloudcluster.AzureCCSubnet) bool {
+		return subnet.Name == input.VMConfig.Subnet
+	})
+	if !validSubnet {
+		return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC Azure account %s", input.VMConfig.Subnet, account.ID)
+	}
+
+	// log input
+	a.log.Printf(log.Info, "Creating Azure Cloud Cluster with input: %+v\n", input)
+
+	// Validate CloudCluster Request
+	err = cloudcluster.Wrap(a.client).ValidateCreateAzureClusterInput(ctx, input)
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("failed to validate create cloud cluster: %s", err)
+	}
+
+	// JobID is ignored here due to a bug in the RSC API
+	_, err = cloudcluster.Wrap(a.client).CreateAzureCloudCluster(ctx, input)
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("failed to create cloud cluster: %s", err)
+	}
+
+	cluster, err = a.monitorCloudClusterEvents(ctx, input.ClusterConfig.ClusterName, input.CloudAccountID, cdmVersion, input.VMConfig.CDMProduct, string(input.VMConfig.InstanceType), input.VMConfig.Location.Name())
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("failed to monitor cloud cluster events: %s", err)
+	}
+
+	return cluster, nil
+}
+
+// monitorCloudClusterEvents monitors the events for a cloud cluster create job and returns the cloud cluster object when complete.
+func (a API) monitorCloudClusterEvents(ctx context.Context, clusterName string, cloudAccountID uuid.UUID, cdmVersion string, cdmProduct string, instanceType string, region string) (CloudCluster, error) {
+	a.log.Print(log.Trace)
+
 	// Poll the event series for the cluster
 	eventFilters := gqlevent.EventSeriesFilter{
-		ObjectName:        input.ClusterConfig.ClusterName,
+		ObjectName:        clusterName,
 		ObjectType:        []gqlevent.EventObjectType{gqlevent.EventObjectTypeCluster},
 		LastUpdatedTimeGt: core.FormatTimestamp(time.Now().Add(-15 * time.Minute)),
 	}
@@ -205,7 +346,7 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 	eventSeriesID := ""
 	clusterUUID := ""
 	for _, eventSeriesRow := range eventSeries {
-		if eventSeriesRow.ObjectName == input.ClusterConfig.ClusterName {
+		if eventSeriesRow.ObjectName == clusterName {
 			if event.InProgress(eventSeriesRow) {
 				eventSeriesID = eventSeriesRow.ActivitySeriesID
 				clusterUUID = eventSeriesRow.ClusterUUID
@@ -215,10 +356,10 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 	}
 
 	if eventSeriesID == "" {
-		return CloudCluster{}, fmt.Errorf("failed to find event series for cluster %s", input.ClusterConfig.ClusterName)
+		return CloudCluster{}, fmt.Errorf("failed to find event series for cluster %s", clusterName)
 	}
 	if clusterUUID == "" {
-		return CloudCluster{}, fmt.Errorf("failed to find cluster UUID for cluster %s", input.ClusterConfig.ClusterName)
+		return CloudCluster{}, fmt.Errorf("failed to find cluster UUID for cluster %s", clusterName)
 	}
 
 	for {
@@ -230,7 +371,7 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 		case gqlevent.ActivityStatusQueued:
 		case gqlevent.ActivityStatusRunning:
 		case gqlevent.ActivityStatusTaskSuccess:
-			a.log.Printf(log.Info, "AWS cloud cluster create in progress: %s\n", activitySeries.Activities.Nodes[0].Message)
+			a.log.Printf(log.Info, "RSC cloud cluster create in progress: %s\n", activitySeries.Activities.Nodes[0].Message)
 			time.Sleep(60 * time.Second)
 			continue
 		case gqlevent.ActivityStatusSuccess:
@@ -238,11 +379,11 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 				ID:             uuid.MustParse(activitySeries.ClusterUUID),
 				Name:           activitySeries.Cluster.Name,
 				Status:         activitySeries.LastActivityStatus,
-				CloudAccountID: input.CloudAccountID,
-				CdmVersion:     input.VmConfig.CdmVersion,
-				CdmProduct:     input.VmConfig.CdmProduct,
-				InstanceType:   string(input.VmConfig.InstanceType),
-				Region:         input.Region,
+				CloudAccountID: cloudAccountID,
+				CdmVersion:     cdmVersion,
+				CdmProduct:     cdmProduct,
+				InstanceType:   instanceType,
+				Region:         region,
 			}, nil
 		case gqlevent.ActivityStatusFailure:
 			return CloudCluster{}, fmt.Errorf("cloud cluster create failed: %s", activitySeries.Activities.Nodes[0].Message)

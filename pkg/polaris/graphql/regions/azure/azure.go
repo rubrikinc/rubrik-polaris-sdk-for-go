@@ -167,6 +167,21 @@ func (region Region) String() string {
 	return region.Name()
 }
 
+// MarshalJSON returns the region as a JSON string using the region name.
+func (region Region) MarshalJSON() ([]byte, error) {
+	return json.Marshal(regionInfoMap[region].name)
+}
+
+// UnmarshalJSON parses the region from a JSON string using the region name.
+func (region *Region) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	*region = RegionFromName(s)
+	return nil
+}
+
 const (
 	FromAny                      = iota // Parse the value as any of the below formats.
 	FromCloudAccountRegionEnum          // Parse the value as a GraphQL AzureCloudAccountRegion enum value.

@@ -332,6 +332,15 @@ var createAwsCloudClusterQuery = `mutation SdkGolangCreateAwsCloudCluster($input
   }
 }`
 
+// createAzureCcCluster GraphQL query
+var createAzureCcClusterQuery = `mutation SdkGolangCreateAwsCloudCluster($input: CreateAzureClusterInput!) {
+  result: createAzureCluster(input: $input) {
+    message
+    success
+    jobId
+  }
+}`
+
 // removeAwsCcCluster GraphQL query
 var removeAwsCcClusterQuery = `mutation SdkGolangRemoveAwsCcCluster(
   $clusterUuid: UUID!
