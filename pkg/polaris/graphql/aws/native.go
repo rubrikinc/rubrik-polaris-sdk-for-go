@@ -27,6 +27,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -36,8 +37,8 @@ type NativeAccount struct {
 	ID      uuid.UUID `json:"id"`
 	Name    string    `json:"name"`
 	Regions []struct {
-		Region        RegionEnum `json:"region"`
-		HasExocompute bool       `json:"isExocomputeConfigured"`
+		Region        aws.RegionEnum `json:"region"`
+		HasExocompute bool           `json:"isExocomputeConfigured"`
 	} `json:"regionSpecs"`
 	Status     string         `json:"status"`
 	Assignment sla.Assignment `json:"slaAssignment"`

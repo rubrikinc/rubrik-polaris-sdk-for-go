@@ -30,6 +30,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -62,7 +63,7 @@ type RoleChainingDetails struct {
 type Feature struct {
 	Feature             string                 `json:"feature"`
 	PermissionGroups    []core.PermissionGroup `json:"permissionsGroups"`
-	Regions             []RegionEnum           `json:"awsRegions"`
+	Regions             []aws.RegionEnum       `json:"awsRegions"`
 	RoleArn             string                 `json:"roleArn"`
 	StackArn            string                 `json:"stackArn"`
 	Status              core.Status            `json:"status"`
@@ -217,7 +218,7 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, cloud Cloud, id,
 // specified AWS account to RSC. The message returned by the GraphQL API is
 // converted into a Go error. After this function a CloudFormation stack must
 // be created using the information returned by ValidateAndCreateCloudAccount.
-func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id, name string, features []core.Feature, regions []Region, init CloudAccountInitiate) error {
+func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id, name string, features []core.Feature, regions []aws.Region, init CloudAccountInitiate) error {
 	a.log.Print(log.Trace)
 
 	// Features and FeaturesWithPG are mutually exclusive.
@@ -226,7 +227,7 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 		features = nil
 	}
 
-	regionEnums := make([]RegionEnum, 0, len(regions))
+	regionEnums := make([]aws.RegionEnum, 0, len(regions))
 	for _, reg := range regions {
 		regionEnums = append(regionEnums, reg.ToRegionEnum())
 	}
@@ -235,7 +236,7 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 		Cloud          Cloud            `json:"cloudType"`
 		ID             string           `json:"nativeId"`
 		Name           string           `json:"accountName"`
-		Regions        []RegionEnum     `json:"awsRegions,omitempty"`
+		Regions        []aws.RegionEnum `json:"awsRegions,omitempty"`
 		ExternalID     string           `json:"externalId"`
 		FeatureVersion []FeatureVersion `json:"featureVersion"`
 		Features       []string         `json:"features,omitempty"`
@@ -379,10 +380,10 @@ func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, accountName s
 // UpdateCloudAccountFeature updates the settings of the cloud account. The
 // message returned by the GraphQL API call is converted into a Go error. At
 // this time only the regions can be updated.
-func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAccountAction, id uuid.UUID, feature core.Feature, regions []Region) error {
+func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAccountAction, id uuid.UUID, feature core.Feature, regions []aws.Region) error {
 	a.GQL.Log().Print(log.Trace)
 
-	regionEnums := make([]RegionEnum, 0, len(regions))
+	regionEnums := make([]aws.RegionEnum, 0, len(regions))
 	for _, reg := range regions {
 		regionEnums = append(regionEnums, reg.ToRegionEnum())
 	}
@@ -390,7 +391,7 @@ func (a API) UpdateCloudAccountFeature(ctx context.Context, action core.CloudAcc
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Action  core.CloudAccountAction `json:"action"`
 		ID      uuid.UUID               `json:"cloudAccountId"`
-		Regions []RegionEnum            `json:"awsRegions"`
+		Regions []aws.RegionEnum        `json:"awsRegions"`
 		Feature string                  `json:"feature"`
 	}{Action: action, ID: id, Regions: regionEnums, Feature: feature.Name})
 	if err != nil {
