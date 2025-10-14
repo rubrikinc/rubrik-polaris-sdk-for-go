@@ -27,6 +27,7 @@ import (
 )
 
 const (
+	RegionSource  Region = -1
 	RegionUnknown Region = iota
 	RegionAfSouth1
 	RegionApEast1
@@ -62,6 +63,9 @@ const (
 	RegionUsGovWest1
 	RegionUsWest1
 	RegionUsWest2
+	RegionUsISOEast1
+	RegionUsISOWest1
+	RegionUsISOBEast1
 )
 
 // Region represents an AWS region in RSC. When reading a Region from a JSON
@@ -108,22 +112,31 @@ func (region Region) ToRegionEnumPtr() *RegionEnum {
 	return &RegionEnum{Region: region}
 }
 
+// ToRegionForReplicationEnum returns the RSC GraphQL AwsRegionForReplication enum value for the region.
+func (region Region) ToRegionForReplicationEnum() RegionForReplicationEnum {
+	return RegionForReplicationEnum{Region: region}
+}
+
 // String returns the name of the region.
 func (region Region) String() string {
 	return region.Name()
 }
 
 const (
-	FromAny              = iota // Parse the value as any of the below formats.
-	FromDisplayName             // Parse the value as a region display name.
-	FromName                    // Parse the value as a region name.
-	FromNativeRegionEnum        // Parse the value as a GraphQL AwsNativeRegion enum value.
-	FromRegionEnum              // Parse the value as a GraphQL AwsRegion enum value.
+	FromAny                      = iota // Parse the value as any of the below formats.
+	FromDisplayName                     // Parse the value as a region display name.
+	FromName                            // Parse the value as a region name.
+	FromNativeRegionEnum                // Parse the value as a GraphQL AwsNativeRegion enum value.
+	FromRegionEnum                      // Parse the value as a GraphQL AwsRegion enum value.
+	FromRegionForReplicationEnum        // Parse the value as a GraphQL AwsRegionForReplication enum value.
 )
 
 // RegionFrom parses the value as a region identifier in the specified format.
 // If the value isn't recognized, RegionUnknown is returned.
 func RegionFrom(value string, valueFormat int) Region {
+	if value == "" || value == "n/a" {
+		return RegionUnknown
+	}
 	for r, info := range regionInfoMap {
 		switch {
 		case (valueFormat == FromAny || valueFormat == FromName) && info.name == value:
@@ -133,6 +146,8 @@ func RegionFrom(value string, valueFormat int) Region {
 		case (valueFormat == FromAny || valueFormat == FromRegionEnum) && info.regionEnum == value:
 			return r
 		case (valueFormat == FromAny || valueFormat == FromDisplayName) && info.displayName == value:
+			return r
+		case (valueFormat == FromAny || valueFormat == FromRegionForReplicationEnum) && info.regionForReplicationEnum == value:
 			return r
 		}
 	}
@@ -164,6 +179,11 @@ func RegionFromNativeRegionEnum(value string) Region {
 // RegionFromRegionEnum parses the value as a GraphQL AwsRegion enum value.
 func RegionFromRegionEnum(value string) Region {
 	return RegionFrom(value, FromRegionEnum)
+}
+
+// RegionFromRegionForReplicationEnum parses the value as a GraphQL AwsRegionForReplication enum value.
+func RegionFromRegionForReplicationEnum(value string) Region {
+	return RegionFrom(value, FromRegionForReplicationEnum)
 }
 
 // RegionEnum represents the GraphQL AwsRegion enum type.
@@ -202,6 +222,24 @@ func (region *NativeRegionEnum) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// RegionForReplicationEnum represents the GraphQL AwsRegionForReplication enum type.
+type RegionForReplicationEnum struct{ Region }
+
+// MarshalJSON returns the region as a JSON string.
+func (region RegionForReplicationEnum) MarshalJSON() ([]byte, error) {
+	return json.Marshal(regionInfoMap[region.Region].regionForReplicationEnum)
+}
+
+// UnmarshalJSON parses the region from a JSON string.
+func (region *RegionForReplicationEnum) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	region.Region = RegionFromRegionForReplicationEnum(s)
+	return nil
+}
+
 // AllRegionNames returns all the recognized region names.
 func AllRegionNames() []string {
 	regions := make([]string, 0, len(regionInfoMap))
@@ -215,220 +253,284 @@ func AllRegionNames() []string {
 }
 
 var regionInfoMap = map[Region]struct {
-	name             string
-	displayName      string
-	regionEnum       string
-	nativeRegionEnum string
+	name                     string
+	displayName              string
+	regionEnum               string
+	nativeRegionEnum         string
+	regionForReplicationEnum string
 }{
+	RegionSource: {
+		name:                     "n/a",
+		displayName:              "Same as source",
+		regionEnum:               "n/a",
+		nativeRegionEnum:         "n/a",
+		regionForReplicationEnum: "SOURCE_REGION",
+	},
 	RegionUnknown: {
-		name:             "",
-		displayName:      "<Unknown>",
-		regionEnum:       "UNKNOWN_AWS_REGION",
-		nativeRegionEnum: "NOT_SPECIFIED",
+		name:                     "n/a",
+		displayName:              "<Unknown>",
+		regionEnum:               "UNKNOWN_AWS_REGION",
+		nativeRegionEnum:         "NOT_SPECIFIED",
+		regionForReplicationEnum: "NOT_DEFINED",
 	},
 	RegionAfSouth1: {
-		name:             "af-south-1",
-		displayName:      "Africa (Cape Town)",
-		regionEnum:       "AF_SOUTH_1",
-		nativeRegionEnum: "AF_SOUTH_1",
+		name:                     "af-south-1",
+		displayName:              "Africa (Cape Town)",
+		regionEnum:               "AF_SOUTH_1",
+		nativeRegionEnum:         "AF_SOUTH_1",
+		regionForReplicationEnum: "AF_SOUTH_1",
 	},
 	RegionApEast1: {
-		name:             "ap-east-1",
-		displayName:      "Asia Pacific (Hong Kong)",
-		regionEnum:       "AP_EAST_1",
-		nativeRegionEnum: "AP_EAST_1",
+		name:                     "ap-east-1",
+		displayName:              "Asia Pacific (Hong Kong)",
+		regionEnum:               "AP_EAST_1",
+		nativeRegionEnum:         "AP_EAST_1",
+		regionForReplicationEnum: "AP_EAST_1",
 	},
 	RegionApNorthEast1: {
-		name:             "ap-northeast-1",
-		displayName:      "Asia Pacific (Tokyo)",
-		regionEnum:       "AP_NORTHEAST_1",
-		nativeRegionEnum: "AP_NORTHEAST_1",
+		name:                     "ap-northeast-1",
+		displayName:              "Asia Pacific (Tokyo)",
+		regionEnum:               "AP_NORTHEAST_1",
+		nativeRegionEnum:         "AP_NORTHEAST_1",
+		regionForReplicationEnum: "AP_NORTHEAST_1",
 	},
 	RegionApNorthEast2: {
-		name:             "ap-northeast-2",
-		displayName:      "Asia Pacific (Seoul)",
-		regionEnum:       "AP_NORTHEAST_2",
-		nativeRegionEnum: "AP_NORTHEAST_2",
+		name:                     "ap-northeast-2",
+		displayName:              "Asia Pacific (Seoul)",
+		regionEnum:               "AP_NORTHEAST_2",
+		nativeRegionEnum:         "AP_NORTHEAST_2",
+		regionForReplicationEnum: "AP_NORTHEAST_2",
 	},
 	RegionApNorthEast3: {
-		name:             "ap-northeast-3",
-		displayName:      "Asia Pacific (Osaka)",
-		regionEnum:       "AP_NORTHEAST_3",
-		nativeRegionEnum: "AP_NORTHEAST_3",
+		name:                     "ap-northeast-3",
+		displayName:              "Asia Pacific (Osaka)",
+		regionEnum:               "AP_NORTHEAST_3",
+		nativeRegionEnum:         "AP_NORTHEAST_3",
+		regionForReplicationEnum: "AP_NORTHEAST_3",
 	},
 	RegionApSouthEast1: {
-		name:             "ap-southeast-1",
-		displayName:      "Asia Pacific (Singapore)",
-		regionEnum:       "AP_SOUTHEAST_1",
-		nativeRegionEnum: "AP_SOUTHEAST_1",
+		name:                     "ap-southeast-1",
+		displayName:              "Asia Pacific (Singapore)",
+		regionEnum:               "AP_SOUTHEAST_1",
+		nativeRegionEnum:         "AP_SOUTHEAST_1",
+		regionForReplicationEnum: "AP_SOUTHEAST_1",
 	},
 	RegionApSouthEast2: {
-		name:             "ap-southeast-2",
-		displayName:      "Asia Pacific (Sydney)",
-		regionEnum:       "AP_SOUTHEAST_2",
-		nativeRegionEnum: "AP_SOUTHEAST_2",
+		name:                     "ap-southeast-2",
+		displayName:              "Asia Pacific (Sydney)",
+		regionEnum:               "AP_SOUTHEAST_2",
+		nativeRegionEnum:         "AP_SOUTHEAST_2",
+		regionForReplicationEnum: "AP_SOUTHEAST_2",
 	},
 	RegionApSouthEast3: {
-		name:             "ap-southeast-3",
-		displayName:      "Asia Pacific (Jakarta)",
-		regionEnum:       "AP_SOUTHEAST_3",
-		nativeRegionEnum: "AP_SOUTHEAST_3",
+		name:                     "ap-southeast-3",
+		displayName:              "Asia Pacific (Jakarta)",
+		regionEnum:               "AP_SOUTHEAST_3",
+		nativeRegionEnum:         "AP_SOUTHEAST_3",
+		regionForReplicationEnum: "AP_SOUTHEAST_3",
 	},
 	RegionApSouthEast4: {
-		name:             "ap-southeast-4",
-		displayName:      "Asia Pacific (Melbourne)",
-		regionEnum:       "AP_SOUTHEAST_4",
-		nativeRegionEnum: "AP_SOUTHEAST_4",
+		name:                     "ap-southeast-4",
+		displayName:              "Asia Pacific (Melbourne)",
+		regionEnum:               "AP_SOUTHEAST_4",
+		nativeRegionEnum:         "AP_SOUTHEAST_4",
+		regionForReplicationEnum: "AP_SOUTHEAST_4",
 	},
 	RegionApSouthEast5: {
-		name:             "ap-southeast-5",
-		displayName:      "Asia Pacific (Malaysia)",
-		regionEnum:       "AP_SOUTHEAST_5",
-		nativeRegionEnum: "AP_SOUTHEAST_5",
+		name:                     "ap-southeast-5",
+		displayName:              "Asia Pacific (Malaysia)",
+		regionEnum:               "AP_SOUTHEAST_5",
+		nativeRegionEnum:         "AP_SOUTHEAST_5",
+		regionForReplicationEnum: "",
 	},
 	RegionApSouth1: {
-		name:             "ap-south-1",
-		displayName:      "Asia Pacific (Mumbai)",
-		regionEnum:       "AP_SOUTH_1",
-		nativeRegionEnum: "AP_SOUTH_1",
+		name:                     "ap-south-1",
+		displayName:              "Asia Pacific (Mumbai)",
+		regionEnum:               "AP_SOUTH_1",
+		nativeRegionEnum:         "AP_SOUTH_1",
+		regionForReplicationEnum: "AP_SOUTH_1",
 	},
 	RegionApSouth2: {
-		name:             "ap-south-2",
-		displayName:      "Asia Pacific (Hyderabad)",
-		regionEnum:       "AP_SOUTH_2",
-		nativeRegionEnum: "AP_SOUTH_2",
+		name:                     "ap-south-2",
+		displayName:              "Asia Pacific (Hyderabad)",
+		regionEnum:               "AP_SOUTH_2",
+		nativeRegionEnum:         "AP_SOUTH_2",
+		regionForReplicationEnum: "AP_SOUTH_2",
 	},
 	RegionCaCentral1: {
-		name:             "ca-central-1",
-		displayName:      "Canada (Central)",
-		regionEnum:       "CA_CENTRAL_1",
-		nativeRegionEnum: "CA_CENTRAL_1",
+		name:                     "ca-central-1",
+		displayName:              "Canada (Central)",
+		regionEnum:               "CA_CENTRAL_1",
+		nativeRegionEnum:         "CA_CENTRAL_1",
+		regionForReplicationEnum: "CA_CENTRAL_1",
 	},
 	RegionCaWest1: {
-		name:             "ca-west-1",
-		displayName:      "Canada West (Calgary)",
-		regionEnum:       "CA_WEST_1",
-		nativeRegionEnum: "CA_WEST_1",
+		name:                     "ca-west-1",
+		displayName:              "Canada West (Calgary)",
+		regionEnum:               "CA_WEST_1",
+		nativeRegionEnum:         "CA_WEST_1",
+		regionForReplicationEnum: "CA_WEST_1",
 	},
 	RegionCnNorthWest1: {
-		name:             "cn-northwest-1",
-		displayName:      "China (Ningxia)",
-		regionEnum:       "CN_NORTHWEST_1",
-		nativeRegionEnum: "CN_NORTHWEST_1",
+		name:                     "cn-northwest-1",
+		displayName:              "China (Ningxia)",
+		regionEnum:               "CN_NORTHWEST_1",
+		nativeRegionEnum:         "CN_NORTHWEST_1",
+		regionForReplicationEnum: "CN_NORTHWEST_1",
 	},
 	RegionCnNorth1: {
-		name:             "cn-north-1",
-		displayName:      "China (Beijing)",
-		regionEnum:       "CN_NORTH_1",
-		nativeRegionEnum: "CN_NORTH_1",
+		name:                     "cn-north-1",
+		displayName:              "China (Beijing)",
+		regionEnum:               "CN_NORTH_1",
+		nativeRegionEnum:         "CN_NORTH_1",
+		regionForReplicationEnum: "CN_NORTH_1",
 	},
 	RegionEuCentral1: {
-		name:             "eu-central-1",
-		displayName:      "Europe (Frankfurt)",
-		regionEnum:       "EU_CENTRAL_1",
-		nativeRegionEnum: "EU_CENTRAL_1",
+		name:                     "eu-central-1",
+		displayName:              "Europe (Frankfurt)",
+		regionEnum:               "EU_CENTRAL_1",
+		nativeRegionEnum:         "EU_CENTRAL_1",
+		regionForReplicationEnum: "EU_CENTRAL_1",
 	},
 	RegionEuCentral2: {
-		name:             "eu-central-2",
-		displayName:      "Europe (Zurich)",
-		regionEnum:       "EU_CENTRAL_2",
-		nativeRegionEnum: "EU_CENTRAL_2",
+		name:                     "eu-central-2",
+		displayName:              "Europe (Zurich)",
+		regionEnum:               "EU_CENTRAL_2",
+		nativeRegionEnum:         "EU_CENTRAL_2",
+		regionForReplicationEnum: "",
 	},
 	RegionEuNorth1: {
-		name:             "eu-north-1",
-		displayName:      "Europe (Stockholm)",
-		regionEnum:       "EU_NORTH_1",
-		nativeRegionEnum: "EU_NORTH_1",
+		name:                     "eu-north-1",
+		displayName:              "Europe (Stockholm)",
+		regionEnum:               "EU_NORTH_1",
+		nativeRegionEnum:         "EU_NORTH_1",
+		regionForReplicationEnum: "EU_NORTH_1",
 	},
 	RegionEuSouth1: {
-		name:             "eu-south-1",
-		displayName:      "Europe (Milan)",
-		regionEnum:       "EU_SOUTH_1",
-		nativeRegionEnum: "EU_SOUTH_1",
+		name:                     "eu-south-1",
+		displayName:              "Europe (Milan)",
+		regionEnum:               "EU_SOUTH_1",
+		nativeRegionEnum:         "EU_SOUTH_1",
+		regionForReplicationEnum: "EU_SOUTH_1",
 	},
 	RegionEuSouth2: {
-		name:             "eu-south-2",
-		displayName:      "Europe (Spain)",
-		regionEnum:       "EU_SOUTH_2",
-		nativeRegionEnum: "EU_SOUTH_2",
+		name:                     "eu-south-2",
+		displayName:              "Europe (Spain)",
+		regionEnum:               "EU_SOUTH_2",
+		nativeRegionEnum:         "EU_SOUTH_2",
+		regionForReplicationEnum: "EU_SOUTH_2",
 	},
 	RegionEuWest1: {
-		name:             "eu-west-1",
-		displayName:      "Europe (Ireland)",
-		regionEnum:       "EU_WEST_1",
-		nativeRegionEnum: "EU_WEST_1",
+		name:                     "eu-west-1",
+		displayName:              "Europe (Ireland)",
+		regionEnum:               "EU_WEST_1",
+		nativeRegionEnum:         "EU_WEST_1",
+		regionForReplicationEnum: "EU_WEST_1",
 	},
 	RegionEuWest2: {
-		name:             "eu-west-2",
-		displayName:      "Europe (London)",
-		regionEnum:       "EU_WEST_2",
-		nativeRegionEnum: "EU_WEST_2",
+		name:                     "eu-west-2",
+		displayName:              "Europe (London)",
+		regionEnum:               "EU_WEST_2",
+		nativeRegionEnum:         "EU_WEST_2",
+		regionForReplicationEnum: "EU_WEST_2",
 	},
 	RegionEuWest3: {
-		name:             "eu-west-3",
-		displayName:      "Europe (Paris)",
-		regionEnum:       "EU_WEST_3",
-		nativeRegionEnum: "EU_WEST_3",
+		name:                     "eu-west-3",
+		displayName:              "Europe (Paris)",
+		regionEnum:               "EU_WEST_3",
+		nativeRegionEnum:         "EU_WEST_3",
+		regionForReplicationEnum: "EU_WEST_3",
 	},
 	RegionIlCentral1: {
-		name:             "il-central-1",
-		displayName:      "Israel (Tel Aviv)",
-		regionEnum:       "IL_CENTRAL_1",
-		nativeRegionEnum: "IL_CENTRAL_1",
+		name:                     "il-central-1",
+		displayName:              "Israel (Tel Aviv)",
+		regionEnum:               "IL_CENTRAL_1",
+		nativeRegionEnum:         "IL_CENTRAL_1",
+		regionForReplicationEnum: "IL_CENTRAL_1",
 	},
 	RegionMeCentral1: {
-		name:             "me-central-1",
-		displayName:      "Middle East (UAE)",
-		regionEnum:       "ME_CENTRAL_1",
-		nativeRegionEnum: "ME_CENTRAL_1",
+		name:                     "me-central-1",
+		displayName:              "Middle East (UAE)",
+		regionEnum:               "ME_CENTRAL_1",
+		nativeRegionEnum:         "ME_CENTRAL_1",
+		regionForReplicationEnum: "ME_CENTRAL_1",
 	},
 	RegionMeSouth1: {
-		name:             "me-south-1",
-		displayName:      "Middle East (Bahrain)",
-		regionEnum:       "ME_SOUTH_1",
-		nativeRegionEnum: "ME_SOUTH_1",
+		name:                     "me-south-1",
+		displayName:              "Middle East (Bahrain)",
+		regionEnum:               "ME_SOUTH_1",
+		nativeRegionEnum:         "ME_SOUTH_1",
+		regionForReplicationEnum: "ME_SOUTH_1",
 	},
 	RegionSaEast1: {
-		name:             "sa-east-1",
-		displayName:      "South America (São Paulo)",
-		regionEnum:       "SA_EAST_1",
-		nativeRegionEnum: "SA_EAST_1",
+		name:                     "sa-east-1",
+		displayName:              "South America (São Paulo)",
+		regionEnum:               "SA_EAST_1",
+		nativeRegionEnum:         "SA_EAST_1",
+		regionForReplicationEnum: "SA_EAST_1",
 	},
 	RegionUsEast1: {
-		name:             "us-east-1",
-		displayName:      "US East (N. Virginia)",
-		regionEnum:       "US_EAST_1",
-		nativeRegionEnum: "US_EAST_1",
+		name:                     "us-east-1",
+		displayName:              "US East (N. Virginia)",
+		regionEnum:               "US_EAST_1",
+		regionForReplicationEnum: "US_EAST_1",
+		nativeRegionEnum:         "US_EAST_1",
 	},
 	RegionUsEast2: {
-		name:             "us-east-2",
-		displayName:      "US East (Ohio)",
-		regionEnum:       "US_EAST_2",
-		nativeRegionEnum: "US_EAST_2",
+		name:                     "us-east-2",
+		displayName:              "US East (Ohio)",
+		regionEnum:               "US_EAST_2",
+		nativeRegionEnum:         "US_EAST_2",
+		regionForReplicationEnum: "US_EAST_2",
 	},
 	RegionUsGovEast1: {
-		name:             "us-gov-east-1",
-		displayName:      "AWS GovCloud (US-East)",
-		regionEnum:       "US_GOV_EAST_1",
-		nativeRegionEnum: "US_GOV_EAST_1",
+		name:                     "us-gov-east-1",
+		displayName:              "AWS GovCloud (US-East)",
+		regionEnum:               "US_GOV_EAST_1",
+		nativeRegionEnum:         "US_GOV_EAST_1",
+		regionForReplicationEnum: "US_GOV_EAST_1",
 	},
 	RegionUsGovWest1: {
-		name:             "us-gov-west-1",
-		displayName:      "AWS GovCloud (US-West)",
-		regionEnum:       "US_GOV_WEST_1",
-		nativeRegionEnum: "US_GOV_WEST_1",
+		name:                     "us-gov-west-1",
+		displayName:              "AWS GovCloud (US-West)",
+		regionEnum:               "US_GOV_WEST_1",
+		nativeRegionEnum:         "US_GOV_WEST_1",
+		regionForReplicationEnum: "US_GOV_WEST_1",
 	},
 	RegionUsWest1: {
-		name:             "us-west-1",
-		displayName:      "US West (N. California)",
-		regionEnum:       "US_WEST_1",
-		nativeRegionEnum: "US_WEST_1",
+		name:                     "us-west-1",
+		displayName:              "US West (N. California)",
+		regionEnum:               "US_WEST_1",
+		nativeRegionEnum:         "US_WEST_1",
+		regionForReplicationEnum: "US_WEST_1",
 	},
 	RegionUsWest2: {
-		name:             "us-west-2",
-		displayName:      "US West (Oregon)",
-		regionEnum:       "US_WEST_2",
-		nativeRegionEnum: "US_WEST_2",
+		name:                     "us-west-2",
+		displayName:              "US West (Oregon)",
+		regionEnum:               "US_WEST_2",
+		nativeRegionEnum:         "US_WEST_2",
+		regionForReplicationEnum: "US_WEST_2",
+	},
+	RegionUsISOEast1: {
+		name:                     "us-iso-east-1",
+		displayName:              "US ISO East",
+		regionEnum:               "n/a",
+		nativeRegionEnum:         "n/a",
+		regionForReplicationEnum: "US_ISO_EAST_1",
+	},
+	RegionUsISOWest1: {
+		name:                     "us-iso-west-1",
+		displayName:              "US ISO West",
+		regionEnum:               "n/a",
+		nativeRegionEnum:         "n/a",
+		regionForReplicationEnum: "US_ISO_WEST_1",
+	},
+	RegionUsISOBEast1: {
+		name:                     "us-isob-east-1",
+		displayName:              "US ISOB East",
+		regionEnum:               "n/a",
+		nativeRegionEnum:         "n/a",
+		regionForReplicationEnum: "US_ISOB_EAST_1",
 	},
 }
 
