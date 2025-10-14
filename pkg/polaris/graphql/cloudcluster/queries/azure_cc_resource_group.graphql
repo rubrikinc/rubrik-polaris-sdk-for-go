@@ -1,12 +1,11 @@
 query RubrikPolarisSDKRequest(
   $cloudAccountId: UUID!
   $azureSubscriptionNativeId: UUID!
-  $feature: CloudAccountFeature!
 ) {
   result: allResourceGroupsFromAzure(
     cloudAccountId: $cloudAccountId
     azureSubscriptionNativeId: $azureSubscriptionNativeId
-    feature: "SERVERS_AND_APPS"
+    feature: SERVERS_AND_APPS
   ) {
     name
     region

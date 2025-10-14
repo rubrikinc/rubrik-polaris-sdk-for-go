@@ -190,7 +190,7 @@ var azureCcCdmVersionsQuery = `query SdkGolangAzureCcCdmVersions($cloudAccountId
 }`
 
 // azureCcManagedIdentities GraphQL query
-var azureCcManagedIdentitiesQuery = `query SdkGolangAzureCcManagedIdentities($cloudAccountId: String!) {
+var azureCcManagedIdentitiesQuery = `query SdkGolangAzureCcManagedIdentities($cloudAccountId: UUID!) {
   result: allAzureManagedIdentities(
     managedIdentitiesRequest: { cloudAccountId: $cloudAccountId }
   ) {
@@ -226,12 +226,11 @@ var azureCcRegionQuery = `query SdkGolangAzureCcRegion($cloudAccountId: String!)
 var azureCcResourceGroupQuery = `query SdkGolangAzureCcResourceGroup(
   $cloudAccountId: UUID!
   $azureSubscriptionNativeId: UUID!
-  $feature: CloudAccountFeature!
 ) {
   result: allResourceGroupsFromAzure(
     cloudAccountId: $cloudAccountId
     azureSubscriptionNativeId: $azureSubscriptionNativeId
-    feature: "SERVERS_AND_APPS"
+    feature: SERVERS_AND_APPS
   ) {
     name
     region

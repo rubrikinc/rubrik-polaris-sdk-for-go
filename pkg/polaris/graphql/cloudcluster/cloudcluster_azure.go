@@ -46,34 +46,34 @@ const (
 	AzureInstanceTypeStandardE16ASV5 AzureCCESSupportedInstanceType = "STANDARD_E16AS_V5"
 )
 
-type AzureCdmVersionTag struct {
+type AzureCDMVersionTag struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
 
-type AzureCdmVersions struct {
-	CdmVersion             string                           `json:"cdmVersion"`
-	Sku                    string                           `json:"sku"`
+type AzureCDMVersions struct {
+	CDMVersion             string                           `json:"cdmVersion"`
+	SKU                    string                           `json:"sku"`
 	SupportedInstanceTypes []AzureCCESSupportedInstanceType `json:"supportedInstanceTypes"`
-	Tags                   []AzureCdmVersionTag             `json:"tags"`
+	Tags                   []AzureCDMVersionTag             `json:"tags"`
 	Version                string                           `json:"version"`
 }
 
 // AllAzureCdmVersions returns all the available CDM versions for the specified
 // cloud account.
-func (a API) AllAzureCdmVersions(ctx context.Context, cloudAccountID uuid.UUID, region azure.Region) ([]AzureCdmVersions, error) {
+func (a API) AllAzureCdmVersions(ctx context.Context, cloudAccountID uuid.UUID, region azure.Region) ([]AzureCDMVersions, error) {
 	query := azureCcCdmVersionsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID string `json:"cloudAccountId"`
-		Location       string `json:"location"`
-	}{CloudAccountID: cloudAccountID.String(), Location: region.Name()})
+		CloudAccountID uuid.UUID                    `json:"cloudAccountId"`
+		Location       azure.CloudAccountRegionEnum `json:"location"`
+	}{CloudAccountID: cloudAccountID, Location: region.ToCloudAccountRegionEnum()})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
 		Data struct {
-			Result []AzureCdmVersions `json:"result"`
+			Result []AzureCDMVersions `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
@@ -84,17 +84,16 @@ func (a API) AllAzureCdmVersions(ctx context.Context, cloudAccountID uuid.UUID, 
 }
 
 type AzureCCRegionDetails struct {
-	Location                 string                   `json:"location"`
-	LogicalAvailabilityZones []azure.NativeRegionEnum `json:"logicalAvailabilityZones"`
+	Location                 azure.CloudAccountRegionEnum `json:"location"`
+	LogicalAvailabilityZones []azure.NativeRegionEnum     `json:"logicalAvailabilityZones"`
 }
 
 // AzureCCRegionDetails returns all the available regions for the specified cloud account.
 func (a API) AzureCCRegionDetails(ctx context.Context, cloudAccountID uuid.UUID) ([]AzureCCRegionDetails, error) {
 	query := azureCcRegionQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID string `json:"cloudAccountId"`
-	}{CloudAccountID: cloudAccountID.String()})
-
+		CloudAccountID uuid.UUID `json:"cloudAccountId"`
+	}{CloudAccountID: cloudAccountID})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
@@ -112,7 +111,7 @@ func (a API) AzureCCRegionDetails(ctx context.Context, cloudAccountID uuid.UUID)
 }
 
 type AzureMarketplaceTerms struct {
-	MarketplaceSku       string `json:"marketplaceSku"`
+	MarketplaceSKU       string `json:"marketplaceSku"`
 	MarketplaceTermsLink string `json:"marketplaceTermsLink"`
 	Message              string `json:"message"`
 	Offer                string `json:"offer"`
@@ -124,9 +123,9 @@ type AzureMarketplaceTerms struct {
 func (a API) AzureMarketplaceTerms(ctx context.Context, cloudAccountID uuid.UUID, cdmVersion string) (AzureMarketplaceTerms, error) {
 	query := azureCcMarketplaceTermsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID string `json:"cloudAccountId"`
-		CdmVersion     string `json:"cdmVersion"`
-	}{CloudAccountID: cloudAccountID.String(), CdmVersion: cdmVersion})
+		CloudAccountID uuid.UUID `json:"cloudAccountId"`
+		CdmVersion     string    `json:"cdmVersion"`
+	}{CloudAccountID: cloudAccountID, CdmVersion: cdmVersion})
 	if err != nil {
 		return AzureMarketplaceTerms{}, graphql.RequestError(query, err)
 	}
@@ -144,17 +143,17 @@ func (a API) AzureMarketplaceTerms(ctx context.Context, cloudAccountID uuid.UUID
 }
 
 type AzureCCResourceGroup struct {
-	Name   string `json:"name"`
-	Region string `json:"region"`
+	Name   string                 `json:"name"`
+	Region azure.NativeRegionEnum `json:"region"`
 }
 
 // AzureCCResourceGroups returns all the available resource groups for the specified cloud account.
-func (a API) AzureCCResourceGroups(ctx context.Context, cloudAccountID uuid.UUID) ([]AzureCCResourceGroup, error) {
+func (a API) AzureCCResourceGroups(ctx context.Context, cloudAccountID uuid.UUID, azureSubscriptionID uuid.UUID) ([]AzureCCResourceGroup, error) {
 	query := azureCcResourceGroupQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID      string `json:"cloudAccountId"`
-		AzureSubscriptionID string `json:"azureSubscriptionNativeId"`
-	}{CloudAccountID: cloudAccountID.String(), AzureSubscriptionID: "TODO"}) // TODO: Get subscription ID from cloud account.
+		CloudAccountID      uuid.UUID `json:"cloudAccountId"`
+		AzureSubscriptionID uuid.UUID `json:"azureSubscriptionNativeId"`
+	}{CloudAccountID: cloudAccountID, AzureSubscriptionID: azureSubscriptionID})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
@@ -181,9 +180,8 @@ type AzureCCManagedIdentity struct {
 func (a API) AzureCCManagedIdentities(ctx context.Context, cloudAccountID uuid.UUID) ([]AzureCCManagedIdentity, error) {
 	query := azureCcManagedIdentitiesQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID string `json:"cloudAccountId"`
-	}{CloudAccountID: cloudAccountID.String()})
-
+		CloudAccountID uuid.UUID `json:"cloudAccountId"`
+	}{CloudAccountID: cloudAccountID})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
@@ -216,9 +214,9 @@ type AzureCCSubnet struct {
 func (a API) AzureCCSubnets(ctx context.Context, cloudAccountID uuid.UUID, region azure.Region) ([]AzureCCSubnet, error) {
 	query := azureCcSubnetQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID uuid.UUID `json:"cloudAccountId"`
-		Region         string    `json:"region"`
-	}{CloudAccountID: cloudAccountID, Region: region.Name()})
+		CloudAccountID uuid.UUID                    `json:"cloudAccountId"`
+		Region         azure.CloudAccountRegionEnum `json:"region"`
+	}{CloudAccountID: cloudAccountID, Region: region.ToCloudAccountRegionEnum()})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
@@ -236,18 +234,17 @@ func (a API) AzureCCSubnets(ctx context.Context, cloudAccountID uuid.UUID, regio
 }
 
 type AzureCCStorageAccount struct {
-	Name   string `json:"name"`
-	Region string `json:"region"`
+	Name          string `json:"name"`
+	ResourceGroup string `json:"resourceGroup"`
 }
 
 // AzureCCStorageAccounts returns all the available storage accounts for the specified cloud account.
 func (a API) AzureCCStorageAccounts(ctx context.Context, cloudAccountID uuid.UUID, region azure.Region) ([]AzureCCStorageAccount, error) {
 	query := azureCcStorageAccountsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID string `json:"cloudAccountId"`
-		Region         string `json:"region"`
-	}{CloudAccountID: cloudAccountID.String(), Region: region.Name()})
-
+		CloudAccountID uuid.UUID `json:"cloudAccountId"`
+		Region         string    `json:"region"`
+	}{CloudAccountID: cloudAccountID, Region: region.Name()})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
@@ -268,20 +265,20 @@ type AzureClusterConfig struct {
 	ClusterName           string             `json:"clusterName"`
 	UserEmail             string             `json:"userEmail"`
 	AdminPassword         secret.String      `json:"adminPassword"`
-	DnsNameServers        []string           `json:"dnsNameServers"`
-	DnsSearchDomains      []string           `json:"dnsSearchDomains"`
-	NtpServers            []string           `json:"ntpServers"`
+	DNSNameServers        []string           `json:"dnsNameServers"`
+	DNSSearchDomains      []string           `json:"dnsSearchDomains"`
+	NTPServers            []string           `json:"ntpServers"`
 	NumNodes              int                `json:"numNodes"`
 	DynamicScalingEnabled bool               `json:"dynamicScalingEnabled"`
-	AzureEsConfig         AzureEsConfigInput `json:"azureEsConfig"`
+	AzureESConfig         AzureEsConfigInput `json:"azureEsConfig"`
 }
 
-type AzureVmConfig struct {
-	CdmVersion           string                         `json:"cdmVersion"`
+type AzureVMConfig struct {
+	CDMVersion           string                         `json:"cdmVersion"`
 	Subnet               string                         `json:"subnet"`
-	VmType               VmConfigType                   `json:"vmType"`
-	CdmProduct           string                         `json:"cdmProduct"`
-	Location             string                         `json:"location"`
+	VMType               VmConfigType                   `json:"vmType"`
+	CDMProduct           string                         `json:"cdmProduct"`
+	Location             azure.CloudAccountRegionEnum   `json:"location"`
 	AvailabilityZone     string                         `json:"availabilityZone"`
 	Vnet                 string                         `json:"vnet"`
 	ResourceGroup        string                         `json:"resourceGroup"`
@@ -293,10 +290,10 @@ type AzureVmConfig struct {
 type CreateAzureClusterInput struct {
 	CloudAccountID       uuid.UUID                  `json:"cloudAccountId"`
 	ClusterConfig        AzureClusterConfig         `json:"clusterConfig"`
-	IsEsType             bool                       `json:"isEsType"`
+	IsESType             bool                       `json:"isEsType"`
 	KeepClusterOnFailure bool                       `json:"keepClusterOnFailure"`
 	Validations          []ClusterCreateValidations `json:"validations"`
-	VmConfig             AzureVmConfig              `json:"vmConfig"`
+	VMConfig             AzureVMConfig              `json:"vmConfig"`
 }
 
 // ValidateCreateAzureClusterInput validates the create Azure cluster input.
@@ -305,7 +302,6 @@ func (a API) ValidateCreateAzureClusterInput(ctx context.Context, input CreateAz
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Input CreateAzureClusterInput `json:"input"`
 	}{Input: input})
-
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}

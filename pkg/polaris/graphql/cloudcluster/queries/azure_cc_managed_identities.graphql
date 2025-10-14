@@ -1,4 +1,4 @@
-query RubrikPolarisSDKRequest($cloudAccountId: String!) {
+query RubrikPolarisSDKRequest($cloudAccountId: UUID!) {
   result: allAzureManagedIdentities(
     managedIdentitiesRequest: { cloudAccountId: $cloudAccountId }
   ) {
