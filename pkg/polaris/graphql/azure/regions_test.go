@@ -47,3 +47,33 @@ func TestParseRegion(t *testing.T) {
 		t.Errorf("invalid region: %v", regions)
 	}
 }
+
+func TestRegionsForReplication(t *testing.T) {
+	if region := RegionFromRegionForReplicationEnum("AUSTRALIA_CENTRAL"); region != RegionAustraliaCentral {
+		t.Errorf("invalid region: %v", region)
+	}
+	if region := RegionFromRegionForReplicationEnum("SWEDEN_SOUTH"); region != RegionSwedenSouth {
+		t.Errorf("invalid region: %v", region)
+	}
+	if region := RegionWestUS2.ToRegionForReplicationEnum(); region.Region != RegionWestUS2 {
+		t.Errorf("invalid region: %v", region)
+	}
+	if region := RegionFromRegionForReplicationEnum("SOURCE_REGION"); region != RegionSource {
+		t.Errorf("invalid region: %v", region)
+	}
+	if region := RegionSource.ToRegionForReplicationEnum(); region.Region != RegionSource {
+		t.Errorf("invalid region: %v", region)
+	}
+	if region := RegionFromRegionForReplicationEnum("NOT_DEFINED"); region != RegionUnknown {
+		t.Errorf("invalid region: %v", region)
+	}
+	if region := RegionUnknown.ToRegionForReplicationEnum(); region.Region != RegionUnknown {
+		t.Errorf("invalid region: %v", region)
+	}
+	if region := RegionFromRegionForReplicationEnum(""); region != RegionUnknown {
+		t.Errorf("invalid region: %v", region)
+	}
+	if region := RegionFromRegionForReplicationEnum("n/a"); region != RegionUnknown {
+		t.Errorf("invalid region: %v", region)
+	}
+}
