@@ -24,7 +24,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
 
 type options struct {

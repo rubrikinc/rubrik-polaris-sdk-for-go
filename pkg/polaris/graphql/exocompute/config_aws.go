@@ -27,7 +27,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -44,8 +45,8 @@ func (p AWSConfigurationsFilter) ListQuery() (string, any, AWSConfigurationsForC
 // AWSConfigurationsForCloudAccount holds the result of an AWS exocompute
 // configuration list operation.
 type AWSConfigurationsForCloudAccount struct {
-	CloudAccount        aws.CloudAccount   `json:"awsCloudAccount"`
-	Configs             []AWSConfiguration `json:"exocomputeConfigs"`
+	CloudAccount        gqlaws.CloudAccount `json:"awsCloudAccount"`
+	Configs             []AWSConfiguration  `json:"exocomputeConfigs"`
 	MappedCloudAccounts []struct {
 		ID       uuid.UUID `json:"id"`
 		NativeID string    `json:"nativeId"`

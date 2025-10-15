@@ -30,8 +30,8 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
 
 // TestAwsExocomputeWithCFT verifies that the SDK can perform basic Exocompute
