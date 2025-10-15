@@ -3,11 +3,12 @@ mutation RubrikPolarisSDKRequest(
     $backupWindows:              [BackupWindowInput!],
     $description:                String,
     $firstFullBackupWindows:     [BackupWindowInput!],
+    $isRetentionLockedSla:       Boolean,
     $localRetentionLimit:        SlaDurationInput,
     $name:                       String!,
     $objectSpecificConfigsInput: ObjectSpecificConfigsInput,
     $objectTypes:                [SlaObjectType!]!,
-    $isRetentionLockedSla:       Boolean,
+    $replicationSpecsV2:         [ReplicationSpecV2Input!],
     $retentionLockMode:          RetentionLockMode,
     $snapshotSchedule:           GlobalSnapshotScheduleInput!
 ) {
@@ -16,11 +17,12 @@ mutation RubrikPolarisSDKRequest(
         backupWindows:              $backupWindows,
         description:                $description,
         firstFullBackupWindows:     $firstFullBackupWindows,
+        isRetentionLockedSla:       $isRetentionLockedSla,
         localRetentionLimit:        $localRetentionLimit,
         name:                       $name,
         objectSpecificConfigsInput: $objectSpecificConfigsInput,
         objectTypes:                $objectTypes,
-        isRetentionLockedSla:       $isRetentionLockedSla,
+        replicationSpecsV2:         $replicationSpecsV2,
         retentionLockMode:          $retentionLockMode,
         snapshotSchedule:           $snapshotSchedule
     }) {

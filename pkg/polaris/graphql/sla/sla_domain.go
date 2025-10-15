@@ -27,6 +27,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -46,6 +48,7 @@ type CreateDomainParams struct {
 	ObjectTypes           []ObjectType           `json:"objectTypes"`
 	RetentionLock         bool                   `json:"isRetentionLockedSla"`
 	RetentionLockMode     RetentionLockMode      `json:"retentionLockMode,omitempty"`
+	ReplicationSpecs      []ReplicationSpec      `json:"replicationSpecsV2,omitempty"`
 	SnapshotSchedule      SnapshotSchedule       `json:"snapshotSchedule"`
 }
 
@@ -163,6 +166,20 @@ type BasicSnapshotSchedule struct {
 	RetentionUnit RetentionUnit `json:"retentionUnit"`
 }
 
+// ReplicationSpec holds the replication specification for an RSC global SLA
+// domain.
+type ReplicationSpec struct {
+	// AWSAccount is "SAME" or an AWS account id for cross account replication.
+	AWSAccount string                       `json:"awsAccount,omitempty"`
+	AWSRegion  aws.RegionForReplicationEnum `json:"awsRegion,omitempty,omitzero"`
+
+	// AzureSubscription is "SAME" or an Azure subscription id for cross subscription replication.
+	AzureSubscription string                         `json:"azureSubscription,omitempty"`
+	AzureRegion       azure.RegionForReplicationEnum `json:"azureRegion,omitempty,omitzero"`
+
+	RetentionDuration *RetentionDuration `json:"retentionDuration,omitempty"`
+}
+
 // CreateDomain creates a new global SLA domain. Returns the ID of the
 // new global SLA domain.
 func CreateDomain(ctx context.Context, gql *graphql.Client, params CreateDomainParams) (uuid.UUID, error) {
@@ -218,7 +235,9 @@ func UpdateDomain(ctx context.Context, gql *graphql.Client, params UpdateDomainP
 
 	var payload struct {
 		Data struct {
-			Result struct{} `json:"result"`
+			Result struct {
+				ID string `json:"id"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
