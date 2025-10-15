@@ -22,8 +22,8 @@ package archival
 
 import (
 	"github.com/google/uuid"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 )
 
 // AzureTargetMapping holds the result of an Azure target mapping list

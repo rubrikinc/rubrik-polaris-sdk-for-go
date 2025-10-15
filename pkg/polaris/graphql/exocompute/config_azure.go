@@ -25,7 +25,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 )
 
 // AzureConfigurationsFilter holds the filter for an Azure exocompute
@@ -41,8 +42,8 @@ func (p AzureConfigurationsFilter) ListQuery() (string, any, AzureConfigurations
 // AzureConfigurationsForCloudAccount holds the result of an Azure exocompute
 // configuration list operation.
 type AzureConfigurationsForCloudAccount struct {
-	CloudAccount azure.CloudAccount   `json:"azureCloudAccount"`
-	Configs      []AzureConfiguration `json:"configs"`
+	CloudAccount gqlazure.CloudAccount `json:"azureCloudAccount"`
+	Configs      []AzureConfiguration  `json:"configs"`
 }
 
 // AzureConfiguration holds a single Azure exocompute configuration.

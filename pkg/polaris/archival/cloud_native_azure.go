@@ -28,8 +28,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -154,7 +155,7 @@ func (a API) UpdateAzureStorageSetting(ctx context.Context, targetMappingID uuid
 // lookupAzureNativeID returns the native ID of the Azure cloud account with the
 // specified cloud account ID.
 func lookupAzureNativeID(ctx context.Context, client *graphql.Client, cloudAccountID uuid.UUID) (uuid.UUID, error) {
-	tenants, err := azure.Wrap(client).CloudAccountTenants(ctx, core.FeatureAll, true)
+	tenants, err := gqlazure.Wrap(client).CloudAccountTenants(ctx, core.FeatureAll, true)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to get azure cloud account tenants: %s", err)
 	}

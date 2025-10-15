@@ -24,15 +24,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 )
 
 type options struct {
 	name                string
 	regions             []azure.Region
-	resourceGroup       *azure.ResourceGroup
-	featureSpecificInfo *azure.FeatureSpecificInfo
+	resourceGroup       *gqlazure.ResourceGroup
+	featureSpecificInfo *gqlazure.FeatureSpecificInfo
 }
 
 // OptionFunc gives the value passed to the function creating the OptionFunc
@@ -91,9 +92,9 @@ func ResourceGroup(name, region string, tags map[string]string) OptionFunc {
 			tagList = append(tagList, core.Tag{Key: key, Value: value})
 		}
 
-		opts.resourceGroup = &azure.ResourceGroup{
+		opts.resourceGroup = &gqlazure.ResourceGroup{
 			Name:    name,
-			TagList: azure.TagList{Tags: tagList},
+			TagList: gqlazure.TagList{Tags: tagList},
 			Region:  azure.RegionFromName(region).ToCloudAccountRegionEnum(),
 		}
 		return nil
@@ -116,9 +117,9 @@ func ManagedIdentity(name, resourceGroup, principalID, region string) OptionFunc
 		}
 
 		if opts.featureSpecificInfo == nil {
-			opts.featureSpecificInfo = &azure.FeatureSpecificInfo{}
+			opts.featureSpecificInfo = &gqlazure.FeatureSpecificInfo{}
 		}
-		opts.featureSpecificInfo.UserAssignedManagedIdentity = &azure.UserAssignedManagedIdentity{
+		opts.featureSpecificInfo.UserAssignedManagedIdentity = &gqlazure.UserAssignedManagedIdentity{
 			Name:              name,
 			ResourceGroupName: resourceGroup,
 			PrincipalID:       principalID,
