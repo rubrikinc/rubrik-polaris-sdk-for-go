@@ -81,17 +81,23 @@ type DayOfWeek struct {
 // ObjectSpecificConfigs holds the object-specific configurations for a global
 // RSC SLA domain.
 type ObjectSpecificConfigs struct {
-	AWSS3Config                     *CloudNativeObjectConfig `json:"awsNativeS3SlaConfig,omitempty"`
-	AWSRDSConfig                    *AWSRDSConfig            `json:"awsRdsConfig,omitempty"`
-	AzureBlobConfig                 *CloudNativeObjectConfig `json:"azureBlobConfig,omitempty"`
-	AzureSQLDatabaseDBConfig        *AzureDBConfig           `json:"azureSqlDatabaseDbConfig,omitempty"`
-	AzureSQLManagedInstanceDBConfig *AzureDBConfig           `json:"azureSqlManagedInstanceDbConfig,omitempty"`
+	AWSS3Config                     *AWSS3Config     `json:"awsNativeS3SlaConfigInput,omitempty"`
+	AWSRDSConfig                    *AWSRDSConfig    `json:"awsRdsConfigInput,omitempty"`
+	AzureBlobConfig                 *AzureBlobConfig `json:"azureBlobConfigInput,omitempty"`
+	AzureSQLDatabaseDBConfig        *AzureDBConfig   `json:"azureSqlDatabaseDbConfigInput,omitempty"`
+	AzureSQLManagedInstanceDBConfig *AzureDBConfig   `json:"azureSqlManagedInstanceDbConfigInput,omitempty"`
 }
 
-// CloudNativeObjectConfig represents the configuration specific for cloud
-// native objects.
-type CloudNativeObjectConfig struct {
+// AWSS3Config represents the configuration specific for an AWS S3 object.
+type AWSS3Config struct {
 	ArchivalLocationID              uuid.UUID `json:"archivalLocationId"`
+	ContinuousBackupRetentionInDays int       `json:"continuousBackupRetentionInDays"`
+}
+
+// AzureBlobConfig represents the configuration specific for an Azure blob
+// object.
+type AzureBlobConfig struct {
+	BackupLocationID                uuid.UUID `json:"backupLocationId"`
 	ContinuousBackupRetentionInDays int       `json:"continuousBackupRetentionInDays"`
 }
 
