@@ -97,11 +97,12 @@ var createGlobalSlaQuery = `mutation SdkGolangCreateGlobalSla(
     $backupWindows:              [BackupWindowInput!],
     $description:                String,
     $firstFullBackupWindows:     [BackupWindowInput!],
+    $isRetentionLockedSla:       Boolean,
     $localRetentionLimit:        SlaDurationInput,
     $name:                       String!,
     $objectSpecificConfigsInput: ObjectSpecificConfigsInput,
     $objectTypes:                [SlaObjectType!]!,
-    $isRetentionLockedSla:       Boolean,
+    $replicationSpecsV2:         [ReplicationSpecV2Input!],
     $retentionLockMode:          RetentionLockMode,
     $snapshotSchedule:           GlobalSnapshotScheduleInput!
 ) {
@@ -110,11 +111,12 @@ var createGlobalSlaQuery = `mutation SdkGolangCreateGlobalSla(
         backupWindows:              $backupWindows,
         description:                $description,
         firstFullBackupWindows:     $firstFullBackupWindows,
+        isRetentionLockedSla:       $isRetentionLockedSla,
         localRetentionLimit:        $localRetentionLimit,
         name:                       $name,
         objectSpecificConfigsInput: $objectSpecificConfigsInput,
         objectTypes:                $objectTypes,
-        isRetentionLockedSla:       $isRetentionLockedSla,
+        replicationSpecsV2:         $replicationSpecsV2,
         retentionLockMode:          $retentionLockMode,
         snapshotSchedule:           $snapshotSchedule
     }) {
@@ -309,36 +311,37 @@ var updateCloudNativeTagRuleQuery = `mutation SdkGolangUpdateCloudNativeTagRule(
 
 // updateGlobalSla GraphQL query
 var updateGlobalSlaQuery = `mutation SdkGolangUpdateGlobalSla(
-    $id:                              String!,
-    $shouldApplyToExistingSnapshots:  Boolean,
-    $shouldApplyToNonPolicySnapshots: Boolean,
     $archivalSpecs:                   [ArchivalSpecInput!],
     $backupWindows:                   [BackupWindowInput!],
     $description:                     String,
     $firstFullBackupWindows:          [BackupWindowInput!],
+    $id:                              String!,
+    $isRetentionLockedSla:            Boolean,
     $localRetentionLimit:             SlaDurationInput,
     $name:                            String!,
     $objectSpecificConfigsInput:      ObjectSpecificConfigsInput,
     $objectTypes:                     [SlaObjectType!]!,
-    $isRetentionLockedSla:            Boolean,
     $retentionLockMode:               RetentionLockMode,
+    $shouldApplyToExistingSnapshots:  ShouldApplyToExistingSnapshots,
+    $shouldApplyToNonPolicySnapshots: ShouldApplyToNonPolicySnapshots,
     $snapshotSchedule:                GlobalSnapshotScheduleInput!
 ) {
     result: updateGlobalSla(input: {
-        id:                              $id
-        shouldApplyToExistingSnapshots:  $shouldApplyToExistingSnapshots
-        shouldApplyToNonPolicySnapshots: $shouldApplyToNonPolicySnapshots
         archivalSpecs:                   $archivalSpecs,
         backupWindows:                   $backupWindows,
         description:                     $description,
         firstFullBackupWindows:          $firstFullBackupWindows,
-        id:                              $id,
+        id:                              $id
+        isRetentionLockedSla:            $isRetentionLockedSla,
         localRetentionLimit:             $localRetentionLimit,
         name:                            $name,
         objectSpecificConfigsInput:      $objectSpecificConfigsInput,
         objectTypes:                     $objectTypes,
-        isRetentionLockedSla:            $isRetentionLockedSla,
         retentionLockMode:               $retentionLockMode,
+        shouldApplyToExistingSnapshots:  $shouldApplyToExistingSnapshots
+        shouldApplyToNonPolicySnapshots: $shouldApplyToNonPolicySnapshots
         snapshotSchedule:                $snapshotSchedule
-    })
+    }) {
+        id
+    }
 }`

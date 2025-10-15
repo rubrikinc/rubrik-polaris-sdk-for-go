@@ -139,3 +139,14 @@ func (a API) AssignDomain(ctx context.Context, assignParams sla.AssignDomainPara
 
 	return nil
 }
+
+// UpdateDomain updates the global SLA domain with the specified ID.
+func (a API) UpdateDomain(ctx context.Context, updateParams sla.UpdateDomainParams) error {
+	a.log.Print(log.Trace)
+
+	if err := sla.UpdateDomain(ctx, a.client, updateParams); err != nil {
+		return fmt.Errorf("failed to update global SLA domain: %s", err)
+	}
+
+	return nil
+}

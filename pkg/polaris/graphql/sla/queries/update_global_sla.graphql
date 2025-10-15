@@ -1,34 +1,35 @@
 mutation RubrikPolarisSDKRequest(
-    $id:                              String!,
-    $shouldApplyToExistingSnapshots:  Boolean,
-    $shouldApplyToNonPolicySnapshots: Boolean,
     $archivalSpecs:                   [ArchivalSpecInput!],
     $backupWindows:                   [BackupWindowInput!],
     $description:                     String,
     $firstFullBackupWindows:          [BackupWindowInput!],
+    $id:                              String!,
+    $isRetentionLockedSla:            Boolean,
     $localRetentionLimit:             SlaDurationInput,
     $name:                            String!,
     $objectSpecificConfigsInput:      ObjectSpecificConfigsInput,
     $objectTypes:                     [SlaObjectType!]!,
-    $isRetentionLockedSla:            Boolean,
     $retentionLockMode:               RetentionLockMode,
+    $shouldApplyToExistingSnapshots:  ShouldApplyToExistingSnapshots,
+    $shouldApplyToNonPolicySnapshots: ShouldApplyToNonPolicySnapshots,
     $snapshotSchedule:                GlobalSnapshotScheduleInput!
 ) {
     result: updateGlobalSla(input: {
-        id:                              $id
-        shouldApplyToExistingSnapshots:  $shouldApplyToExistingSnapshots
-        shouldApplyToNonPolicySnapshots: $shouldApplyToNonPolicySnapshots
         archivalSpecs:                   $archivalSpecs,
         backupWindows:                   $backupWindows,
         description:                     $description,
         firstFullBackupWindows:          $firstFullBackupWindows,
-        id:                              $id,
+        id:                              $id
+        isRetentionLockedSla:            $isRetentionLockedSla,
         localRetentionLimit:             $localRetentionLimit,
         name:                            $name,
         objectSpecificConfigsInput:      $objectSpecificConfigsInput,
         objectTypes:                     $objectTypes,
-        isRetentionLockedSla:            $isRetentionLockedSla,
         retentionLockMode:               $retentionLockMode,
+        shouldApplyToExistingSnapshots:  $shouldApplyToExistingSnapshots
+        shouldApplyToNonPolicySnapshots: $shouldApplyToNonPolicySnapshots
         snapshotSchedule:                $snapshotSchedule
-    })
+    }) {
+        id
+    }
 }
