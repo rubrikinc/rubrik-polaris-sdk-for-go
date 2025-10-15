@@ -68,7 +68,7 @@ func check(ctx context.Context, client *polaris.Client, provider string) error {
 			if err != nil {
 				return err
 			}
-			awsAccount, err := aws.Wrap(client).Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
+			awsAccount, err := aws.Wrap(client).AccountByNativeID(ctx, testAcc.AccountID)
 			switch {
 			case err == nil:
 				return fmt.Errorf("found pre-existing AWS account: %s\n%v", awsAccount.ID, pretty.Sprint(awsAccount))
@@ -84,7 +84,7 @@ func check(ctx context.Context, client *polaris.Client, provider string) error {
 			if err != nil {
 				return err
 			}
-			awsAccount, err := aws.Wrap(client).Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
+			awsAccount, err := aws.Wrap(client).AccountByNativeID(ctx, testAcc.CrossAccountID)
 			switch {
 			case err == nil:
 				return fmt.Errorf("found pre-existing AWS account: %s\n%v", awsAccount.ID, pretty.Sprint(awsAccount))
@@ -146,7 +146,7 @@ func clean(ctx context.Context, client *polaris.Client, provider string) error {
 			}
 
 			awsClient := aws.Wrap(client)
-			awsAccount, err := awsClient.Account(ctx, aws.AccountID(testAcc.AccountID), core.FeatureAll)
+			awsAccount, err := awsClient.AccountByNativeID(ctx, testAcc.AccountID)
 			switch {
 			case errors.Is(err, graphql.ErrNotFound):
 				return nil
@@ -173,7 +173,7 @@ func clean(ctx context.Context, client *polaris.Client, provider string) error {
 			}
 
 			awsClient := aws.Wrap(client)
-			awsAccount, err := awsClient.Account(ctx, aws.AccountID(testAcc.CrossAccountID), core.FeatureAll)
+			awsAccount, err := awsClient.AccountByNativeID(ctx, testAcc.CrossAccountID)
 			switch {
 			case errors.Is(err, graphql.ErrNotFound):
 				return nil

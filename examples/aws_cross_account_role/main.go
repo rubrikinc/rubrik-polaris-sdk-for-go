@@ -66,7 +66,7 @@ func main() {
 	}
 
 	// List AWS accounts added to Polaris.
-	account, err := awsClient.Account(ctx, aws.CloudAccountID(id), core.FeatureCloudNativeProtection)
+	account, err := awsClient.AccountByID(ctx, id)
 	if err != nil {
 		log.Fatal(err)
 	}

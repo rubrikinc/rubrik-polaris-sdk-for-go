@@ -23,8 +23,9 @@
 package aws
 
 import (
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"strconv"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -48,4 +49,16 @@ func Wrap(client *polaris.Client) API {
 // WrapGQL wraps the GQL client in the aws API.
 func WrapGQL(gql *graphql.Client) API {
 	return API{client: gql, log: gql.Log()}
+}
+
+// verifyAccountID returns true if the AWS account ID is valid.
+func verifyAccountID(awsAccountID string) bool {
+	if len(awsAccountID) != 12 {
+		return false
+	}
+	if _, err := strconv.ParseInt(awsAccountID, 10, 64); err != nil {
+		return false
+	}
+
+	return true
 }

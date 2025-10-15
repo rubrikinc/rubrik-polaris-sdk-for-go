@@ -28,6 +28,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -69,7 +70,7 @@ func TestAwsAccountAddAndRemoveWithCFT(t *testing.T) {
 	}
 
 	// Verify that the account was successfully added.
-	account, err := awsClient.Account(ctx, CloudAccountID(id), core.FeatureCloudNativeProtection)
+	account, err := awsClient.AccountByID(ctx, id)
 	if err != nil {
 		t.Error(err)
 	}
@@ -98,7 +99,7 @@ func TestAwsAccountAddAndRemoveWithCFT(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	account, err = awsClient.Account(ctx, AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection)
+	account, err = awsClient.AccountByNativeID(ctx, testAccount.AccountID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +117,7 @@ func TestAwsAccountAddAndRemoveWithCFT(t *testing.T) {
 	}
 
 	// Verify that the account was successfully removed.
-	account, err = awsClient.Account(ctx, AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection)
+	account, err = awsClient.AccountByNativeID(ctx, testAccount.AccountID)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
@@ -165,7 +166,7 @@ func TestAwsAccountAddAndRemoveUsingPermissionGroupsWithCFT(t *testing.T) {
 	}
 
 	// Verify that the account was successfully added.
-	account, err := awsClient.Account(ctx, CloudAccountID(id), core.FeatureAll)
+	account, err := awsClient.AccountByID(ctx, id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +214,7 @@ func TestAwsAccountAddAndRemoveUsingPermissionGroupsWithCFT(t *testing.T) {
 	}
 
 	// Verify that the account was successfully removed.
-	account, err = awsClient.Account(ctx, AccountID(testAccount.AccountID), core.FeatureAll)
+	account, err = awsClient.AccountByNativeID(ctx, testAccount.AccountID)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
@@ -256,7 +257,7 @@ func TestAwsCrossAccountAddAndRemoveWithCFT(t *testing.T) {
 	}
 
 	// Verify that the account was successfully added.
-	account, err := awsClient.Account(ctx, CloudAccountID(id), core.FeatureCloudNativeProtection)
+	account, err := awsClient.AccountByID(ctx, id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,8 +280,13 @@ func TestAwsCrossAccountAddAndRemoveWithCFT(t *testing.T) {
 		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
 	}
 
-	// Verify that it's possible to search for the account using a role.
-	account, err = awsClient.Account(ctx, Role(testAccount.CrossAccountRole), core.FeatureCloudNativeProtection)
+	// Verify that it's possible to find the account using the account ID
+	// of the cross account role.
+	roleARN, err := arn.Parse(testAccount.CrossAccountRole)
+	if err != nil {
+		t.Fatal(err)
+	}
+	account, err = awsClient.AccountByNativeID(ctx, roleARN.AccountID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,7 +302,7 @@ func TestAwsCrossAccountAddAndRemoveWithCFT(t *testing.T) {
 	}
 
 	// Verify that the account was successfully removed.
-	account, err = awsClient.Account(ctx, AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection)
+	account, err = awsClient.AccountByNativeID(ctx, testAccount.AccountID)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}

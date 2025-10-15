@@ -74,7 +74,7 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 	awsClient := aws.WrapGQL(a.client)
 
 	// Ensure account exists and has Server and Apps feature
-	account, err := awsClient.AccountByID(ctx, core.FeatureAll, input.CloudAccountID)
+	account, err := awsClient.AccountByID(ctx, input.CloudAccountID)
 	if err != nil {
 		return CloudCluster{}, err
 	}

@@ -66,7 +66,7 @@ func (a API) AddAccountWithIAM(ctx context.Context, account AccountFunc, feature
 	// If there already is an RSC cloud account for the given AWS account we use
 	// the same account name when adding the feature. RSC does not allow the
 	// name to change between features.
-	cloudAccount, err := a.Account(ctx, AccountID(config.id), core.FeatureAll)
+	cloudAccount, err := a.AccountByNativeID(ctx, config.id)
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 	}
@@ -84,7 +84,7 @@ func (a API) AddAccountWithIAM(ctx context.Context, account AccountFunc, feature
 	// If the RSC cloud account did not exist prior, we retrieve the RSC cloud
 	// account ID.
 	if cloudAccount.ID == uuid.Nil {
-		cloudAccount, err = a.Account(ctx, AccountID(config.id), core.FeatureAll)
+		cloudAccount, err = a.AccountByNativeID(ctx, config.id)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 		}
@@ -108,7 +108,7 @@ func (a API) RemoveAccountWithIAM(ctx context.Context, account AccountFunc, feat
 		return fmt.Errorf("failed to lookup account: %s", err)
 	}
 
-	cloudAccount, err := a.Account(ctx, AccountID(config.id), core.FeatureAll)
+	cloudAccount, err := a.AccountByNativeID(ctx, config.id)
 	if err != nil {
 		return fmt.Errorf("failed to get account: %s", err)
 	}
@@ -196,15 +196,15 @@ func (a API) Artifacts(ctx context.Context, cloud string, features []core.Featur
 }
 
 // AccountArtifacts returns the artifacts added to the cloud account.
-func (a API) AccountArtifacts(ctx context.Context, id IdentityFunc) (map[string]string, map[string]string, error) {
+func (a API) AccountArtifacts(ctx context.Context, cloudAccountID uuid.UUID) (map[string]string, map[string]string, error) {
 	a.log.Print(log.Trace)
 
-	nativeID, err := a.toNativeID(ctx, id)
+	account, err := a.AccountByID(ctx, cloudAccountID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	artifacts, err := aws.Wrap(a.client).ArtifactsToDelete(ctx, nativeID)
+	artifacts, err := aws.Wrap(a.client).ArtifactsToDelete(ctx, account.NativeID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get artifacts registered with account: %s", err)
 	}
@@ -233,10 +233,10 @@ func (a API) AccountArtifacts(ctx context.Context, id IdentityFunc) (map[string]
 
 // AddAccountArtifacts adds the specified artifacts, instance profiles and
 // roles, to the cloud account.
-func (a API) AddAccountArtifacts(ctx context.Context, id IdentityFunc, features []core.Feature, instanceProfiles map[string]string, roles map[string]string) (uuid.UUID, error) {
+func (a API) AddAccountArtifacts(ctx context.Context, cloudAccountID uuid.UUID, features []core.Feature, instanceProfiles map[string]string, roles map[string]string) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	account, err := a.Account(ctx, id, core.FeatureAll)
+	account, err := a.AccountByID(ctx, cloudAccountID)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -310,12 +310,12 @@ type TrustPolicyMap map[string]string
 // a side effect of this is that the first call always set the trust policy.
 // Once the trust policy has been set, it cannot be changed.
 // If the account cannot be found, graphql.ErrNotFound is returned.
-func (a API) TrustPolicies(ctx context.Context, cloud aws.Cloud, accountID uuid.UUID, features []core.Feature, externalID string) (TrustPolicyMap, error) {
+func (a API) TrustPolicies(ctx context.Context, cloud aws.Cloud, cloudAccountID uuid.UUID, features []core.Feature, externalID string) (TrustPolicyMap, error) {
 	a.log.Print(log.Trace)
 
 	// We need to look up the account to obtain the AWS native account ID.
 	// The call returns graphql.NotFound if the cloud account isn't found.
-	account, err := a.AccountByID(ctx, core.FeatureAll, accountID)
+	account, err := a.AccountByID(ctx, cloudAccountID)
 	if err != nil {
 		return nil, err
 	}

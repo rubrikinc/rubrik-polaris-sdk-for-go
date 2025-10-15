@@ -68,7 +68,7 @@ func (a API) AddAccountWithCFT(ctx context.Context, account AccountFunc, feature
 	// If there already is an RSC cloud account for the given AWS account we use
 	// the same account name when adding the feature. RSC does not allow the
 	// name to change between features.
-	cloudAccount, err := a.Account(ctx, AccountID(config.id), core.FeatureAll)
+	cloudAccount, err := a.AccountByNativeID(ctx, config.id)
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 	}
@@ -97,7 +97,7 @@ func (a API) AddAccountWithCFT(ctx context.Context, account AccountFunc, feature
 	// If the RSC cloud account did not exist prior, we retrieve the RSC cloud
 	// account ID.
 	if cloudAccount.ID == uuid.Nil {
-		cloudAccount, err = a.Account(ctx, AccountID(config.id), core.FeatureAll)
+		cloudAccount, err = a.AccountByNativeID(ctx, config.id)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 		}
@@ -124,7 +124,7 @@ func (a API) RemoveAccountWithCFT(ctx context.Context, account AccountFunc, feat
 		return errors.New("account config is required by the CloudFormation workflow")
 	}
 
-	cloudAccount, err := a.Account(ctx, AccountID(config.id), core.FeatureAll)
+	cloudAccount, err := a.AccountByNativeID(ctx, config.id)
 	if err != nil {
 		return fmt.Errorf("failed to get account: %s", err)
 	}
