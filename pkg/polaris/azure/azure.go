@@ -34,8 +34,9 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -135,7 +136,7 @@ type FeatureUserAssignedManagedIdentity struct {
 func (a API) Tenant(ctx context.Context, tenantID uuid.UUID) (CloudAccountTenant, error) {
 	a.log.Print(log.Trace)
 
-	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, false)
+	rawTenants, err := gqlazure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, false)
 	if err != nil {
 		return CloudAccountTenant{}, fmt.Errorf("failed to get tenants: %s", err)
 	}
@@ -154,7 +155,7 @@ func (a API) Tenant(ctx context.Context, tenantID uuid.UUID) (CloudAccountTenant
 func (a API) TenantFromAppID(ctx context.Context, appID uuid.UUID) (CloudAccountTenant, error) {
 	a.log.Print(log.Trace)
 
-	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, false)
+	rawTenants, err := gqlazure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, false)
 	if err != nil {
 		return CloudAccountTenant{}, fmt.Errorf("failed to get tenants: %s", err)
 	}
@@ -174,7 +175,7 @@ func (a API) TenantFromAppID(ctx context.Context, appID uuid.UUID) (CloudAccount
 func (a API) Tenants(ctx context.Context, filter string) ([]CloudAccountTenant, error) {
 	a.log.Print(log.Trace)
 
-	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, false)
+	rawTenants, err := gqlazure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tenants: %s", err)
 	}
@@ -207,7 +208,7 @@ func (a API) Subscription(ctx context.Context, id IdentityFunc, feature core.Fea
 		return CloudAccount{}, fmt.Errorf("failed to parse identity: %v", err)
 	}
 
-	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, feature, true)
+	rawTenants, err := gqlazure.Wrap(a.client).CloudAccountTenants(ctx, feature, true)
 	if err != nil {
 		return CloudAccount{}, fmt.Errorf("failed to get tenants: %s", err)
 	}
@@ -279,7 +280,7 @@ func (a API) SubscriptionByName(ctx context.Context, feature core.Feature, name,
 func (a API) Subscriptions(ctx context.Context, feature core.Feature, filter string) ([]CloudAccount, error) {
 	a.log.Print(log.Trace)
 
-	rawTenants, err := azure.Wrap(a.client).CloudAccountTenants(ctx, feature, true)
+	rawTenants, err := gqlazure.Wrap(a.client).CloudAccountTenants(ctx, feature, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tenants: %s", err)
 	}
@@ -329,7 +330,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		return uuid.Nil, fmt.Errorf("failed to get subscription: %v", err)
 	}
 
-	perms, err := azure.Wrap(a.client).CloudAccountPermissionConfig(ctx, feature)
+	perms, err := gqlazure.Wrap(a.client).CloudAccountPermissionConfig(ctx, feature)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to get permissions: %v", err)
 	}
@@ -339,14 +340,14 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		permGroups[string(permGroup)] = struct{}{}
 	}
 
-	permGroupVersions := make([]azure.PermissionGroupWithVersion, 0, len(feature.PermissionGroups))
+	permGroupVersions := make([]gqlazure.PermissionGroupWithVersion, 0, len(feature.PermissionGroups))
 	for _, permGroupVersion := range perms.PermissionGroupVersions {
 		if _, ok := permGroups[permGroupVersion.PermissionGroup]; ok {
 			permGroupVersions = append(permGroupVersions, permGroupVersion)
 		}
 	}
 
-	cloudAccountFeature := azure.CloudAccountFeature{
+	cloudAccountFeature := gqlazure.CloudAccountFeature{
 		PolicyVersion:       perms.PermissionVersion,
 		PermissionGroups:    permGroupVersions,
 		FeatureType:         feature.Name,
@@ -354,7 +355,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		FeatureSpecificInfo: options.featureSpecificInfo,
 	}
 
-	_, err = azure.Wrap(a.client).AddCloudAccountWithoutOAuth(ctx, azure.PublicCloud, config.id, cloudAccountFeature,
+	_, err = gqlazure.Wrap(a.client).AddCloudAccountWithoutOAuth(ctx, gqlazure.PublicCloud, config.id, cloudAccountFeature,
 		config.name, config.tenantDomain, options.regions)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to add subscription: %v", err)
@@ -389,7 +390,7 @@ func (a API) RemoveSubscription(ctx context.Context, id IdentityFunc, feature co
 		return fmt.Errorf("failed to disable subscripition feature %s: %s", feature, err)
 	}
 
-	err = azure.Wrap(a.client).DeleteCloudAccountWithoutOAuth(ctx, account.ID, feature)
+	err = gqlazure.Wrap(a.client).DeleteCloudAccountWithoutOAuth(ctx, account.ID, feature)
 	if err != nil {
 		return fmt.Errorf("failed to delete subscription feature %s: %s", feature, err)
 	}
@@ -417,7 +418,7 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 		return nil
 	}
 
-	jobID, err := azure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, feature)
+	jobID, err := gqlazure.Wrap(a.client).StartDisableCloudAccountJob(ctx, account.ID, feature)
 	if err != nil {
 		return fmt.Errorf("failed to disable feature %s: %s", feature, err)
 	}
@@ -460,7 +461,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 			return fmt.Errorf("failed to get feature %s", feature)
 		}
 		if !feature.DeepEqual(azureFeature.Feature) {
-			if err := azure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature, nil); err != nil {
+			if err := gqlazure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature, nil); err != nil {
 				return fmt.Errorf("failed to update subscription feature permission groups: %s", err)
 			}
 		}
@@ -485,7 +486,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 			return errors.New("invalid cloud account: no features")
 		}
 
-		err := azure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, account.Features[0].Feature, options.name,
+		err := gqlazure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, account.Features[0].Feature, options.name,
 			[]azure.Region{}, []azure.Region{})
 		if err != nil {
 			return fmt.Errorf("failed to update subscription: %v", err)
@@ -515,7 +516,7 @@ func (a API) UpdateSubscription(ctx context.Context, id IdentityFunc, feature co
 			add = append(add, region)
 		}
 
-		err = azure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, accountFeature.Feature, options.name, add, remove)
+		err = gqlazure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, accountFeature.Feature, options.name, add, remove)
 		if err != nil {
 			return fmt.Errorf("failed to update subscription: %v", err)
 		}
@@ -536,7 +537,7 @@ func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipal
 		return uuid.Nil, fmt.Errorf("failed to lookup principal: %v", err)
 	}
 
-	err = azure.Wrap(a.client).SetCloudAccountCustomerAppCredentials(ctx, azure.PublicCloud, config.appID,
+	err = gqlazure.Wrap(a.client).SetCloudAccountCustomerAppCredentials(ctx, gqlazure.PublicCloud, config.appID,
 		config.tenantID, config.appName, config.tenantDomain, config.appSecret, shouldReplace)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to set customer app credentials: %v", err)
@@ -567,7 +568,7 @@ var supportedFeatures = map[string]struct{}{
 
 // toSubscriptions returns the unique subscriptions found in the rawTenants
 // slice. This function requires that the tenants include subscription details.
-func toSubscriptions(rawTenants []azure.CloudAccountTenant) []CloudAccount {
+func toSubscriptions(rawTenants []gqlazure.CloudAccountTenant) []CloudAccount {
 	type tenantAccounts struct {
 		tenant   CloudAccountTenant
 		accounts map[uuid.UUID]*CloudAccount
@@ -654,7 +655,7 @@ func toSubscriptions(rawTenants []azure.CloudAccountTenant) []CloudAccount {
 }
 
 // toTenants returns the unique tenants found in the rawTenants slice.
-func toTenants(rawTenants []azure.CloudAccountTenant) []CloudAccountTenant {
+func toTenants(rawTenants []gqlazure.CloudAccountTenant) []CloudAccountTenant {
 	tenantSet := make(map[uuid.UUID]CloudAccountTenant)
 	for _, rawTenant := range rawTenants {
 		if _, ok := tenantSet[rawTenant.ID]; !ok {

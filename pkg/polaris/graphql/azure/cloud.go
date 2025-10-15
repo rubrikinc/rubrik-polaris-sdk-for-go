@@ -28,6 +28,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -57,17 +58,17 @@ type Feature struct {
 	Feature                     string                             `json:"feature"`
 	PermissionGroups            []core.PermissionGroup             `json:"permissionsGroups"`
 	ResourceGroup               FeatureResourceGroup               `json:"resourceGroup"`
-	Regions                     []CloudAccountRegionEnum           `json:"regions"`
+	Regions                     []azure.CloudAccountRegionEnum     `json:"regions"`
 	Status                      core.Status                        `json:"status"`
 	UserAssignedManagedIdentity FeatureUserAssignedManagedIdentity `json:"userAssignedManagedIdentity"`
 }
 
 // FeatureResourceGroup represents a resource group for a particular feature.
 type FeatureResourceGroup struct {
-	Name     string           `json:"name"`
-	NativeID string           `json:"nativeId"`
-	Tags     []core.Tag       `json:"tags"`
-	Region   NativeRegionEnum `json:"region"`
+	Name     string                 `json:"name"`
+	NativeID string                 `json:"nativeId"`
+	Tags     []core.Tag             `json:"tags"`
+	Region   azure.NativeRegionEnum `json:"region"`
 }
 
 // ResourceGroup holds the information for a resource group when a particular
@@ -75,9 +76,9 @@ type FeatureResourceGroup struct {
 // GraphQL mutation, the TagList.Tags field cannot be nil. An empty slice is
 // fine.
 type ResourceGroup struct {
-	Name    string                 `json:"name"`
-	TagList TagList                `json:"tags"`
-	Region  CloudAccountRegionEnum `json:"region"`
+	Name    string                       `json:"name"`
+	TagList TagList                      `json:"tags"`
+	Region  azure.CloudAccountRegionEnum `json:"region"`
 }
 
 // TagList represents a list of Tags.
@@ -96,10 +97,10 @@ type FeatureUserAssignedManagedIdentity struct {
 // UserAssignedManagedIdentity holds the information for a user-assigned managed
 // identity when a particular feature is onboarded.
 type UserAssignedManagedIdentity struct {
-	Name              string                 `json:"name"`
-	ResourceGroupName string                 `json:"resourceGroupName"`
-	PrincipalID       string                 `json:"principalId"`
-	Region            CloudAccountRegionEnum `json:"region"`
+	Name              string                       `json:"name"`
+	ResourceGroupName string                       `json:"resourceGroupName"`
+	PrincipalID       string                       `json:"principalId"`
+	Region            azure.CloudAccountRegionEnum `json:"region"`
 }
 
 // CloudAccountFeature holds the information for a particular feature when it's
@@ -158,17 +159,17 @@ func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, incl
 // AddCloudAccountWithoutOAuth adds the Azure Subscription cloud account
 // for given feature without OAuth.
 func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uuid.UUID, feature CloudAccountFeature,
-	name, tenantDomain string, regions []Region) (string, error) {
+	name, tenantDomain string, regions []azure.Region) (string, error) {
 	a.log.Print(log.Trace)
 
 	query := addAzureCloudAccountWithoutOauthQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Cloud            Cloud                    `json:"azureCloudType"`
-		Feature          CloudAccountFeature      `json:"feature"`
-		SubscriptionName string                   `json:"subscriptionName"`
-		SubscriptionID   uuid.UUID                `json:"subscriptionId"`
-		TenantDomain     string                   `json:"tenantDomainName"`
-		Regions          []CloudAccountRegionEnum `json:"regions"`
+		Cloud            Cloud                          `json:"azureCloudType"`
+		Feature          CloudAccountFeature            `json:"feature"`
+		SubscriptionName string                         `json:"subscriptionName"`
+		SubscriptionID   uuid.UUID                      `json:"subscriptionId"`
+		TenantDomain     string                         `json:"tenantDomainName"`
+		Regions          []azure.CloudAccountRegionEnum `json:"regions"`
 	}{
 		Cloud:            cloud,
 		Feature:          feature,
@@ -246,7 +247,7 @@ func (a API) DeleteCloudAccountWithoutOAuth(ctx context.Context, id uuid.UUID, f
 
 // UpdateCloudAccount updates the name and the regions for the cloud account
 // with the specified RSC cloud account id.
-func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.Feature, name string, toAdd, toRemove []Region) error {
+func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.Feature, name string, toAdd, toRemove []azure.Region) error {
 	a.log.Print(log.Trace)
 
 	type updateSubscription struct {
@@ -255,10 +256,10 @@ func (a API) UpdateCloudAccount(ctx context.Context, id uuid.UUID, feature core.
 	}
 	query := updateAzureCloudAccountQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Features      []string                 `json:"features"`
-		ToAdd         []CloudAccountRegionEnum `json:"regionsToAdd,omitempty"`
-		ToRemove      []CloudAccountRegionEnum `json:"regionsToRemove,omitempty"`
-		Subscriptions []updateSubscription     `json:"subscriptions"`
+		Features      []string                       `json:"features"`
+		ToAdd         []azure.CloudAccountRegionEnum `json:"regionsToAdd,omitempty"`
+		ToRemove      []azure.CloudAccountRegionEnum `json:"regionsToRemove,omitempty"`
+		Subscriptions []updateSubscription           `json:"subscriptions"`
 	}{
 		Features:      []string{feature.Name},
 		ToAdd:         RegionsToCloudAccountRegionEnum(toAdd),
@@ -434,8 +435,8 @@ func (a API) StartDisableCloudAccountJob(ctx context.Context, id uuid.UUID, feat
 
 // RegionsToCloudAccountRegionEnum converts a slice of Regions to a slice of
 // CloudAccountRegionEnums.
-func RegionsToCloudAccountRegionEnum(regions []Region) []CloudAccountRegionEnum {
-	enums := make([]CloudAccountRegionEnum, 0, len(regions))
+func RegionsToCloudAccountRegionEnum(regions []azure.Region) []azure.CloudAccountRegionEnum {
+	enums := make([]azure.CloudAccountRegionEnum, 0, len(regions))
 	for _, region := range regions {
 		enums = append(enums, region.ToCloudAccountRegionEnum())
 	}
