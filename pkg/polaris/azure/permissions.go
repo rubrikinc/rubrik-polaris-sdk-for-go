@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -167,13 +168,13 @@ func (a API) ScopedPermissionsForFeatures(ctx context.Context, features []core.F
 }
 
 // PermissionsUpdated notifies RSC that the permissions for the Azure service
-// principal for the RSC cloud account with the specified id has been updated.
-// The permissions should be updated when a feature has the status
+// principal for the RSC cloud account with the specified cloud account ID has
+// been updated. The permissions should be updated when a feature has the status
 // StatusMissingPermissions. Updating the permissions is done outside this SDK.
 // The feature parameter is allowed to be nil. When features are nil, all
 // features are updated. Note that RSC is only notified about features with
 // status StatusMissingPermissions.
-func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
+func (a API) PermissionsUpdated(ctx context.Context, cloudAccountID uuid.UUID, features []core.Feature) error {
 	a.client.Log().Print(log.Trace)
 
 	featureSet := make(map[string]struct{})
@@ -181,7 +182,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 		featureSet[feature.Name] = struct{}{}
 	}
 
-	account, err := a.Subscription(ctx, id, core.FeatureAll)
+	account, err := a.SubscriptionByID(ctx, cloudAccountID)
 	if err != nil {
 		return fmt.Errorf("failed to get subscription: %s", err)
 	}
@@ -220,7 +221,7 @@ func (a API) PermissionsUpdatedForTenantDomain(ctx context.Context, tenantDomain
 		featureSet[feature.Name] = struct{}{}
 	}
 
-	accounts, err := a.Subscriptions(ctx, core.FeatureAll, "")
+	accounts, err := a.Subscriptions(ctx, "")
 	if err != nil {
 		return fmt.Errorf("failed to get subscriptions: %s", err)
 	}

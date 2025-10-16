@@ -93,7 +93,7 @@ func main() {
 	}
 
 	// Remove the Azure account from RSC.
-	err = azureClient.RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureCloudNativeProtection, false)
+	err = azureClient.RemoveSubscription(ctx, accountID, core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		log.Fatal(err)
 	}

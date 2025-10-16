@@ -28,10 +28,10 @@ import (
 	"testing"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
-	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
+	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 )
 
 // TestAzureExocompute verifies that the SDK can perform basic Exocompute
@@ -58,30 +58,29 @@ func TestAzureExocompute(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	azureClient := gqlazure.Wrap(client)
-	exoClient := Wrap(client)
+	azureClient := azure.Wrap(client)
 
 	// Add default Azure service principal to RSC. Usually resolved using the
 	// environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
-	_, err = azureClient.SetServicePrincipal(ctx, gqlazure.Default(testSubscription.TenantDomain))
+	_, err = azureClient.SetServicePrincipal(ctx, azure.Default(testSubscription.TenantDomain))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Add Azure subscription to RSC.
-	subscription := gqlazure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
-	cnpRegions := gqlazure.Regions(testSubscription.CloudNativeProtection.Regions...)
-	cnpResourceGroup := gqlazure.ResourceGroup(testSubscription.CloudNativeProtection.ResourceGroupName,
+	subscription := azure.Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
+	cnpRegions := azure.Regions(testSubscription.CloudNativeProtection.Regions...)
+	cnpResourceGroup := azure.ResourceGroup(testSubscription.CloudNativeProtection.ResourceGroupName,
 		testSubscription.CloudNativeProtection.ResourceGroupRegion, nil)
 	accountID, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection,
-		gqlazure.Name(testSubscription.SubscriptionName), cnpRegions, cnpResourceGroup)
+		azure.Name(testSubscription.SubscriptionName), cnpRegions, cnpResourceGroup)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Enable the exocompute feature for the account.
-	exoRegions := gqlazure.Regions(testSubscription.Exocompute.Regions...)
-	exoResourceGroup := gqlazure.ResourceGroup(testSubscription.Exocompute.ResourceGroupName,
+	exoRegions := azure.Regions(testSubscription.Exocompute.Regions...)
+	exoResourceGroup := azure.ResourceGroup(testSubscription.Exocompute.ResourceGroupName,
 		testSubscription.Exocompute.ResourceGroupRegion, nil)
 	exoAccountID, err := azureClient.AddSubscription(ctx, subscription, core.FeatureExocompute, exoRegions,
 		exoResourceGroup)
@@ -92,7 +91,7 @@ func TestAzureExocompute(t *testing.T) {
 		t.Fatal("cloud native protection and exocompute added to different cloud accounts")
 	}
 
-	account, err := azureClient.Subscription(ctx, gqlazure.CloudAccountID(accountID), core.FeatureExocompute)
+	account, err := azureClient.SubscriptionByID(ctx, accountID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +104,7 @@ func TestAzureExocompute(t *testing.T) {
 	if domain := account.TenantDomain; domain != testSubscription.TenantDomain {
 		t.Fatalf("invalid tenant domain: %v", domain)
 	}
-	if n := len(account.Features); n != 1 {
+	if n := len(account.Features); n != 2 {
 		t.Fatalf("invalid number of features: %v", n)
 	}
 	feature, ok := account.Feature(core.FeatureExocompute)
@@ -133,11 +132,13 @@ func TestAzureExocompute(t *testing.T) {
 		t.Fatalf("invalid feature resource group tags: %v", tags)
 	}
 
+	exoClient := Wrap(client)
+
 	// Add an exocompute configuration to the account.
 	if len(testSubscription.Exocompute.Regions) == 0 {
 		t.Fatalf("exocompute test data must contain at least one region")
 	}
-	exoConfigRegion := azure.RegionFromName(testSubscription.Exocompute.Regions[0])
+	exoConfigRegion := gqlazure.RegionFromName(testSubscription.Exocompute.Regions[0])
 	exoID, err := exoClient.AddAzureConfiguration(ctx, accountID, AzureManaged(exoConfigRegion, testSubscription.Exocompute.SubnetID, false))
 	if err != nil {
 		t.Fatal(err)
@@ -162,8 +163,7 @@ func TestAzureExocompute(t *testing.T) {
 	}
 
 	// Remove the exocompute configuration.
-	err = exoClient.RemoveAzureConfiguration(ctx, exoID)
-	if err != nil {
+	if err := exoClient.RemoveAzureConfiguration(ctx, exoID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -174,26 +174,26 @@ func TestAzureExocompute(t *testing.T) {
 	}
 
 	// Remove exocompute feature.
-	err = azureClient.RemoveSubscription(ctx, gqlazure.CloudAccountID(accountID), core.FeatureExocompute, false)
-	if err != nil {
+	if err := azureClient.RemoveSubscription(ctx, accountID, core.FeatureExocompute, false); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the feature was successfully removed.
-	_, err = azureClient.Subscription(ctx, gqlazure.CloudAccountID(accountID), core.FeatureExocompute)
-	if !errors.Is(err, graphql.ErrNotFound) {
+	account, err = azureClient.SubscriptionByID(ctx, accountID)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if _, ok := account.Feature(core.FeatureExocompute); ok {
+		t.Fatalf("Exocompute feature still available")
 	}
 
 	// Remove subscription.
-	err = azureClient.RemoveSubscription(ctx, gqlazure.CloudAccountID(accountID), core.FeatureCloudNativeProtection, false)
-	if err != nil {
+	if err := azureClient.RemoveSubscription(ctx, accountID, core.FeatureCloudNativeProtection, false); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	_, err = azureClient.Subscription(ctx, gqlazure.ID(subscription), core.FeatureCloudNativeProtection)
-	if !errors.Is(err, graphql.ErrNotFound) {
+	if _, err := azureClient.SubscriptionByID(ctx, accountID); !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
 }

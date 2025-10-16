@@ -125,7 +125,7 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Verify that the subscription was successfully added.
-	account, err := azureClient.Subscription(ctx, CloudAccountID(id), core.FeatureCloudNativeProtection)
+	account, err := azureClient.SubscriptionByID(ctx, id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,12 +167,11 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Update and verify regions for the Azure subscription.
-	err = azureClient.UpdateSubscription(ctx, ID(subscription), core.FeatureCloudNativeProtection,
-		Regions("westus2"))
+	err = azureClient.UpdateSubscription(ctx, id, core.FeatureCloudNativeProtection, Regions("westus2"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	account, err = azureClient.Subscription(ctx, ID(subscription), core.FeatureCloudNativeProtection)
+	account, err = azureClient.SubscriptionByID(ctx, id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,13 +188,13 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Remove the Azure subscription from RSC keeping the snapshots.
-	err = azureClient.RemoveSubscription(ctx, ID(subscription), core.FeatureCloudNativeProtection, false)
+	err = azureClient.RemoveSubscription(ctx, id, core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	_, err = azureClient.Subscription(ctx, ID(subscription), core.FeatureCloudNativeProtection)
+	_, err = azureClient.SubscriptionByID(ctx, id)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
@@ -247,7 +246,7 @@ func TestAzureArchivalSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Verify that the subscription was successfully added.
-	account, err := azureClient.Subscription(ctx, CloudAccountID(id), core.FeatureCloudNativeArchival)
+	account, err := azureClient.SubscriptionByID(ctx, id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,12 +288,11 @@ func TestAzureArchivalSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Update and verify regions for Azure subscription.
-	err = azureClient.UpdateSubscription(ctx, ID(subscription), core.FeatureCloudNativeArchival,
-		Regions("westus2"))
+	err = azureClient.UpdateSubscription(ctx, id, core.FeatureCloudNativeArchival, Regions("westus2"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	account, err = azureClient.Subscription(ctx, ID(subscription), core.FeatureCloudNativeArchival)
+	account, err = azureClient.SubscriptionByID(ctx, id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,13 +309,13 @@ func TestAzureArchivalSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Remove the Azure subscription from RSC keeping the snapshots.
-	err = azureClient.RemoveSubscription(ctx, ID(subscription), core.FeatureCloudNativeArchival, false)
+	err = azureClient.RemoveSubscription(ctx, id, core.FeatureCloudNativeArchival, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	_, err = azureClient.Subscription(ctx, ID(subscription), core.FeatureCloudNativeArchival)
+	_, err = azureClient.SubscriptionByID(ctx, id)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
@@ -380,7 +378,7 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Verify that the subscription was successfully added.
-	account, err := azureClient.Subscription(ctx, CloudAccountID(id), core.FeatureCloudNativeArchivalEncryption)
+	account, err := azureClient.SubscriptionByID(ctx, id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,7 +392,7 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	if domain := account.TenantDomain; domain != testSubscription.TenantDomain {
 		t.Fatalf("invalid tenant domain: %v", domain)
 	}
-	if n := len(account.Features); n != 1 {
+	if n := len(account.Features); n != 2 {
 		t.Fatalf("invalid number of features: %v", n)
 	}
 	feature, ok := account.Feature(core.FeatureCloudNativeArchivalEncryption)
@@ -423,16 +421,16 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	}
 
 	// Update and verify regions for the Azure account.
-	err = azureClient.UpdateSubscription(ctx, ID(subscription), core.FeatureCloudNativeArchivalEncryption,
+	err = azureClient.UpdateSubscription(ctx, id, core.FeatureCloudNativeArchivalEncryption,
 		Regions("westus2"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	account, err = azureClient.Subscription(ctx, ID(subscription), core.FeatureCloudNativeArchivalEncryption)
+	account, err = azureClient.SubscriptionByID(ctx, id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n := len(account.Features); n != 1 {
+	if n := len(account.Features); n != 2 {
 		t.Fatalf("invalid number of features: %v", n)
 	}
 	feature, ok = account.Feature(core.FeatureCloudNativeArchivalEncryption)
@@ -446,13 +444,13 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 
 	// Remove the Azure subscription from RSC keeping the snapshots. Removing
 	// archival feature as encryption is a child feature of it.
-	err = azureClient.RemoveSubscription(ctx, ID(subscription), core.FeatureCloudNativeArchival, false)
+	err = azureClient.RemoveSubscription(ctx, id, core.FeatureCloudNativeArchival, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	_, err = azureClient.Subscription(ctx, ID(subscription), core.FeatureCloudNativeArchivalEncryption)
+	_, err = azureClient.SubscriptionByID(ctx, id)
 	if !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}

@@ -72,7 +72,7 @@ func main() {
 	}
 
 	// Lookup the newly added subscription.
-	account, err := azureClient.Subscription(ctx, azure.CloudAccountID(id), core.FeatureAll)
+	account, err := azureClient.SubscriptionByID(ctx, id)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func main() {
 	}
 
 	// Remove subscription.
-	err = azureClient.RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeProtection, false)
+	err = azureClient.RemoveSubscription(ctx, id, core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -113,7 +113,7 @@ func main() {
 	}
 
 	// Remove the Azure subscription from RSC.
-	err = azure.Wrap(client).RemoveSubscription(ctx, azure.CloudAccountID(id), core.FeatureCloudNativeArchival, false)
+	err = azure.Wrap(client).RemoveSubscription(ctx, id, core.FeatureCloudNativeArchival, false)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -79,7 +79,7 @@ func main() {
 
 	fmt.Printf("Exocompute Account ID: %v\n", exoAccountID)
 
-	account, err := azureClient.Subscription(ctx, azure.CloudAccountID(accountID), core.FeatureAll)
+	account, err := azureClient.SubscriptionByID(ctx, accountID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -114,13 +114,13 @@ func main() {
 	}
 
 	// Disable the exocompute feature for the account.
-	err = azureClient.RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureExocompute, false)
+	err = azureClient.RemoveSubscription(ctx, accountID, core.FeatureExocompute, false)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Remove subscription.
-	err = azureClient.RemoveSubscription(ctx, azure.CloudAccountID(accountID), core.FeatureCloudNativeProtection, false)
+	err = azureClient.RemoveSubscription(ctx, accountID, core.FeatureCloudNativeProtection, false)
 	if err != nil {
 		log.Fatal(err)
 	}
