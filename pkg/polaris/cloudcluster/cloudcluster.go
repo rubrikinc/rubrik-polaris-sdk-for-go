@@ -250,13 +250,13 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 	// validate marketplace agreement
 	marketplaceTerms, err := cloudcluster.Wrap(a.client).AzureMarketplaceTerms(ctx, input.CloudAccountID, cdmVersion)
 	if err != nil {
-		return CloudCluster{}, fmt.Errorf("Error validating marketplace terms: %s", err)
+		return CloudCluster{}, fmt.Errorf("error validating marketplace terms: %s", err)
 	}
 	if !marketplaceTerms.TermsAccepted {
-		return CloudCluster{}, fmt.Errorf("Marketplace terms have not been accepted for cdm version %s", cdmVersion)
+		return CloudCluster{}, fmt.Errorf("marketplace terms have not been accepted for cdm version %s", cdmVersion)
 	}
 	if marketplaceTerms.MarketplaceSKU == "" {
-		return CloudCluster{}, fmt.Errorf("Marketplace sku is not available for cdm version %s", cdmVersion)
+		return CloudCluster{}, fmt.Errorf("marketplace sku is not available for cdm version %s", cdmVersion)
 	}
 
 	// Find ManagedIdentity by name and set client ID and Resource Group
@@ -271,7 +271,7 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 		}
 	}
 	if n := len(managedIdentity); n != 1 {
-		return CloudCluster{}, fmt.Errorf("Managed identity %s does not exist in RSC Azure account %s, we found %d matches", input.ClusterConfig.AzureESConfig.ManagedIdentity.Name, account.ID, n)
+		return CloudCluster{}, fmt.Errorf("managed identity %s does not exist in RSC Azure account %s, we found %d matches", input.ClusterConfig.AzureESConfig.ManagedIdentity.Name, account.ID, n)
 	}
 
 	// update input managed identity with client ID and resource group
@@ -304,9 +304,6 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 	if !validSubnet {
 		return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC Azure account %s", input.VMConfig.Subnet, account.ID)
 	}
-
-	// log input
-	a.log.Printf(log.Info, "Creating Azure Cloud Cluster with input: %+v\n", input)
 
 	// Validate CloudCluster Request
 	err = cloudcluster.Wrap(a.client).ValidateCreateAzureClusterInput(ctx, input)
