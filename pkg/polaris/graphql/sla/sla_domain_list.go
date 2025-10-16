@@ -58,13 +58,13 @@ type Domain struct {
 	Name                  string `json:"name"`
 	ObjectSpecificConfigs struct {
 		AWSS3Config *struct {
-			CloudNativeObjectConfig
+			AWSS3Config
 			ArchivalLocationName string `json:"archivalLocationName"`
 		} `json:"awsNativeS3SlaConfig"`
 		AWSRDSConfig    *AWSRDSConfig `json:"awsRdsConfig"`
 		AzureBlobConfig *struct {
-			CloudNativeObjectConfig
-			ArchivalLocationName string `json:"archivalLocationName"`
+			AzureBlobConfig
+			BackupLocationName string `json:"backupLocationName"`
 		} `json:"azureBlobConfig"`
 		AzureSQLDatabaseDBConfig        *AzureDBConfig `json:"azureSqlDatabaseDbConfig"`
 		AzureSQLManagedInstanceDBConfig *AzureDBConfig `json:"azureSqlManagedInstanceDbConfig"`
