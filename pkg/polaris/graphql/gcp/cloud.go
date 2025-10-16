@@ -24,6 +24,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -84,63 +86,116 @@ func (a API) CloudAccountProjectsByFeature(ctx context.Context, feature core.Fea
 	return payload.Data.Accounts, nil
 }
 
-// CloudAccountAddManualAuthProject adds the GCP project to RSC.
-func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, projectName string, projectNumber int64, orgName, jwtConfig string, feature core.Feature) error {
+// CloudAccountAddManualAuthProject adds the GCP project and features to RSC.
+func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, projectName string, projectNumber int64, orgName, jwtConfig string, features []core.Feature) error {
 	a.log.Print(log.Trace)
 
-	query := gcpCloudAccountAddManualAuthProjectQuery
-	_, err := a.GQL.Request(ctx, query, struct {
-		ID           string        `json:"gcpNativeProjectId"`
-		Name         string        `json:"gcpProjectName"`
-		Number       int64         `json:"gcpProjectNumber"`
-		OrgName      string        `json:"organizationName,omitempty"`
-		JwtConfig    secret.String `json:"serviceAccountJwtConfig,omitempty"`
-		JwtConfigOpt secret.String `json:"serviceAccountJwtConfigOptional,omitempty"`
-		Feature      string        `json:"feature"`
-	}{ID: projectID, Name: projectName, Number: projectNumber, OrgName: orgName, JwtConfig: secret.String(jwtConfig), JwtConfigOpt: secret.String(jwtConfig), Feature: feature.Name})
+	featuresWithoutPG, featuresWithPG, err := core.FilterFeaturesOnPermissionGroups(features)
 	if err != nil {
+		return fmt.Errorf("failed to add project: %s", err)
+	}
+
+	query := gcpCloudAccountAddManualAuthProjectQuery
+	if _, err := a.GQL.Request(ctx, query, struct {
+		ID             string         `json:"gcpNativeProjectId"`
+		Name           string         `json:"gcpProjectName"`
+		Number         int64          `json:"gcpProjectNumber"`
+		OrgName        string         `json:"organizationName,omitempty"`
+		JwtConfig      secret.String  `json:"serviceAccountJwtConfig,omitempty"`
+		JwtConfigOpt   secret.String  `json:"serviceAccountJwtConfigOptional,omitempty"`
+		Features       []string       `json:"features,omitempty"`
+		FeaturesWithPG []core.Feature `json:"featuresWithPG,omitempty"`
+	}{
+		ID:             projectID,
+		Name:           projectName,
+		Number:         projectNumber,
+		OrgName:        orgName,
+		JwtConfig:      secret.String(jwtConfig),
+		JwtConfigOpt:   secret.String(jwtConfig),
+		Features:       featuresWithoutPG,
+		FeaturesWithPG: featuresWithPG,
+	}); err != nil {
 		return graphql.RequestError(query, err)
 	}
 
 	return nil
 }
 
-// CloudAccountDeleteProject delete cloud account for the given RSC cloud
-// account id.
-func (a API) CloudAccountDeleteProject(ctx context.Context, id uuid.UUID) error {
+type DeleteProjectFeatureInput struct {
+	CloudAccountIDs []uuid.UUID `json:"cloudAccountIds"`
+	DeleteSnapshots bool        `json:"deleteSnapshots"`
+	Feature         string      `json:"feature"`
+}
+
+type DeleteProjectJob struct {
+	ID             uuid.UUID
+	CloudAccountID uuid.UUID
+	Feature        core.Feature
+}
+
+// CloudAccountDeleteProjectV2 removes the feature from the project with the
+// specified cloud account ID.
+func (a API) CloudAccountDeleteProjectV2(ctx context.Context, cloudAccountID uuid.UUID, features []core.Feature, deleteSnapshots bool) ([]DeleteProjectJob, error) {
 	a.log.Print(log.Trace)
 
-	query := gcpCloudAccountDeleteProjectsQuery
+	featureInputs := make([]DeleteProjectFeatureInput, 0, len(features))
+	for _, feature := range features {
+		featureInputs = append(featureInputs, DeleteProjectFeatureInput{
+			CloudAccountIDs: []uuid.UUID{cloudAccountID},
+			DeleteSnapshots: deleteSnapshots,
+			Feature:         feature.Name,
+		})
+	}
+
+	query := gcpCloudAccountDeleteProjectsV2Query
 	buf, err := a.GQL.Request(ctx, query, struct {
-		ID  uuid.UUID   `json:"nativeProtectionProjectId"`
-		IDs []uuid.UUID `json:"nativeProtectionProjectUuids"`
-	}{ID: id, IDs: []uuid.UUID{id}})
+		Features []DeleteProjectFeatureInput `json:"features"`
+	}{Features: featureInputs})
 	if err != nil {
-		return graphql.RequestError(query, err)
+		return nil, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
 		Data struct {
 			Result struct {
-				Status []struct {
-					ProjectUUID string `json:"projectUuid"`
-					Success     bool   `json:"success"`
-					Error       string `json:"error"`
-				} `json:"gcpProjectDeleteStatuses"`
+				Errors []struct {
+					Error          string `json:"error"`
+					RubrikObjectID string `json:"rubrikObjectId"`
+				} `json:"errors"`
+				JobIDs []struct {
+					JobID          uuid.UUID `json:"jobId"`
+					RubrikObjectID string    `json:"rubrikObjectId"`
+				} `json:"jobIds"`
 			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return graphql.UnmarshalError(query, err)
+		return nil, graphql.UnmarshalError(query, err)
 	}
-	if len(payload.Data.Result.Status) != 1 {
-		return graphql.ResponseError(query, errors.New("expected a single result"))
-	}
-	if !payload.Data.Result.Status[0].Success {
-		return graphql.ResponseError(query, errors.New(payload.Data.Result.Status[0].Error))
+	if len(payload.Data.Result.Errors) > 0 {
+		return nil, graphql.ResponseError(query, errors.New(payload.Data.Result.Errors[0].Error))
 	}
 
-	return nil
+	jobs := make([]DeleteProjectJob, 0, len(payload.Data.Result.JobIDs))
+	for _, job := range payload.Data.Result.JobIDs {
+		parts := strings.Split(job.RubrikObjectID, ":")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid object id: %s", job.RubrikObjectID)
+		}
+
+		cloudAccountID, err := uuid.Parse(parts[0])
+		if err != nil {
+			return nil, fmt.Errorf("invalid cloud account id: %s", parts[0])
+		}
+
+		jobs = append(jobs, DeleteProjectJob{
+			ID:             job.JobID,
+			CloudAccountID: cloudAccountID,
+			Feature:        core.Feature{Name: parts[1]},
+		})
+	}
+
+	return jobs, nil
 }
 
 // FeaturePermissionsForCloudAccount list the permissions needed to enable the
@@ -177,15 +232,15 @@ func (a API) FeaturePermissionsForCloudAccount(ctx context.Context, feature core
 
 // UpgradeCloudAccountPermissionsWithoutOAuth notifies RSC that the permissions
 // for the GCP service account has been updated for the specified RSC cloud
-// account id and feature.
-func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature) error {
+// account ID and feature.
+func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, cloudAccountID uuid.UUID, feature core.Feature) error {
 	a.log.Print(log.Trace)
 
 	query := upgradeGcpCloudAccountPermissionsWithoutOauthQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID `json:"cloudAccountId"`
 		Feature string    `json:"feature"`
-	}{ID: id, Feature: feature.Name})
+	}{ID: cloudAccountID, Feature: feature.Name})
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}

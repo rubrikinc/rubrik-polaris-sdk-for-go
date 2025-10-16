@@ -45,7 +45,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClientWithLogger(polAccount, polarislog.NewStandardLogger())
+	logger := polarislog.NewStandardLogger()
+	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
+		log.Fatal(err)
+	}
+	client, err := polaris.NewClientWithLogger(polAccount, logger)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -68,25 +72,25 @@ func main() {
 
 	// Add the GCP project to Polaris without any GCP credentials.
 	id, err := gcpClient.AddProject(ctx, gcp.Project("my-project", 123456789012),
-		core.FeatureCloudNativeProtection, gcp.Name("My Project"))
+		[]core.Feature{core.FeatureCloudNativeProtection}, gcp.Name("My Project"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Lookup the newly added project.
-	account, err := gcpClient.Project(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection)
+	account, err := gcpClient.ProjectByID(ctx, id)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Name: %v, ProjectID: %v, ProjectNumber: %v, DefaultServiceAccount: %v\n",
+	fmt.Printf("Name: %s, ProjectID: %s, ProjectNumber: %d, DefaultServiceAccount: %t\n",
 		account.Name, account.ID, account.ProjectNumber, account.DefaultServiceAccount)
 	for _, feature := range account.Features {
-		fmt.Printf("Feature: %v, Status: %v\n", feature.Name, feature.Status)
+		fmt.Printf("Feature: %s, Status: %s\n", feature.Name, feature.Status)
 	}
 
 	// Remove the GCP account from Polaris.
-	err = gcpClient.RemoveProject(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection, false)
+	err = gcpClient.RemoveProject(ctx, id, []core.Feature{core.FeatureCloudNativeProtection}, false)
 	if err != nil {
 		log.Fatal(err)
 	}

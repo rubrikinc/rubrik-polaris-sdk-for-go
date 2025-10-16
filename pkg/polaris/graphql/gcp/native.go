@@ -23,7 +23,6 @@ package gcp
 import (
 	"context"
 	"encoding/json"
-	"errors"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -47,14 +46,14 @@ type NativeProject struct {
 }
 
 // NativeProject returns the native project with the specified RSC native
-// project id.
-func (a API) NativeProject(ctx context.Context, id uuid.UUID) (NativeProject, error) {
+// project ID.
+func (a API) NativeProject(ctx context.Context, nativeProjectID uuid.UUID) (NativeProject, error) {
 	a.log.Print(log.Trace)
 
 	query := gcpNativeProjectQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ID uuid.UUID `json:"fid"`
-	}{ID: id})
+	}{ID: nativeProjectID})
 	if err != nil {
 		return NativeProject{}, graphql.RequestError(query, err)
 	}
@@ -116,36 +115,4 @@ func (a API) NativeProjects(ctx context.Context, filter string) ([]NativeProject
 	}
 
 	return accounts, nil
-}
-
-// NativeDisableProject starts a task chain job to disable the native project
-// with the specified RSC native project id. If deleteSnapshots is true the
-// snapshots are deleted. Returns the RSC task chain id.
-func (a API) NativeDisableProject(ctx context.Context, id uuid.UUID, deleteSnapshots bool) (uuid.UUID, error) {
-	a.log.Print(log.Trace)
-
-	query := gcpNativeDisableProjectQuery
-	buf, err := a.GQL.Request(ctx, query, struct {
-		ID              uuid.UUID `json:"projectId"`
-		DeleteSnapshots bool      `json:"shouldDeleteNativeSnapshots"`
-	}{ID: id, DeleteSnapshots: deleteSnapshots})
-	if err != nil {
-		return uuid.Nil, graphql.RequestError(query, err)
-	}
-
-	var payload struct {
-		Data struct {
-			Query struct {
-				JobID uuid.UUID `json:"jobId"`
-				Error string    `json:"error"`
-			} `json:"gcpNativeDisableProject"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, graphql.UnmarshalError(query, err)
-	}
-	if payload.Data.Query.Error != "" {
-		return uuid.Nil, graphql.ResponseError(query, errors.New(payload.Data.Query.Error))
-	}
-	return payload.Data.Query.JobID, nil
 }

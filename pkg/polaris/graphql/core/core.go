@@ -146,16 +146,6 @@ func (feature Feature) WithPermissionGroups(permissionGroups ...PermissionGroup)
 	return Feature{Name: feature.Name, PermissionGroups: groups}
 }
 
-// FeatureNames returns the names of the features.
-func FeatureNames(features []Feature) []string {
-	var names []string
-	for _, feature := range features {
-		names = append(names, feature.Name)
-	}
-
-	return names
-}
-
 var (
 	FeatureInvalid                                 = Feature{Name: ""}
 	FeatureAll                                     = Feature{Name: "ALL"}
@@ -219,16 +209,14 @@ var validFeatures = map[string]struct{}{
 	FeatureServerAndApps.Name:                           {},
 }
 
-// ContainsFeature returns true if the features slice contains the specified
-// feature.
-func ContainsFeature(features []Feature, feature Feature) bool {
-	for _, f := range features {
-		if f.Equal(feature) {
-			return true
-		}
+// FeatureNames returns the names of the features.
+func FeatureNames(features []Feature) []string {
+	var names []string
+	for _, feature := range features {
+		names = append(names, feature.Name)
 	}
 
-	return false
+	return names
 }
 
 // LookupFeature returns the specified feature if it exists in the feature
@@ -241,6 +229,29 @@ func LookupFeature(features []Feature, feature Feature) (Feature, bool) {
 	}
 
 	return Feature{}, false
+}
+
+// FilterFeaturesOnPermissionGroups verifies that all features either have no
+// permission groups or all have permission groups. The features are returned
+// in two different slices, depending on whether they have permission groups
+// or not.
+func FilterFeaturesOnPermissionGroups(features []Feature) ([]string, []Feature, error) {
+	if len(features) == 0 {
+		return nil, nil, errors.New("no features specified")
+	}
+
+	// Check that all features have the same use of permission groups.
+	usePG := len(features[0].PermissionGroups) > 0
+	for _, feature := range features[1:] {
+		if pg := len(feature.PermissionGroups) > 0; pg != usePG {
+			return nil, nil, errors.New("features with and without permission groups cannot be mixed")
+		}
+	}
+	if usePG {
+		return nil, features, nil
+	}
+
+	return FeatureNames(features), nil, nil
 }
 
 // Deprecated: use Feature.Name instead.
