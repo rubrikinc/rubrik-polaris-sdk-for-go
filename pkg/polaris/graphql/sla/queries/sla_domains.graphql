@@ -11,6 +11,11 @@ query RubrikPolarisSDKRequest($after: String, $filter: [GlobalSlaFilterInput!]) 
                         name
                     }
                 }
+                backupLocationSpecs {
+                    archivalGroup {
+                        id
+                    }
+                }
                 backupWindows {
                     durationInHours
                     startTimeAttributes {

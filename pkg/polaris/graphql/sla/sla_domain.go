@@ -35,9 +35,10 @@ import (
 // CreateDomainParams holds the parameters for a global SLA domain create
 // operation.
 type CreateDomainParams struct {
-	ArchivalSpecs []ArchivalSpec `json:"archivalSpecs,omitempty"`
-	BackupWindows []BackupWindow `json:"backupWindows,omitempty"`
-	Description   string         `json:"description,omitempty"`
+	ArchivalSpecs       []ArchivalSpec       `json:"archivalSpecs,omitempty"`
+	BackupLocationSpecs []BackupLocationSpec `json:"backupLocationSpecs,omitempty"`
+	BackupWindows       []BackupWindow       `json:"backupWindows,omitempty"`
+	Description         string               `json:"description,omitempty"`
 
 	// If omitted, it will be done at first opportunity.
 	FirstFullBackupWindows []BackupWindow `json:"firstFullBackupWindows,omitempty"`
@@ -58,6 +59,12 @@ type ArchivalSpec struct {
 	Frequencies   []RetentionUnit `json:"frequencies"`
 	Threshold     int             `json:"threshold"`
 	ThresholdUnit RetentionUnit   `json:"thresholdUnit"`
+}
+
+// BackupLocationSpec holds the backup location specification for an RSC global
+// SLA domain.
+type BackupLocationSpec struct {
+	ArchivalGroupID uuid.UUID `json:"archivalGroupId"`
 }
 
 // BackupWindow represents a backup window for an RSC global SLA domain.

@@ -47,6 +47,11 @@ type Domain struct {
 			Name string `json:"name"`
 		} `json:"storageSetting"`
 	} `json:"archivalSpecs"`
+	BackupLocationSpecs []struct {
+		ArchivalGroup struct {
+			ID string `json:"id"`
+		} `json:"archivalGroup"`
+	} `json:"backupLocationSpecs"`
 	BackupWindows          []BackupWindow `json:"backupWindows"`
 	Description            string         `json:"description"`
 	FirstFullBackupWindows []BackupWindow `json:"firstFullBackupWindows"`
