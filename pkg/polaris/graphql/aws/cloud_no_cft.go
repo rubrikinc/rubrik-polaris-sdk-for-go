@@ -47,10 +47,9 @@ type PermissionPolicyArtifact struct {
 func (a API) AllPermissionPolicies(ctx context.Context, cloud Cloud, features []core.Feature, ec2RecoveryRolePath string) ([]PermissionPolicyArtifact, error) {
 	a.log.Print(log.Trace)
 
-	// Features and FeaturesWithPG are mutually exclusive.
-	plainFeatures := plainFeatures(features)
-	if len(plainFeatures) > 0 {
-		features = nil
+	featuresWithoutPG, featuresWithPG, err := core.FilterFeaturesOnPermissionGroups(features)
+	if err != nil {
+		return nil, err
 	}
 
 	query := allAwsPermissionPoliciesQuery
@@ -59,7 +58,7 @@ func (a API) AllPermissionPolicies(ctx context.Context, cloud Cloud, features []
 		Features       []string       `json:"features,omitempty"`
 		FeaturesWithPG []core.Feature `json:"featuresWithPG,omitempty"`
 		RolePath       string         `json:"ec2RecoveryRolePath,omitempty"`
-	}{Cloud: cloud, Features: plainFeatures, FeaturesWithPG: features, RolePath: ec2RecoveryRolePath})
+	}{Cloud: cloud, Features: featuresWithoutPG, FeaturesWithPG: featuresWithPG, RolePath: ec2RecoveryRolePath})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
