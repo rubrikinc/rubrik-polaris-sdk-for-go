@@ -1,5 +1,6 @@
 mutation RubrikPolarisSDKRequest(
     $archivalSpecs:              [ArchivalSpecInput!],
+    $backupLocationSpecs:        [BackupLocationSpecInput!],
     $backupWindows:              [BackupWindowInput!],
     $description:                String,
     $firstFullBackupWindows:     [BackupWindowInput!],
@@ -14,6 +15,7 @@ mutation RubrikPolarisSDKRequest(
 ) {
     result: createGlobalSla(input: {
         archivalSpecs:              $archivalSpecs,
+        backupLocationSpecs:        $backupLocationSpecs,
         backupWindows:              $backupWindows,
         description:                $description,
         firstFullBackupWindows:     $firstFullBackupWindows,

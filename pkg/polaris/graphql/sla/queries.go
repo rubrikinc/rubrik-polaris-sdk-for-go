@@ -94,6 +94,7 @@ var createCloudNativeTagRuleQuery = `mutation SdkGolangCreateCloudNativeTagRule(
 // createGlobalSla GraphQL query
 var createGlobalSlaQuery = `mutation SdkGolangCreateGlobalSla(
     $archivalSpecs:              [ArchivalSpecInput!],
+    $backupLocationSpecs:        [BackupLocationSpecInput!],
     $backupWindows:              [BackupWindowInput!],
     $description:                String,
     $firstFullBackupWindows:     [BackupWindowInput!],
@@ -108,6 +109,7 @@ var createGlobalSlaQuery = `mutation SdkGolangCreateGlobalSla(
 ) {
     result: createGlobalSla(input: {
         archivalSpecs:              $archivalSpecs,
+        backupLocationSpecs:        $backupLocationSpecs,
         backupWindows:              $backupWindows,
         description:                $description,
         firstFullBackupWindows:     $firstFullBackupWindows,
@@ -150,6 +152,11 @@ var slaDomainsQuery = `query SdkGolangSlaDomains($after: String, $filter: [Globa
                     storageSetting {
                         id
                         name
+                    }
+                }
+                backupLocationSpecs {
+                    archivalGroup {
+                        id
                     }
                 }
                 backupWindows {
@@ -312,6 +319,7 @@ var updateCloudNativeTagRuleQuery = `mutation SdkGolangUpdateCloudNativeTagRule(
 // updateGlobalSla GraphQL query
 var updateGlobalSlaQuery = `mutation SdkGolangUpdateGlobalSla(
     $archivalSpecs:                   [ArchivalSpecInput!],
+    $backupLocationSpecs:             [BackupLocationSpecInput!],
     $backupWindows:                   [BackupWindowInput!],
     $description:                     String,
     $firstFullBackupWindows:          [BackupWindowInput!],
@@ -328,6 +336,7 @@ var updateGlobalSlaQuery = `mutation SdkGolangUpdateGlobalSla(
 ) {
     result: updateGlobalSla(input: {
         archivalSpecs:                   $archivalSpecs,
+        backupLocationSpecs:             $backupLocationSpecs,
         backupWindows:                   $backupWindows,
         description:                     $description,
         firstFullBackupWindows:          $firstFullBackupWindows,
