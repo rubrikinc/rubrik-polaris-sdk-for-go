@@ -267,7 +267,7 @@ var regionInfoMap = map[Region]struct {
 		regionForReplicationEnum: "SOURCE_REGION",
 	},
 	RegionUnknown: {
-		name:                     "n/a",
+		name:                     "",
 		displayName:              "<Unknown>",
 		regionEnum:               "UNKNOWN_AWS_REGION",
 		nativeRegionEnum:         "NOT_SPECIFIED",
