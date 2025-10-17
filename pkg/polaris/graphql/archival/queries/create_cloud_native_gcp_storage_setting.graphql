@@ -1,0 +1,25 @@
+mutation RubrikPolarisSDKRequest(
+    $cloudAccountId:  UUID!,
+    $name:            String!,
+    $bucketPrefix:    String!,
+    $storageClass:    GcpStorageClass!,
+    $region:          GcpRegion,
+    $cmkInfo:         [GcpCmkInput!],
+    $locTemplateType: CloudNativeLocTemplateType!,
+    $bucketLabels:    TagsInput
+) {
+    result: createCloudNativeGcpStorageSetting(input: {
+        cloudAccountId:             $cloudAccountId,
+        name:                       $name,
+        bucketPrefix:               $bucketPrefix,
+        storageClass:               $storageClass,
+        region:                     $region,
+        cmkInfo:                    $cmkInfo,
+        cloudNativeLocTemplateType: $locTemplateType,
+        bucketLabels:               $bucketLabels
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}

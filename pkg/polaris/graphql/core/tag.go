@@ -25,3 +25,8 @@ type Tag struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
+
+// Tags represents a list of tags.
+type Tags struct {
+	TagList []Tag `json:"tagList"`
+}

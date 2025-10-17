@@ -1,4 +1,4 @@
-// Copyright 2024 Rubrik, Inc.
+// Copyright 2023 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -25,19 +25,22 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/archival"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	gqlarchival "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+// Example showing how to manage an AWS archival location with the SDK.
+//
+// The RSC service account key file, identifying the RSC account, should be
+// pointed out by the RUBRIK_POLARIS_SERVICEACCOUNT_FILE environment variable.
 func main() {
 	ctx := context.Background()
 
-	// Load configuration and create the client.
+	// Load configuration and create client.
 	polAccount, err := polaris.DefaultServiceAccount(true)
 	if err != nil {
 		log.Fatal(err)
@@ -51,31 +54,26 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Add default Azure service principal to Polaris. Usually resolved using
-	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
-	_, err = azure.Wrap(client).SetServicePrincipal(ctx, azure.Default("my-domain.onmicrosoft.com"))
+	awsClient := aws.Wrap(client)
+
+	// Add the default AWS account to RSC. Usually resolved using the
+	// environment variables AWS_PROFILE.
+	id, err := awsClient.AddAccountWithCFT(ctx, aws.Default(),
+		[]core.Feature{core.FeatureCloudNativeArchival}, aws.Regions("us-east-2"))
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Printf("RSC cloud account ID: %s\n", id)
 
-	// Add Azure subscription to Polaris.
-	subscription := azure.Subscription(uuid.MustParse("9318aeec-d357-11eb-9b37-5f4e9f79db5d"),
-		"my-domain.onmicrosoft.com")
-	id, err := azure.Wrap(client).AddSubscription(ctx, subscription, core.FeatureCloudNativeArchival, azure.Regions("eastus2"),
-		azure.ResourceGroup("terraform-test", "eastus2", nil))
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("RSC cloud account ID: %v\n", id)
+	archivalClient := archival.Wrap(client)
 
-	// Create an Azure archival location.
-	targetMappingID, err := archival.Wrap(client).CreateAzureStorageSetting(ctx, gqlarchival.CreateAzureStorageSettingParams{
-		CloudAccountID:     id,
-		ContainerName:      "my-container-name",
-		Name:               "Test",
-		Redundancy:         "LRS",
-		StorageAccountName: "mystorageaccount",
-		StorageTier:        "COOL",
+	// Create an AWS archival location.
+	targetMappingID, err := archivalClient.CreateAWSStorageSetting(ctx, gqlarchival.CreateAWSStorageSettingParams{
+		CloudAccountID: id,
+		Name:           "Test",
+		BucketPrefix:   "my-prefix",
+		StorageClass:   "STANDARD",
+		KmsMasterKey:   "aws/s3",
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -83,22 +81,20 @@ func main() {
 	fmt.Printf("Target mapping ID: %v\n", targetMappingID)
 
 	// Get the AWS archival location by ID.
-	targetMapping, err := archival.Wrap(client).AzureTargetMappingByID(ctx, targetMappingID)
+	targetMapping, err := archival.Wrap(client).AWSTargetMappingByID(ctx, targetMappingID)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("ID: %v, Name: %s\n", targetMapping.ID, targetMapping.Name)
 
 	// Update the AWS archival location.
-	err = archival.Wrap(client).UpdateAzureStorageSetting(ctx, targetMappingID, gqlarchival.UpdateAzureStorageSettingParams{
-		Name: "TestUpdated",
-	})
+	err = archivalClient.UpdateAWSStorageSetting(ctx, targetMappingID, gqlarchival.UpdateAWSStorageSettingParams{Name: "Test-Updated"})
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Search for an AWS archival location by a name prefix.
-	targetMappings, err := archival.Wrap(client).AzureTargetMappings(ctx, "Test")
+	targetMappings, err := archivalClient.AWSTargetMappings(ctx, "Test")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -106,14 +102,14 @@ func main() {
 		fmt.Printf("ID: %v, Name: %s\n", targetMapping.ID, targetMapping.Name)
 	}
 
-	// Delete the Azure archival location.
-	err = archival.Wrap(client).DeleteTargetMapping(ctx, targetMappingID)
+	// Delete the AWS archival location.
+	err = archivalClient.DeleteTargetMapping(ctx, targetMappingID)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Remove the Azure subscription from RSC.
-	err = azure.Wrap(client).RemoveSubscription(ctx, id, core.FeatureCloudNativeArchival, false)
+	// Remove the AWS account from RSC.
+	err = awsClient.RemoveAccountWithCFT(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeArchival}, false)
 	if err != nil {
 		log.Fatal(err)
 	}

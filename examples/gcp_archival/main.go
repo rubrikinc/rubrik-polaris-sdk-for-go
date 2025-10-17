@@ -1,4 +1,4 @@
-// Copyright 2021 Rubrik, Inc.
+// Copyright 2025 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -26,12 +26,14 @@ import (
 	"log"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/archival"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
+	gqlarchival "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/archival"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Example showing how to manage a GCP project with the SDK.
+// Example showing how to manage a GCP archival location with the SDK.
 //
 // The RSC service account key file, identifying the RSC account, should be
 // pointed out by the RUBRIK_POLARIS_SERVICEACCOUNT_FILE environment variable.
@@ -54,25 +56,58 @@ func main() {
 
 	gcpClient := gcp.Wrap(client)
 
-	// Add the GCP default project to Polaris. Usually resolved using the
+	// Add the GCP default project to RSC. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
-	id, err := gcpClient.AddProject(ctx, gcp.Default(), []core.Feature{core.FeatureCloudNativeProtection, core.FeatureGCPSharedVPCHost})
+	id, err := gcpClient.AddProject(ctx, gcp.Default(), []core.Feature{core.FeatureCloudNativeArchival})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("RSC cloud account ID: %s\n", id)
+
+	archivalClient := archival.Wrap(client)
+
+	// Create a GCP archival location.
+	targetMappingID, err := archivalClient.CreateGCPStorageSetting(ctx, gqlarchival.CreateGCPStorageSettingParams{
+		CloudAccountID: id,
+		Name:           "Test",
+		BucketPrefix:   "my-prefix",
+		StorageClass:   "STANDARD_GCP",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Target mapping ID: %v\n", targetMappingID)
+
+	// Get the GCP archival location by ID.
+	targetMapping, err := archivalClient.GCPTargetMappingByID(ctx, targetMappingID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("ID: %s, Name: %s\n", targetMapping.ID, targetMapping.Name)
+
+	// Update the GCP archival location.
+	err = archivalClient.UpdateGCPStorageSetting(ctx, targetMappingID, gqlarchival.UpdateGCPStorageSettingParams{Name: "Test-Updated"})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// List the GCP projects added to Polaris.
-	account, err := gcpClient.ProjectByID(ctx, id)
+	// Search for a GCP archival location by a name prefix.
+	targetMappings, err := archivalClient.GCPTargetMappings(ctx, "Test")
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Name: %s, ProjectID: %s\n", account.Name, account.ID)
-	for _, feature := range account.Features {
-		fmt.Printf("Feature: %s, Status: %s\n", feature.Name, feature.Status)
+	for _, targetMapping := range targetMappings {
+		fmt.Printf("ID: %s, Name: %s\n", targetMapping.ID, targetMapping.Name)
+	}
+
+	// Delete the GCP archival location.
+	err = archivalClient.DeleteTargetMapping(ctx, targetMappingID)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// Remove the GCP project from RSC.
-	err = gcpClient.RemoveProject(ctx, id, []core.Feature{core.FeatureCloudNativeProtection, core.FeatureGCPSharedVPCHost}, false)
+	err = gcpClient.RemoveProject(ctx, id, []core.Feature{core.FeatureCloudNativeArchival}, false)
 	if err != nil {
 		log.Fatal(err)
 	}

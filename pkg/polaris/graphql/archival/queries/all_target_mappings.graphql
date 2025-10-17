@@ -13,8 +13,8 @@ query RubrikPolarisSDKRequest($filter: [TargetMappingFilterInput!]) {
                     cloudAccountId
                 }
                 bucketPrefix
-                storageClass
-                region
+                awsStorageClass: storageClass
+                awsRegion: region
                 kmsMasterKeyId
                 cloudNativeLocTemplateType
                 bucketTags {
@@ -44,6 +44,24 @@ query RubrikPolarisSDKRequest($filter: [TargetMappingFilterInput!]) {
                 }
                 containerNamePrefix
                 storageAccountName
+            }
+            ... on GcpTargetTemplate {
+                cloudAccount {
+                    cloudAccountId
+                }
+                bucketPrefix
+                gcpStorageClass: storageClass
+                gcpRegion: region
+                cmkInfo {
+                    keyName
+                    keyRingName
+                    region
+                }
+                cloudNativeLocTemplateType
+                labels {
+                    key
+                    value
+                }
             }
         }
     }
