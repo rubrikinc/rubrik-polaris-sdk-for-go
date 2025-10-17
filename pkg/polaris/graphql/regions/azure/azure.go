@@ -354,7 +354,7 @@ var regionInfoMap = map[Region]struct {
 		regionForReplicationEnum: "SOURCE_REGION",
 	},
 	RegionUnknown: {
-		name:                     "n/a",
+		name:                     "",
 		displayName:              "<Unknown>",
 		regionalDisplayName:      "<Unknown>",
 		regionEnum:               "UNKNOWN_AZURE_REGION",
