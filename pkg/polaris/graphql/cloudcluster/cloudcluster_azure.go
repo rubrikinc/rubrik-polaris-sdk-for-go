@@ -66,8 +66,8 @@ type AzureCDMVersions struct {
 func (a API) AllAzureCdmVersions(ctx context.Context, cloudAccountID uuid.UUID, region azure.Region) ([]AzureCDMVersions, error) {
 	query := azureCcCdmVersionsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID uuid.UUID                          `json:"cloudAccountId"`
-		Location       azureRegion.CloudAccountRegionEnum `json:"location"`
+		CloudAccountID uuid.UUID                    `json:"cloudAccountId"`
+		Location       azure.CloudAccountRegionEnum `json:"location"`
 	}{CloudAccountID: cloudAccountID, Location: region.ToCloudAccountRegionEnum()})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
@@ -87,8 +87,8 @@ func (a API) AllAzureCdmVersions(ctx context.Context, cloudAccountID uuid.UUID, 
 
 // AzureCCRegionDetails represents the region details available for the Azure Cloud Cluster.
 type AzureCCRegionDetails struct {
-	Location                 azureRegion.CloudAccountRegionEnum `json:"location"`
-	LogicalAvailabilityZones []azureRegion.NativeRegionEnum     `json:"logicalAvailabilityZones"`
+	Location                 azure.CloudAccountRegionEnum `json:"location"`
+	LogicalAvailabilityZones []azure.NativeRegionEnum     `json:"logicalAvailabilityZones"`
 }
 
 // AzureCCRegionDetails returns all the available regions for the specified cloud account.
@@ -148,8 +148,8 @@ func (a API) AzureMarketplaceTerms(ctx context.Context, cloudAccountID uuid.UUID
 
 // AzureCCResourceGroup represents the resource group and region for the specific cloud account available to the cloud cluster.
 type AzureCCResourceGroup struct {
-	Name   string                       `json:"name"`
-	Region azureRegion.NativeRegionEnum `json:"region"`
+	Name   string                 `json:"name"`
+	Region azure.NativeRegionEnum `json:"region"`
 }
 
 // AzureCCResourceGroups returns all the available resource groups for the specified cloud account.
@@ -219,11 +219,11 @@ type AzureCCSubnet struct {
 }
 
 // AzureCCSubnets returns all the available subnets for the specified cloud account.
-func (a API) AzureCCSubnets(ctx context.Context, cloudAccountID uuid.UUID, region azureRegion.Region) ([]AzureCCSubnet, error) {
+func (a API) AzureCCSubnets(ctx context.Context, cloudAccountID uuid.UUID, region azure.Region) ([]AzureCCSubnet, error) {
 	query := azureCcSubnetQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID uuid.UUID                          `json:"cloudAccountId"`
-		Region         azureRegion.CloudAccountRegionEnum `json:"region"`
+		CloudAccountID uuid.UUID                    `json:"cloudAccountId"`
+		Region         azure.CloudAccountRegionEnum `json:"region"`
 	}{CloudAccountID: cloudAccountID, Region: region.ToCloudAccountRegionEnum()})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
@@ -248,7 +248,7 @@ type AzureCCStorageAccount struct {
 }
 
 // AzureCCStorageAccounts returns all the available storage accounts for the specified cloud account.
-func (a API) AzureCCStorageAccounts(ctx context.Context, cloudAccountID uuid.UUID, region azureRegion.Region) ([]AzureCCStorageAccount, error) {
+func (a API) AzureCCStorageAccounts(ctx context.Context, cloudAccountID uuid.UUID, region azure.Region) ([]AzureCCStorageAccount, error) {
 	query := azureCcStorageAccountsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		CloudAccountID uuid.UUID    `json:"cloudAccountId"`
@@ -289,7 +289,7 @@ type AzureVMConfig struct {
 	Subnet                       string                         `json:"subnet"`
 	VMType                       VmConfigType                   `json:"vmType"`
 	CDMProduct                   string                         `json:"cdmProduct"`
-	Location                     azureRegion.Region             `json:"location"`
+	Location                     azure.Region                   `json:"location"`
 	AvailabilityZone             string                         `json:"availabilityZone"`
 	Vnet                         string                         `json:"vnet"`
 	ResourceGroup                string                         `json:"resourceGroup"`

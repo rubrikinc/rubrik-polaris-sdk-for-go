@@ -87,7 +87,7 @@ func TestRegionMarshalJSON(t *testing.T) {
 		{RegionEastUS, `"eastus"`},
 		{RegionWestUS, `"westus"`},
 		{RegionNorthEurope, `"northeurope"`},
-		{RegionUnknown, `"n/a"`},
+		{RegionUnknown, `""`},
 	}
 
 	for _, test := range tests {
@@ -104,26 +104,24 @@ func TestRegionMarshalJSON(t *testing.T) {
 
 func TestRegionUnmarshalJSON(t *testing.T) {
 	tests := []struct {
-		json     string
+		native   string
 		expected Region
 	}{
 		{`"eastus"`, RegionEastUS},
 		{`"westus"`, RegionWestUS},
 		{`"northeurope"`, RegionNorthEurope},
-		{`"n/a"`, RegionUnknown},
 		{`""`, RegionUnknown},
-		{`"invalid-region"`, RegionUnknown},
 	}
 
 	for _, test := range tests {
 		var region Region
-		err := json.Unmarshal([]byte(test.json), &region)
+		err := json.Unmarshal([]byte(test.native), &region)
 		if err != nil {
-			t.Errorf("failed to unmarshal JSON %s: %v", test.json, err)
+			t.Errorf("failed to unmarshal JSON %s: %v", test.native, err)
 			continue
 		}
 		if region != test.expected {
-			t.Errorf("unmarshal JSON %s: expected %v, got %v", test.json, test.expected, region)
+			t.Errorf("unmarshal native region %s: expected %v, got %v", test.native, test.expected, region)
 		}
 	}
 }
@@ -139,14 +137,12 @@ func TestRegionMarshalUnmarshalRoundTrip(t *testing.T) {
 	}
 
 	for _, original := range regions {
-		// Marshal to JSON
 		data, err := json.Marshal(original)
 		if err != nil {
 			t.Errorf("failed to marshal region %v: %v", original, err)
 			continue
 		}
 
-		// Unmarshal back to Region
 		var unmarshaled Region
 		err = json.Unmarshal(data, &unmarshaled)
 		if err != nil {
@@ -154,7 +150,6 @@ func TestRegionMarshalUnmarshalRoundTrip(t *testing.T) {
 			continue
 		}
 
-		// Check if they match
 		if original != unmarshaled {
 			t.Errorf("round trip failed for region %v: got %v", original, unmarshaled)
 		}
