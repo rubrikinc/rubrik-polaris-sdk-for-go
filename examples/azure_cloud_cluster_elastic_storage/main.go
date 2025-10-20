@@ -36,19 +36,8 @@ func main() {
 	azureClient := azure.Wrap(client)
 	cloudClusterClient := cloudcluster.Wrap(client)
 
-	var azureFqdn = "my-domain.onmicrosoft.com"
-	var azureSubscriptionID = "abcdefg-a123-12ab-1a23-1a2b3c45de6f"
-	var clusterName = "my-cces-cluster"
-	var resourceGroup = "my-resource-group"
-	var storageAccount = "my-storage-account"
-	var containerName = "my-container"
-	var managedIdentity = "my-managed-identity"
-	var userEmail = "my-user-email"
-	var adminPassword = secret.String("RubrikGoForward!")
-	var subnet = "my-subnet"
-	var vnet = "my-vnet"
-	var nsg = "my-nsg"
-	var cdmVersion = "9.2.3-p7-29713"
+	azureFqdn := "my-domain.onmicrosoft.com"
+	azureSubscriptionID := "abcdefg-a123-12ab-1a23-1a2b3c45de6f"
 
 	// Add default Azure service principal to Polaris. Usually resolved using
 	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
@@ -71,31 +60,34 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Print the subscription details.
 	fmt.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
 	for _, feature := range account.Features {
 		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
 	}
 
+	// Create the Cloud Cluster
+	resourceGroup := "resource-group"
 	cluster, err := cloudClusterClient.CreateAzureCloudCluster(ctx, cloudclustergql.CreateAzureClusterInput{
 		CloudAccountID:       account.ID,
 		IsESType:             true,
 		KeepClusterOnFailure: false,
 		ClusterConfig: cloudclustergql.AzureClusterConfig{
-			ClusterName:      clusterName,
-			UserEmail:        userEmail,
-			AdminPassword:    adminPassword,
+			ClusterName:      "cces-cluster",
+			UserEmail:        "hello@domain.com",
+			AdminPassword:    secret.String("RubrikGoForward!"),
 			DNSNameServers:   []string{"8.8.8.8"},
 			DNSSearchDomains: []string{},
 			NTPServers:       []string{"pool.ntp.org"},
 			NumNodes:         3,
 			AzureESConfig: cloudclustergql.AzureEsConfigInput{
 				ResourceGroup:         resourceGroup,
-				StorageAccount:        storageAccount,
-				ContainerName:         containerName,
+				StorageAccount:        "storage-account",
+				ContainerName:         "container-name",
 				ShouldCreateContainer: false,
 				EnableImmutability:    false,
 				ManagedIdentity: cloudclustergql.AzureManagedIdentityName{
-					Name: managedIdentity,
+					Name: "managed-identity",
 				},
 			},
 		},
@@ -103,15 +95,15 @@ func main() {
 			cloudclustergql.AllChecks,
 		},
 		VMConfig: cloudclustergql.AzureVMConfig{
-			CDMVersion:                   cdmVersion,
+			CDMVersion:                   "9.2.3-p7-29713",
 			InstanceType:                 cloudclustergql.AzureInstanceTypeStandardD8SV5,
 			Location:                     azuregqlregions.RegionWestUS,
 			ResourceGroup:                resourceGroup,
 			NetworkResourceGroup:         resourceGroup,
 			VnetResourceGroup:            resourceGroup,
-			Subnet:                       subnet,
-			Vnet:                         vnet,
-			NetworkSecurityGroup:         nsg,
+			Subnet:                       "subnet-id",
+			Vnet:                         "vnet-id",
+			NetworkSecurityGroup:         "nsg-id",
 			NetworkSecurityResourceGroup: resourceGroup,
 			VMType:                       cloudclustergql.CCVmConfigExtraDense,
 		},
