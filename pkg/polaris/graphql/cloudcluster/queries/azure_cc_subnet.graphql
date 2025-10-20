@@ -1,0 +1,16 @@
+query RubrikPolarisSDKRequest(
+  $cloudAccountId: UUID!
+  $region: AzureCloudAccountRegion!
+) {
+  result: allAzureCloudAccountSubnetsByRegion(
+    cloudAccountId: $cloudAccountId
+    region: $region
+  ) {
+    name
+    nativeId
+    vnet {
+      name
+      resourceGroupName
+    }
+  }
+}

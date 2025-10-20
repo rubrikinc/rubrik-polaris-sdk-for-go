@@ -1,0 +1,12 @@
+query RubrikPolarisSDKRequest($cloudAccountId: String!, $cdmVersion: String!) {
+  result: azureMarketplaceTermsInfo(
+    input: { cdmVersion: $cdmVersion, cloudAccountId: $cloudAccountId }
+  ) {
+    termsAccepted
+    marketplaceSku
+    publisher
+    offer
+    marketplaceTermsLink
+    message
+  }
+}

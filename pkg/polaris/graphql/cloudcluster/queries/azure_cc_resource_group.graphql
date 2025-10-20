@@ -1,0 +1,13 @@
+query RubrikPolarisSDKRequest(
+  $cloudAccountId: UUID!
+  $azureSubscriptionNativeId: UUID!
+) {
+  result: allResourceGroupsFromAzure(
+    cloudAccountId: $cloudAccountId
+    azureSubscriptionNativeId: $azureSubscriptionNativeId
+    feature: SERVERS_AND_APPS
+  ) {
+    name
+    region
+  }
+}
