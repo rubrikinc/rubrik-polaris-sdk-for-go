@@ -31,6 +31,7 @@ import (
 	azure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 )
 
+// AzureCCESSupportedInstanceType represents the instance types for Azure Cloud Cluster.
 type AzureCCESSupportedInstanceType string
 
 const (
@@ -46,11 +47,13 @@ const (
 	AzureInstanceTypeStandardE16ASV5 AzureCCESSupportedInstanceType = "STANDARD_E16AS_V5"
 )
 
+// AzureCDMVersionTag represents a tag for a CDM version.
 type AzureCDMVersionTag struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
 
+// AzureCDMVersions represents the CDM versions for Azure Cloud Cluster.
 type AzureCDMVersions struct {
 	CDMVersion             string                           `json:"cdmVersion"`
 	SKU                    string                           `json:"sku"`
@@ -59,8 +62,7 @@ type AzureCDMVersions struct {
 	Version                string                           `json:"version"`
 }
 
-// AllAzureCdmVersions returns all the available CDM versions for the specified
-// cloud account.
+// AllAzureCdmVersions returns all the available CDM versions for the specified cloud account.
 func (a API) AllAzureCdmVersions(ctx context.Context, cloudAccountID uuid.UUID, region azure.Region) ([]AzureCDMVersions, error) {
 	query := azureCcCdmVersionsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
@@ -83,6 +85,7 @@ func (a API) AllAzureCdmVersions(ctx context.Context, cloudAccountID uuid.UUID, 
 	return payload.Data.Result, nil
 }
 
+// AzureCCRegionDetails represents the region details available for the Azure Cloud Cluster.
 type AzureCCRegionDetails struct {
 	Location                 azure.CloudAccountRegionEnum `json:"location"`
 	LogicalAvailabilityZones []azure.NativeRegionEnum     `json:"logicalAvailabilityZones"`
@@ -110,6 +113,7 @@ func (a API) AzureCCRegionDetails(ctx context.Context, cloudAccountID uuid.UUID)
 	return payload.Data.Result, nil
 }
 
+// AzureMarketplaceTerms represents the marketplace terms for the Azure Cloud Cluster CDM Version requested.
 type AzureMarketplaceTerms struct {
 	MarketplaceSKU       string `json:"marketplaceSku"`
 	MarketplaceTermsLink string `json:"marketplaceTermsLink"`
@@ -142,6 +146,7 @@ func (a API) AzureMarketplaceTerms(ctx context.Context, cloudAccountID uuid.UUID
 	return payload.Data.Result, nil
 }
 
+// AzureCCResourceGroup represents the resource group and region for the specific cloud account available to the cloud cluster.
 type AzureCCResourceGroup struct {
 	Name   string                 `json:"name"`
 	Region azure.NativeRegionEnum `json:"region"`
@@ -170,6 +175,7 @@ func (a API) AzureCCResourceGroups(ctx context.Context, cloudAccountID uuid.UUID
 	return payload.Data.Result, nil
 }
 
+// AzureCCManagedIdentity represents the managed identity for the specific cloud account available to the cloud cluster.
 type AzureCCManagedIdentity struct {
 	Name          string `json:"name"`
 	ClientID      string `json:"clientId"`
@@ -198,12 +204,14 @@ func (a API) AzureCCManagedIdentities(ctx context.Context, cloudAccountID uuid.U
 	return payload.Data.Result, nil
 }
 
+// AzureCCVnet represents the vnet for the specific cloud account available to the cloud cluster.
 type AzureCCVnet struct {
 	Name            string `json:"name"`
 	ResourceGroup   string `json:"resourceGroupName"`
 	ResourceGroupID string `json:"resourceGroupId"`
 }
 
+// AzureCCSubnet represents the subnet for the specific cloud account available to the cloud cluster.
 type AzureCCSubnet struct {
 	Name string      `json:"name"`
 	ID   string      `json:"nativeId"`
@@ -233,6 +241,7 @@ func (a API) AzureCCSubnets(ctx context.Context, cloudAccountID uuid.UUID, regio
 	return payload.Data.Result, nil
 }
 
+// AzureCCStorageAccount represents the storage account for the specific cloud account available to the cloud cluster.
 type AzureCCStorageAccount struct {
 	Name          string `json:"name"`
 	ResourceGroup string `json:"resourceGroup"`
@@ -242,9 +251,9 @@ type AzureCCStorageAccount struct {
 func (a API) AzureCCStorageAccounts(ctx context.Context, cloudAccountID uuid.UUID, region azure.Region) ([]AzureCCStorageAccount, error) {
 	query := azureCcStorageAccountsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID uuid.UUID `json:"cloudAccountId"`
-		Region         string    `json:"region"`
-	}{CloudAccountID: cloudAccountID, Region: region.Name()})
+		CloudAccountID uuid.UUID    `json:"cloudAccountId"`
+		Region         azure.Region `json:"region"`
+	}{CloudAccountID: cloudAccountID, Region: region})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
@@ -261,6 +270,7 @@ func (a API) AzureCCStorageAccounts(ctx context.Context, cloudAccountID uuid.UUI
 	return payload.Data.Result, nil
 }
 
+// AzureClusterConfig represents the cluster configuration for the Azure Cloud Cluster.
 type AzureClusterConfig struct {
 	ClusterName           string             `json:"clusterName"`
 	UserEmail             string             `json:"userEmail"`
@@ -273,6 +283,7 @@ type AzureClusterConfig struct {
 	AzureESConfig         AzureEsConfigInput `json:"azureEsConfig"`
 }
 
+// AzureVMConfig represents the VM configuration for the Azure Cloud Cluster.
 type AzureVMConfig struct {
 	CDMVersion           string                         `json:"cdmVersion"`
 	Subnet               string                         `json:"subnet"`
@@ -287,6 +298,7 @@ type AzureVMConfig struct {
 	InstanceType         AzureCCESSupportedInstanceType `json:"instanceType"`
 }
 
+// CreateAzureClusterInput represents the input for creating an Azure Cloud Cluster.
 type CreateAzureClusterInput struct {
 	CloudAccountID       uuid.UUID                  `json:"cloudAccountId"`
 	ClusterConfig        AzureClusterConfig         `json:"clusterConfig"`
