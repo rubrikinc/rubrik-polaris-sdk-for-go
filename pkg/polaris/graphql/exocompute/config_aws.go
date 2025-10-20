@@ -95,13 +95,18 @@ type CreateAWSConfigurationParams struct {
 	// Only needs to be specified if IsPolarisManaged is false.
 	ClusterSecurityGroupId string `json:"clusterSecurityGroupId,omitempty"`
 	NodeSecurityGroupId    string `json:"nodeSecurityGroupId,omitempty"`
+
+	// When true, a health check will be triggered after the configuration is
+	// created.
+	TriggerHealthCheck bool `json:"-"`
 }
 
 func (p CreateAWSConfigurationParams) CreateQuery() (string, any, CreateAWSConfigurationResult) {
 	params := struct {
-		CloudAccountID uuid.UUID                    `json:"cloudAccountId"`
-		Config         CreateAWSConfigurationParams `json:"config"`
-	}{CloudAccountID: p.CloudAccountID, Config: p}
+		CloudAccountID     uuid.UUID                    `json:"cloudAccountId"`
+		Config             CreateAWSConfigurationParams `json:"config"`
+		TriggerHealthCheck bool                         `json:"triggerHealthCheck"`
+	}{CloudAccountID: p.CloudAccountID, Config: p, TriggerHealthCheck: p.TriggerHealthCheck}
 	return createAwsExocomputeConfigsQuery, params, CreateAWSConfigurationResult{}
 }
 

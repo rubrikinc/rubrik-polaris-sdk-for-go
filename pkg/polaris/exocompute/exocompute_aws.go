@@ -111,7 +111,7 @@ type AWSConfigurationFunc func(ctx context.Context, gql *graphql.Client, id uuid
 
 // AWSManaged returns an AWSConfigurationFunc which initializes the
 // CreateAWSConfigurationParams object with security groups managed by RSC.
-func AWSManaged(region aws.Region, vpcID string, subnetIDs []string) AWSConfigurationFunc {
+func AWSManaged(region aws.Region, vpcID string, subnetIDs []string, triggerHealthCheck bool) AWSConfigurationFunc {
 	return func(ctx context.Context, gql *graphql.Client, cloudAccountID uuid.UUID) (exocompute.CreateAWSConfigurationParams, error) {
 		// Validate VPC.
 		vpcs, err := exocompute.AWSVPCsByRegion(ctx, gql, cloudAccountID, region)
@@ -137,18 +137,19 @@ func AWSManaged(region aws.Region, vpcID string, subnetIDs []string) AWSConfigur
 		}
 
 		return exocompute.CreateAWSConfigurationParams{
-			CloudAccountID:    cloudAccountID,
-			Region:            region.ToRegionEnum(),
-			VPCID:             vpcID,
-			Subnets:           []exocompute.AWSSubnet{subnet1, subnet2},
-			IsManagedByRubrik: true,
+			CloudAccountID:     cloudAccountID,
+			Region:             region.ToRegionEnum(),
+			VPCID:              vpcID,
+			Subnets:            []exocompute.AWSSubnet{subnet1, subnet2},
+			IsManagedByRubrik:  true,
+			TriggerHealthCheck: triggerHealthCheck,
 		}, nil
 	}
 }
 
 // AWSUnmanaged returns an AWSConfigurationFunc which initializes the
 // CreateAWSConfigurationParams object with security groups managed by the user.
-func AWSUnmanaged(region aws.Region, vpcID string, subnetIDs []string, clusterSecurityGroupID, nodeSecurityGroupID string) AWSConfigurationFunc {
+func AWSUnmanaged(region aws.Region, vpcID string, subnetIDs []string, clusterSecurityGroupID, nodeSecurityGroupID string, triggerHealthCheck bool) AWSConfigurationFunc {
 	return func(ctx context.Context, gql *graphql.Client, cloudAccountID uuid.UUID) (exocompute.CreateAWSConfigurationParams, error) {
 		// Validate VPC.
 		vpcs, err := exocompute.AWSVPCsByRegion(ctx, gql, cloudAccountID, region)
@@ -191,6 +192,7 @@ func AWSUnmanaged(region aws.Region, vpcID string, subnetIDs []string, clusterSe
 			IsManagedByRubrik:      false,
 			ClusterSecurityGroupId: clusterSecurityGroupID,
 			NodeSecurityGroupId:    nodeSecurityGroupID,
+			TriggerHealthCheck:     triggerHealthCheck,
 		}, nil
 	}
 }

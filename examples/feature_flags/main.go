@@ -43,7 +43,9 @@ func main() {
 		log.Fatal(err)
 	}
 	logger := polarislog.NewStandardLogger()
-	logger.SetLogLevel(polarislog.Debug)
+	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
+		log.Fatal(err)
+	}
 	client, err := polaris.NewClientWithLogger(polAccount, logger)
 	if err != nil {
 		log.Fatal(err)

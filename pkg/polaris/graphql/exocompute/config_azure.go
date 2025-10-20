@@ -76,13 +76,18 @@ type CreateAzureConfigurationParams struct {
 	SubnetID              string `json:"subnetNativeId,omitempty"`
 	PodOverlayNetworkCIDR string `json:"podOverlayNetworkCidr,omitempty"`
 	PodSubnetID           string `json:"podSubnetNativeId,omitempty"`
+
+	// When true, a health check will be triggered after the configuration is
+	// created.
+	TriggerHealthCheck bool `json:"-"`
 }
 
 func (p CreateAzureConfigurationParams) CreateQuery() (string, any, CreateAzureConfigurationResult) {
 	params := struct {
-		CloudAccountID uuid.UUID                      `json:"cloudAccountId"`
-		Config         CreateAzureConfigurationParams `json:"azureExocomputeRegionConfig"`
-	}{CloudAccountID: p.CloudAccountID, Config: p}
+		CloudAccountID     uuid.UUID                      `json:"cloudAccountId"`
+		Config             CreateAzureConfigurationParams `json:"azureExocomputeRegionConfig"`
+		TriggerHealthCheck bool                           `json:"triggerHealthCheck"`
+	}{CloudAccountID: p.CloudAccountID, Config: p, TriggerHealthCheck: p.TriggerHealthCheck}
 	return addAzureCloudAccountExocomputeConfigurationsQuery, params, CreateAzureConfigurationResult{}
 }
 
