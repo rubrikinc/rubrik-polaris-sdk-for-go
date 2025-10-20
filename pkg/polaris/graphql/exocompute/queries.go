@@ -28,9 +28,12 @@ package exocompute
 var addAzureCloudAccountExocomputeConfigurationsQuery = `mutation SdkGolangAddAzureCloudAccountExocomputeConfigurations(
     $cloudAccountId:              UUID!,
     $azureExocomputeRegionConfig: AzureExocomputeAddConfigInputType!
+    $triggerHealthCheck:          Boolean,
 ) {
     result: addAzureCloudAccountExocomputeConfigurations(input: {
-        cloudAccountId: $cloudAccountId, azureExocomputeRegionConfigs: [$azureExocomputeRegionConfig]
+        cloudAccountId:               $cloudAccountId,
+        azureExocomputeRegionConfigs: [$azureExocomputeRegionConfig],
+        triggerHealthCheck:           $triggerHealthCheck,
     }) {
         configs {
             configUuid
@@ -194,13 +197,15 @@ var awsExocomputeGetClusterConnectionInfoQuery = `query SdkGolangAwsExocomputeGe
 
 // createAwsExocomputeConfigs GraphQL query
 var createAwsExocomputeConfigsQuery = `mutation SdkGolangCreateAwsExocomputeConfigs(
-    $cloudAccountId: UUID!,
-    $config:         AwsExocomputeConfigInput!
+    $cloudAccountId:     UUID!,
+    $config:             AwsExocomputeConfigInput!,
+    $triggerHealthCheck: Boolean,
 ) {
     result: createAwsExocomputeConfigs(input: {
-        cloudAccountId: $cloudAccountId,
-        configs:        [$config]}
-    ) {
+        cloudAccountId:     $cloudAccountId,
+        configs:            [$config],
+        triggerHealthCheck: $triggerHealthCheck,
+    }) {
         exocomputeConfigs {
             configUuid
             message

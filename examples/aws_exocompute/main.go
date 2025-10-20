@@ -82,7 +82,7 @@ func main() {
 
 	// Add an exocompute configuration for the account.
 	exoID, err := exoClient.AddAWSConfiguration(ctx, accountID,
-		exocompute.AWSManaged(gqlaws.RegionUsEast2, "vpc-4859acb9", []string{"subnet-ea67b67b", "subnet-ea43ec78"}))
+		exocompute.AWSManaged(gqlaws.RegionUsEast2, "vpc-4859acb9", []string{"subnet-ea67b67b", "subnet-ea43ec78"}, false))
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -112,13 +112,14 @@ type AzureConfigurationFunc func(ctx context.Context, cloudAccountID uuid.UUID) 
 
 // AzureManaged returns an AzureConfigurationFunc which initializes a
 // CreateAzureConfigurationParams object with the specified values.
-func AzureManaged(region azure.Region, subnetID string) AzureConfigurationFunc {
+func AzureManaged(region azure.Region, subnetID string, triggerHealthCheck bool) AzureConfigurationFunc {
 	return func(ctx context.Context, cloudAccountID uuid.UUID) (exocompute.CreateAzureConfigurationParams, error) {
 		return exocompute.CreateAzureConfigurationParams{
-			CloudAccountID:    cloudAccountID,
-			IsManagedByRubrik: true,
-			Region:            region.ToCloudAccountRegionEnum(),
-			SubnetID:          subnetID,
+			CloudAccountID:     cloudAccountID,
+			IsManagedByRubrik:  true,
+			Region:             region.ToCloudAccountRegionEnum(),
+			SubnetID:           subnetID,
+			TriggerHealthCheck: triggerHealthCheck,
 		}, nil
 	}
 }
@@ -126,7 +127,7 @@ func AzureManaged(region azure.Region, subnetID string) AzureConfigurationFunc {
 // AzureManagedWithOverlayNetwork returns an AzureConfigurationFunc which
 // initializes a CreateAzureConfigurationParams object with the specified
 // values.
-func AzureManagedWithOverlayNetwork(region azure.Region, subnetID, podOverlayNetworkCIDR string) AzureConfigurationFunc {
+func AzureManagedWithOverlayNetwork(region azure.Region, subnetID, podOverlayNetworkCIDR string, triggerHealthCheck bool) AzureConfigurationFunc {
 	return func(ctx context.Context, cloudAccountID uuid.UUID) (exocompute.CreateAzureConfigurationParams, error) {
 		return exocompute.CreateAzureConfigurationParams{
 			CloudAccountID:        cloudAccountID,
@@ -134,6 +135,7 @@ func AzureManagedWithOverlayNetwork(region azure.Region, subnetID, podOverlayNet
 			Region:                region.ToCloudAccountRegionEnum(),
 			SubnetID:              subnetID,
 			PodOverlayNetworkCIDR: podOverlayNetworkCIDR,
+			TriggerHealthCheck:    triggerHealthCheck,
 		}, nil
 	}
 }
