@@ -280,7 +280,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 
 	// If there already is an RSC cloud account for the given Azure
 	// subscription, we use the same name when adding the new feature.
-	account, err := a.SubscriptionByNativeID(ctx, config.id)
+	account, err := a.SubscriptionByNativeID(ctx, config.NativeID)
 	if err == nil {
 		config.name = account.Name
 	}
@@ -313,7 +313,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		FeatureSpecificInfo: options.featureSpecificInfo,
 	}
 
-	_, err = gqlazure.Wrap(a.client).AddCloudAccountWithoutOAuth(ctx, gqlazure.PublicCloud, config.id, cloudAccountFeature,
+	_, err = gqlazure.Wrap(a.client).AddCloudAccountWithoutOAuth(ctx, gqlazure.PublicCloud, config.NativeID, cloudAccountFeature,
 		config.name, config.tenantDomain, options.regions)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to add subscription: %v", err)
@@ -322,7 +322,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 	// If the RSC cloud account did not exist prior, we retrieve the RSC cloud
 	// account id.
 	if account.ID == uuid.Nil {
-		account, err = a.SubscriptionByNativeID(ctx, config.id)
+		account, err = a.SubscriptionByNativeID(ctx, config.NativeID)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("failed to get subscription: %w", err)
 		}

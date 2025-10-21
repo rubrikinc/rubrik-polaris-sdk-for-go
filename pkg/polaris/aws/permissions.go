@@ -115,7 +115,7 @@ func (a API) UpdatePermissions(ctx context.Context, account AccountFunc, feature
 		return fmt.Errorf("only applicable to cloud accounts using cft")
 	}
 
-	akkount, err := a.AccountByNativeID(ctx, config.id)
+	akkount, err := a.AccountByNativeID(ctx, config.NativeID)
 	if err != nil {
 		return fmt.Errorf("failed to get account: %v", err)
 	}

@@ -68,7 +68,7 @@ func (a API) AddAccountWithCFT(ctx context.Context, account AccountFunc, feature
 	// If there already is an RSC cloud account for the given AWS account we use
 	// the same account name when adding the feature. RSC does not allow the
 	// name to change between features.
-	cloudAccount, err := a.AccountByNativeID(ctx, config.id)
+	cloudAccount, err := a.AccountByNativeID(ctx, config.NativeID)
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 	}
@@ -97,7 +97,7 @@ func (a API) AddAccountWithCFT(ctx context.Context, account AccountFunc, feature
 	// If the RSC cloud account did not exist prior, we retrieve the RSC cloud
 	// account ID.
 	if cloudAccount.ID == uuid.Nil {
-		cloudAccount, err = a.AccountByNativeID(ctx, config.id)
+		cloudAccount, err = a.AccountByNativeID(ctx, config.NativeID)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 		}
@@ -124,7 +124,7 @@ func (a API) RemoveAccountWithCFT(ctx context.Context, account AccountFunc, feat
 		return errors.New("account config is required by the CloudFormation workflow")
 	}
 
-	cloudAccount, err := a.AccountByNativeID(ctx, config.id)
+	cloudAccount, err := a.AccountByNativeID(ctx, config.NativeID)
 	if err != nil {
 		return fmt.Errorf("failed to get account: %s", err)
 	}
@@ -148,12 +148,12 @@ func (a API) RemoveAccountWithCFT(ctx context.Context, account AccountFunc, feat
 func (a API) addAccountWithCFT(ctx context.Context, features []core.Feature, config account, options options) error {
 	a.log.Print(log.Trace)
 
-	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.cloud, config.id, config.name, features)
+	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.cloud, config.NativeID, config.name, features)
 	if err != nil {
 		return fmt.Errorf("failed to validate account: %s", err)
 	}
 
-	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, config.id, config.name, features, options.regions, accountInit)
+	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, config.NativeID, config.name, features, options.regions, accountInit)
 	if err != nil {
 		return fmt.Errorf("failed to add account: %s", err)
 	}
@@ -178,7 +178,7 @@ func (a API) addOutpostWithCFT(ctx context.Context, feature core.Feature, config
 			return fmt.Errorf("failed to get outpost account config: %s", err)
 		}
 	}
-	config.id = options.outpostAccountID
+	config.NativeID = options.outpostAccountID
 
 	return a.addAccountWithCFT(ctx, []core.Feature{feature}, config, options)
 }

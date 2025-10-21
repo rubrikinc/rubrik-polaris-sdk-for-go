@@ -35,10 +35,10 @@ import (
 )
 
 type account struct {
-	cloud  graphqlaws.Cloud
-	id     string
-	name   string
-	config *aws.Config
+	cloud    graphqlaws.Cloud
+	NativeID string
+	name     string
+	config   *aws.Config
 }
 
 // AccountFunc returns an account initialized from the values passed to the
@@ -58,7 +58,7 @@ func Config(config aws.Config) AccountFunc {
 			name = id
 		}
 
-		return account{id: id, name: name, config: &config}, nil
+		return account{NativeID: id, name: name, config: &config}, nil
 	}
 }
 
@@ -157,7 +157,7 @@ func ProfileWithRegionAndRole(profile, region, roleARN string) AccountFunc {
 			name = id + " : " + profile
 		}
 
-		return account{cloud: graphqlaws.CloudStandard, id: id, name: name, config: &config}, nil
+		return account{cloud: graphqlaws.CloudStandard, NativeID: id, name: name, config: &config}, nil
 	}
 }
 
@@ -199,6 +199,6 @@ func AccountWithName(cloud, awsAccountID, name string) AccountFunc {
 			return account{}, fmt.Errorf("invalid AWS account id")
 		}
 
-		return account{cloud: c, id: awsAccountID, name: name}, nil
+		return account{cloud: c, NativeID: awsAccountID, name: name}, nil
 	}
 }
