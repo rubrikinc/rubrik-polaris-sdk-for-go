@@ -40,8 +40,8 @@ type AWSTargetMapping struct {
 			ID uuid.UUID `json:"cloudAccountId"`
 		} `json:"cloudAccount"`
 		BucketPrefix string         `json:"bucketPrefix"`
-		StorageClass string         `json:"storageClass"`
-		Region       aws.RegionEnum `json:"region"`
+		StorageClass string         `json:"awsStorageClass"`
+		Region       aws.RegionEnum `json:"awsRegion"`
 		KMSMasterKey string         `json:"kmsMasterKeyId"`
 		LocTemplate  string         `json:"cloudNativeLocTemplateType"`
 		BucketTags   []core.Tag     `json:"bucketTags"`
@@ -75,7 +75,7 @@ type CreateAWSStorageSettingParams struct {
 	Region         aws.RegionEnum `json:"region"`
 	KmsMasterKey   string         `json:"kmsMasterKeyId"`
 	LocTemplate    string         `json:"locTemplateType"`
-	BucketTags     *AWSTags       `json:"bucketTags,omitempty"`
+	BucketTags     *core.Tags     `json:"bucketTags,omitempty"`
 }
 
 // CreateAWSStorageSettingResult holds the result of an AWS storage setting
@@ -102,11 +102,11 @@ func (r CreateAWSStorageSettingResult) Validate() (uuid.UUID, error) {
 // all bucket tags are removed.
 // AWS storage settings are also referred to as AWS target mappings.
 type UpdateAWSStorageSettingParams struct {
-	Name                string   `json:"name,omitempty"`
-	StorageClass        string   `json:"storageClass,omitempty"`
-	KmsMasterKey        string   `json:"kmsMasterKeyId,omitempty"`
-	DeleteAllBucketTags bool     `json:"deleteAllBucketTags,omitempty"`
-	BucketTags          *AWSTags `json:"bucketTags,omitempty"`
+	Name                string     `json:"name,omitempty"`
+	StorageClass        string     `json:"storageClass,omitempty"`
+	KmsMasterKey        string     `json:"kmsMasterKeyId,omitempty"`
+	DeleteAllBucketTags bool       `json:"deleteAllBucketTags,omitempty"`
+	BucketTags          *core.Tags `json:"bucketTags,omitempty"`
 }
 
 // UpdateAWSStorageSettingResult holds the result of an AWS storage setting
@@ -119,9 +119,4 @@ func (r UpdateAWSStorageSettingResult) UpdateQuery(targetMappingID uuid.UUID, up
 		ID uuid.UUID `json:"id"`
 		UpdateAWSStorageSettingParams
 	}{ID: targetMappingID, UpdateAWSStorageSettingParams: updateParams}
-}
-
-// AWSTags represents a collection of AWS tags.
-type AWSTags struct {
-	TagList []core.Tag `json:"tagList"`
 }

@@ -31,11 +31,10 @@ import (
 	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Example showing how to manage a GCP project with the Polaris Go SDK.
+// Example showing how to manage a GCP project with the SDK.
 //
-// The Polaris service account key file identifying the Polaris account should
-// either be placed at ~/.rubrik/polaris-service-account.json or pointed out by
-// the RUBRIK_POLARIS_SERVICEACCOUNT_FILE environment variable.
+// The RSC service account key file, identifying the RSC account, should be
+// pointed out by the RUBRIK_POLARIS_SERVICEACCOUNT_FILE environment variable.
 func main() {
 	ctx := context.Background()
 
@@ -67,14 +66,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Printf("Name: %s, ProjectID: %s, ProjectNumber: %d, DefaultServiceAccount: %t\n",
-		account.Name, account.ID, account.ProjectNumber, account.DefaultServiceAccount)
+	fmt.Printf("Name: %s, ProjectID: %s\n", account.Name, account.ID)
 	for _, feature := range account.Features {
 		fmt.Printf("Feature: %s, Status: %s\n", feature.Name, feature.Status)
 	}
 
-	// Remove the GCP account from Polaris.
+	// Remove the GCP project from RSC.
 	err = gcpClient.RemoveProject(ctx, id, []core.Feature{core.FeatureCloudNativeProtection, core.FeatureGCPSharedVPCHost}, false)
 	if err != nil {
 		log.Fatal(err)

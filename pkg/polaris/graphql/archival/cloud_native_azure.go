@@ -85,7 +85,7 @@ type CreateAzureStorageSettingParams struct {
 	NativeID             uuid.UUID          `json:"subscriptionNativeId"`
 	StorageAccountName   string             `json:"storageAccountName"`
 	StorageAccountRegion azure.RegionEnum   `json:"storageAccountRegion"`
-	StorageAccountTags   *AzureTags         `json:"storageAccountTags,omitempty"`
+	StorageAccountTags   *core.Tags         `json:"storageAccountTags,omitempty"`
 	CMKInfo              []AzureCustomerKey `json:"cmkInfo,omitempty"`
 }
 
@@ -112,7 +112,7 @@ func (r CreateAzureStorageSettingResult) Validate() (uuid.UUID, error) {
 type UpdateAzureStorageSettingParams struct {
 	Name               string             `json:"name"`
 	StorageTier        string             `json:"storageTier"`
-	StorageAccountTags AzureTags          `json:"storageAccountTags"`
+	StorageAccountTags core.Tags          `json:"storageAccountTags"`
 	CMKInfo            []AzureCustomerKey `json:"cmkInfo,omitempty"`
 }
 
@@ -131,12 +131,7 @@ func (r UpdateAzureStorageSettingResult) UpdateQuery(targetMappingID uuid.UUID, 
 // AzureCustomerKey represents a customer managed key required for encryption
 // of Azure storage.
 type AzureCustomerKey struct {
-	KeyName      string           `json:"keyName"`
-	KeyVaultName string           `json:"keyVaultName"`
-	Region       azure.RegionEnum `json:"region"`
-}
-
-// AzureTags represents a collection of Azure tags.
-type AzureTags struct {
-	TagList []core.Tag `json:"tagList"`
+	Name      string           `json:"keyName"`
+	VaultName string           `json:"keyVaultName"`
+	Region    azure.RegionEnum `json:"region"`
 }

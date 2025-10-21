@@ -79,7 +79,7 @@ func ListTargetMappings[R ListTargetMappingResult](ctx context.Context, gql *gra
 // CreateStorageSettingParams represents the valid type parameters for a storage
 // setting create operation.
 type CreateStorageSettingParams interface {
-	CreateAWSStorageSettingParams | CreateAzureStorageSettingParams
+	CreateAWSStorageSettingParams | CreateAzureStorageSettingParams | CreateGCPStorageSettingParams
 }
 
 // CreateStorageSettingResult represents the result of a storge setting create
@@ -119,7 +119,7 @@ func CreateCloudNativeStorageSetting[R CreateStorageSettingResult[P], P CreateSt
 // UpdateStorageSettingParams represents the valid type parameters for a storage
 // setting update operation.
 type UpdateStorageSettingParams interface {
-	UpdateAWSStorageSettingParams | UpdateAzureStorageSettingParams
+	UpdateAWSStorageSettingParams | UpdateAzureStorageSettingParams | UpdateGCPStorageSettingParams
 }
 
 // UpdateStorageSettingResult represents the result of a storage setting update

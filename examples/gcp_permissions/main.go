@@ -31,12 +31,10 @@ import (
 	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// Example showing how to manage permissions for a GCP project with the Polaris
-// Go SDK.
+// Example showing how to manage permissions for a GCP project with the SDK.
 //
-// The Polaris service account key file identifying the Polaris account should
-// either be placed at ~/.rubrik/polaris-service-account.json or pointed out by
-// the RUBRIK_POLARIS_SERVICEACCOUNT_FILE environment variable.
+// The RSC service account key file, identifying the RSC account, should be
+// pointed out by the RUBRIK_POLARIS_SERVICEACCOUNT_FILE environment variable.
 func main() {
 	ctx := context.Background()
 

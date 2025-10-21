@@ -58,8 +58,8 @@ var allTargetMappingsQuery = `query SdkGolangAllTargetMappings($filter: [TargetM
                     cloudAccountId
                 }
                 bucketPrefix
-                storageClass
-                region
+                awsStorageClass: storageClass
+                awsRegion: region
                 kmsMasterKeyId
                 cloudNativeLocTemplateType
                 bucketTags {
@@ -89,6 +89,24 @@ var allTargetMappingsQuery = `query SdkGolangAllTargetMappings($filter: [TargetM
                 }
                 containerNamePrefix
                 storageAccountName
+            }
+            ... on GcpTargetTemplate {
+                cloudAccount {
+                    cloudAccountId
+                }
+                bucketPrefix
+                gcpStorageClass: storageClass
+                gcpRegion: region
+                cmkInfo {
+                    keyName
+                    keyRingName
+                    region
+                }
+                cloudNativeLocTemplateType
+                labels {
+                    key
+                    value
+                }
             }
         }
     }
@@ -219,6 +237,33 @@ var createCloudNativeAzureStorageSettingQuery = `mutation SdkGolangCreateCloudNa
         storageAccountName:          $storageAccountName,
         storageAccountRegion:        $storageAccountRegion,
         storageAccountTags:          $storageAccountTags,
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}`
+
+// createCloudNativeGcpStorageSetting GraphQL query
+var createCloudNativeGcpStorageSettingQuery = `mutation SdkGolangCreateCloudNativeGcpStorageSetting(
+    $cloudAccountId:  UUID!,
+    $name:            String!,
+    $bucketPrefix:    String!,
+    $storageClass:    GcpStorageClass!,
+    $region:          GcpRegion,
+    $cmkInfo:         [GcpCmkInput!],
+    $locTemplateType: CloudNativeLocTemplateType!,
+    $bucketLabels:    TagsInput
+) {
+    result: createCloudNativeGcpStorageSetting(input: {
+        cloudAccountId:             $cloudAccountId,
+        name:                       $name,
+        bucketPrefix:               $bucketPrefix,
+        storageClass:               $storageClass,
+        region:                     $region,
+        cmkInfo:                    $cmkInfo,
+        cloudNativeLocTemplateType: $locTemplateType,
+        bucketLabels:               $bucketLabels
     }) {
         targetMapping {
             id
@@ -470,6 +515,27 @@ var updateCloudNativeAzureStorageSettingQuery = `mutation SdkGolangUpdateCloudNa
         storageTier:        $storageTier,
         storageAccountTags: $storageAccountTags,
         cmkInfo:            $cmkInfo,
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}`
+
+// updateCloudNativeGcpStorageSetting GraphQL query
+var updateCloudNativeGcpStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeGcpStorageSetting(
+    $id:           UUID!,
+    $name:         String!,
+    $storageClass: GcpStorageClass!,
+    $bucketLabels: TagsInput!,
+    $cmkInfo:      [GcpCmkInput!],
+) {
+    result: updateCloudNativeGcpStorageSetting(input: {
+        id:           $id,
+        name:         $name,
+        storageClass: $storageClass,
+        bucketLabels: $bucketLabels,
+        cmkInfo:      $cmkInfo,
     }) {
         targetMapping {
             id
