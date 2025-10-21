@@ -240,6 +240,11 @@ func (region *RegionForReplicationEnum) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// String returns the string representation of the RegionForReplicationEnum.
+func (region RegionForReplicationEnum) String() string {
+	return regionInfoMap[region.Region].regionForReplicationEnum
+}
+
 // AllRegionNames returns all the recognized region names.
 func AllRegionNames() []string {
 	regions := make([]string, 0, len(regionInfoMap))

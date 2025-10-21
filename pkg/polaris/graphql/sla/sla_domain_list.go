@@ -26,6 +26,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -74,7 +76,21 @@ type Domain struct {
 		AzureSQLDatabaseDBConfig        *AzureDBConfig `json:"azureSqlDatabaseDbConfig"`
 		AzureSQLManagedInstanceDBConfig *AzureDBConfig `json:"azureSqlManagedInstanceDbConfig"`
 	} `json:"objectSpecificConfigs"`
-	ObjectTypes       []ObjectType      `json:"objectTypes"`
+	ObjectTypes      []ObjectType `json:"objectTypes"`
+	ReplicationSpecs []struct {
+		AWSRegion aws.RegionForReplicationEnum `json:"awsRegion"`
+		AWS       struct {
+			AccountID string                       `json:"accountId"`
+			Region    aws.RegionForReplicationEnum `json:"region"`
+		} `json:"awsTarget"`
+		AzureRegion azure.RegionForReplicationEnum `json:"azureRegion"`
+		Azure       struct {
+			SubscriptionID string                         `json:"subscriptionId"`
+			Region         azure.RegionForReplicationEnum `json:"region"`
+		} `json:"azureTarget"`
+
+		RetentionDuration RetentionDuration `json:"retentionDuration"`
+	} `json:"replicationSpecsV2"`
 	RetentionLock     bool              `json:"isRetentionLockedSla"`
 	RetentionLockMode RetentionLockMode `json:"retentionLockMode"`
 	SnapshotSchedule  SnapshotSchedule  `json:"snapshotSchedule"`
