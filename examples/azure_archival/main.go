@@ -59,8 +59,7 @@ func main() {
 
 	// Add default Azure service principal to RSC. Usually resolved using
 	// the environment variable AZURE_SERVICEPRINCIPAL_LOCATION.
-	_, err = azureClient.SetServicePrincipal(ctx, azure.Default("my-domain.onmicrosoft.com"))
-	if err != nil {
+	if _, err := azureClient.SetServicePrincipal(ctx, azure.Default("my-domain.onmicrosoft.com")); err != nil {
 		log.Fatal(err)
 	}
 
@@ -98,10 +97,9 @@ func main() {
 	fmt.Printf("ID: %v, Name: %s\n", targetMapping.ID, targetMapping.Name)
 
 	// Update the Azure archival location.
-	err = archivalClient.UpdateAzureStorageSetting(ctx, targetMappingID, gqlarchival.UpdateAzureStorageSettingParams{
+	if err := archivalClient.UpdateAzureStorageSetting(ctx, targetMappingID, gqlarchival.UpdateAzureStorageSettingParams{
 		Name: "TestUpdated",
-	})
-	if err != nil {
+	}); err != nil {
 		log.Fatal(err)
 	}
 
@@ -115,14 +113,12 @@ func main() {
 	}
 
 	// Delete the Azure archival location.
-	err = archivalClient.DeleteTargetMapping(ctx, targetMappingID)
-	if err != nil {
+	if err := archivalClient.DeleteTargetMapping(ctx, targetMappingID); err != nil {
 		log.Fatal(err)
 	}
 
 	// Remove the Azure subscription from RSC.
-	err = azureClient.RemoveSubscription(ctx, id, core.FeatureCloudNativeArchival, false)
-	if err != nil {
+	if err := azureClient.RemoveSubscription(ctx, id, core.FeatureCloudNativeArchival, false); err != nil {
 		log.Fatal(err)
 	}
 }

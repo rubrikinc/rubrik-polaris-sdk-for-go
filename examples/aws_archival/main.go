@@ -88,8 +88,7 @@ func main() {
 	fmt.Printf("ID: %v, Name: %s\n", targetMapping.ID, targetMapping.Name)
 
 	// Update the AWS archival location.
-	err = archivalClient.UpdateAWSStorageSetting(ctx, targetMappingID, gqlarchival.UpdateAWSStorageSettingParams{Name: "Test-Updated"})
-	if err != nil {
+	if err := archivalClient.UpdateAWSStorageSetting(ctx, targetMappingID, gqlarchival.UpdateAWSStorageSettingParams{Name: "Test-Updated"}); err != nil {
 		log.Fatal(err)
 	}
 
@@ -103,14 +102,12 @@ func main() {
 	}
 
 	// Delete the AWS archival location.
-	err = archivalClient.DeleteTargetMapping(ctx, targetMappingID)
-	if err != nil {
+	if err := archivalClient.DeleteTargetMapping(ctx, targetMappingID); err != nil {
 		log.Fatal(err)
 	}
 
 	// Remove the AWS account from RSC.
-	err = awsClient.RemoveAccountWithCFT(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeArchival}, false)
-	if err != nil {
+	if err := awsClient.RemoveAccountWithCFT(ctx, aws.Default(), []core.Feature{core.FeatureCloudNativeArchival}, false); err != nil {
 		log.Fatal(err)
 	}
 }

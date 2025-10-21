@@ -100,7 +100,7 @@ func (r CreateGCPStorageSettingResult) Validate() (uuid.UUID, error) {
 type UpdateGCPStorageSettingParams struct {
 	Name         string           `json:"name"`
 	StorageClass string           `json:"storageClass"`
-	BucketLabels *core.Tags       `json:"bucketLabels,omitempty"`
+	BucketLabels core.Tags        `json:"bucketLabels"`
 	CMKInfo      []GCPCustomerKey `json:"cmkInfo,omitempty"`
 }
 

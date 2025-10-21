@@ -86,8 +86,11 @@ func main() {
 	fmt.Printf("ID: %s, Name: %s\n", targetMapping.ID, targetMapping.Name)
 
 	// Update the GCP archival location.
-	err = archivalClient.UpdateGCPStorageSetting(ctx, targetMappingID, gqlarchival.UpdateGCPStorageSettingParams{Name: "Test-Updated"})
-	if err != nil {
+	if err := archivalClient.UpdateGCPStorageSetting(ctx, targetMappingID, gqlarchival.UpdateGCPStorageSettingParams{
+		Name:         "Test-Updated",
+		StorageClass: targetMapping.TargetTemplate.StorageClass,
+		BucketLabels: core.Tags{TagList: targetMapping.TargetTemplate.BucketLabels},
+	}); err != nil {
 		log.Fatal(err)
 	}
 
@@ -101,14 +104,12 @@ func main() {
 	}
 
 	// Delete the GCP archival location.
-	err = archivalClient.DeleteTargetMapping(ctx, targetMappingID)
-	if err != nil {
+	if err := archivalClient.DeleteTargetMapping(ctx, targetMappingID); err != nil {
 		log.Fatal(err)
 	}
 
 	// Remove the GCP project from RSC.
-	err = gcpClient.RemoveProject(ctx, id, []core.Feature{core.FeatureCloudNativeArchival}, false)
-	if err != nil {
+	if err := gcpClient.RemoveProject(ctx, id, []core.Feature{core.FeatureCloudNativeArchival}, false); err != nil {
 		log.Fatal(err)
 	}
 }
