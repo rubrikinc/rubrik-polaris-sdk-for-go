@@ -102,7 +102,7 @@ func check(ctx context.Context, client *polaris.Client, provider string) error {
 			if err != nil {
 				return err
 			}
-			azureAcc, err := azure.Wrap(client).Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
+			azureAcc, err := azure.Wrap(client).SubscriptionByNativeID(ctx, testSub.SubscriptionID)
 			switch {
 			case err == nil:
 				return fmt.Errorf("found pre-existing Azure subscription: %s\n%v", azureAcc.ID, pretty.Sprint(azureAcc))
@@ -202,7 +202,7 @@ func clean(ctx context.Context, client *polaris.Client, provider string) error {
 			}
 
 			azureClient := azure.Wrap(client)
-			azureAcc, err := azureClient.Subscription(ctx, azure.SubscriptionID(testSub.SubscriptionID), core.FeatureAll)
+			azureAcc, err := azureClient.SubscriptionByNativeID(ctx, testSub.SubscriptionID)
 			switch {
 			case errors.Is(err, graphql.ErrNotFound):
 				return nil
@@ -229,7 +229,7 @@ func clean(ctx context.Context, client *polaris.Client, provider string) error {
 
 			// Remove all features for the subscription.
 			for _, feature := range azureAcc.Features {
-				if err := azureClient.RemoveSubscription(ctx, azure.CloudAccountID(azureAcc.ID), feature.Feature, false); err != nil {
+				if err := azureClient.RemoveSubscription(ctx, azureAcc.ID, feature.Feature, false); err != nil {
 					return fmt.Errorf("failed to remove Azure cloud account feature %v: %s", feature.Name, err)
 				}
 			}
