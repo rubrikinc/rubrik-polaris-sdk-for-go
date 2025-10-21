@@ -200,6 +200,10 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 	return cluster, nil
 }
 
+// CreateAzureCloudCluster creates an Azure Cloud Cluster with the specified configuration.
+// It validates the cloud account, CDM version, marketplace terms, managed identity,
+// resource group, and subnet before creating the cluster. Returns the created cluster
+// details after monitoring the creation process.
 func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.CreateAzureClusterInput) (cluster CloudCluster, err error) {
 	a.log.Print(log.Trace)
 
@@ -209,7 +213,6 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 	if err != nil {
 		return CloudCluster{}, err
 	}
-	fmt.Printf("Account: %v\n", account)
 
 	if _, ok := account.Feature(core.FeatureServerAndApps); !ok {
 		return CloudCluster{}, fmt.Errorf("account %q missing feature %s", account.ID, core.FeatureServerAndApps.Name)
@@ -228,7 +231,7 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 	for _, version := range cdmVersions {
 		if version.CDMVersion == cdmVersion {
 			validCdmVersion = true
-			// We need to clobber the input version because GQL expects the
+			// We need to clobber the input version because CCES GQL expects the
 			// internal version and SKU, not the cdm product version
 			input.VMConfig.CDMVersion = version.Version
 			input.VMConfig.CDMProduct = version.SKU
@@ -252,8 +255,9 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 	if err != nil {
 		return CloudCluster{}, fmt.Errorf("error validating marketplace terms: %s", err)
 	}
+	// The message when terms are not accepted will include the terms link and specific version of which the terms need to be accepted.
 	if !marketplaceTerms.TermsAccepted {
-		return CloudCluster{}, fmt.Errorf("marketplace terms have not been accepted for cdm version %s", cdmVersion)
+		return CloudCluster{}, fmt.Errorf("%s", marketplaceTerms.Message)
 	}
 	if marketplaceTerms.MarketplaceSKU == "" {
 		return CloudCluster{}, fmt.Errorf("marketplace sku is not available for cdm version %s", cdmVersion)
@@ -368,7 +372,7 @@ func (a API) monitorCloudClusterEvents(ctx context.Context, clusterName string, 
 		case gqlevent.ActivityStatusQueued:
 		case gqlevent.ActivityStatusRunning:
 		case gqlevent.ActivityStatusTaskSuccess:
-			a.log.Printf(log.Info, "RSC cloud cluster create in progress: %s\n", activitySeries.Activities.Nodes[0].Message)
+			a.log.Printf(log.Info, "cloud cluster create in progress: %s\n", activitySeries.Activities.Nodes[0].Message)
 			time.Sleep(60 * time.Second)
 			continue
 		case gqlevent.ActivityStatusSuccess:
