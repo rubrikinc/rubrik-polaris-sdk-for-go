@@ -115,7 +115,7 @@ func (a API) UpdatePermissions(ctx context.Context, account AccountFunc, feature
 		return fmt.Errorf("only applicable to cloud accounts using cft")
 	}
 
-	akkount, err := a.Account(ctx, AccountID(config.id), core.FeatureAll)
+	akkount, err := a.AccountByNativeID(ctx, config.id)
 	if err != nil {
 		return fmt.Errorf("failed to get account: %v", err)
 	}
@@ -161,7 +161,7 @@ func (a API) PermissionsUpdated(ctx context.Context, cloudAccountID uuid.UUID, f
 		featureSet[feature.Name] = struct{}{}
 	}
 
-	account, err := a.Account(ctx, CloudAccountID(cloudAccountID), core.FeatureAll)
+	account, err := a.AccountByID(ctx, cloudAccountID)
 	if err != nil {
 		return fmt.Errorf("failed to read cloud account %s: %s", cloudAccountID, err)
 	}

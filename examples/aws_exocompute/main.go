@@ -70,7 +70,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	account, err := awsClient.Account(ctx, aws.CloudAccountID(accountID), core.FeatureAll)
+	account, err := awsClient.AccountByID(ctx, accountID)
 	if err != nil {
 		log.Fatal(err)
 	}

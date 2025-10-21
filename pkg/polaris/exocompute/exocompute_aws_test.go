@@ -60,7 +60,6 @@ func TestAwsExocomputeWithCFT(t *testing.T) {
 	}
 
 	awsClient := aws.Wrap(client)
-	exoClient := Wrap(client)
 
 	// Adds the AWS account identified by the specified profile to RSC. Note
 	// that the profile needs to have a default region.
@@ -83,7 +82,7 @@ func TestAwsExocomputeWithCFT(t *testing.T) {
 	}
 
 	// Verify that the account was successfully added.
-	account, err := awsClient.Account(ctx, aws.CloudAccountID(accountID), core.FeatureExocompute)
+	account, err := awsClient.AccountByID(ctx, accountID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,18 +92,24 @@ func TestAwsExocomputeWithCFT(t *testing.T) {
 	if account.NativeID != testAccount.AccountID {
 		t.Fatalf("invalid native id: %s", account.NativeID)
 	}
-	if n := len(account.Features); n != 1 {
+	if n := len(account.Features); n != 2 {
 		t.Fatalf("invalid number of features: %d", n)
 	}
-	if !account.Features[0].Equal(core.FeatureExocompute) {
-		t.Fatalf("invalid feature name: %s", account.Features[0].Name)
+	feature, ok := account.Feature(core.FeatureExocompute)
+	if !ok {
+		t.Fatal("Exocompute feature not found")
 	}
-	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+	if feature.Name != core.FeatureExocompute.Name {
+		t.Fatalf("invalid feature name: %s", feature.Name)
+	}
+	if regions := feature.Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
 		t.Fatalf("invalid feature regions: %s", regions)
 	}
-	if account.Features[0].Status != core.StatusConnected {
-		t.Fatalf("invalid feature status: %s", account.Features[0].Status)
+	if feature.Status != core.StatusConnected {
+		t.Fatalf("invalid feature status: %s", feature.Status)
 	}
+
+	exoClient := Wrap(client)
 
 	// Add an exocompute configuration to the cloud account.
 	subnetIDs := []string{testAccount.Exocompute.Subnets[0].ID, testAccount.Exocompute.Subnets[1].ID}
@@ -168,8 +173,7 @@ func TestAwsExocomputeWithCFT(t *testing.T) {
 	validateConfig(exoID, 1, 2)
 
 	// Remove the exocompute configuration.
-	err = exoClient.RemoveAWSConfiguration(ctx, exoID)
-	if err != nil {
+	if err := exoClient.RemoveAWSConfiguration(ctx, exoID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -179,26 +183,26 @@ func TestAwsExocomputeWithCFT(t *testing.T) {
 	}
 
 	// Disable the exocompute feature for the account.
-	err = awsClient.RemoveAccountWithCFT(ctx, aws.Profile(testAccount.Profile), []core.Feature{core.FeatureExocompute}, false)
-	if err != nil {
+	if err := awsClient.RemoveAccountWithCFT(ctx, aws.Profile(testAccount.Profile), []core.Feature{core.FeatureExocompute}, false); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the exocompute feature was successfully disabled.
-	account, err = awsClient.Account(ctx, aws.AccountID(testAccount.AccountID), core.FeatureExocompute)
-	if !errors.Is(err, graphql.ErrNotFound) {
+	account, err = awsClient.AccountByNativeID(ctx, testAccount.AccountID)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if _, ok := account.Feature(core.FeatureExocompute); ok {
+		t.Fatalf("Exocompute feature still available")
 	}
 
 	// Remove the AWS account from RSC.
-	err = awsClient.RemoveAccountWithCFT(ctx, aws.Profile(testAccount.Profile), []core.Feature{core.FeatureCloudNativeProtection}, false)
-	if err != nil {
+	if err := awsClient.RemoveAccountWithCFT(ctx, aws.Profile(testAccount.Profile), []core.Feature{core.FeatureCloudNativeProtection}, false); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	account, err = awsClient.Account(ctx, aws.AccountID(testAccount.AccountID), core.FeatureCloudNativeProtection)
-	if !errors.Is(err, graphql.ErrNotFound) {
+	if _, err := awsClient.AccountByNativeID(ctx, testAccount.AccountID); !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
 	}
 }
