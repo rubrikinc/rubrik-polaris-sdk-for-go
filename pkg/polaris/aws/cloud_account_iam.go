@@ -66,7 +66,7 @@ func (a API) AddAccountWithIAM(ctx context.Context, account AccountFunc, feature
 	// If there already is an RSC cloud account for the given AWS account we use
 	// the same account name when adding the feature. RSC does not allow the
 	// name to change between features.
-	cloudAccount, err := a.AccountByNativeID(ctx, config.id)
+	cloudAccount, err := a.AccountByNativeID(ctx, config.NativeID)
 	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
 		return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 	}
@@ -77,14 +77,14 @@ func (a API) AddAccountWithIAM(ctx context.Context, account AccountFunc, feature
 	accountInit := aws.CloudAccountInitiate{
 		FeatureVersions: []aws.FeatureVersion{},
 	}
-	if err := aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, config.id, config.name, features, options.regions, accountInit); err != nil {
+	if err := aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, config.NativeID, config.name, features, options.regions, accountInit); err != nil {
 		return uuid.Nil, fmt.Errorf("failed to add account: %s", err)
 	}
 
 	// If the RSC cloud account did not exist prior, we retrieve the RSC cloud
 	// account ID.
 	if cloudAccount.ID == uuid.Nil {
-		cloudAccount, err = a.AccountByNativeID(ctx, config.id)
+		cloudAccount, err = a.AccountByNativeID(ctx, config.NativeID)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("failed to get account: %s", err)
 		}
@@ -108,7 +108,7 @@ func (a API) RemoveAccountWithIAM(ctx context.Context, account AccountFunc, feat
 		return fmt.Errorf("failed to lookup account: %s", err)
 	}
 
-	cloudAccount, err := a.AccountByNativeID(ctx, config.id)
+	cloudAccount, err := a.AccountByNativeID(ctx, config.NativeID)
 	if err != nil {
 		return fmt.Errorf("failed to get account: %s", err)
 	}

@@ -183,7 +183,7 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, features []cor
 	// permissions required by RSC.
 	var jwtConfig string
 	if config.creds != nil {
-		err = a.gcpCheckPermissions(ctx, config.creds, config.id, features)
+		err = a.gcpCheckPermissions(ctx, config.creds, config.NativeID, features)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("failed to check permissions: %s", err)
 		}
@@ -191,11 +191,11 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, features []cor
 	}
 
 	if err := gcp.Wrap(a.client).CloudAccountAddManualAuthProject(
-		ctx, config.id, config.name, config.number, config.orgName, jwtConfig, features); err != nil {
+		ctx, config.NativeID, config.name, config.number, config.orgName, jwtConfig, features); err != nil {
 		return uuid.Nil, fmt.Errorf("failed to add project: %s", err)
 	}
 
-	account, err := a.ProjectByNativeID(ctx, config.id)
+	account, err := a.ProjectByNativeID(ctx, config.NativeID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to get project: %s", err)
 	}

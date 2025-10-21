@@ -29,7 +29,7 @@ import (
 )
 
 type subscription struct {
-	id           uuid.UUID
+	NativeID     uuid.UUID
 	name         string
 	tenantDomain string
 }
@@ -45,7 +45,7 @@ func Subscription(subscriptionID uuid.UUID, tenantDomain string) SubscriptionFun
 		name := fmt.Sprintf("%s : %s", strings.Split(tenantDomain, ".")[0], subscriptionID)
 
 		subscription := subscription{
-			id:           subscriptionID,
+			NativeID:     subscriptionID,
 			name:         name,
 			tenantDomain: tenantDomain,
 		}

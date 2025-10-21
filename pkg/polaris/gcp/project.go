@@ -37,11 +37,11 @@ import (
 )
 
 type project struct {
-	id      string
-	name    string
-	number  int64
-	orgName string
-	creds   *google.Credentials
+	NativeID string
+	name     string
+	number   int64
+	orgName  string
+	creds    *google.Credentials
 }
 
 // ProjectFunc returns a project initialized from the values passed to the
@@ -102,7 +102,7 @@ func KeyFileWithProject(keyFile, projectID string) ProjectFunc {
 func Project(projectID string, projectNumber int64) ProjectFunc {
 	return func(ctx context.Context) (project, error) {
 		name := cases.Title(language.Und).String(strings.ReplaceAll(projectID, "-", " "))
-		return project{id: projectID, number: projectNumber, name: name, orgName: name + " Org"}, nil
+		return project{NativeID: projectID, number: projectNumber, name: name, orgName: name + " Org"}, nil
 	}
 }
 
@@ -165,11 +165,11 @@ func gcpProject(ctx context.Context, creds *google.Credentials, id string) (proj
 	}
 
 	project := project{
-		id:      id,
-		name:    proj.Name,
-		number:  proj.ProjectNumber,
-		orgName: orgName,
-		creds:   creds,
+		NativeID: id,
+		name:     proj.Name,
+		number:   proj.ProjectNumber,
+		orgName:  orgName,
+		creds:    creds,
 	}
 
 	return project, nil
