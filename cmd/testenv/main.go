@@ -120,7 +120,7 @@ func check(ctx context.Context, client *polaris.Client, provider string) error {
 			if err != nil {
 				return err
 			}
-			proj, err := gcp.Wrap(client).Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
+			proj, err := gcp.Wrap(client).ProjectByNativeID(ctx, testProj.ProjectID)
 			switch {
 			case err == nil:
 				return fmt.Errorf("found pre-existing GCP projects: %s\n%v", proj.ID, pretty.Sprint(proj))
@@ -247,7 +247,7 @@ func clean(ctx context.Context, client *polaris.Client, provider string) error {
 			}
 
 			gcpClient := gcp.Wrap(client)
-			proj, err := gcpClient.Project(ctx, gcp.ProjectID(testProj.ProjectID), core.FeatureAll)
+			proj, err := gcpClient.ProjectByNativeID(ctx, testProj.ProjectID)
 			switch {
 			case errors.Is(err, graphql.ErrNotFound):
 				return nil
@@ -259,7 +259,7 @@ func clean(ctx context.Context, client *polaris.Client, provider string) error {
 					pn, testProj.ProjectNumber)
 			}
 
-			return gcpClient.RemoveProject(ctx, gcp.ProjectNumber(testProj.ProjectNumber), core.FeatureCloudNativeProtection, false)
+			return gcpClient.RemoveProject(ctx, proj.ID, []core.Feature{core.FeatureCloudNativeProtection}, false)
 		})
 	}
 

@@ -50,29 +50,38 @@ var allGcpCloudAccountProjectsByFeatureQuery = `query SdkGolangAllGcpCloudAccoun
 }`
 
 // gcpCloudAccountAddManualAuthProject GraphQL query
-var gcpCloudAccountAddManualAuthProjectQuery = `mutation SdkGolangGcpCloudAccountAddManualAuthProject($gcpNativeProjectId: String!, $gcpProjectName: String!, $gcpProjectNumber: Long!, $organizationName: String, $serviceAccountJwtConfig: String, $feature: CloudAccountFeature!) {
+var gcpCloudAccountAddManualAuthProjectQuery = `mutation SdkGolangGcpCloudAccountAddManualAuthProject(
+    $gcpNativeProjectId:      String!,
+    $gcpProjectName:          String!,
+    $gcpProjectNumber:        Long!,
+    $organizationName:        String,
+    $serviceAccountJwtConfig: String,
+    $features:                [CloudAccountFeature!],
+    $featuresWithPG:          [FeatureWithPermissionsGroups!]
+) {
     gcpCloudAccountAddManualAuthProject(input: {
-        gcpNativeProjectId:      $gcpNativeProjectId,
-        gcpProjectName:          $gcpProjectName,
-        gcpProjectNumber:        $gcpProjectNumber,
-        organizationName:        $organizationName,
-        serviceAccountJwtConfig: $serviceAccountJwtConfig,
-        features:                [$feature],
+        gcpNativeProjectId:           $gcpNativeProjectId,
+        gcpProjectName:               $gcpProjectName,
+        gcpProjectNumber:             $gcpProjectNumber,
+        organizationName:             $organizationName,
+        serviceAccountJwtConfig:      $serviceAccountJwtConfig,
+        features:                     $features,
+        featuresWithPermissionGroups: $featuresWithPG,
     })
 }`
 
-// gcpCloudAccountDeleteProjects GraphQL query
-var gcpCloudAccountDeleteProjectsQuery = `mutation SdkGolangGcpCloudAccountDeleteProjects($nativeProtectionProjectId: UUID!) {
-    result: gcpCloudAccountDeleteProjects(input: {
-        nativeProtectionProjectIds: [$nativeProtectionProjectId],
-        sharedVpcHostProjectIds:    [],
-        cloudAccountsProjectIds:    [],
-        skipResourceDeletion:       true,
+// gcpCloudAccountDeleteProjectsV2 GraphQL query
+var gcpCloudAccountDeleteProjectsV2Query = `mutation SdkGolangGcpCloudAccountDeleteProjectsV2($features: [GcpCloudAccountDeleteProjectsV2FeatureInput!]!) {
+    result: gcpCloudAccountDeleteProjectsV2(input: {
+        features: $features,
     }) {
-        gcpProjectDeleteStatuses {
-            projectUuid
-            success
+        errors {
             error
+            rubrikObjectId
+        }
+        jobIds {
+            jobId
+            rubrikObjectId
         }
     }
 }`

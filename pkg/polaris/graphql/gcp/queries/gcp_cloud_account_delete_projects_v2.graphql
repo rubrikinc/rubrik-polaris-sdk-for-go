@@ -1,0 +1,14 @@
+mutation RubrikPolarisSDKRequest($features: [GcpCloudAccountDeleteProjectsV2FeatureInput!]!) {
+    result: gcpCloudAccountDeleteProjectsV2(input: {
+        features: $features,
+    }) {
+        errors {
+            error
+            rubrikObjectId
+        }
+        jobIds {
+            jobId
+            rubrikObjectId
+        }
+    }
+}

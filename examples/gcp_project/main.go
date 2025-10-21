@@ -44,7 +44,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClientWithLogger(polAccount, polarislog.NewStandardLogger())
+	logger := polarislog.NewStandardLogger()
+	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
+		log.Fatal(err)
+	}
+	client, err := polaris.NewClientWithLogger(polAccount, logger)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,25 +57,25 @@ func main() {
 
 	// Add the GCP default project to Polaris. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
-	id, err := gcpClient.AddProject(ctx, gcp.Default(), core.FeatureCloudNativeProtection)
+	id, err := gcpClient.AddProject(ctx, gcp.Default(), []core.Feature{core.FeatureCloudNativeProtection, core.FeatureGCPSharedVPCHost})
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// List the GCP projects added to Polaris.
-	account, err := gcpClient.Project(ctx, gcp.CloudAccountID(id), core.FeatureAll)
+	account, err := gcpClient.ProjectByID(ctx, id)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Name: %v, ProjectID: %v, ProjectNumber: %v, DefaultServiceAccount: %v\n",
+	fmt.Printf("Name: %s, ProjectID: %s, ProjectNumber: %d, DefaultServiceAccount: %t\n",
 		account.Name, account.ID, account.ProjectNumber, account.DefaultServiceAccount)
 	for _, feature := range account.Features {
-		fmt.Printf("Feature: %v, Status: %v\n", feature.Name, feature.Status)
+		fmt.Printf("Feature: %s, Status: %s\n", feature.Name, feature.Status)
 	}
 
 	// Remove the GCP account from Polaris.
-	err = gcpClient.RemoveProject(ctx, gcp.CloudAccountID(id), core.FeatureCloudNativeProtection, false)
+	err = gcpClient.RemoveProject(ctx, id, []core.Feature{core.FeatureCloudNativeProtection, core.FeatureGCPSharedVPCHost}, false)
 	if err != nil {
 		log.Fatal(err)
 	}

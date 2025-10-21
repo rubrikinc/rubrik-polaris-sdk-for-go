@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/option"
@@ -64,22 +65,27 @@ func (a API) gcpCheckPermissions(ctx context.Context, creds *google.Credentials,
 
 	perms, err := a.Permissions(ctx, features)
 	if err != nil {
-		return fmt.Errorf("failed to get permissions: %v", err)
+		return fmt.Errorf("failed to get permissions: %s", err)
 	}
 
 	client, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(creds))
 	if err != nil {
-		return fmt.Errorf("failed to create GCP Cloud Resource Manager client: %v", err)
+		return fmt.Errorf("failed to create GCP Cloud Resource Manager client: %s", err)
 	}
 
-	res, err := client.Projects.TestIamPermissions(projectID,
-		&cloudresourcemanager.TestIamPermissionsRequest{Permissions: perms}).Do()
-	if err != nil {
-		return fmt.Errorf("failed to test GCP IAM permissions: %v", err)
-	}
+	// TestIamPermissions can only test 100 permissions at a time.
+	for i, j := 0, 0; j < len(perms); i += 100 {
+		j = min(i+100, len(perms))
 
-	if missing := stringsDiff(perms, res.Permissions); len(missing) > 0 {
-		return fmt.Errorf("missing permissions: %v", strings.Join(missing, ","))
+		res, err := client.Projects.TestIamPermissions(projectID,
+			&cloudresourcemanager.TestIamPermissionsRequest{Permissions: perms[i:j]}).Do()
+		if err != nil {
+			return fmt.Errorf("failed to test GCP IAM permissions: %s", err)
+		}
+
+		if missing := stringsDiff(perms[i:j], res.Permissions); len(missing) > 0 {
+			return fmt.Errorf("missing permissions: %s", strings.Join(missing, ","))
+		}
 	}
 
 	return nil
@@ -117,7 +123,7 @@ func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissi
 // The features parameter is allowed to be nil. When features is nil all
 // features are updated. Note that RSC is only notified about features with
 // status StatusMissingPermissions.
-func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features []core.Feature) error {
+func (a API) PermissionsUpdated(ctx context.Context, cloudAccountID uuid.UUID, features []core.Feature) error {
 	a.log.Print(log.Trace)
 
 	featureSet := make(map[string]struct{})
@@ -125,7 +131,7 @@ func (a API) PermissionsUpdated(ctx context.Context, id IdentityFunc, features [
 		featureSet[feature.Name] = struct{}{}
 	}
 
-	account, err := a.Project(ctx, id, core.FeatureAll)
+	account, err := a.ProjectByID(ctx, cloudAccountID)
 	if err != nil {
 		return fmt.Errorf("failed to get project: %v", err)
 	}
@@ -164,7 +170,7 @@ func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.F
 		featureSet[feature.Name] = struct{}{}
 	}
 
-	accounts, err := a.Projects(ctx, core.FeatureAll, "")
+	accounts, err := a.Projects(ctx, "")
 	if err != nil {
 		return fmt.Errorf("failed to get project: %v", err)
 	}

@@ -237,7 +237,7 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 		core.FeatureCloudNativeDynamoDBProtection,
 		core.FeatureExocompute,
 	}
-	if !core.ContainsFeature(features, feature) {
+	if _, ok := core.LookupFeature(features, feature); !ok {
 		return nil
 	}
 

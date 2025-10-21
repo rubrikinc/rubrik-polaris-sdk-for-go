@@ -45,7 +45,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	client, err := polaris.NewClientWithLogger(polAccount, polarislog.NewStandardLogger())
+	logger := polarislog.NewStandardLogger()
+	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
+		log.Fatal(err)
+	}
+	client, err := polaris.NewClientWithLogger(polAccount, logger)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -59,18 +63,22 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Permissions requried for Cloud Native Protection:")
+	fmt.Println("Permissions required for Cloud Native Protection:")
 	for _, perm := range perms {
 		fmt.Println(perm)
 	}
 
 	// Notify Polaris about updated permissions for the Cloud Native Protection
-	// feature of the already added default project.
-	account, err := gcpClient.Project(ctx, gcp.ID(gcp.Default()), core.FeatureCloudNativeProtection)
+	// feature of an already added project.
+	accounts, err := gcpClient.Projects(ctx, "")
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = gcpClient.PermissionsUpdated(ctx, gcp.CloudAccountID(account.ID), features)
+	if len(accounts) == 0 {
+		log.Fatal("No project added")
+	}
+
+	err = gcpClient.PermissionsUpdated(ctx, accounts[0].ID, features)
 	if err != nil {
 		log.Fatal(err)
 	}
