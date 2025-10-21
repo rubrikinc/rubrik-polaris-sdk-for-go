@@ -44,7 +44,7 @@ type GCPTargetMapping struct {
 		Region       gcp.RegionEnum   `json:"gcpRegion"`
 		CMKInfo      []GCPCustomerKey `json:"cmkInfo"`
 		LocTemplate  string           `json:"cloudNativeLocTemplateType"`
-		BucketLabels []core.Tag       `json:"bucketLabels"`
+		BucketLabels []core.Tag       `json:"labels"`
 	}
 }
 
@@ -67,14 +67,14 @@ func (GCPTargetMapping) ListQuery(filters []ListTargetMappingFilter) (string, an
 // Region, customer managed keys and bucket labels are optional.
 // GCP storage settings are also referred to as GCP target mappings.
 type CreateGCPStorageSettingParams struct {
-	CloudAccountID uuid.UUID          `json:"cloudAccountId"`
-	Name           string             `json:"name"`
-	BucketPrefix   string             `json:"bucketPrefix"`
-	StorageClass   string             `json:"storageClass"`
-	Region         gcp.RegionEnum     `json:"region,omitempty"`
-	LocTemplate    string             `json:"locTemplateType"`
-	BucketLabels   *core.Tags         `json:"bucketLabels,omitempty"`
-	CMKInfo        []AzureCustomerKey `json:"cmkInfo,omitempty"`
+	CloudAccountID uuid.UUID        `json:"cloudAccountId"`
+	Name           string           `json:"name"`
+	BucketPrefix   string           `json:"bucketPrefix"`
+	StorageClass   string           `json:"storageClass"`
+	Region         gcp.RegionEnum   `json:"region,omitempty"`
+	LocTemplate    string           `json:"locTemplateType"`
+	BucketLabels   *core.Tags       `json:"bucketLabels,omitempty"`
+	CMKInfo        []GCPCustomerKey `json:"cmkInfo,omitempty"`
 }
 
 // CreateGCPStorageSettingResult holds the result of a GCP storage setting
