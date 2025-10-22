@@ -43,10 +43,10 @@ var deploymentVersionQuery = `query SdkGolangDeploymentVersion {
 
 // featureFlag GraphQL query
 var featureFlagQuery = `query SdkGolangFeatureFlag($flagName: FeatureFlagName!) {
-  featureFlag(flagName: $flagName, entityType: ACCOUNT, entityContext: []) {
-    name
-    variant
-  }
+    result: featureFlag(flagName: $flagName, entityType: ACCOUNT, entityContext: []) {
+        name
+        variant
+    }
 }`
 
 // featureFlagAll GraphQL query
@@ -80,5 +80,15 @@ var registerClusterQuery = `mutation SdkGolangRegisterCluster($managedByPolaris:
         token
         pubkey
         productType
+    }
+}`
+
+// singleUnifiedFeatureFlag GraphQL query
+var singleUnifiedFeatureFlagQuery = `query SdkGolangSingleUnifiedFeatureFlag($flagName: String!) {
+    result: singleUnifiedFeatureFlag(input: {
+        key: $flagName,
+    }) {
+        name
+        variant
     }
 }`

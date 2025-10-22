@@ -1,6 +1,6 @@
 query RubrikPolarisSDKRequest($flagName: FeatureFlagName!) {
-  featureFlag(flagName: $flagName, entityType: ACCOUNT, entityContext: []) {
-    name
-    variant
-  }
+    result: featureFlag(flagName: $flagName, entityType: ACCOUNT, entityContext: []) {
+        name
+        variant
+    }
 }
