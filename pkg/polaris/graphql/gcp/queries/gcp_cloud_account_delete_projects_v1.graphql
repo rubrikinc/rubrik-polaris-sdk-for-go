@@ -1,0 +1,16 @@
+mutation RubrikPolarisSDKRequest($projectId: UUID!, $features: [CloudAccountFeature!], $skipResourceDeletion: Boolean!) {
+    result: gcpCloudAccountDeleteProjects(input: {
+        projectIds:                 [$projectId],
+        features:                   $features,
+        cloudAccountsProjectIds:    [],
+        nativeProtectionProjectIds: [],
+        sharedVpcHostProjectIds:    [],
+        skipResourceDeletion:       $skipResourceDeletion,
+    }) {
+        gcpProjectDeleteStatuses {
+            projectUuid
+            success
+            error
+        }
+    }
+}

@@ -121,6 +121,45 @@ func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, pr
 	return nil
 }
 
+// CloudAccountDeleteProjectV1 delete the cloud account for the given RSC cloud
+// account ID.
+func (a API) CloudAccountDeleteProjectV1(ctx context.Context, cloudAccountID uuid.UUID, features []core.Feature) error {
+	a.log.Print(log.Trace)
+
+	query := gcpCloudAccountDeleteProjectsV1Query
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ProjectID            uuid.UUID `json:"projectId"`
+		Features             []string  `json:"features"`
+		SkipResourceDeletion bool      `json:"skipResourceDeletion"`
+	}{ProjectID: cloudAccountID, Features: core.FeatureNames(features), SkipResourceDeletion: true})
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Status []struct {
+					ProjectUUID string `json:"projectUuid"`
+					Success     bool   `json:"success"`
+					Error       string `json:"error"`
+				} `json:"gcpProjectDeleteStatuses"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if len(payload.Data.Result.Status) != 1 {
+		return graphql.ResponseError(query, errors.New("expected a single result"))
+	}
+	if !payload.Data.Result.Status[0].Success {
+		return graphql.ResponseError(query, errors.New(payload.Data.Result.Status[0].Error))
+	}
+
+	return nil
+}
+
 type DeleteProjectFeatureInput struct {
 	CloudAccountIDs []uuid.UUID `json:"cloudAccountIds"`
 	DeleteSnapshots bool        `json:"deleteSnapshots"`

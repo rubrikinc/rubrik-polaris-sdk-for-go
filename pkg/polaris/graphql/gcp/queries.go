@@ -70,6 +70,24 @@ var gcpCloudAccountAddManualAuthProjectQuery = `mutation SdkGolangGcpCloudAccoun
     })
 }`
 
+// gcpCloudAccountDeleteProjectsV1 GraphQL query
+var gcpCloudAccountDeleteProjectsV1Query = `mutation SdkGolangGcpCloudAccountDeleteProjectsV1($projectId: UUID!, $features: [CloudAccountFeature!], $skipResourceDeletion: Boolean!) {
+    result: gcpCloudAccountDeleteProjects(input: {
+        projectIds:                 [$projectId],
+        features:                   $features,
+        cloudAccountsProjectIds:    [],
+        nativeProtectionProjectIds: [],
+        sharedVpcHostProjectIds:    [],
+        skipResourceDeletion:       $skipResourceDeletion,
+    }) {
+        gcpProjectDeleteStatuses {
+            projectUuid
+            success
+            error
+        }
+    }
+}`
+
 // gcpCloudAccountDeleteProjectsV2 GraphQL query
 var gcpCloudAccountDeleteProjectsV2Query = `mutation SdkGolangGcpCloudAccountDeleteProjectsV2($features: [GcpCloudAccountDeleteProjectsV2FeatureInput!]!) {
     result: gcpCloudAccountDeleteProjectsV2(input: {
@@ -93,13 +111,13 @@ var gcpGetDefaultCredentialsServiceAccountQuery = `query SdkGolangGcpGetDefaultC
 
 // gcpNativeDisableProject GraphQL query
 var gcpNativeDisableProjectQuery = `mutation SdkGolangGcpNativeDisableProject($projectId: UUID!, $shouldDeleteNativeSnapshots: Boolean!) {
-  gcpNativeDisableProject(input: {
-    projectId:                   $projectId,
-    shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots
-  }) {
-    jobId
-    error
-  }
+    result: gcpNativeDisableProject(input: {
+        projectId:                   $projectId,
+        shouldDeleteNativeSnapshots: $shouldDeleteNativeSnapshots
+    }) {
+        jobId
+        error
+    }
 }`
 
 // gcpNativeProject GraphQL query

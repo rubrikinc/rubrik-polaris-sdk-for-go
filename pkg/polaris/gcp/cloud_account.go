@@ -219,7 +219,89 @@ func (a API) RemoveProject(ctx context.Context, cloudAccountID uuid.UUID, featur
 		}
 	}
 
-	jobs, err := gcp.Wrap(a.client).CloudAccountDeleteProjectV2(ctx, account.ID, features, deleteSnapshots)
+	flag, err := core.Wrap(a.client).FeatureFlag(ctx, "CNP_GCP_DISABLE_DELETE_COMBINED")
+	if err != nil {
+		return fmt.Errorf("failed to get feature flag: %s", err)
+	}
+
+	if !flag.Enabled {
+		return a.removeProjectV1(ctx, account, features, deleteSnapshots)
+	}
+
+	return a.removeProjectV2(ctx, cloudAccountID, features, deleteSnapshots)
+}
+
+func (a API) removeProjectV1(ctx context.Context, account CloudAccount, features []core.Feature, deleteSnapshots bool) error {
+	a.log.Print(log.Trace)
+
+	// Disable protection features.
+	for _, feature := range features {
+		// If the feature has not been onboarded or the feature is in the disabled
+		// or connecting state, there is no need to disable the feature.
+		if feature, ok := account.Feature(feature); ok {
+			if feature.Status == core.StatusDisabled || feature.Status == core.StatusConnecting {
+				continue
+			}
+		} else {
+			continue
+		}
+
+		// Only the Cloud Native Protection feature can be disabled.
+		if !feature.Equal(core.FeatureCloudNativeProtection) {
+			continue
+		}
+
+		// Lookup the RSC native project ID from the GCP project number.
+		// The RSC native project ID is needed to disable the native project.
+		// Note the native project ID in this case is the project ID of the RSC
+		// inventory.
+		nativeProjects, err := gcp.Wrap(a.client).NativeProjects(ctx, strconv.FormatInt(account.ProjectNumber, 10))
+		if err != nil {
+			return fmt.Errorf("failed to get native projects: %s", err)
+		}
+		var nativeProjectID uuid.UUID
+		for _, nativeProject := range nativeProjects {
+			if nativeProject.NativeID == account.NativeID {
+				nativeProjectID = nativeProject.ID
+				break
+			}
+		}
+		if nativeProjectID == uuid.Nil {
+			return fmt.Errorf("native project %w", graphql.ErrNotFound)
+		}
+
+		jobID, err := gcp.Wrap(a.client).NativeDisableProject(ctx, nativeProjectID, deleteSnapshots)
+		if err != nil {
+			return fmt.Errorf("failed to disable native project: %v", err)
+		}
+
+		if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
+			account, err := a.ProjectByID(ctx, account.ID)
+			if err != nil {
+				return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
+			}
+
+			feature, ok := account.Feature(feature)
+			if !ok {
+				return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
+			}
+			return feature.Status == core.StatusDisabled, nil
+		}); err != nil {
+			return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
+		}
+	}
+
+	if err := gcp.Wrap(a.client).CloudAccountDeleteProjectV1(ctx, account.ID, features); err != nil {
+		return fmt.Errorf("failed to delete project: %s", err)
+	}
+
+	return nil
+}
+
+func (a API) removeProjectV2(ctx context.Context, cloudAccountID uuid.UUID, features []core.Feature, deleteSnapshots bool) error {
+	a.log.Print(log.Trace)
+
+	jobs, err := gcp.Wrap(a.client).CloudAccountDeleteProjectV2(ctx, cloudAccountID, features, deleteSnapshots)
 	if err != nil {
 		return fmt.Errorf("failed to delete project: %s", err)
 	}
@@ -227,7 +309,7 @@ func (a API) RemoveProject(ctx context.Context, cloudAccountID uuid.UUID, featur
 	for _, job := range jobs {
 		feature := job.Feature
 		if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, job.ID, func(ctx context.Context) (bool, error) {
-			account, err := a.ProjectByID(ctx, account.ID)
+			account, err := a.ProjectByID(ctx, cloudAccountID)
 			if errors.Is(err, graphql.ErrNotFound) {
 				return true, nil
 			}
