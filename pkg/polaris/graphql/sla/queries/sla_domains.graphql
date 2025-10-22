@@ -70,6 +70,22 @@ query RubrikPolarisSDKRequest($after: String, $filter: [GlobalSlaFilterInput!]) 
                 }
                 objectTypes
                 retentionLockMode
+                replicationSpecsV2 {
+                    awsRegion
+                    awsTarget {
+                      accountId
+                      region
+                    }
+                    azureRegion
+                    azureTarget {
+                      subscriptionId
+                      region
+                    }
+                    retentionDuration {
+                      duration
+                      unit
+                    }
+                }
                 snapshotSchedule {
                     minute {
                         basicSchedule {

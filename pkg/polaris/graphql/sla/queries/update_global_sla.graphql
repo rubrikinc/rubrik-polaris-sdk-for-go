@@ -10,6 +10,7 @@ mutation RubrikPolarisSDKRequest(
     $name:                            String!,
     $objectSpecificConfigsInput:      ObjectSpecificConfigsInput,
     $objectTypes:                     [SlaObjectType!]!,
+    $replicationSpecsV2:              [ReplicationSpecV2Input!],
     $retentionLockMode:               RetentionLockMode,
     $shouldApplyToExistingSnapshots:  ShouldApplyToExistingSnapshots,
     $shouldApplyToNonPolicySnapshots: ShouldApplyToNonPolicySnapshots,
@@ -27,6 +28,7 @@ mutation RubrikPolarisSDKRequest(
         name:                            $name,
         objectSpecificConfigsInput:      $objectSpecificConfigsInput,
         objectTypes:                     $objectTypes,
+        replicationSpecsV2:              $replicationSpecsV2,
         retentionLockMode:               $retentionLockMode,
         shouldApplyToExistingSnapshots:  $shouldApplyToExistingSnapshots
         shouldApplyToNonPolicySnapshots: $shouldApplyToNonPolicySnapshots

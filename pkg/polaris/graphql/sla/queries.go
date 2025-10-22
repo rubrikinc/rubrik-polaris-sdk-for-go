@@ -213,6 +213,22 @@ var slaDomainsQuery = `query SdkGolangSlaDomains($after: String, $filter: [Globa
                 }
                 objectTypes
                 retentionLockMode
+                replicationSpecsV2 {
+                    awsRegion
+                    awsTarget {
+                      accountId
+                      region
+                    }
+                    azureRegion
+                    azureTarget {
+                      subscriptionId
+                      region
+                    }
+                    retentionDuration {
+                      duration
+                      unit
+                    }
+                }
                 snapshotSchedule {
                     minute {
                         basicSchedule {
@@ -329,6 +345,7 @@ var updateGlobalSlaQuery = `mutation SdkGolangUpdateGlobalSla(
     $name:                            String!,
     $objectSpecificConfigsInput:      ObjectSpecificConfigsInput,
     $objectTypes:                     [SlaObjectType!]!,
+    $replicationSpecsV2:              [ReplicationSpecV2Input!],
     $retentionLockMode:               RetentionLockMode,
     $shouldApplyToExistingSnapshots:  ShouldApplyToExistingSnapshots,
     $shouldApplyToNonPolicySnapshots: ShouldApplyToNonPolicySnapshots,
@@ -346,6 +363,7 @@ var updateGlobalSlaQuery = `mutation SdkGolangUpdateGlobalSla(
         name:                            $name,
         objectSpecificConfigsInput:      $objectSpecificConfigsInput,
         objectTypes:                     $objectTypes,
+        replicationSpecsV2:              $replicationSpecsV2,
         retentionLockMode:               $retentionLockMode,
         shouldApplyToExistingSnapshots:  $shouldApplyToExistingSnapshots
         shouldApplyToNonPolicySnapshots: $shouldApplyToNonPolicySnapshots
