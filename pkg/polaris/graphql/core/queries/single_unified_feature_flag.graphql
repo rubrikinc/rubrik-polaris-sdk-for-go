@@ -1,0 +1,8 @@
+query RubrikPolarisSDKRequest($flagName: String!) {
+    result: singleUnifiedFeatureFlag(input: {
+        key: $flagName,
+    }) {
+        name
+        variant
+    }
+}
