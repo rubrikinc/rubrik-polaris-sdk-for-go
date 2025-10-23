@@ -164,10 +164,9 @@ type CloudAccountInitiate struct {
 func (a API) ValidateAndCreateCloudAccount(ctx context.Context, cloud Cloud, id, name string, features []core.Feature) (CloudAccountInitiate, error) {
 	a.log.Print(log.Trace)
 
-	// Features and FeaturesWithPG are mutually exclusive.
-	plainFeatures := plainFeatures(features)
-	if len(plainFeatures) > 0 {
-		features = nil
+	featuresWithoutPG, featuresWithPG, err := core.FilterFeaturesOnPermissionGroups(features)
+	if err != nil {
+		return CloudAccountInitiate{}, err
 	}
 
 	query := validateAndCreateAwsCloudAccountQuery
@@ -177,7 +176,7 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, cloud Cloud, id,
 		Name           string         `json:"accountName"`
 		Features       []string       `json:"features,omitempty"`
 		FeaturesWithPG []core.Feature `json:"featuresWithPG,omitempty"`
-	}{Cloud: cloud, ID: id, Name: name, Features: plainFeatures, FeaturesWithPG: features})
+	}{Cloud: cloud, ID: id, Name: name, Features: featuresWithoutPG, FeaturesWithPG: featuresWithPG})
 	if err != nil {
 		return CloudAccountInitiate{}, graphql.RequestError(query, err)
 	}
@@ -221,10 +220,9 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, cloud Cloud, id,
 func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id, name string, features []core.Feature, regions []aws.Region, init CloudAccountInitiate) error {
 	a.log.Print(log.Trace)
 
-	// Features and FeaturesWithPG are mutually exclusive.
-	plainFeatures := plainFeatures(features)
-	if len(plainFeatures) > 0 {
-		features = nil
+	featuresWithoutPG, featuresWithPG, err := core.FilterFeaturesOnPermissionGroups(features)
+	if err != nil {
+		return err
 	}
 
 	regionEnums := make([]aws.RegionEnum, 0, len(regions))
@@ -242,7 +240,17 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 		Features       []string         `json:"features,omitempty"`
 		FeaturesWithPG []core.Feature   `json:"featuresWithPG,omitempty"`
 		StackName      string           `json:"stackName"`
-	}{Cloud: cloud, ID: id, Name: name, Regions: regionEnums, ExternalID: init.ExternalID, FeatureVersion: init.FeatureVersions, Features: plainFeatures, FeaturesWithPG: features, StackName: init.StackName})
+	}{
+		Cloud:          cloud,
+		ID:             id,
+		Name:           name,
+		Regions:        regionEnums,
+		ExternalID:     init.ExternalID,
+		FeatureVersion: init.FeatureVersions,
+		Features:       featuresWithoutPG,
+		FeaturesWithPG: featuresWithPG,
+		StackName:      init.StackName,
+	})
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
@@ -272,21 +280,6 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 	}
 
 	return nil
-}
-
-// plainFeatures checks if any of the features contains any permission groups,
-// if they do nil is returned, otherwise the names of the features without
-// permission groups are returned.
-func plainFeatures(features []core.Feature) []string {
-	var plainFeatures []string
-	for _, feature := range features {
-		if len(feature.PermissionGroups) > 0 {
-			return nil
-		}
-		plainFeatures = append(plainFeatures, feature.Name)
-	}
-
-	return plainFeatures
 }
 
 // PrepareCloudAccountDeletion prepares the deletion of the cloud account
