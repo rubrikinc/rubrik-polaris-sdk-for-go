@@ -59,8 +59,8 @@ type Domain struct {
 	FirstFullBackupWindows []BackupWindow `json:"firstFullBackupWindows"`
 	ID                     uuid.UUID      `json:"id"`
 	LocalRetentionLimit    *struct {
-		Duration int    `json:"duration"`
-		Unit     string `json:"unit"`
+		Duration int           `json:"duration"`
+		Unit     RetentionUnit `json:"unit"`
 	} `json:"localRetentionLimit"`
 	Name                  string `json:"name"`
 	ObjectSpecificConfigs struct {
