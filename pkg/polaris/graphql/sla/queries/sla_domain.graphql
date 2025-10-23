@@ -1,0 +1,148 @@
+query RubrikPolarisSDKRequest($slaDomainId: UUID!) {
+    result: slaDomain(id: $slaDomainId) {
+        ... on GlobalSlaReply {
+            archivalSpecs {
+                frequencies
+                threshold
+                thresholdUnit
+                storageSetting {
+                    id
+                    name
+                }
+            }
+            backupLocationSpecs {
+                archivalGroup {
+                    id
+                }
+            }
+            backupWindows {
+                durationInHours
+                startTimeAttributes {
+                    dayOfWeek {
+                        day
+                    }
+                    hour
+                    minute
+                }
+            }
+            description
+            firstFullBackupWindows {
+                durationInHours
+                startTimeAttributes {
+                    dayOfWeek {
+                        day
+                    }
+                    hour
+                    minute
+                }
+            }
+            id
+            isRetentionLockedSla
+            localRetentionLimit {
+                duration
+                unit
+            }
+            name
+            objectSpecificConfigs {
+                awsNativeS3SlaConfig {
+                    archivalLocationId
+                    archivalLocationName
+                    continuousBackupRetentionInDays
+                }
+                awsRdsConfig {
+                    logRetention {
+                        duration
+                        unit
+                    }
+                }
+                azureBlobConfig {
+                    backupLocationId
+                    backupLocationName
+                    continuousBackupRetentionInDays
+                }
+                azureSqlDatabaseDbConfig {
+                    logRetentionInDays
+                }
+                azureSqlManagedInstanceDbConfig {
+                    logRetentionInDays
+                }
+            }
+            objectTypes
+            retentionLockMode
+            replicationSpecsV2 {
+                awsRegion
+                awsTarget {
+                  accountId
+                  region
+                }
+                azureRegion
+                azureTarget {
+                  subscriptionId
+                  region
+                }
+                retentionDuration {
+                  duration
+                  unit
+                }
+            }
+            snapshotSchedule {
+                minute {
+                    basicSchedule {
+                        frequency
+                        retention
+                        retentionUnit
+                    }
+                }
+                hourly {
+                    basicSchedule {
+                        frequency
+                        retention
+                        retentionUnit
+                    }
+                }
+                daily {
+                    basicSchedule {
+                        frequency
+                        retention
+                        retentionUnit
+                    }
+                }
+                weekly {
+                    basicSchedule {
+                        frequency
+                        retention
+                        retentionUnit
+                    }
+                    dayOfWeek
+                }
+                monthly {
+                    basicSchedule {
+                        frequency
+                        retention
+                        retentionUnit
+                    }
+                    dayOfMonth
+                }
+                quarterly {
+                    basicSchedule {
+                        frequency
+                        retention
+                        retentionUnit
+                    }
+                    dayOfQuarter
+                    quarterStartMonth
+                }
+                yearly {
+                    basicSchedule {
+                        frequency
+                        retention
+                        retentionUnit
+                    }
+                    dayOfYear
+                    yearStartMonth
+                }
+            }
+            version
+        }
+    }
+}
