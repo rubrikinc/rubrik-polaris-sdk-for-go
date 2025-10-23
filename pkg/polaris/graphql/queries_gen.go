@@ -93,10 +93,36 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Read all fragment files first.
+	fragments := make(map[string]string)
+	err := filepath.Walk("queries", func(path string, info fs.FileInfo, err error) error {
+		if err != nil || info.IsDir() || !strings.HasSuffix(info.Name(), ".fragment") {
+			return err
+		}
+
+		buf, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		// Extract fragment name from the content (e.g., "fragment GlobalSlaReplyFields on ...").
+		content := strings.TrimSpace(string(buf))
+		if strings.HasPrefix(content, "fragment ") {
+			parts := strings.Fields(content)
+			if len(parts) >= 2 {
+				fragments[parts[1]] = content
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	queries := make(map[string]string)
 
 	// Read all graphql files in the current directory and subdirectories.
-	err := filepath.Walk("queries", func(path string, info fs.FileInfo, err error) error {
+	err = filepath.Walk("queries", func(path string, info fs.FileInfo, err error) error {
 		if err != nil || info.IsDir() || !strings.HasSuffix(info.Name(), ".graphql") {
 			return err
 		}
@@ -106,8 +132,18 @@ func main() {
 			return err
 		}
 
+		query := strings.TrimSpace(string(buf))
+
+		// Append any referenced fragments to the query.
+		// Look for fragment spreads like "...FragmentName" and append the fragment definition.
+		for fragName, fragContent := range fragments {
+			if strings.Contains(query, "..."+fragName) {
+				query = query + "\n" + fragContent
+			}
+		}
+
 		name := variableName(info.Name())
-		query := strings.Replace(strings.TrimSpace(string(buf)), "RubrikPolarisSDKRequest", "SdkGolang"+strings.Title(name), 1)
+		query = strings.Replace(query, "RubrikPolarisSDKRequest", "SdkGolang"+strings.Title(name), 1)
 		queries[name] = "`" + query + "`"
 		return nil
 	})

@@ -11,6 +11,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/organizations v1.1.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.2.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
+	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.1
 	github.com/kr/pretty v0.1.0
 	golang.org/x/oauth2 v0.27.0

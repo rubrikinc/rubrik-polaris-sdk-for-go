@@ -35,18 +35,7 @@ import (
 func (a API) DomainByID(ctx context.Context, domainID uuid.UUID) (sla.Domain, error) {
 	a.log.Print(log.Trace)
 
-	domains, err := a.Domains(ctx, "")
-	if err != nil {
-		return sla.Domain{}, err
-	}
-
-	for _, domain := range domains {
-		if domain.ID == domainID {
-			return domain, nil
-		}
-	}
-
-	return sla.Domain{}, fmt.Errorf("global SLA domain %q %w", domainID, graphql.ErrNotFound)
+	return sla.DomainByID(ctx, a.client, domainID)
 }
 
 // DomainByName returns the global SLA domain with the specified name.
