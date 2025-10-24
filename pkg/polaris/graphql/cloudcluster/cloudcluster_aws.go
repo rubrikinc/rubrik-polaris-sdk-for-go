@@ -231,13 +231,13 @@ func (a API) AllAwsInstanceProfileNames(ctx context.Context, cloudAccountID uuid
 }
 
 type AwsVmConfig struct {
-	CdmProduct          string            `json:"cdmProduct"`
-	CdmVersion          string            `json:"cdmVersion"`
+	CDMProduct          string            `json:"cdmProduct"`
+	CDMVersion          string            `json:"cdmVersion"`
 	InstanceProfileName string            `json:"instanceProfileName"`
 	InstanceType        AwsCCInstanceType `json:"instanceType"`
 	SecurityGroups      []string          `json:"securityGroups"`
 	Subnet              string            `json:"subnet"`
-	VmType              VmConfigType      `json:"vmType"`
+	VMType              VmConfigType      `json:"vmType"`
 	Vpc                 string            `json:"vpc"`
 }
 
@@ -245,9 +245,9 @@ type AwsClusterConfig struct {
 	ClusterName      string           `json:"clusterName"`
 	UserEmail        string           `json:"userEmail"`
 	AdminPassword    secret.String    `json:"adminPassword"`
-	DnsNameServers   []string         `json:"dnsNameServers"`
-	DnsSearchDomains []string         `json:"dnsSearchDomains"`
-	NtpServers       []string         `json:"ntpServers"`
+	DNSNameServers   []string         `json:"dnsNameServers"`
+	DNSSearchDomains []string         `json:"dnsSearchDomains"`
+	NTPServers       []string         `json:"ntpServers"`
 	NumNodes         int              `json:"numNodes"`
 	AwsEsConfig      AwsEsConfigInput `json:"awsEsConfig"`
 }
@@ -261,7 +261,7 @@ type CreateAwsClusterInput struct {
 	Region               string                     `json:"region"`
 	UsePlacementGroups   bool                       `json:"usePlacementGroups"`
 	Validations          []ClusterCreateValidations `json:"validations"`
-	VmConfig             AwsVmConfig                `json:"vmConfig"`
+	VMConfig             AwsVmConfig                `json:"vmConfig"`
 }
 
 // ValidateCreateAwsClusterInput validates the aws cloud cluster create request
