@@ -344,10 +344,10 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input CreateAzureClust
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Input CreateAzureClusterInput `json:"input"`
 	}{Input: input})
-
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
+
 	var payload struct {
 		Data struct {
 			Result struct {

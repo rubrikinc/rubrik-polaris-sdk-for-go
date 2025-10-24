@@ -99,23 +99,23 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 	validCdmVersion := false
 	var supportedInstanceTypes []cloudcluster.AwsCCInstanceType
 	for _, version := range cdmVersions {
-		if (version.IsLatest && useLatestCdmVersion) || (version.Version == input.VmConfig.CdmVersion) {
+		if (version.IsLatest && useLatestCdmVersion) || (version.Version == input.VMConfig.CDMVersion) {
 			validCdmVersion = true
-			input.VmConfig.CdmVersion = version.Version
-			input.VmConfig.CdmProduct = version.ProductCodes[0]
+			input.VMConfig.CDMVersion = version.Version
+			input.VMConfig.CDMProduct = version.ProductCodes[0]
 			supportedInstanceTypes = version.SupportedInstanceTypes
 			break
 		}
 	}
 
 	if !validCdmVersion {
-		return CloudCluster{}, fmt.Errorf("cdm version %s is not available for account %s", input.VmConfig.CdmVersion, account.ID)
+		return CloudCluster{}, fmt.Errorf("cdm version %s is not available for account %s", input.VMConfig.CDMVersion, account.ID)
 	}
 
 	// ensure specified instance type is supported
-	validInstanceType := slices.Contains(supportedInstanceTypes, input.VmConfig.InstanceType)
+	validInstanceType := slices.Contains(supportedInstanceTypes, input.VMConfig.InstanceType)
 	if !validInstanceType {
-		return CloudCluster{}, fmt.Errorf("instance type %s is not supported for cdm version %s, supported Instance types are: %v", input.VmConfig.InstanceType, input.VmConfig.CdmVersion, supportedInstanceTypes)
+		return CloudCluster{}, fmt.Errorf("instance type %s is not supported for cdm version %s, supported Instance types are: %v", input.VMConfig.InstanceType, input.VMConfig.CDMVersion, supportedInstanceTypes)
 	}
 
 	// Get Available configured regions
@@ -137,10 +137,10 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 	}
 
 	vpcSyncedToRsc := slices.ContainsFunc(vpcs, func(vpc cloudcluster.AwsCloudAccountListVpcs) bool {
-		return vpc.VpcID == input.VmConfig.Vpc
+		return vpc.VpcID == input.VMConfig.Vpc
 	})
 	if !vpcSyncedToRsc {
-		return CloudCluster{}, fmt.Errorf("vpc %s does not exist in RSC AWS account %s for region %s. Check the VPC ID and region. If this was recently created, wait a few minutes and try again", input.VmConfig.Vpc, account.ID, input.Region)
+		return CloudCluster{}, fmt.Errorf("vpc %s does not exist in RSC AWS account %s for region %s. Check the VPC ID and region. If this was recently created, wait a few minutes and try again", input.VMConfig.Vpc, account.ID, input.Region)
 	}
 
 	// Validate Instance Profile exists in RSC metadata via AllAwsInstanceProfileNames
@@ -148,30 +148,30 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 	if err != nil {
 		return CloudCluster{}, fmt.Errorf("failed to get instance profiles: %s", err)
 	}
-	validInstanceProfile := slices.Contains(instanceProfiles, input.VmConfig.InstanceProfileName)
+	validInstanceProfile := slices.Contains(instanceProfiles, input.VMConfig.InstanceProfileName)
 	if !validInstanceProfile {
-		return CloudCluster{}, fmt.Errorf("instance profile %s does not exist in RSC AWS account %s", input.VmConfig.InstanceProfileName, account.ID)
+		return CloudCluster{}, fmt.Errorf("instance profile %s does not exist in RSC AWS account %s", input.VMConfig.InstanceProfileName, account.ID)
 	}
 
 	// Validate Subnet exists in RSC metadata via AwsCloudAccountListSubnets
-	subnets, err := cloudcluster.Wrap(a.client).AwsCloudAccountListSubnets(ctx, input.CloudAccountID, inputRegion, input.VmConfig.Vpc)
+	subnets, err := cloudcluster.Wrap(a.client).AwsCloudAccountListSubnets(ctx, input.CloudAccountID, inputRegion, input.VMConfig.Vpc)
 	if err != nil {
 		return CloudCluster{}, fmt.Errorf("failed to get subnets: %s", err)
 	}
 	validSubnet := slices.ContainsFunc(subnets, func(subnet cloudcluster.AwsCloudAccountSubnets) bool {
-		return subnet.SubnetID == input.VmConfig.Subnet
+		return subnet.SubnetID == input.VMConfig.Subnet
 	})
 	if !validSubnet {
-		return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC AWS account %s", input.VmConfig.Subnet, account.ID)
+		return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC AWS account %s", input.VMConfig.Subnet, account.ID)
 	}
 
 	// Validate Security Groups
-	securityGroups, err := cloudcluster.Wrap(a.client).AwsCloudAccountListSecurityGroups(ctx, input.CloudAccountID, inputRegion, input.VmConfig.Vpc)
+	securityGroups, err := cloudcluster.Wrap(a.client).AwsCloudAccountListSecurityGroups(ctx, input.CloudAccountID, inputRegion, input.VMConfig.Vpc)
 	if err != nil {
 		return CloudCluster{}, fmt.Errorf("failed to get security groups: %s", err)
 	}
 	// Validate Security Groups - check that all provided security groups exist
-	for _, inputSG := range input.VmConfig.SecurityGroups {
+	for _, inputSG := range input.VMConfig.SecurityGroups {
 		validSecurityGroup := slices.ContainsFunc(securityGroups, func(securityGroup cloudcluster.AwsCloudAccountSecurityGroup) bool {
 			return securityGroup.SecurityGroupID == inputSG
 		})
@@ -192,7 +192,7 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 		return CloudCluster{}, fmt.Errorf("failed to create cloud cluster: %s", err)
 	}
 
-	cluster, err = a.monitorCloudClusterEvents(ctx, input.ClusterConfig.ClusterName, input.CloudAccountID, input.VmConfig.CdmVersion, input.VmConfig.CdmProduct, string(input.VmConfig.InstanceType), input.Region)
+	cluster, err = a.monitorCloudClusterEvents(ctx, input.ClusterConfig.ClusterName, input.CloudAccountID, input.VMConfig.CDMVersion, input.VMConfig.CDMProduct, string(input.VMConfig.InstanceType), input.Region)
 	if err != nil {
 		return CloudCluster{}, fmt.Errorf("failed to monitor cloud cluster events: %s", err)
 	}
@@ -239,7 +239,6 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 			break
 		}
 	}
-
 	if !validCdmVersion {
 		return CloudCluster{}, fmt.Errorf("cdm version %s is not available for account %s", cdmVersion, account.ID)
 	}
@@ -372,12 +371,20 @@ func (a API) monitorCloudClusterEvents(ctx context.Context, clusterName string, 
 		case gqlevent.ActivityStatusQueued:
 		case gqlevent.ActivityStatusRunning:
 		case gqlevent.ActivityStatusTaskSuccess:
-			a.log.Printf(log.Info, "cloud cluster create in progress: %s\n", activitySeries.Activities.Nodes[0].Message)
+			if len(activitySeries.Activities.Nodes) > 0 {
+				a.log.Printf(log.Info, "cloud cluster create in progress: %s\n", activitySeries.Activities.Nodes[0].Message)
+			} else {
+				a.log.Printf(log.Info, "cloud cluster create in progress: no activity details available")
+			}
 			time.Sleep(60 * time.Second)
 			continue
 		case gqlevent.ActivityStatusSuccess:
+			clusterID, err := uuid.Parse(activitySeries.ClusterUUID)
+			if err != nil {
+				return CloudCluster{}, fmt.Errorf("failed to parse cluster UUID: %s", err)
+			}
 			return CloudCluster{
-				ID:             uuid.MustParse(activitySeries.ClusterUUID),
+				ID:             clusterID,
 				Name:           activitySeries.Cluster.Name,
 				Status:         activitySeries.LastActivityStatus,
 				CloudAccountID: cloudAccountID,

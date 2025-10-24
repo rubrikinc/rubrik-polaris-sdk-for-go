@@ -333,7 +333,7 @@ var createAwsCloudClusterQuery = `mutation SdkGolangCreateAwsCloudCluster($input
 }`
 
 // createAzureCcCluster GraphQL query
-var createAzureCcClusterQuery = `mutation SdkGolangCreateAwsCloudCluster($input: CreateAzureClusterInput!) {
+var createAzureCcClusterQuery = `mutation SdkGolangCreateAzureCcCluster($input: CreateAzureClusterInput!) {
   result: createAzureCluster(input: $input) {
     message
     success

@@ -27,6 +27,9 @@ func main() {
 
 	logger := polarislog.NewStandardLogger()
 	logger.SetLogLevel(polarislog.Trace)
+	if err := polaris.SetLogLevelFromEnv(logger); err != nil {
+		log.Fatal(err)
+	}
 
 	client, err := polaris.NewClientWithLogger(polAccount, logger)
 	if err != nil {
@@ -77,7 +80,7 @@ func main() {
 			UserEmail:        "hello@domain.com",
 			AdminPassword:    secret.String("RubrikGoForward!"),
 			DNSNameServers:   []string{"8.8.8.8"},
-			DNSSearchDomains: []string{},
+			DNSSearchDomains: []string{"rubrikdemo.com"},
 			NTPServers:       []string{"pool.ntp.org"},
 			NumNodes:         3,
 			AzureESConfig: cloudclustergql.AzureEsConfigInput{
@@ -108,7 +111,6 @@ func main() {
 			VMType:                       cloudclustergql.CCVmConfigExtraDense,
 		},
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
