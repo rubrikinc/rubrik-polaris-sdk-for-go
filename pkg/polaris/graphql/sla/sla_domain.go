@@ -75,7 +75,7 @@ type BackupWindow struct {
 
 // StartTime represents the start time for a backup window.
 type StartTime struct {
-	DayOfWeek DayOfWeek `json:"dayOfWeek"`
+	DayOfWeek DayOfWeek `json:"dayOfWeek,omitzero"`
 	Hour      int       `json:"hour"`
 	Minute    int       `json:"minute"`
 }
