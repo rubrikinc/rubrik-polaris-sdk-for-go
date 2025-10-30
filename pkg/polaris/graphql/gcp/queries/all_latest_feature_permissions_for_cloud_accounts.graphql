@@ -1,0 +1,20 @@
+query RubrikPolarisSDKRequest(
+    $cloudAccountIds: [UUID!]!,
+) {
+    result: allLatestFeaturePermissionsForCloudAccounts(
+        cloudVendor:     GCP,
+        cloudAccountIds: $cloudAccountIds,
+        features:        ALL,
+    ) {
+        cloudAccountId
+        featurePermissions {
+            feature
+            permissionJson
+            permissionsGroupVersions {
+                permissionsGroup
+                version
+            }
+            version
+        }
+    }
+}

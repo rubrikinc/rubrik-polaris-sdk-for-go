@@ -1,0 +1,6 @@
+mutation RubrikPolarisSDKRequest($cloudAccountIds: [UUID!]!, $projectCredentialsJwt: String!) {
+    result: gcpBulkSetCloudAccountProperties(input: {
+        cloudAccountIds:       $cloudAccountIds,
+        projectCredentialsJwt: $projectCredentialsJwt,
+    })
+}

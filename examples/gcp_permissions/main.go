@@ -55,15 +55,28 @@ func main() {
 	gcpClient := gcp.Wrap(client)
 
 	// List GCP permissions needed for features.
-	features := []core.Feature{core.FeatureCloudNativeProtection}
-	perms, err := gcpClient.Permissions(ctx, features)
+	features := []core.Feature{core.FeatureCloudNativeProtection, core.FeatureGCPSharedVPCHost}
+	perms, err := gcpClient.FeaturePermissions(ctx, features)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Println("Permissions required for Cloud Native Protection:")
-	for _, perm := range perms {
-		fmt.Println(perm)
+	for _, featurePerms := range perms {
+		fmt.Printf(" Feature: %s\n", featurePerms.Feature)
+
+		fmt.Println("  Without conditions:")
+		for _, perm := range featurePerms.WithoutConditions {
+			fmt.Printf("   %s\n", perm)
+		}
+		fmt.Println("  With conditions:")
+		for _, perm := range featurePerms.WithConditions {
+			fmt.Printf("   %s\n", perm)
+		}
+		fmt.Println("  Conditions:")
+		for _, condition := range featurePerms.Conditions {
+			fmt.Printf("   %s\n", condition)
+		}
 	}
 
 	// Notify Polaris about updated permissions for the Cloud Native Protection

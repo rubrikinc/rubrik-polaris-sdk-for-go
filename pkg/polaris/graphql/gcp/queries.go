@@ -44,9 +44,63 @@ var allGcpCloudAccountProjectsByFeatureQuery = `query SdkGolangAllGcpCloudAccoun
         }
         featureDetail {
             feature
+            roleId
             status
         }
     }
+}`
+
+// allLatestFeaturePermissions GraphQL query
+var allLatestFeaturePermissionsQuery = `query SdkGolangAllLatestFeaturePermissions(
+    $features:        [CloudAccountFeature!]!,
+    $featuresWithPG:  [FeatureWithPermissionsGroups!]!
+) {
+    result: allLatestFeaturePermissionsForCloudAccounts(
+        cloudVendor:                   GCP,
+        cloudAccountIds:               [],
+        features:                      $features,
+        featuresWithPermissionsGroups: $featuresWithPG,
+    ) {
+        featurePermissions {
+            feature
+            permissionJson
+            permissionsGroupVersions {
+                permissionsGroup
+                version
+            }
+            version
+        }
+    }
+}`
+
+// allLatestFeaturePermissionsForCloudAccounts GraphQL query
+var allLatestFeaturePermissionsForCloudAccountsQuery = `query SdkGolangAllLatestFeaturePermissionsForCloudAccounts(
+    $cloudAccountIds: [UUID!]!,
+) {
+    result: allLatestFeaturePermissionsForCloudAccounts(
+        cloudVendor:     GCP,
+        cloudAccountIds: $cloudAccountIds,
+        features:        ALL,
+    ) {
+        cloudAccountId
+        featurePermissions {
+            feature
+            permissionJson
+            permissionsGroupVersions {
+                permissionsGroup
+                version
+            }
+            version
+        }
+    }
+}`
+
+// gcpBulkSetCloudAccountProperties GraphQL query
+var gcpBulkSetCloudAccountPropertiesQuery = `mutation SdkGolangGcpBulkSetCloudAccountProperties($cloudAccountIds: [UUID!]!, $projectCredentialsJwt: String!) {
+    result: gcpBulkSetCloudAccountProperties(input: {
+        cloudAccountIds:       $cloudAccountIds,
+        projectCredentialsJwt: $projectCredentialsJwt,
+    })
 }`
 
 // gcpCloudAccountAddManualAuthProject GraphQL query
