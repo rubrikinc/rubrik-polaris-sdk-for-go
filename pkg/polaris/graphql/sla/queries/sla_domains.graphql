@@ -45,6 +45,9 @@ query RubrikPolarisSDKRequest($after: String, $filter: [GlobalSlaFilterInput!]) 
                 }
                 name
                 objectSpecificConfigs {
+                    awsNativeDynamoDbSlaConfig {
+                        cmkAliasForPrimaryBackup
+                    }
                     awsNativeS3SlaConfig {
                         archivalLocationId
                         archivalLocationName
