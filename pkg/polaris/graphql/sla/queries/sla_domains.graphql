@@ -38,6 +38,7 @@ query RubrikPolarisSDKRequest($after: String, $filter: [GlobalSlaFilterInput!]) 
                     }
                 }
                 id
+                isArchived
                 isRetentionLockedSla
                 localRetentionLimit {
                     duration
@@ -45,6 +46,9 @@ query RubrikPolarisSDKRequest($after: String, $filter: [GlobalSlaFilterInput!]) 
                 }
                 name
                 objectSpecificConfigs {
+                    awsNativeDynamoDbSlaConfig {
+                        cmkAliasForPrimaryBackup
+                    }
                     awsNativeS3SlaConfig {
                         archivalLocationId
                         archivalLocationName
