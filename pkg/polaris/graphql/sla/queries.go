@@ -188,6 +188,9 @@ var slaDomainsQuery = `query SdkGolangSlaDomains($after: String, $filter: [Globa
                 }
                 name
                 objectSpecificConfigs {
+                    awsNativeDynamoDbSlaConfig {
+                        cmkAliasForPrimaryBackup
+                    }
                     awsNativeS3SlaConfig {
                         archivalLocationId
                         archivalLocationName
