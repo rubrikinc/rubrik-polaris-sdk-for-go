@@ -129,6 +129,7 @@ func AllMonthsAsStrings() []string {
 type ObjectType string
 
 const (
+	ObjectAWSDynamoDB             ObjectType = "AWS_DYNAMODB_OBJECT_TYPE"
 	ObjectAWSEC2EBS               ObjectType = "AWS_EC2_EBS_OBJECT_TYPE"
 	ObjectAWSRDS                  ObjectType = "AWS_RDS_OBJECT_TYPE"
 	ObjectAWSS3                   ObjectType = "AWS_S3_OBJECT_TYPE"
@@ -142,6 +143,7 @@ const (
 // AllObjectTypesAsStrings returns all SLA object types as a slice of strings.
 func AllObjectTypesAsStrings() []string {
 	return []string{
+		string(ObjectAWSDynamoDB),
 		string(ObjectAWSEC2EBS),
 		string(ObjectAWSRDS),
 		string(ObjectAWSS3),

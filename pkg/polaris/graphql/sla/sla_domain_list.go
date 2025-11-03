@@ -64,7 +64,8 @@ type Domain struct {
 	} `json:"localRetentionLimit"`
 	Name                  string `json:"name"`
 	ObjectSpecificConfigs struct {
-		AWSS3Config *struct {
+		AWSDynamoDBConfig *AWSDynamoDBConfig `json:"awsNativeDynamoDbSlaConfig"`
+		AWSS3Config       *struct {
 			AWSS3Config
 			ArchivalLocationName string `json:"archivalLocationName"`
 		} `json:"awsNativeS3SlaConfig"`

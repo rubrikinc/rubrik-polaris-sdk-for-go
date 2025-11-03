@@ -88,11 +88,18 @@ type DayOfWeek struct {
 // ObjectSpecificConfigs holds the object-specific configurations for a global
 // RSC SLA domain.
 type ObjectSpecificConfigs struct {
-	AWSS3Config                     *AWSS3Config     `json:"awsNativeS3SlaConfigInput,omitempty"`
-	AWSRDSConfig                    *AWSRDSConfig    `json:"awsRdsConfigInput,omitempty"`
-	AzureBlobConfig                 *AzureBlobConfig `json:"azureBlobConfigInput,omitempty"`
-	AzureSQLDatabaseDBConfig        *AzureDBConfig   `json:"azureSqlDatabaseDbConfigInput,omitempty"`
-	AzureSQLManagedInstanceDBConfig *AzureDBConfig   `json:"azureSqlManagedInstanceDbConfigInput,omitempty"`
+	AWSDynamoDBConfig               *AWSDynamoDBConfig `json:"awsNativeDynamoDbSlaConfigInput,omitempty"`
+	AWSS3Config                     *AWSS3Config       `json:"awsNativeS3SlaConfigInput,omitempty"`
+	AWSRDSConfig                    *AWSRDSConfig      `json:"awsRdsConfigInput,omitempty"`
+	AzureBlobConfig                 *AzureBlobConfig   `json:"azureBlobConfigInput,omitempty"`
+	AzureSQLDatabaseDBConfig        *AzureDBConfig     `json:"azureSqlDatabaseDbConfigInput,omitempty"`
+	AzureSQLManagedInstanceDBConfig *AzureDBConfig     `json:"azureSqlManagedInstanceDbConfigInput,omitempty"`
+}
+
+// AWSDynamoDBConfig represents the configuration specific for an AWS DynamoDB
+// object.
+type AWSDynamoDBConfig struct {
+	KMSAliasForPrimaryBackup string `json:"cmkAliasForPrimaryBackup"`
 }
 
 // AWSS3Config represents the configuration specific for an AWS S3 object.
