@@ -30,6 +30,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -160,7 +161,7 @@ type AzureEsConfigInput struct {
 	ResourceGroup         string                   `json:"resourceGroup"`
 	ShouldCreateContainer bool                     `json:"shouldCreateContainer"`
 	StorageAccount        string                   `json:"storageAccount"`
-	StorageSecret         string                   `json:"storageSecret,omitempty"`
+	StorageSecret         secret.String            `json:"storageSecret,omitempty"`
 }
 
 // GcpEsConfigInput represents the input for creating a GCP ES config.
