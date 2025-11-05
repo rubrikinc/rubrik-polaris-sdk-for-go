@@ -137,10 +137,10 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 	}
 
 	vpcSyncedToRsc := slices.ContainsFunc(vpcs, func(vpc cloudcluster.AwsCloudAccountListVpcs) bool {
-		return vpc.VpcID == input.VMConfig.Vpc
+		return vpc.VpcID == input.VMConfig.VPC
 	})
 	if !vpcSyncedToRsc {
-		return CloudCluster{}, fmt.Errorf("vpc %s does not exist in RSC AWS account %s for region %s. Check the VPC ID and region. If this was recently created, wait a few minutes and try again", input.VMConfig.Vpc, account.ID, input.Region)
+		return CloudCluster{}, fmt.Errorf("vpc %s does not exist in RSC AWS account %s for region %s. Check the VPC ID and region. If this was recently created, wait a few minutes and try again", input.VMConfig.VPC, account.ID, input.Region)
 	}
 
 	// Validate Instance Profile exists in RSC metadata via AllAwsInstanceProfileNames
@@ -154,7 +154,7 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 	}
 
 	// Validate Subnet exists in RSC metadata via AwsCloudAccountListSubnets
-	subnets, err := cloudcluster.Wrap(a.client).AwsCloudAccountListSubnets(ctx, input.CloudAccountID, inputRegion, input.VMConfig.Vpc)
+	subnets, err := cloudcluster.Wrap(a.client).AwsCloudAccountListSubnets(ctx, input.CloudAccountID, inputRegion, input.VMConfig.VPC)
 	if err != nil {
 		return CloudCluster{}, fmt.Errorf("failed to get subnets: %s", err)
 	}
@@ -166,7 +166,7 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 	}
 
 	// Validate Security Groups
-	securityGroups, err := cloudcluster.Wrap(a.client).AwsCloudAccountListSecurityGroups(ctx, input.CloudAccountID, inputRegion, input.VMConfig.Vpc)
+	securityGroups, err := cloudcluster.Wrap(a.client).AwsCloudAccountListSecurityGroups(ctx, input.CloudAccountID, inputRegion, input.VMConfig.VPC)
 	if err != nil {
 		return CloudCluster{}, fmt.Errorf("failed to get security groups: %s", err)
 	}
@@ -209,7 +209,7 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 
 	// Validate Cloud Account exists and has Server and Apps feature
 	azureClient := azure.WrapGQL(a.client)
-	account, err := azureClient.Subscription(ctx, azure.CloudAccountID(input.CloudAccountID), core.FeatureAll)
+	account, err := azureClient.SubscriptionByID(ctx, input.CloudAccountID)
 	if err != nil {
 		return CloudCluster{}, err
 	}

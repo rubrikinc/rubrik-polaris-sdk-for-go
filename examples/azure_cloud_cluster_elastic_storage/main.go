@@ -58,7 +58,7 @@ func main() {
 	}
 
 	// Lookup the newly added subscription.
-	account, err := azureClient.Subscription(ctx, azure.CloudAccountID(id), core.FeatureAll)
+	account, err := azureClient.SubscriptionByID(ctx, id)
 	if err != nil {
 		log.Fatal(err)
 	}

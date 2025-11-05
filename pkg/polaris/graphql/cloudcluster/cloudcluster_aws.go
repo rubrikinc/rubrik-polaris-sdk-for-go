@@ -238,7 +238,7 @@ type AwsVmConfig struct {
 	SecurityGroups      []string          `json:"securityGroups"`
 	Subnet              string            `json:"subnet"`
 	VMType              VmConfigType      `json:"vmType"`
-	Vpc                 string            `json:"vpc"`
+	VPC                 string            `json:"vpc"`
 }
 
 type AwsClusterConfig struct {

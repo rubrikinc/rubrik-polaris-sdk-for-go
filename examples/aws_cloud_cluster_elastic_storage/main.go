@@ -108,7 +108,7 @@ func main() {
 			SecurityGroups:      []string{"sg-1234567890"},
 			Subnet:              "subnet-1234567890",
 			VMType:              gqlcloudcluster.CCVmConfigDense,
-			Vpc:                 "vpc-1234567890",
+			VPC:                 "vpc-1234567890",
 		},
 	}, true)
 	if err != nil {
