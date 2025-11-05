@@ -28,6 +28,15 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+// FeatureFlagName represents a feature flag affecting the workflows supported
+// by the Go SDK.
+type FeatureFlagName string
+
+const (
+	FeatureFlagAzureSQLDBCopyBackup     FeatureFlagName = "CNP_AZURE_SQL_DB_COPY_BACKUP"
+	FeatureFlagGCPDisableDeleteCombined FeatureFlagName = "CNP_GCP_DISABLE_DELETE_COMBINED"
+)
+
 // FeatureFlag holds the name and state of a single RSC feature flag.
 type FeatureFlag struct {
 	Name    string
@@ -67,7 +76,7 @@ func (a API) FeatureFlags(ctx context.Context) ([]FeatureFlag, error) {
 }
 
 // FeatureFlag returns a specific RSC feature flag.
-func (a API) FeatureFlag(ctx context.Context, name string) (FeatureFlag, error) {
+func (a API) FeatureFlag(ctx context.Context, name FeatureFlagName) (FeatureFlag, error) {
 	a.log.Print(log.Trace)
 
 	flag, err := a.featureFlag(ctx, name)
@@ -92,12 +101,12 @@ type internalFlag struct {
 }
 
 // featureFlag returns the value of a non-unified feature flag.
-func (a API) featureFlag(ctx context.Context, name string) (internalFlag, error) {
+func (a API) featureFlag(ctx context.Context, name FeatureFlagName) (internalFlag, error) {
 	a.log.Print(log.Trace)
 
 	query := featureFlagQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		FlagName string `json:"flagName"`
+		FlagName FeatureFlagName `json:"flagName"`
 	}{FlagName: name})
 	if err != nil {
 		return internalFlag{}, graphql.RequestError(query, err)
@@ -116,12 +125,12 @@ func (a API) featureFlag(ctx context.Context, name string) (internalFlag, error)
 }
 
 // singleUnifiedFeatureFlag returns the value of a unified feature flag.
-func (a API) singleUnifiedFeatureFlag(ctx context.Context, name string) (internalFlag, error) {
+func (a API) singleUnifiedFeatureFlag(ctx context.Context, name FeatureFlagName) (internalFlag, error) {
 	a.log.Print(log.Trace)
 
 	query := singleUnifiedFeatureFlagQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		FlagName string `json:"flagName"`
+		FlagName FeatureFlagName `json:"flagName"`
 	}{FlagName: name})
 	if err != nil {
 		return internalFlag{}, graphql.RequestError(query, err)
