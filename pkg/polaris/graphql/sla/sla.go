@@ -138,6 +138,8 @@ const (
 	ObjectAzureSQLManagedInstance ObjectType = "AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE"
 	ObjectAzureBlob               ObjectType = "AZURE_BLOB_OBJECT_TYPE"
 	ObjectGCP                     ObjectType = "GCP_OBJECT_TYPE"
+	ObjectMicrosoft365            ObjectType = "O365_OBJECT_TYPE"
+	ObjectOkta                    ObjectType = "OKTA_OBJECT_TYPE"
 )
 
 // AllObjectTypesAsStrings returns all SLA object types as a slice of strings.
@@ -152,6 +154,8 @@ func AllObjectTypesAsStrings() []string {
 		string(ObjectAzureSQLManagedInstance),
 		string(ObjectAzureBlob),
 		string(ObjectGCP),
+		string(ObjectMicrosoft365),
+		string(ObjectOkta),
 	}
 }
 
