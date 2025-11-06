@@ -523,6 +523,7 @@ var supportedFeatures = map[string]struct{}{
 	core.FeatureCloudNativeBlobProtection.Name:     {},
 	core.FeatureCloudNativeProtection.Name:         {},
 	core.FeatureExocompute.Name:                    {},
+	core.FeatureServerAndApps.Name:                 {},
 }
 
 // toSubscriptions returns the unique subscriptions found in the rawTenants
