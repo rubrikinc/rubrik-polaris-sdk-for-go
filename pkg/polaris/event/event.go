@@ -18,8 +18,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package event provides high level functions when working with events GQL.
-
+// Package event provides high level interfaces when working with events GQL.
 package event
 
 import (

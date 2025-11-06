@@ -18,9 +18,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package cloudcluster provides a high level interface to the AWS part of the RSC
-// platform.
-
+// Package cloudcluster provides high level functions when adding or managing cloud clusters.
 package cloudcluster
 
 import (
