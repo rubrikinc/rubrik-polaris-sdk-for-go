@@ -285,17 +285,19 @@ type AzureClusterConfig struct {
 
 // AzureVMConfig represents the VM configuration for the Azure Cloud Cluster.
 type AzureVMConfig struct {
-	CDMVersion           string                         `json:"cdmVersion"`
-	Subnet               string                         `json:"subnet"`
-	VMType               VmConfigType                   `json:"vmType"`
-	CDMProduct           string                         `json:"cdmProduct"`
-	Location             azure.CloudAccountRegionEnum   `json:"location"`
-	AvailabilityZone     string                         `json:"availabilityZone"`
-	Vnet                 string                         `json:"vnet"`
-	ResourceGroup        string                         `json:"resourceGroup"`
-	NetworkResourceGroup string                         `json:"networkResourceGroup"`
-	VnetResourceGroup    string                         `json:"vnetResourceGroup"`
-	InstanceType         AzureCCESSupportedInstanceType `json:"instanceType"`
+	CDMVersion                   string                         `json:"cdmVersion"`
+	Subnet                       string                         `json:"subnet"`
+	VMType                       VmConfigType                   `json:"vmType"`
+	CDMProduct                   string                         `json:"cdmProduct"`
+	Location                     azure.Region                   `json:"location"`
+	AvailabilityZone             string                         `json:"availabilityZone"`
+	Vnet                         string                         `json:"vnet"`
+	ResourceGroup                string                         `json:"resourceGroup"`
+	NetworkResourceGroup         string                         `json:"networkResourceGroup"`
+	VnetResourceGroup            string                         `json:"vnetResourceGroup"`
+	InstanceType                 AzureCCESSupportedInstanceType `json:"instanceType"`
+	NetworkSecurityGroup         string                         `json:"networkSecurityGroup"`
+	NetworkSecurityResourceGroup string                         `json:"networkSecurityResourceGroup"`
 }
 
 // CreateAzureClusterInput represents the input for creating an Azure Cloud Cluster.
@@ -334,4 +336,33 @@ func (a API) ValidateCreateAzureClusterInput(ctx context.Context, input CreateAz
 	}
 
 	return nil
+}
+
+// CreateAzureCloudCluster creates an Azure Cloud Cluster.
+func (a API) CreateAzureCloudCluster(ctx context.Context, input CreateAzureClusterInput) (uuid.UUID, error) {
+	query := createAzureCcClusterQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		Input CreateAzureClusterInput `json:"input"`
+	}{Input: input})
+	if err != nil {
+		return uuid.Nil, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				JobID   int    `json:"jobId"`
+				Message string `json:"message"`
+				Success bool   `json:"success"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result.Success {
+		return uuid.Nil, graphql.ResponseError(query, errors.New(payload.Data.Result.Message))
+	}
+
+	return uuid.Nil, nil
 }

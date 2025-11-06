@@ -88,9 +88,9 @@ func main() {
 			ClusterName:      "cces-cluster",
 			UserEmail:        "hello@domain.com",
 			AdminPassword:    "RubrikGoForward!",
-			DnsNameServers:   []string{"169.254.169.253"},
-			DnsSearchDomains: []string{},
-			NtpServers:       []string{"169.254.169.123"},
+			DNSNameServers:   []string{"169.254.169.253"},
+			DNSSearchDomains: []string{},
+			NTPServers:       []string{"169.254.169.123"},
 			NumNodes:         3,
 			AwsEsConfig: gqlcloudcluster.AwsEsConfigInput{
 				BucketName:         "rbrk-cces.do-not-delete",
@@ -102,13 +102,13 @@ func main() {
 		Validations: []gqlcloudcluster.ClusterCreateValidations{
 			gqlcloudcluster.AllChecks,
 		},
-		VmConfig: gqlcloudcluster.AwsVmConfig{
+		VMConfig: gqlcloudcluster.AwsVmConfig{
 			InstanceProfileName: "rubrik-cces-profile",
 			InstanceType:        gqlcloudcluster.AwsInstanceTypeM6I_2XLarge,
 			SecurityGroups:      []string{"sg-1234567890"},
 			Subnet:              "subnet-1234567890",
-			VmType:              gqlcloudcluster.CCVmConfigDense,
-			Vpc:                 "vpc-1234567890",
+			VMType:              gqlcloudcluster.CCVmConfigDense,
+			VPC:                 "vpc-1234567890",
 		},
 	}, true)
 	if err != nil {

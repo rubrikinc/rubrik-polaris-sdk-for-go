@@ -21,6 +21,7 @@
 package azure
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -75,5 +76,81 @@ func TestRegionsForReplication(t *testing.T) {
 	}
 	if region := RegionFromRegionForReplicationEnum("n/a"); region != RegionUnknown {
 		t.Errorf("invalid region: %v", region)
+	}
+}
+
+func TestRegionMarshalJSON(t *testing.T) {
+	tests := []struct {
+		region   Region
+		expected string
+	}{
+		{RegionEastUS, `"eastus"`},
+		{RegionWestUS, `"westus"`},
+		{RegionNorthEurope, `"northeurope"`},
+		{RegionUnknown, `""`},
+	}
+
+	for _, test := range tests {
+		data, err := json.Marshal(test.region)
+		if err != nil {
+			t.Errorf("failed to marshal region %s: %s", test.region, err)
+			continue
+		}
+		if string(data) != test.expected {
+			t.Errorf("marshal region %s: expected %s, got %s", test.region, test.expected, string(data))
+		}
+	}
+}
+
+func TestRegionUnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		native   string
+		expected Region
+	}{
+		{`"eastus"`, RegionEastUS},
+		{`"westus"`, RegionWestUS},
+		{`"northeurope"`, RegionNorthEurope},
+		{`""`, RegionUnknown},
+	}
+
+	for _, test := range tests {
+		var region Region
+		err := json.Unmarshal([]byte(test.native), &region)
+		if err != nil {
+			t.Errorf("failed to unmarshal JSON %s: %s", test.native, err)
+			continue
+		}
+		if region != test.expected {
+			t.Errorf("unmarshal native region %s: expected %s, got %s", test.native, test.expected, region)
+		}
+	}
+}
+
+func TestRegionMarshalUnmarshalRoundTrip(t *testing.T) {
+	regions := []Region{
+		RegionEastUS,
+		RegionWestUS,
+		RegionNorthEurope,
+		RegionAustraliaEast,
+		RegionJapanEast,
+		RegionUnknown,
+	}
+
+	for _, original := range regions {
+		data, err := json.Marshal(original)
+		if err != nil {
+			t.Errorf("failed to marshal region %v: %s", original, err)
+			continue
+		}
+
+		var unmarshaled Region
+		err = json.Unmarshal(data, &unmarshaled)
+		if err != nil {
+			t.Errorf("failed to unmarshal JSON %s: %s", string(data), err)
+			continue
+		}
+		if original != unmarshaled {
+			t.Errorf("round trip failed for region %s: got %s", original, unmarshaled)
+		}
 	}
 }

@@ -1,0 +1,7 @@
+mutation RubrikPolarisSDKRequest($input: CreateAzureClusterInput!) {
+  result: createAzureCluster(input: $input) {
+    message
+    success
+    jobId
+  }
+}

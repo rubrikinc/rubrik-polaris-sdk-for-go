@@ -45,7 +45,7 @@ func Wrap(client *polaris.Client) API {
 	return API{client: client.GQL, log: client.GQL.Log()}
 }
 
-// WrapGQL wraps the GQL client in the aws API.
+// WrapGQL wraps the GQL client in the azure API.
 func WrapGQL(gql *graphql.Client) API {
 	return API{client: gql, log: gql.Log()}
 }
