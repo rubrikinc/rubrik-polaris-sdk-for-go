@@ -219,7 +219,7 @@ func (a API) RemoveProject(ctx context.Context, cloudAccountID uuid.UUID, featur
 		}
 	}
 
-	flag, err := core.Wrap(a.client).FeatureFlag(ctx, "CNP_GCP_DISABLE_DELETE_COMBINED")
+	flag, err := core.Wrap(a.client).FeatureFlag(ctx, core.FeatureFlagGCPDisableDeleteCombined)
 	if err != nil {
 		return fmt.Errorf("failed to get feature flag: %s", err)
 	}
