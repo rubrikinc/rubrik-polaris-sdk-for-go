@@ -18,6 +18,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+// Package exocompute provides high level functions when working with cloud native
+// exocompute configurations.
 package exocompute
 
 import (
