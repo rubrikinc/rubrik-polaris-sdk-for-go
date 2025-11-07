@@ -10,6 +10,7 @@ query RubrikPolarisSDKRequest($feature: CloudAccountFeature!, $projectSearchText
         }
         featureDetail {
             feature
+            roleId
             status
         }
     }

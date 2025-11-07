@@ -22,6 +22,7 @@ package gcp
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -35,6 +36,8 @@ import (
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/option"
 )
+
+const scopes = "https://www.googleapis.com/auth/cloud-platform"
 
 type project struct {
 	NativeID string
@@ -50,7 +53,10 @@ type ProjectFunc func(ctx context.Context) (project, error)
 
 // Credentials returns a ProjectFunc that initializes the project with values
 // from the specified credentials and the cloud using the credentials project
-// id.
+// ID.
+// Note, the entity identified by the credentials passed into this function
+// requires the resourcemanager.projects.get permission to be able to read the
+// project name and project number.
 func Credentials(credentials *google.Credentials) ProjectFunc {
 	return func(ctx context.Context) (project, error) {
 		return gcpProject(ctx, credentials, credentials.ProjectID)
@@ -59,25 +65,100 @@ func Credentials(credentials *google.Credentials) ProjectFunc {
 
 // Default returns a ProjectFunc that initializes the project with values from
 // the default credentials and the cloud using the default credentials project
-// id.
+// ID.
+// Note, the entity identified by the default credentials requires the
+// resourcemanager.projects.get permission to be able to read the project name
+// and project number.
 func Default() ProjectFunc {
 	return func(ctx context.Context) (project, error) {
-		creds, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/cloud-platform")
+		creds, err := google.FindDefaultCredentials(ctx, scopes)
 		if err != nil {
-			return project{}, fmt.Errorf("failed to find the default GCP credentials: %v", err)
+			return project{}, fmt.Errorf("failed to find the default GCP credentials: %s", err)
 		}
 
 		return gcpProject(ctx, creds, creds.ProjectID)
 	}
 }
 
+// Key returns a ProjectFunc that initializes the project with the credentials
+// and project ID from the key. The key can be either a base64 encoded key or
+// the file path to a key.
+func Key(key string) ProjectFunc {
+	return func(ctx context.Context) (project, error) {
+		keyData, textErr := base64.StdEncoding.DecodeString(key)
+		if textErr == nil {
+			var creds *google.Credentials
+			creds, textErr = google.CredentialsFromJSON(ctx, keyData, scopes)
+			if textErr == nil {
+				return project{NativeID: creds.ProjectID, creds: creds}, nil
+			}
+		}
+
+		creds, fileErr := readCredentials(ctx, key)
+		if fileErr != nil {
+			return project{}, fmt.Errorf("credentials are neither a valid base64 encoded key (err: %s) or a path to a file containing a valid key (err: %s)", textErr, fileErr)
+		}
+
+		return project{NativeID: creds.ProjectID, creds: creds}, nil
+	}
+}
+
+// KeyWithProject returns a ProjectFunc that initializes the project with the
+// credentials from the key and the specified project ID. The key can be either
+// a base64 encoded key or the file path to a key.
+func KeyWithProject(key string, projectID string) ProjectFunc {
+	return func(ctx context.Context) (project, error) {
+		keyData, textErr := base64.StdEncoding.DecodeString(key)
+		if textErr == nil {
+			var creds *google.Credentials
+			creds, textErr = google.CredentialsFromJSON(ctx, keyData, scopes)
+			if textErr == nil {
+				return project{NativeID: creds.ProjectID, creds: creds}, nil
+			}
+		}
+
+		creds, fileErr := readCredentials(ctx, key)
+		if fileErr != nil {
+			return project{}, fmt.Errorf("credentials are neither a valid base64 encoded key (err: %s) or a path to a file containing a valid key (err: %s)", textErr, fileErr)
+		}
+
+		return project{NativeID: creds.ProjectID, creds: creds}, nil
+	}
+}
+
+// KeyWithProjectAndNumber returns a ProjectFunc that initializes the project
+// with the credentials from the key and the specified project ID and number.
+// The key can be either a base64 encoded key or the file path to a key.
+func KeyWithProjectAndNumber(key string, projectID string, projectNumber int64) ProjectFunc {
+	return func(ctx context.Context) (project, error) {
+		keyData, textErr := base64.StdEncoding.DecodeString(key)
+		if textErr == nil {
+			var creds *google.Credentials
+			creds, textErr = google.CredentialsFromJSON(ctx, keyData, scopes)
+			if textErr == nil {
+				return project{NativeID: projectID, creds: creds, number: projectNumber}, nil
+			}
+		}
+
+		creds, fileErr := readCredentials(ctx, key)
+		if fileErr != nil {
+			return project{}, fmt.Errorf("credentials are neither a valid base64 encoded key (err: %s) or a path to a file containing a valid key (err: %s)", textErr, fileErr)
+		}
+
+		return project{NativeID: projectID, creds: creds, number: projectNumber}, nil
+	}
+}
+
 // KeyFile returns a ProjectFunc that initializes the project with values from
-// the specified key file and the cloud using the key file project id.
+// the specified key file and the cloud using the key file's project ID.
+// Note, the entity identified by the key file passed into this function
+// requires the resourcemanager.projects.get permission to be able to read the
+// project name and project number.
 func KeyFile(keyFile string) ProjectFunc {
 	return func(ctx context.Context) (project, error) {
 		creds, err := readCredentials(ctx, keyFile)
 		if err != nil {
-			return project{}, fmt.Errorf("failed to read credentials: %v", err)
+			return project{}, fmt.Errorf("failed to read credentials: %s", err)
 		}
 
 		return gcpProject(ctx, creds, creds.ProjectID)
@@ -85,46 +166,62 @@ func KeyFile(keyFile string) ProjectFunc {
 }
 
 // KeyFileWithProject returns a ProjectFunc that initializes the project with
-// values from the specified key file and the cloud using the given project id.
+// values from the specified key file and the cloud using the given project ID.
+// Note, the entity identified by the key file passed into this function
+// requires the resourcemanager.projects.get permission to be able to read the
+// project name and project number.
 func KeyFileWithProject(keyFile, projectID string) ProjectFunc {
 	return func(ctx context.Context) (project, error) {
 		creds, err := readCredentials(ctx, keyFile)
 		if err != nil {
-			return project{}, fmt.Errorf("failed to read credentials: %v", err)
+			return project{}, fmt.Errorf("failed to read credentials: %s", err)
 		}
 
 		return gcpProject(ctx, creds, projectID)
 	}
 }
 
-// Project returns a ProjectFunc that initializes the project with the
-// specified values.
+// Project returns a ProjectFunc that initializes the project with the specified
+// values. The project name is constructed from the project ID. The organization
+// name is left blank.
 func Project(projectID string, projectNumber int64) ProjectFunc {
 	return func(ctx context.Context) (project, error) {
 		name := cases.Title(language.Und).String(strings.ReplaceAll(projectID, "-", " "))
-		return project{NativeID: projectID, number: projectNumber, name: name, orgName: name + " Org"}, nil
+		return project{NativeID: projectID, number: projectNumber, name: name, orgName: ""}, nil
 	}
 }
 
 // readCredentials reads the credentials from the specified key file.
+// File related errors are not propagated since they might contain sensitive
+// information, e.g. an accidentally malformed GCP service account key is passed
+// to the Key function.
 func readCredentials(ctx context.Context, keyFile string) (*google.Credentials, error) {
-	if strings.HasPrefix(keyFile, "~/") {
+	// Expand the ~ token to the user's home directory. This should never fail
+	// unless the shell environment is broken.
+	if homeToken := fmt.Sprintf("~%c", filepath.Separator); strings.HasPrefix(keyFile, homeToken) {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get home dir: %v", err)
+			return nil, fmt.Errorf("failed to get home dir: %s", err)
 		}
-
-		keyFile = filepath.Join(home, strings.TrimPrefix(keyFile, "~/"))
+		keyFile = filepath.Join(home, strings.TrimPrefix(keyFile, homeToken))
 	}
 
+	// Stat the file to determine if it exists, stat doesn't require access
+	// permissions on the file.
+	if info, err := os.Stat(keyFile); err != nil || info.IsDir() {
+		if err == nil {
+			return nil, errors.New("key file is a directory")
+		}
+		return nil, errors.New("key file not found")
+	}
 	buf, err := os.ReadFile(keyFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read key file: %v", err)
+		return nil, errors.New("failed to read key file")
 	}
 
-	creds, err := google.CredentialsFromJSON(ctx, buf, "https://www.googleapis.com/auth/cloud-platform")
+	creds, err := google.CredentialsFromJSON(ctx, buf, scopes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to obtain GCP credentials from key file: %v", err)
+		return nil, fmt.Errorf("failed to obtain GCP credentials from key file: %s", err)
 	}
 
 	return creds, nil
@@ -132,6 +229,9 @@ func readCredentials(ctx context.Context, keyFile string) (*google.Credentials, 
 
 // gcpProject returns a project initialized values from the credentials and the
 // cloud.
+// Note, the entity identified by the credentials passed into this function
+// requires the resourcemanager.projects.get permission to be able to read the
+// project name and project number.
 func gcpProject(ctx context.Context, creds *google.Credentials, id string) (project, error) {
 	if id == "" {
 		return project{}, errors.New("project id cannot be empty")
@@ -139,27 +239,23 @@ func gcpProject(ctx context.Context, creds *google.Credentials, id string) (proj
 
 	client, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(creds))
 	if err != nil {
-		return project{}, fmt.Errorf("failed to create GCP Cloud Resource Manager client: %v", err)
+		return project{}, fmt.Errorf("failed to create GCP Cloud Resource Manager client: %s", err)
 	}
 
 	// Lookup project.
 	proj, err := client.Projects.Get(id).Do()
 	if err != nil {
-		return project{}, fmt.Errorf("failed to get GCP project: %v", err)
+		return project{}, fmt.Errorf("failed to get GCP project: %s", err)
 	}
 
-	// Lookup parent organization.
-	orgName := "<no-organization>"
+	// Try to lookup parent organization's display name, ignoring errors.
+	orgName := ""
 	if proj.Parent != nil {
-		orgName = proj.Parent.Id
 		if proj.Parent.Type == "organization" {
-			org, err := client.Organizations.Get("organizations/" + proj.Parent.Id).Do()
-			if err != nil {
-				return project{}, fmt.Errorf("failed to get GCP project organization: %v", err)
-			}
-
-			if org.DisplayName != "" {
-				orgName = org.DisplayName
+			if org, err := client.Organizations.Get("organizations/" + proj.Parent.Id).Do(); err == nil {
+				if org.DisplayName != "" {
+					orgName = org.DisplayName
+				}
 			}
 		}
 	}

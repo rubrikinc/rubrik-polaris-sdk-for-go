@@ -49,6 +49,7 @@ type CloudAccount struct {
 // Protection.
 type Feature struct {
 	Feature string      `json:"feature"`
+	RoleID  string      `json:"roleId"`
 	Status  core.Status `json:"status"`
 }
 
@@ -237,38 +238,6 @@ func (a API) CloudAccountDeleteProjectV2(ctx context.Context, cloudAccountID uui
 	return jobs, nil
 }
 
-// FeaturePermissionsForCloudAccount list the permissions needed to enable the
-// given RSC cloud account feature.
-func (a API) FeaturePermissionsForCloudAccount(ctx context.Context, feature core.Feature) (permissions []string, err error) {
-	a.log.Print(log.Trace)
-
-	query := allFeaturePermissionsForGcpCloudAccountQuery
-	buf, err := a.GQL.Request(ctx, query, struct {
-		Feature string `json:"feature"`
-	}{Feature: feature.Name})
-	if err != nil {
-		return nil, graphql.RequestError(query, err)
-	}
-
-	var payload struct {
-		Data struct {
-			Permissions []struct {
-				Permission string `json:"permission"`
-			} `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, graphql.UnmarshalError(query, err)
-	}
-
-	permissions = make([]string, 0, len(payload.Data.Permissions))
-	for _, p := range payload.Data.Permissions {
-		permissions = append(permissions, p.Permission)
-	}
-
-	return permissions, nil
-}
-
 // UpgradeCloudAccountPermissionsWithoutOAuth notifies RSC that the permissions
 // for the GCP service account has been updated for the specified RSC cloud
 // account ID and feature.
@@ -300,6 +269,35 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, clo
 	}
 	if !payload.Data.Result.Status.Success {
 		return graphql.ResponseError(query, errors.New(payload.Data.Result.Status.Error))
+	}
+
+	return nil
+}
+
+// SetCloudAccountProperties sets the service account credentials for the
+// specified RSC cloud account.
+func (a API) SetCloudAccountProperties(ctx context.Context, cloudAccountID uuid.UUID, jwtConfig string) error {
+	a.log.Print(log.Trace)
+
+	query := gcpBulkSetCloudAccountPropertiesQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		CloudAccountIDs       []uuid.UUID `json:"cloudAccountIds"`
+		ProjectCredentialsJWT string      `json:"projectCredentialsJwt"`
+	}{CloudAccountIDs: []uuid.UUID{cloudAccountID}, ProjectCredentialsJWT: jwtConfig})
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result bool `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result {
+		return graphql.ResponseError(query, errors.New(""))
 	}
 
 	return nil
