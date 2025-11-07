@@ -66,7 +66,7 @@ func main() {
 	}
 
 	// Fetch single feature flag.
-	featureFlag, err := core.Wrap(client.GQL).FeatureFlag(ctx, "GPS_DASH_V2_ENABLED")
+	featureFlag, err := core.Wrap(client.GQL).FeatureFlag(ctx, core.FeatureFlagGCPDisableDeleteCombined)
 	if err != nil {
 		log.Fatal(err)
 	}
