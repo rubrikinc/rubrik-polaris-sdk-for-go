@@ -25,13 +25,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/google/uuid"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/cloudresourcemanager/v1"
-	"google.golang.org/api/option"
-
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -39,59 +34,6 @@ import (
 
 // Deprecated: use FeaturePermissions instead.
 type Permissions []string
-
-// stringsDiff returns the difference between lhs and rhs, i.e. rhs subtracted
-// from lhs.
-func stringsDiff(lhs, rhs []string) []string {
-	set := make(map[string]struct{})
-	for _, s := range lhs {
-		set[s] = struct{}{}
-	}
-
-	for _, s := range rhs {
-		delete(set, s)
-	}
-
-	diff := make([]string, 0, len(set))
-	for s := range set {
-		diff = append(diff, s)
-	}
-
-	return diff
-}
-
-// checkPermissions checks that the specified credentials have the correct GCP
-// permissions to use the project with the given RSC features
-func (a API) gcpCheckPermissions(ctx context.Context, creds *google.Credentials, projectID string, features []core.Feature) error {
-	a.log.Print(log.Trace)
-
-	perms, err := a.Permissions(ctx, features)
-	if err != nil {
-		return fmt.Errorf("failed to get permissions: %s", err)
-	}
-
-	client, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(creds))
-	if err != nil {
-		return fmt.Errorf("failed to create GCP Cloud Resource Manager client: %s", err)
-	}
-
-	// TestIamPermissions can only test 100 permissions at a time.
-	for i, j := 0, 0; j < len(perms); i += 100 {
-		j = min(i+100, len(perms))
-
-		res, err := client.Projects.TestIamPermissions(projectID,
-			&cloudresourcemanager.TestIamPermissionsRequest{Permissions: perms[i:j]}).Do()
-		if err != nil {
-			return fmt.Errorf("failed to test GCP IAM permissions: %s", err)
-		}
-
-		if missing := stringsDiff(perms[i:j], res.Permissions); len(missing) > 0 {
-			return fmt.Errorf("missing permissions: %s", strings.Join(missing, ","))
-		}
-	}
-
-	return nil
-}
 
 // Deprecated: use FeaturePermissions instead.
 func (a API) Permissions(ctx context.Context, features []core.Feature) (Permissions, error) {
