@@ -1,0 +1,50 @@
+query RubrikPolarisSDKRequest(
+  $after: String
+  $first: Int
+  $sortBy: SlaSourceClustersSortByField
+  $sortOrder: SortOrder
+  $filter: [SlaSourceClustersFilter!]
+  $isArchivalSelected: Boolean
+  $selectedReplication: SlaReplicationConfiguration
+  $slaId: UUID
+) {
+  result: slaSourceClusters(
+    after: $after
+    first: $first
+    sortBy: $sortBy
+    sortOrder: $sortOrder
+    filter: $filter
+    isArchivalSelected: $isArchivalSelected
+    selectedReplication: $selectedReplication
+    slaId: $slaId
+  ) {
+    edges {
+      cursor
+      node {
+        disableReasons
+        hasProtectedObjects
+        cluster {
+          id
+          name
+          version
+          clusterInfo {
+            ... on LocalClusterInfo {
+              isConnected
+            }
+            ... on CrossAccountClusterInfo {
+              isConnected
+            }
+          }
+        }
+      }
+    }
+    pageInfo {
+      startCursor
+      endCursor
+      hasPreviousPage
+      hasNextPage
+    }
+    count
+  }
+}
+
