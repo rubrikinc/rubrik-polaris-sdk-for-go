@@ -186,6 +186,12 @@ type BasicSnapshotSchedule struct {
 	RetentionUnit RetentionUnit `json:"retentionUnit"`
 }
 
+// ReplicationPair holds the source and target cluster IDs for replication.
+type ReplicationPair struct {
+	SourceClusterID string `json:"sourceClusterUuid,omitempty"`
+	TargetClusterID string `json:"targetClusterUuid,omitempty"`
+}
+
 // ReplicationSpec holds the replication specification for an RSC global SLA
 // domain.
 type ReplicationSpec struct {
@@ -197,6 +203,7 @@ type ReplicationSpec struct {
 	AzureSubscription string                         `json:"azureSubscription,omitempty"`
 	AzureRegion       azure.RegionForReplicationEnum `json:"azureRegion,omitempty,omitzero"`
 
+	ReplicationPairs  []ReplicationPair  `json:"replicationPairs,omitempty"`
 	RetentionDuration *RetentionDuration `json:"retentionDuration,omitempty"`
 }
 

@@ -89,6 +89,14 @@ type Domain struct {
 			SubscriptionID string                         `json:"subscriptionId"`
 			Region         azure.RegionForReplicationEnum `json:"region"`
 		} `json:"azureTarget"`
+		ReplicationPairs []struct {
+			SourceCluster struct {
+				ID string `json:"id"`
+			} `json:"sourceCluster"`
+			TargetCluster struct {
+				ID string `json:"id"`
+			} `json:"targetCluster"`
+		} `json:"replicationPairs"`
 
 		RetentionDuration RetentionDuration `json:"retentionDuration"`
 	} `json:"replicationSpecsV2"`
