@@ -227,6 +227,14 @@ var slaDomainsQuery = `query SdkGolangSlaDomains($after: String, $filter: [Globa
                       subscriptionId
                       region
                     }
+                    replicationPairs {
+                      sourceCluster {
+                        id
+                      }
+                      targetCluster {
+                        id
+                      }
+                    }
                     retentionDuration {
                       duration
                       unit
