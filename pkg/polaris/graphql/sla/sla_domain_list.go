@@ -49,6 +49,7 @@ type Domain struct {
 			Name string `json:"name"`
 		} `json:"storageSetting"`
 	} `json:"archivalSpecs"`
+	Archived            bool `json:"isArchived"`
 	BackupLocationSpecs []struct {
 		ArchivalGroup struct {
 			ID string `json:"id"`
@@ -129,6 +130,32 @@ type Domain struct {
 	RetentionLockMode RetentionLockMode `json:"retentionLockMode"`
 	SnapshotSchedule  SnapshotSchedule  `json:"snapshotSchedule"`
 	Version           string            `json:"version"`
+}
+
+// DomainByID returns the global SLA domain with the specified ID.
+func DomainByID(ctx context.Context, gql *graphql.Client, id uuid.UUID) (Domain, error) {
+	gql.Log().Print(log.Trace)
+	query := slaDomainQuery
+	buf, err := gql.Request(ctx, query, struct {
+		ID uuid.UUID `json:"slaDomainId"`
+	}{ID: id})
+	if err != nil {
+		return Domain{}, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result Domain `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return Domain{}, graphql.UnmarshalError(query, err)
+	}
+	if payload.Data.Result.Archived {
+		return Domain{}, graphql.ErrNotFound
+	}
+
+	return payload.Data.Result, nil
 }
 
 // DomainFilter holds the filter parameters for an SLA domain list operation.
