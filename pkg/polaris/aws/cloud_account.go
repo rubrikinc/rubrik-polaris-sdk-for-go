@@ -267,6 +267,8 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 		protectionFeature = aws.S3
 	case feature.Equal(core.FeatureCloudNativeDynamoDBProtection):
 		protectionFeature = aws.DYNAMODB
+	case feature.Equal(core.FeatureKubernetesProtection):
+		protectionFeature = aws.EKS
 	default:
 		return uuid.Nil, fmt.Errorf("feature %s is not a protection feature", feature.Name)
 	}
@@ -288,6 +290,7 @@ var supportedFeatures = map[string]struct{}{
 	core.FeatureOutpost.Name:                       {},
 	core.FeatureRDSProtection.Name:                 {},
 	core.FeatureServerAndApps.Name:                 {},
+	core.FeatureKubernetesProtection.Name:          {},
 }
 
 // toCloudAccount converts a polaris/graphql/aws CloudAccountWithFeatures to a

@@ -69,6 +69,7 @@ const (
 	RDS      ProtectionFeature = "RDS"
 	S3       ProtectionFeature = "S3"
 	DYNAMODB ProtectionFeature = "DYNAMODB"
+	EKS      ProtectionFeature = "EKS"
 )
 
 // API wraps around GraphQL client to give it the RSC AWS API.
