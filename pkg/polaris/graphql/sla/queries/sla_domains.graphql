@@ -84,6 +84,14 @@ query RubrikPolarisSDKRequest($after: String, $filter: [GlobalSlaFilterInput!]) 
                       subscriptionId
                       region
                     }
+                    replicationPairs {
+                      sourceCluster {
+                        id
+                      }
+                      targetCluster {
+                        id
+                      }
+                    }
                     retentionDuration {
                       duration
                       unit
