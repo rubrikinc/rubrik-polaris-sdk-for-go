@@ -239,6 +239,37 @@ var slaDomainsQuery = `query SdkGolangSlaDomains($after: String, $filter: [Globa
                       duration
                       unit
                     }
+                    replicationLocalRetentionDuration {
+                      duration
+                      unit
+                    }
+                    cascadingArchivalSpecs {
+                      archivalThreshold {
+                        duration
+                        unit
+                      }
+                      archivalTieringSpec {
+                        isInstantTieringEnabled
+                        minAccessibleDurationInSeconds
+                        coldStorageClass
+                        shouldTierExistingSnapshots
+                      }
+                      frequency
+                      archivalLocation {
+                        id
+                        name
+                      }
+                      archivalLocationToClusterMapping {
+                        cluster {
+                          id
+                          name
+                        }
+                        location {
+                          id
+                          name
+                        }
+                      }
+                    }
                 }
                 snapshotSchedule {
                     minute {

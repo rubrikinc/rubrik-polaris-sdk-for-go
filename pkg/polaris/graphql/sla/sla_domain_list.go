@@ -98,7 +98,32 @@ type Domain struct {
 			} `json:"targetCluster"`
 		} `json:"replicationPairs"`
 
-		RetentionDuration RetentionDuration `json:"retentionDuration"`
+		RetentionDuration                 RetentionDuration  `json:"retentionDuration"`
+		ReplicationLocalRetentionDuration *RetentionDuration `json:"replicationLocalRetentionDuration"`
+		CascadingArchivalSpecs            []struct {
+			ArchivalThreshold   *RetentionDuration `json:"archivalThreshold"`
+			ArchivalTieringSpec *struct {
+				InstantTiering                 bool             `json:"isInstantTieringEnabled"`
+				MinAccessibleDurationInSeconds int64            `json:"minAccessibleDurationInSeconds"`
+				ColdStorageClass               ColdStorageClass `json:"coldStorageClass"`
+				TierExistingSnapshots          bool             `json:"shouldTierExistingSnapshots"`
+			} `json:"archivalTieringSpec"`
+			Frequencies      []RetentionUnit `json:"frequency"`
+			ArchivalLocation *struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"archivalLocation"`
+			ArchivalLocationToClusterMapping []struct {
+				Cluster struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"cluster"`
+				Location struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"location"`
+			} `json:"archivalLocationToClusterMapping"`
+		} `json:"cascadingArchivalSpecs"`
 	} `json:"replicationSpecsV2"`
 	RetentionLock     bool              `json:"isRetentionLockedSla"`
 	RetentionLockMode RetentionLockMode `json:"retentionLockMode"`
