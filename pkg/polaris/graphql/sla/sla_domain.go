@@ -192,6 +192,46 @@ type ReplicationPair struct {
 	TargetClusterID string `json:"targetClusterUuid,omitempty"`
 }
 
+// ColdStorageClass represents the cold storage class for archival tiering.
+type ColdStorageClass string
+
+const (
+	// ColdStorageClassUnknown represents an unknown cold storage class.
+	ColdStorageClassUnknown ColdStorageClass = "COLD_STORAGE_CLASS_UNKNOWN"
+	// ColdStorageClassAzureArchive represents Azure Archive cold storage tier.
+	ColdStorageClassAzureArchive ColdStorageClass = "AZURE_ARCHIVE"
+	// ColdStorageClassAWSGlacier represents AWS Glacier cold storage class.
+	ColdStorageClassAWSGlacier ColdStorageClass = "AWS_GLACIER"
+	// ColdStorageClassAWSGlacierDeepArchive represents AWS Glacier Deep Archive cold storage class.
+	ColdStorageClassAWSGlacierDeepArchive ColdStorageClass = "AWS_GLACIER_DEEP_ARCHIVE"
+)
+
+// ArchivalTieringSpec holds the archival tiering specification.
+type ArchivalTieringSpec struct {
+	InstantTiering                 bool             `json:"isInstantTieringEnabled,omitempty"`
+	MinAccessibleDurationInSeconds int64            `json:"minAccessibleDurationInSeconds,omitempty"`
+	ColdStorageClass               ColdStorageClass `json:"coldStorageClass,omitempty"`
+	TierExistingSnapshots          bool             `json:"shouldTierExistingSnapshots,omitempty"`
+}
+
+// ArchivalLocationToClusterMapping holds the mapping between archival location
+// and Rubrik cluster.
+type ArchivalLocationToClusterMapping struct {
+	ClusterID  uuid.UUID `json:"clusterUuid"`
+	LocationID uuid.UUID `json:"locationId"`
+}
+
+// CascadingArchivalSpec holds the cascading archival specification for
+// replication.
+type CascadingArchivalSpec struct {
+	// Deprecated: use ArchivalLocationToClusterMappings instead.
+	ArchivalLocationID                *uuid.UUID                         `json:"archivalLocationId,omitempty"`
+	ArchivalThreshold                 *RetentionDuration                 `json:"archivalThreshold,omitempty"`
+	ArchivalTieringSpec               *ArchivalTieringSpec               `json:"archivalTieringSpecInput,omitempty"`
+	Frequencies                       []RetentionUnit                    `json:"frequency,omitempty"`
+	ArchivalLocationToClusterMappings []ArchivalLocationToClusterMapping `json:"archivalLocationToClusterMapping,omitempty"`
+}
+
 // ReplicationSpec holds the replication specification for an RSC global SLA
 // domain.
 type ReplicationSpec struct {
@@ -202,6 +242,9 @@ type ReplicationSpec struct {
 	// AzureSubscription is "SAME" or an Azure subscription id for cross subscription replication.
 	AzureSubscription string                         `json:"azureSubscription,omitempty"`
 	AzureRegion       azure.RegionForReplicationEnum `json:"azureRegion,omitempty,omitzero"`
+
+	ReplicationLocalRetentionDuration *RetentionDuration      `json:"replicationLocalRetentionDuration,omitempty"`
+	CascadingArchivalSpecs            []CascadingArchivalSpec `json:"cascadingArchivalSpecs,omitempty"`
 
 	ReplicationPairs  []ReplicationPair  `json:"replicationPairs,omitempty"`
 	RetentionDuration *RetentionDuration `json:"retentionDuration,omitempty"`
