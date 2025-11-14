@@ -23,6 +23,8 @@ package token
 import (
 	"context"
 	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -140,6 +142,144 @@ func TestLockFile(t *testing.T) {
 	assertFileExist(t, testFile+"-lock")
 	unlock()
 	assertFileNotExist(t, testFile+"-lock")
+}
+
+// TestReadLegacyCFBCache verifies that we can still read cache files encrypted with the old CFB format.
+func TestReadLegacyCFBCache(t *testing.T) {
+	testFile := filepath.Join(t.TempDir(), "test-file-legacy")
+	assertFileNotExist(t, testFile)
+
+	block, err := aes.NewCipher(make([]byte, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a legacy CFB-encrypted cache entry (version 0)
+	testToken, err := fromJWT(dummyToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	iv := make([]byte, aes.BlockSize)
+	if _, err := rand.Read(iv); err != nil {
+		t.Fatal(err)
+	}
+
+	buf := make([]byte, len(testToken.jwtToken.Raw))
+	//lint:ignore SA1019 Creating legacy format for testing backwards compatibility
+	cipher.NewCFBEncrypter(block, iv).XORKeyStream(buf, []byte(testToken.jwtToken.Raw))
+
+	// Write legacy format (version 0 or omitted)
+	entry, err := json.Marshal(cacheEntry{Token: buf, IV: iv, Ver: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(testFile, entry, 0666); err != nil {
+		t.Fatal(err)
+	}
+	assertFileExist(t, testFile)
+
+	// Read the legacy cache entry
+	readToken, err := readCache(testFile, block)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if readToken.jwtToken.Raw != dummyToken {
+		t.Fatalf("wrong token: got %s, want %s", readToken.jwtToken.Raw, dummyToken)
+	}
+}
+
+// TestReadLegacyCFBCacheNoVersion verifies backwards compatibility with cache files that have no version field.
+func TestReadLegacyCFBCacheNoVersion(t *testing.T) {
+	testFile := filepath.Join(t.TempDir(), "test-file-legacy-no-version")
+	assertFileNotExist(t, testFile)
+
+	block, err := aes.NewCipher(make([]byte, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a legacy CFB-encrypted cache entry (no version field)
+	testToken, err := fromJWT(dummyToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	iv := make([]byte, aes.BlockSize)
+	if _, err := rand.Read(iv); err != nil {
+		t.Fatal(err)
+	}
+
+	buf := make([]byte, len(testToken.jwtToken.Raw))
+	//lint:ignore SA1019 Creating legacy format for testing backwards compatibility
+	cipher.NewCFBEncrypter(block, iv).XORKeyStream(buf, []byte(testToken.jwtToken.Raw))
+
+	// Write legacy format without version field (simulates old cache files)
+	entry, err := json.Marshal(struct {
+		Token []byte `json:"token"`
+		IV    []byte `json:"iv"`
+	}{Token: buf, IV: iv})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(testFile, entry, 0666); err != nil {
+		t.Fatal(err)
+	}
+	assertFileExist(t, testFile)
+
+	// Read the legacy cache entry
+	readToken, err := readCache(testFile, block)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if readToken.jwtToken.Raw != dummyToken {
+		t.Fatalf("wrong token: got %s, want %s", readToken.jwtToken.Raw, dummyToken)
+	}
+}
+
+// TestNewCacheUsesGCM verifies that newly written cache files use GCM encryption.
+func TestNewCacheUsesGCM(t *testing.T) {
+	testFile := filepath.Join(t.TempDir(), "test-file-gcm")
+	assertFileNotExist(t, testFile)
+
+	block, err := aes.NewCipher(make([]byte, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Write token using the new writeCache function
+	testToken, err := fromJWT(dummyToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeCache(testFile, testToken, block); err != nil {
+		t.Fatal(err)
+	}
+	assertFileExist(t, testFile)
+
+	// Read the cache file and verify it's version 1 (GCM)
+	buf, err := os.ReadFile(testFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var entry cacheEntry
+	if err := json.Unmarshal(buf, &entry); err != nil {
+		t.Fatal(err)
+	}
+
+	if entry.Ver != 1 {
+		t.Fatalf("expected version 1 (GCM), got version %d", entry.Ver)
+	}
+
+	// Verify we can read it back
+	readToken, err := readCache(testFile, block)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if readToken.jwtToken.Raw != dummyToken {
+		t.Fatalf("wrong token: got %s, want %s", readToken.jwtToken.Raw, dummyToken)
+	}
 }
 
 func assertFileExist(t *testing.T, path string) {
