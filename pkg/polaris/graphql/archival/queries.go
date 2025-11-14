@@ -365,10 +365,17 @@ var targetsQuery = `query SdkGolangTargets($after: String, $filter: [TargetFilte
             id
             cluster {
                 id
+                name
+                status
+                version
+                state {
+                    connectedState
+                }
             }
             name
             targetType
             status
+            isActive
             ... on RubrikManagedAwsTarget {
                 cloudAccount {
                     cloudAccountId
@@ -402,9 +409,47 @@ var targetsQuery = `query SdkGolangTargets($after: String, $filter: [TargetFilte
                 bypassProxy
                 immutabilitySettings {
                     lockDurationDays
+                    isObjectLockEnabled
                 }
                 s3Endpoint
                 kmsEndpoint
+            }
+            ... on RubrikManagedAzureTarget {
+                syncStatus
+                immutabilitySettings {
+                    lockDurationDays
+                }
+            }
+            ... on RubrikManagedGcpTarget {
+                syncStatus
+            }
+            ... on RubrikManagedNfsTarget {
+                syncStatus
+            }
+            ... on RubrikManagedS3CompatibleTarget {
+                syncStatus
+                immutabilitySetting {
+                    bucketLockDurationDays
+                }
+            }
+            ... on RubrikManagedRcsTarget {
+                immutabilityPeriodDays
+                syncStatus
+                tier
+            }
+            ... on RubrikManagedRcvAwsTarget {
+                tier
+            }
+            ... on CdmManagedAwsTarget {
+                storageClass
+                immutabilitySettings {
+                    lockDurationDays
+                }
+            }
+            ... on CdmManagedAzureTarget {
+                immutabilitySettings {
+                    lockDurationDays
+                }
             }
         }
         pageInfo {
