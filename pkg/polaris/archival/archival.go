@@ -81,6 +81,27 @@ func (a API) DeleteTargetMapping(ctx context.Context, targetMappingID uuid.UUID)
 	return nil
 }
 
+// ClusterArchivalLocationByName returns archival locations for a specific
+// cluster and name pattern for data center use case.
+func (a API) ClusterArchivalLocationByName(ctx context.Context, clusterID uuid.UUID, name string) ([]archival.ArchivalLocation, error) {
+	a.log.Print(log.Trace)
+
+	filters := []archival.ListTargetFilter{
+		{Field: "IS_MANAGED_BY_AUTO_AG", TestList: []string{"false"}},
+		{Field: "STATUS", TestList: []string{"READ_WRITE", "PAUSED", "DISABLED"}},
+		{Field: "ARCHIVAL_ENTITY_USE_CASE_TYPE", Text: "DATA_CENTER"},
+		{Field: "CLUSTER_ID", TestList: []string{clusterID.String()}},
+		{Field: "NAME", TestList: []string{name}},
+	}
+
+	locations, err := archival.ListTargets[archival.ArchivalLocation](ctx, a.client, filters)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list archival locations: %s", err)
+	}
+
+	return locations, nil
+}
+
 // waitForTargetStatus wait for the target's status to become the specified
 // status.
 func (a API) waitForTargetStatus(ctx context.Context, targetID uuid.UUID, status string) error {
