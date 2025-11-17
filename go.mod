@@ -1,6 +1,6 @@
 module github.com/rubrikinc/rubrik-polaris-sdk-for-go
 
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8
@@ -14,8 +14,8 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/kr/pretty v0.1.0
 	golang.org/x/oauth2 v0.27.0
-	golang.org/x/sync v0.12.0
-	golang.org/x/text v0.23.0
+	golang.org/x/sync v0.18.0
+	golang.org/x/text v0.31.0
 	google.golang.org/api v0.128.0
 )
 
@@ -43,9 +43,9 @@ require (
 	github.com/kr/text v0.1.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/crypto v0.36.0 // indirect
-	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/crypto v0.44.0 // indirect
+	golang.org/x/net v0.46.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231002182017-d307bd883b97 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231016165738-49dd2c1f3d0b // indirect

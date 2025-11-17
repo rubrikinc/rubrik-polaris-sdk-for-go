@@ -129,9 +129,10 @@ func (c *cache) token(ctx context.Context) (token, error) {
 type cacheEntry struct {
 	Token []byte `json:"token"`
 	IV    []byte `json:"iv"`
+	Ver   int    `json:"ver,omitempty"` // 0 or missing = CFB (legacy), 1 = GCM
 }
 
-// readCache reads a token from the cache.
+// readCache reads a token from the cache, supporting both legacy CFB and new GCM formats.
 func readCache(file string, block cipher.Block) (token, error) {
 	buf, err := os.ReadFile(file)
 	if err != nil {
@@ -142,12 +143,32 @@ func readCache(file string, block cipher.Block) (token, error) {
 	if err := json.Unmarshal(buf, &entry); err != nil {
 		return token{}, fmt.Errorf("failed to unmarshal cache entry: %s", err)
 	}
-	if n := len(entry.IV); n != aes.BlockSize {
-		return token{}, fmt.Errorf("invalid iv size: %d", n)
-	}
-	cipher.NewCFBDecrypter(block, entry.IV).XORKeyStream(entry.Token, entry.Token)
 
-	tok, err := fromJWT(string(entry.Token))
+	var plaintext []byte
+	switch entry.Ver {
+	case 1: // GCM
+		gcm, err := cipher.NewGCM(block)
+		if err != nil {
+			return token{}, fmt.Errorf("failed to create GCM cipher: %s", err)
+		}
+
+		if len(entry.IV) != gcm.NonceSize() {
+			return token{}, fmt.Errorf("invalid nonce size: %d", len(entry.IV))
+		}
+
+		plaintext, err = gcm.Open(nil, entry.IV, entry.Token, nil)
+		if err != nil {
+			return token{}, fmt.Errorf("failed to decrypt token: %s", err)
+		}
+	default: // Version 0 or missing: CFB format (legacy, for backwards compatibility)
+		if n := len(entry.IV); n != aes.BlockSize {
+			return token{}, fmt.Errorf("invalid iv size: %d", n)
+		}
+		plaintext = make([]byte, len(entry.Token))
+		//lint:ignore SA1019 Keeping CFB for backwards compatibility with existing cache files
+		cipher.NewCFBDecrypter(block, entry.IV).XORKeyStream(plaintext, entry.Token)
+	}
+	tok, err := fromJWT(string(plaintext))
 	if err != nil {
 		return token{}, errInvalidToken
 	}
@@ -155,22 +176,34 @@ func readCache(file string, block cipher.Block) (token, error) {
 	return tok, nil
 }
 
-// writeCache writes the specified token to the cache.
+// writeCache writes the specified token to the cache using AES-GCM encryption.
 func writeCache(file string, token token, block cipher.Block) error {
-	iv := make([]byte, aes.BlockSize)
-	if _, err := rand.Read(iv); err != nil {
-		return fmt.Errorf("failed to generate random data for cache entry: %s", err)
+	// Create GCM cipher for authenticated encryption
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return fmt.Errorf("failed to create GCM cipher: %s", err)
 	}
 
-	buf := make([]byte, len(token.jwtToken.Raw))
-	cipher.NewCFBEncrypter(block, iv).XORKeyStream(buf, []byte(token.jwtToken.Raw))
+	// Generate a random nonce
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return fmt.Errorf("failed to generate random nonce for cache entry: %s", err)
+	}
 
-	entry, err := json.Marshal(cacheEntry{Token: buf, IV: iv})
+	// Encrypt the token using GCM (this includes authentication)
+	ciphertext := gcm.Seal(nil, nonce, []byte(token.jwtToken.Raw), nil)
+
+	// Store version 1 (GCM format) with nonce in IV field
+	entry, err := json.Marshal(cacheEntry{
+		Token: ciphertext,
+		IV:    nonce,
+		Ver:   1,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to marshal cache entry: %s", err)
 	}
 
-	if err := os.WriteFile(file, entry, 0666); err != nil {
+	if err := os.WriteFile(file, entry, 0600); err != nil {
 		return fmt.Errorf("failed to write cache entry to cache: %s", err)
 	}
 
