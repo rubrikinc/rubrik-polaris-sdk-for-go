@@ -70,6 +70,9 @@ query RubrikPolarisSDKRequest($after: String, $filter: [GlobalSlaFilterInput!]) 
                     azureSqlManagedInstanceDbConfig {
                         logRetentionInDays
                     }
+                    vmwareVmConfig {
+                        logRetentionSeconds
+                    }
                 }
                 objectTypes
                 retentionLockMode

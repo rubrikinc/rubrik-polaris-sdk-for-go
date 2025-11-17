@@ -213,6 +213,9 @@ var slaDomainsQuery = `query SdkGolangSlaDomains($after: String, $filter: [Globa
                     azureSqlManagedInstanceDbConfig {
                         logRetentionInDays
                     }
+                    vmwareVmConfig {
+                        logRetentionSeconds
+                    }
                 }
                 objectTypes
                 retentionLockMode
