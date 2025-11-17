@@ -69,7 +69,7 @@ type ArchivalLocation struct {
 func (r ArchivalLocation) ListQuery(cursor string, filters []ListTargetFilter) (string, any) {
 	return targetsQuery, struct {
 		After   string             `json:"after,omitempty"`
-		Filters []ListTargetFilter `json:"filters,omitempty"`
+		Filters []ListTargetFilter `json:"filter,omitempty"`
 	}{After: cursor, Filters: filters}
 }
 

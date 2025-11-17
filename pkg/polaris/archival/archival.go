@@ -87,11 +87,11 @@ func (a API) ClusterArchivalLocationByName(ctx context.Context, clusterID uuid.U
 	a.log.Print(log.Trace)
 
 	filters := []archival.ListTargetFilter{
-		{Field: "IS_MANAGED_BY_AUTO_AG", TestList: []string{"false"}},
-		{Field: "STATUS", TestList: []string{"READ_WRITE", "PAUSED", "DISABLED"}},
+		{Field: "IS_MANAGED_BY_AUTO_AG", TextList: []string{"false"}},
+		{Field: "STATUS", TextList: []string{"READ_WRITE", "PAUSED", "DISABLED"}},
 		{Field: "ARCHIVAL_ENTITY_USE_CASE_TYPE", Text: "DATA_CENTER"},
-		{Field: "CLUSTER_ID", TestList: []string{clusterID.String()}},
-		{Field: "NAME", TestList: []string{name}},
+		{Field: "CLUSTER_ID", TextList: []string{clusterID.String()}},
+		{Field: "NAME", Text: name},
 	}
 
 	locations, err := archival.ListTargets[archival.ArchivalLocation](ctx, a.client, filters)
