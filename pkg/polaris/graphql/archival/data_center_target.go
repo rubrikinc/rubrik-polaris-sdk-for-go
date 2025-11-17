@@ -72,8 +72,8 @@ func GetTarget[R GetTargetResult](ctx context.Context, gql *graphql.Client, targ
 //   - LOCATION_ID - The ID of a data center archival location.
 type ListTargetFilter struct {
 	Field    string   `json:"field"`
-	Text     string   `json:"text"`
-	TestList []string `json:"testList,omitempty"`
+	Text     string   `json:"text,omitempty"`
+	TextList []string `json:"textList,omitempty"`
 }
 
 // ListTargetResult holds the result of a target list operation.
