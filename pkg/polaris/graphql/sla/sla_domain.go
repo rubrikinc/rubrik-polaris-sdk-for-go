@@ -94,6 +94,7 @@ type ObjectSpecificConfigs struct {
 	AzureBlobConfig                 *AzureBlobConfig   `json:"azureBlobConfigInput,omitempty"`
 	AzureSQLDatabaseDBConfig        *AzureDBConfig     `json:"azureSqlDatabaseDbConfigInput,omitempty"`
 	AzureSQLManagedInstanceDBConfig *AzureDBConfig     `json:"azureSqlManagedInstanceDbConfigInput,omitempty"`
+	VMwareVMConfig                  *VMwareVMConfig    `json:"vmwareVmConfigInput,omitempty"`
 }
 
 // AWSDynamoDBConfig represents the configuration specific for an AWS DynamoDB
@@ -124,6 +125,12 @@ type AWSRDSConfig struct {
 // object.
 type AzureDBConfig struct {
 	LogRetentionInDays int `json:"logRetentionInDays"`
+}
+
+// VMwareVMConfig represents the configuration specific for a VMware vSphere VM
+// object.
+type VMwareVMConfig struct {
+	LogRetentionSeconds int64 `json:"logRetentionSeconds,omitempty"`
 }
 
 // SnapshotSchedule holds the snapshot schedule for an RSC global SLA domain.

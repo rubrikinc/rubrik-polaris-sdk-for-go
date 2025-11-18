@@ -74,8 +74,9 @@ type Domain struct {
 			AzureBlobConfig
 			BackupLocationName string `json:"backupLocationName"`
 		} `json:"azureBlobConfig"`
-		AzureSQLDatabaseDBConfig        *AzureDBConfig `json:"azureSqlDatabaseDbConfig"`
-		AzureSQLManagedInstanceDBConfig *AzureDBConfig `json:"azureSqlManagedInstanceDbConfig"`
+		AzureSQLDatabaseDBConfig        *AzureDBConfig  `json:"azureSqlDatabaseDbConfig"`
+		AzureSQLManagedInstanceDBConfig *AzureDBConfig  `json:"azureSqlManagedInstanceDbConfig"`
+		VMwareVMConfig                  *VMwareVMConfig `json:"vmwareVmConfig"`
 	} `json:"objectSpecificConfigs"`
 	ObjectTypes      []ObjectType `json:"objectTypes"`
 	ReplicationSpecs []struct {
