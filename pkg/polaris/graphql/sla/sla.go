@@ -129,6 +129,7 @@ func AllMonthsAsStrings() []string {
 type ObjectType string
 
 const (
+	ObjectActiveDirectory         ObjectType = "ACTIVE_DIRECTORY_OBJECT_TYPE"
 	ObjectAWSDynamoDB             ObjectType = "AWS_DYNAMODB_OBJECT_TYPE"
 	ObjectAWSEC2EBS               ObjectType = "AWS_EC2_EBS_OBJECT_TYPE"
 	ObjectAWSRDS                  ObjectType = "AWS_RDS_OBJECT_TYPE"
@@ -137,15 +138,27 @@ const (
 	ObjectAzureSQLDatabase        ObjectType = "AZURE_SQL_DATABASE_OBJECT_TYPE"
 	ObjectAzureSQLManagedInstance ObjectType = "AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE"
 	ObjectAzureBlob               ObjectType = "AZURE_BLOB_OBJECT_TYPE"
+	ObjectExchange                ObjectType = "EXCHANGE_OBJECT_TYPE"
+	ObjectFileset                 ObjectType = "FILESET_OBJECT_TYPE"
 	ObjectGCP                     ObjectType = "GCP_OBJECT_TYPE"
+	ObjectHyperV                  ObjectType = "HYPERV_OBJECT_TYPE"
+	ObjectK8s                     ObjectType = "K8S_OBJECT_TYPE"
+	ObjectManagedVolume           ObjectType = "MANAGED_VOLUME_OBJECT_TYPE"
 	ObjectMicrosoft365            ObjectType = "O365_OBJECT_TYPE"
+	ObjectNAS                     ObjectType = "NAS_OBJECT_TYPE"
+	ObjectNutanix                 ObjectType = "NUTANIX_OBJECT_TYPE"
 	ObjectOkta                    ObjectType = "OKTA_OBJECT_TYPE"
+	ObjectOLVM                    ObjectType = "OLVM_OBJECT_TYPE"
+	ObjectOpenStack               ObjectType = "OPENSTACK_OBJECT_TYPE"
+	ObjectVCD                     ObjectType = "VCD_OBJECT_TYPE"
+	ObjectVolumeGroup             ObjectType = "VOLUME_GROUP_OBJECT_TYPE"
 	ObjectVSphereVM               ObjectType = "VSPHERE_OBJECT_TYPE"
 )
 
 // AllObjectTypesAsStrings returns all SLA object types as a slice of strings.
 func AllObjectTypesAsStrings() []string {
 	return []string{
+		string(ObjectActiveDirectory),
 		string(ObjectAWSDynamoDB),
 		string(ObjectAWSEC2EBS),
 		string(ObjectAWSRDS),
@@ -154,9 +167,20 @@ func AllObjectTypesAsStrings() []string {
 		string(ObjectAzureSQLDatabase),
 		string(ObjectAzureSQLManagedInstance),
 		string(ObjectAzureBlob),
+		string(ObjectExchange),
+		string(ObjectFileset),
 		string(ObjectGCP),
+		string(ObjectHyperV),
+		string(ObjectK8s),
+		string(ObjectManagedVolume),
 		string(ObjectMicrosoft365),
+		string(ObjectNAS),
+		string(ObjectNutanix),
 		string(ObjectOkta),
+		string(ObjectOLVM),
+		string(ObjectOpenStack),
+		string(ObjectVCD),
+		string(ObjectVolumeGroup),
 		string(ObjectVSphereVM),
 	}
 }
