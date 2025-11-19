@@ -48,6 +48,16 @@ type Domain struct {
 			ID   string `json:"id"`
 			Name string `json:"name"`
 		} `json:"storageSetting"`
+		ArchivalLocationToClusterMapping []struct {
+			Cluster struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"cluster"`
+			Location struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"location"`
+		} `json:"archivalLocationToClusterMapping"`
 	} `json:"archivalSpecs"`
 	BackupLocationSpecs []struct {
 		ArchivalGroup struct {

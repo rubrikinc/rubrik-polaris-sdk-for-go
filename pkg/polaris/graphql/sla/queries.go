@@ -153,6 +153,16 @@ var slaDomainsQuery = `query SdkGolangSlaDomains($after: String, $filter: [Globa
                         id
                         name
                     }
+                    archivalLocationToClusterMapping {
+                        cluster {
+                            id
+                            name
+                        }
+                        location {
+                            id
+                            name
+                        }
+                    }
                 }
                 backupLocationSpecs {
                     archivalGroup {

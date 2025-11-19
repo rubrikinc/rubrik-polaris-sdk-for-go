@@ -55,10 +55,11 @@ type CreateDomainParams struct {
 
 // ArchivalSpec holds the archival specification for an RSC global SLA domain.
 type ArchivalSpec struct {
-	GroupID       uuid.UUID       `json:"archivalGroupId"`
-	Frequencies   []RetentionUnit `json:"frequencies"`
-	Threshold     int             `json:"threshold"`
-	ThresholdUnit RetentionUnit   `json:"thresholdUnit"`
+	GroupID                          uuid.UUID                          `json:"archivalGroupId,omitzero"`
+	Frequencies                      []RetentionUnit                    `json:"frequencies"`
+	Threshold                        int                                `json:"threshold"`
+	ThresholdUnit                    RetentionUnit                      `json:"thresholdUnit"`
+	ArchivalLocationToClusterMapping []ArchivalLocationToClusterMapping `json:"archivalLocationToClusterMapping,omitempty"`
 }
 
 // BackupLocationSpec holds the backup location specification for an RSC global

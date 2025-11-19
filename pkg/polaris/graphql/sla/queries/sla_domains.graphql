@@ -10,6 +10,16 @@ query RubrikPolarisSDKRequest($after: String, $filter: [GlobalSlaFilterInput!]) 
                         id
                         name
                     }
+                    archivalLocationToClusterMapping {
+                        cluster {
+                            id
+                            name
+                        }
+                        location {
+                            id
+                            name
+                        }
+                    }
                 }
                 backupLocationSpecs {
                     archivalGroup {
