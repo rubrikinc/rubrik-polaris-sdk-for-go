@@ -99,6 +99,19 @@ func (a API) ProjectByNativeID(ctx context.Context, nativeID string) (CloudAccou
 	return CloudAccount{}, fmt.Errorf("project %q %w", nativeID, graphql.ErrNotFound)
 }
 
+// ProjectByNativeCloudAccountID returns the project with the specified RSC
+// native cloud account ID.
+func (a API) ProjectByNativeCloudAccountID(ctx context.Context, nativeCloudAccountID uuid.UUID) (CloudAccount, error) {
+	a.log.Print(log.Trace)
+
+	native, err := a.NativeProjectByID(ctx, nativeCloudAccountID)
+	if err != nil {
+		return CloudAccount{}, err
+	}
+
+	return a.ProjectByID(ctx, native.CloudAccountID)
+}
+
 // ProjectByProjectNumber returns the project with the specified GCP project
 // number.
 func (a API) ProjectByProjectNumber(ctx context.Context, projectNumber int64) (CloudAccount, error) {

@@ -48,6 +48,23 @@ const (
 	TagObjectAzureVirtualMachine           CloudNativeTagObjectType = "AZURE_VIRTUAL_MACHINE"
 )
 
+// AllCloudNativeTagObjectTypes returns all cloud native tag object types.
+func AllCloudNativeTagObjectTypes() []CloudNativeTagObjectType {
+	return []CloudNativeTagObjectType{
+		TagObjectAWSEBSVolume,
+		TagObjectAWSEC2Instance,
+		TagObjectAWSRDSInstance,
+		TagObjectAWSDynamoDBTable,
+		TagObjectAWSS3Bucket,
+		TagObjectAzureManagedDisk,
+		TagObjectAzureSQLDatabaseDB,
+		TagObjectAzureSQLDatabaseServer,
+		TagObjectAzureSQLManagedInstanceServer,
+		TagObjectAzureStorageAccount,
+		TagObjectAzureVirtualMachine,
+	}
+}
+
 // AllCloudNativeTagObjectTypesAsStrings returns all cloud native tag object
 // types as a slice of strings.
 func AllCloudNativeTagObjectTypesAsStrings() []string {
@@ -151,7 +168,7 @@ type TagRuleFilter struct {
 
 // ListTagRules returns all RSC tag rules of the specified object type matching
 // the specified tag rule filters.
-func ListTagRules(ctx context.Context, gql *graphql.Client, objectType string, filters []TagRuleFilter) ([]TagRule, error) {
+func ListTagRules(ctx context.Context, gql *graphql.Client, objectType CloudNativeTagObjectType, filters []TagRuleFilter) ([]TagRule, error) {
 	gql.Log().Print(log.Trace)
 
 	// Skip retries when listing tag rules since some object types can result
@@ -159,8 +176,8 @@ func ListTagRules(ctx context.Context, gql *graphql.Client, objectType string, f
 	// succeed.
 	query := cloudNativeTagRulesQuery
 	buf, err := gql.RequestWithoutRetry(ctx, query, struct {
-		ObjectType string          `json:"objectType"`
-		Filters    []TagRuleFilter `json:"filters,omitempty"`
+		ObjectType CloudNativeTagObjectType `json:"objectType"`
+		Filters    []TagRuleFilter          `json:"filters,omitempty"`
 	}{ObjectType: objectType, Filters: filters})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
@@ -189,7 +206,8 @@ type CreateTagRuleParams struct {
 	AllCloudAccounts bool                     `json:"applyToAllCloudAccounts,omitempty"`
 }
 
-// TagRuleCloudAccounts holds the cloud accounts for a tag rule.
+// TagRuleCloudAccounts holds the cloud accounts for a tag rule. Note, the IDs
+// are Native Cloud Account IDs and not regular Cloud Account IDs.
 type TagRuleCloudAccounts struct {
 	AWSAccountIDs        []uuid.UUID `json:"awsNativeAccountIds,omitempty"`
 	AzureSubscriptionIDs []uuid.UUID `json:"azureNativeSubscriptionIds,omitempty"`

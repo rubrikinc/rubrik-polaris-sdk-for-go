@@ -202,6 +202,7 @@ var gcpNativeProjectsQuery = `query SdkGolangGcpNativeProjects($after: String, $
         edges {
             node {
                 id
+                cloudAccountId
                 name
                 nativeId
                 nativeName

@@ -207,6 +207,19 @@ func (a API) SubscriptionByNativeID(ctx context.Context, nativeID uuid.UUID) (Cl
 	return CloudAccount{}, fmt.Errorf("subscription %q %w", nativeID, graphql.ErrNotFound)
 }
 
+// SubscriptionByNativeCloudAccountID returns the subscription with the
+// specified native cloud account ID.
+func (a API) SubscriptionByNativeCloudAccountID(ctx context.Context, nativeCloudAccountID uuid.UUID) (CloudAccount, error) {
+	a.log.Print(log.Trace)
+
+	native, err := a.NativeSubscriptionByID(ctx, nativeCloudAccountID)
+	if err != nil {
+		return CloudAccount{}, err
+	}
+
+	return a.SubscriptionByID(ctx, native.CloudAccountID)
+}
+
 // SubscriptionByName returns the subscription with the specified name. Tenant
 // domain is optional and ignored if an empty string is passed in.
 func (a API) SubscriptionByName(ctx context.Context, name, tenantDomain string) (CloudAccount, error) {
