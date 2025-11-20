@@ -30,8 +30,9 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// NativeAccountByID returns the native account with the specified RSC native
-// cloud account ID.
+// NativeAccountByID returns the native account with the specified RSC cloud
+// account ID. Note, AWS uses the same ID for both cloud accounts and native
+// cloud accounts.
 func (a API) NativeAccountByID(ctx context.Context, cloudAccountID uuid.UUID) (aws.NativeAccount, error) {
 	a.log.Print(log.Trace)
 
