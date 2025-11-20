@@ -34,21 +34,6 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// TagRuleObjectTypes holds the valid object types for tag rules.
-var tagRuleObjectTypes = []string{
-	"AWS_S3_BUCKET",
-	"AWS_EBS_VOLUME",
-	"AZURE_VIRTUAL_MACHINE",
-	"AZURE_STORAGE_ACCOUNT",
-	"AZURE_SQL_DATABASE_DB",
-	"AZURE_SQL_DATABASE_SERVER",
-	"AWS_RDS_INSTANCE",
-	"AZURE_MANAGED_DISK",
-	"AZURE_SQL_MANAGED_INSTANCE_SERVER",
-	"AWS_EC2_INSTANCE",
-	"AWS_DYNAMODB_TABLE",
-}
-
 // TagRuleByID returns the tag rule with the specified ID.
 func (a API) TagRuleByID(ctx context.Context, tagRuleID uuid.UUID) (sla.TagRule, error) {
 	a.log.Print(log.Trace)
@@ -87,6 +72,8 @@ func (a API) TagRuleByName(ctx context.Context, name string) (sla.TagRule, error
 }
 
 // TagRules returns all tag rules matching the specified name filter.
+// Note, object types the service account doesn't have permissions to access
+// are silently ignored.
 func (a API) TagRules(ctx context.Context, nameFilter string) ([]sla.TagRule, error) {
 	a.log.Print(log.Trace)
 
@@ -98,11 +85,8 @@ func (a API) TagRules(ctx context.Context, nameFilter string) ([]sla.TagRule, er
 		})
 	}
 
-	// List tag rules for all object types. Note, if a customer account doesn't
-	// have access to one of the object types, a GQL error with status code 403
-	// is returned. Ignore those object types.
 	var tagRules []sla.TagRule
-	for _, objectType := range tagRuleObjectTypes {
+	for _, objectType := range sla.AllCloudNativeTagObjectTypes() {
 		objectTypeTagRules, err := sla.ListTagRules(ctx, a.client, objectType, filter)
 		if err != nil {
 			var gqlErr graphql.GQLError
