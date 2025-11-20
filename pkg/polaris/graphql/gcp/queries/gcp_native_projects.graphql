@@ -4,6 +4,7 @@ query RubrikPolarisSDKRequest($after: String, $filter: String!) {
         edges {
             node {
                 id
+                cloudAccountId
                 name
                 nativeId
                 nativeName

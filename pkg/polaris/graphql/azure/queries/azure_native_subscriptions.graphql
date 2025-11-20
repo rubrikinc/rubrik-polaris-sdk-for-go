@@ -8,6 +8,7 @@ query RubrikPolarisSDKRequest($after: String, $filter: String!) {
         edges {
             node {
                 id
+                accountConnectionId
                 azureSubscriptionNativeId
                 name
                 azureSubscriptionStatus

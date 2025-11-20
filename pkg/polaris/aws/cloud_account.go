@@ -266,7 +266,7 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 	case feature.Equal(core.FeatureCloudNativeS3Protection):
 		protectionFeature = aws.S3
 	case feature.Equal(core.FeatureCloudNativeDynamoDBProtection):
-		protectionFeature = aws.DYNAMODB
+		protectionFeature = aws.DynamoDB
 	case feature.Equal(core.FeatureKubernetesProtection):
 		protectionFeature = aws.EKS
 	default:
