@@ -142,8 +142,21 @@ var awsNativeAccountQuery = `query SdkGolangAwsNativeAccount($awsNativeAccountRu
 }`
 
 // awsNativeAccounts GraphQL query
-var awsNativeAccountsQuery = `query SdkGolangAwsNativeAccounts($after: String, $awsNativeProtectionFeature: AwsNativeProtectionFeature!, $filter: String!) {
-	awsNativeAccounts(after: $after, awsNativeProtectionFeature: $awsNativeProtectionFeature, accountFilters: {nameSubstringFilter: {nameSubstring: $filter}}) {
+var awsNativeAccountsQuery = `query SdkGolangAwsNativeAccounts(
+    $after:                       String,
+    $awsNativeProtectionFeature:  AwsNativeProtectionFeature!,
+    $awsNativeProtectionFeatures: AwsNativeProtectionFeatures!,
+    $filter:                      String!,
+) {
+	awsNativeAccounts(
+	    after:                       $after,
+	    awsNativeProtectionFeature:  $awsNativeProtectionFeature,
+	    awsNativeProtectionFeatures: $awsNativeProtectionFeatures,
+	    accountFilters: {
+	    nameSubstringFilter: {
+	        nameSubstring: $filter
+	    }
+	}) {
 		count
 		edges {
 			node {
