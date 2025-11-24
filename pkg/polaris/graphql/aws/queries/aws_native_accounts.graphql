@@ -1,7 +1,7 @@
 query RubrikPolarisSDKRequest(
     $after:                       String,
     $awsNativeProtectionFeature:  AwsNativeProtectionFeature!,
-    $awsNativeProtectionFeatures: AwsNativeProtectionFeatures!,
+    $awsNativeProtectionFeatures: [AwsNativeProtectionFeature!],
     $filter:                      String!,
 ) {
 	awsNativeAccounts(

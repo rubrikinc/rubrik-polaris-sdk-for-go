@@ -145,7 +145,7 @@ var awsNativeAccountQuery = `query SdkGolangAwsNativeAccount($awsNativeAccountRu
 var awsNativeAccountsQuery = `query SdkGolangAwsNativeAccounts(
     $after:                       String,
     $awsNativeProtectionFeature:  AwsNativeProtectionFeature!,
-    $awsNativeProtectionFeatures: AwsNativeProtectionFeatures!,
+    $awsNativeProtectionFeatures: [AwsNativeProtectionFeature!],
     $filter:                      String!,
 ) {
 	awsNativeAccounts(
