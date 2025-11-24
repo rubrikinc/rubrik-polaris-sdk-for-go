@@ -66,7 +66,7 @@ While not strictly required, internal types and functions should also be documen
 - `ARN` not `Arn`
 - `EKS` not `Eks`
 - `RDS` not `Rds`
-- `S3` not `S3` (already correct)
+- `S3` not `s3`
 - `EC2` not `Ec2`
 
 **Examples**:
