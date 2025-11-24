@@ -6,6 +6,35 @@ This document defines the standards and workflow for working with GraphQL querie
 
 **Rule**: All GraphQL queries MUST use the standard query name `RubrikPolarisSDKRequest` and MUST alias the result to `result`.
 
+**Important**: GraphQL files use the API's field capitalization (e.g., `Id` in GraphQL, but `ID` in Go code). This is expected and correct.
+
+## Input Type Handling
+
+**Rule**: ALWAYS extrapolate input fields as individual parameters instead of using complex input types. This avoids generating unnecessary Go types and keeps the API simpler.
+
+✅ **Correct** - Extrapolate fields:
+```graphql
+mutation RubrikPolarisSDKRequest($cloudAccountId: String!, $name: String!) {
+  result: updateAwsCloudAccount(input: {
+    cloudAccountId: $cloudAccountId,
+    name: $name,
+  }) {
+    id
+    status
+  }
+}
+```
+
+❌ **Incorrect** - Using complex input type:
+```graphql
+mutation RubrikPolarisSDKRequest($input: UpdateAwsCloudAccountInput!) {
+  result: updateAwsCloudAccount(input: $input) {
+    id
+    status
+  }
+}
+```
+
 ### Query Structure
 
 Every GraphQL query file (`.graphql`) must follow this pattern:
@@ -14,6 +43,25 @@ Every GraphQL query file (`.graphql`) must follow this pattern:
 query RubrikPolarisSDKRequest($param1: Type1, $param2: Type2) {
   result: actualGraphQLOperation(
     input: { param1: $param1, param2: $param2 }
+  ) {
+    field1
+    field2
+  }
+}
+```
+
+For queries with many parameters or long parameter names, break lines for readability:
+
+```graphql
+query RubrikPolarisSDKRequest(
+  $veryLongParameterName: String!
+  $anotherLongParameter: UUID!
+) {
+  result: someOperation(
+    input: {
+      param1: $veryLongParameterName,
+      param2: $anotherLongParameter,
+    }
   ) {
     field1
     field2

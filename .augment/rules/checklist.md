@@ -1,3 +1,7 @@
+---
+type: "always_apply"
+---
+
 # Code Review Checklist
 
 Use this checklist when reviewing or writing code for the Rubrik Polaris SDK for Go.
@@ -22,6 +26,7 @@ Use this checklist when reviewing or writing code for the Rubrik Polaris SDK for
 
 - [ ] Query uses `query RubrikPolarisSDKRequest` as the query name
 - [ ] Query result is aliased to `result`
+- [ ] Input fields are extrapolated as individual parameters (not using complex input types)
 - [ ] Query is in a `.graphql` file in the appropriate `queries/` subdirectory
 - [ ] `go generate ./...` has been run after adding/modifying `.graphql` files
 - [ ] No manual edits to generated `queries.go` files
@@ -50,6 +55,7 @@ Use this checklist when reviewing or writing code for the Rubrik Polaris SDK for
 - [ ] Tests follow existing patterns in the codebase
 - [ ] Tests use meaningful names
 - [ ] Tests cover error cases
+- [ ] Table-driven tests are preferred when not too complex
 
 ## Examples by Category
 

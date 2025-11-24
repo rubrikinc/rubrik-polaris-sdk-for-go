@@ -66,6 +66,7 @@ type AWSCloudAccount struct {
 #### Query Structure
 - [ ] Query uses `query RubrikPolarisSDKRequest` or `mutation RubrikPolarisSDKRequest`
 - [ ] Query result is aliased to `result:`
+- [ ] Input fields are extrapolated as individual parameters (not using complex input types)
 - [ ] Query is in a `.graphql` file in the appropriate `queries/` subdirectory
 - [ ] Generated `queries.go` file has been updated (run `go generate ./...`)
 - [ ] No manual edits to generated `queries.go` files
@@ -73,6 +74,7 @@ type AWSCloudAccount struct {
 **Common Issues**:
 - Custom query names instead of `RubrikPolarisSDKRequest`
 - Missing `result:` alias
+- Using complex input types instead of extrapolating fields
 - Manually editing generated files
 - Forgetting to run `go generate ./...`
 
@@ -86,6 +88,19 @@ query GetAwsAccounts($id: String!) {
 ✅ Should be:
 query RubrikPolarisSDKRequest($id: String!) {
   result: allAwsCloudAccounts(id: $id) { ... }
+}
+
+❌ Using complex input type:
+mutation RubrikPolarisSDKRequest($input: UpdateAwsCloudAccountInput!) {
+  result: updateAwsCloudAccount(input: $input) { ... }
+}
+
+✅ Should extrapolate fields:
+mutation RubrikPolarisSDKRequest($cloudAccountId: String!, $name: String!) {
+  result: updateAwsCloudAccount(input: {
+    cloudAccountId: $cloudAccountId,
+    name: $name,
+  }) { ... }
 }
 
 Note: After adding/modifying .graphql files, run `go generate ./...` from the repository root.
@@ -125,19 +140,24 @@ func AddExocompute(ctx context.Context, region aws.Region) error {
 
 #### Error Handling
 - [ ] All errors are handled explicitly (no ignored errors)
-- [ ] Errors are wrapped with context using `fmt.Errorf("...: %w", err)`
+- [ ] Errors are wrapped appropriately (see guidance below)
 - [ ] Error messages are descriptive and helpful
 - [ ] Error messages start with lowercase (Go convention)
+
+**Error Wrapping Guidance**:
+- Use `%w` when the caller needs to take action on the specific error type (e.g., `graphql.ErrNotFound`, transient errors)
+- Use `%s` when the error is an implementation detail and wrapping would create unnecessary coupling between caller and implementation
+- When in doubt, prefer `%s` to avoid exposing implementation details as part of the interface
 
 **Example Feedback**:
 ```
 ❌ Ignored error:
 data, _ := json.Marshal(obj)
 
-✅ Should handle error:
+✅ Should handle error and hide implementation details:
 data, err := json.Marshal(obj)
 if err != nil {
-    return fmt.Errorf("failed to marshal object: %w", err)
+    return fmt.Errorf("failed to marshal object: %s", err)
 }
 ```
 
@@ -160,6 +180,7 @@ if err != nil {
 - [ ] Tests use meaningful names (e.g., `TestFunctionName_Scenario`)
 - [ ] Tests cover error cases
 - [ ] Tests are deterministic (no flaky tests)
+- [ ] Table-driven tests are preferred when they can be implemented without too much complexity
 
 **Example Feedback**:
 ```
@@ -168,9 +189,20 @@ Please add tests for the new AddExocompute function. Consider testing:
 - Invalid region handling
 - Error cases (e.g., invalid cloud account ID)
 
-Example test structure:
-func TestAddExocompute_Success(t *testing.T) { ... }
-func TestAddExocompute_InvalidRegion(t *testing.T) { ... }
+Example test structure (table-driven preferred):
+func TestAddExocompute(t *testing.T) {
+    tests := []struct {
+        name    string
+        config  ExocomputeConfig
+        wantErr bool
+    }{
+        {"success", validConfig, false},
+        {"invalid region", invalidRegionConfig, true},
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) { ... })
+    }
+}
 ```
 
 ### 6. Generated Files

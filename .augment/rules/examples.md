@@ -81,23 +81,23 @@ type AWSCloudAccountConfig struct {
 }
 
 // Function with proper acronym capitalization
-func (a API) GetAWSAccountByID(ctx context.Context, id uuid.UUID) (*AWSAccount, error) {
+func (a API) GetAWSAccountByID(ctx context.Context, cloudAccountID uuid.UUID) (*AWSAccount, error) {
     // implementation
 }
 
-// Constants with proper acronym capitalization
+// Constants with proper acronym capitalization (type prefix pattern)
 const (
-    AWSEC2Feature  = "EC2"
-    AWSRDSFeature  = "RDS"
-    AWSS3Feature   = "S3"
-    AWSEKSFeature  = "EKS"
+    AWSFeatureEC2  = "EC2"
+    AWSFeatureRDS  = "RDS"
+    AWSFeatureS3   = "S3"
+    AWSFeatureEKS  = "EKS"
 )
 
 // CDM-related types
 type CDMCluster struct {
     ID      uuid.UUID
-    CDMURL  string
-    CDMVersion string
+    URL     string
+    Version string
 }
 ```
 
@@ -180,9 +180,25 @@ query RubrikPolarisSDKRequest(
 }
 ```
 
-### ✅ Correct: Mutation with Standard Name
+### ✅ Correct: Mutation with Extrapolated Input Fields
 
 **File**: `pkg/polaris/graphql/aws/queries/update_cloud_account.graphql`
+
+```graphql
+mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $name: String!) {
+  result: updateAwsCloudAccount(input: {
+    cloudAccountId: $cloudAccountId,
+    name: $name,
+  }) {
+    id
+    status
+  }
+}
+```
+
+**Note**: Always extrapolate input fields as individual parameters instead of using complex input types. This avoids generating unnecessary Go types and keeps the API simpler.
+
+### ❌ Incorrect: Using Complex Input Type
 
 ```graphql
 mutation RubrikPolarisSDKRequest($input: UpdateAwsCloudAccountInput!) {
@@ -192,6 +208,8 @@ mutation RubrikPolarisSDKRequest($input: UpdateAwsCloudAccountInput!) {
   }
 }
 ```
+
+**Why this is wrong**: Using complex input types generates unnecessary Go types and makes the API more complex.
 
 ### ❌ Incorrect: Custom Query Name
 
@@ -360,12 +378,9 @@ func (a API) AddExocompute(ctx context.Context, config ExocomputeConfig) error {
         config.SubnetIDs,
     )
     if err != nil {
-        return fmt.Errorf("failed to add exocompute: %w", err)
+        return fmt.Errorf("failed to add exocompute: %s", err)
     }
     
     return nil
 }
 ```
-
-This examples file provides clear, comprehensive examples that Augment can use as reference when generating or reviewing code.
-

@@ -10,7 +10,7 @@ This document defines the coding standards and conventions for the Rubrik Polari
 
 **Format**:
 - Documentation comments should start with the name of the item being documented
-- Use complete sentences with proper punctuation
+- Use complete sentences with proper punctuation (periods, commas, etc.)
 - For complex types or functions, provide usage examples when appropriate
 
 **Examples**:
@@ -110,6 +110,7 @@ func (a API) GetAwsAccount(ctx context.Context, id uuid.UUID) (*AwsAccount, erro
 ## General Go Conventions
 
 - Follow standard Go formatting (use `gofmt` or `goimports`)
+- Package names should be short and all lowercase (no underscores or mixed caps)
 - Use meaningful variable and function names
 - Keep functions focused and single-purpose
 - Handle errors explicitly; never ignore errors

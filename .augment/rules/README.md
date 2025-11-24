@@ -24,14 +24,17 @@ Defines general coding conventions including:
 
 Defines standards for working with GraphQL queries:
 - **Query Naming**: All queries must use `query RubrikPolarisSDKRequest` with result aliased to `result`
+- **Input Handling**: Always extrapolate input fields as individual parameters (not using complex input types)
 - **Code Generation**: Queries are auto-generated from `.graphql` files using `go generate ./...`
 - **Never manually edit** `queries.go` files
 
 **Key Rules**:
 - ✅ Create/edit `.graphql` files in `queries/` subdirectories
+- ✅ Extrapolate input fields as individual parameters
 - ✅ Run `go generate ./...` from repository root after changes
 - ❌ Never manually edit generated `queries.go` files
 - ❌ Never manually create query variables in Go code
+- ❌ Never use complex input types (e.g., `$input: UpdateAwsCloudAccountInput!`)
 
 **Example**:
 ```graphql
@@ -113,8 +116,11 @@ Comprehensive guide for Augment AI to act as a code reviewer:
    - `github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws`
    - `github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure`
    - `github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/gcp`
-2. Use region constants or parse from strings using `RegionFromName()` or `RegionFromAny()`
-3. Convert to GraphQL enums using `.ToRegionEnum()`, `.ToNativeRegionEnum()`, etc.
+2. Use region constants or parse from strings using `RegionFromName()` (e.g., "us-east-2")
+3. Convert to the appropriate GraphQL enum type using the correct conversion function:
+   - **AWS**: `.ToRegionEnum()` for `AwsRegion`, `.ToNativeRegionEnum()` for `AwsNativeRegion`
+   - **Azure**: `.ToRegionEnum()` for `AzureRegion`, `.ToCloudAccountRegionEnum()` for `AzureCloudAccountRegion`, `.ToNativeRegionEnum()` for `AzureNativeRegion`
+   - **GCP**: `.ToRegionEnum()` for `GcpRegion`
 
 ## Common Patterns
 
@@ -135,19 +141,91 @@ func (t TypeName) MethodName(ctx context.Context) error {
 
 ### Region Handling Pattern
 
+#### AWS Region Examples
+
 ```go
 import (
     "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
 
-// Parse region from user input
-region := aws.RegionFromAny(userInput)
+// Parse region from user input (e.g., "us-east-2")
+region := aws.RegionFromName(userInput)
 if region == aws.RegionUnknown {
     return fmt.Errorf("invalid region: %s", userInput)
 }
 
-// Use in function
-err := someFunction(ctx, region.ToRegionEnum())
+// Example 1: Convert to AwsRegion enum (most common)
+regionEnum := region.ToRegionEnum()
+err := addExocompute(ctx, cloudAccountID, regionEnum, vpcID)
+
+// Example 2: Convert to AwsNativeRegion enum (for native protection)
+nativeRegionEnum := region.ToNativeRegionEnum()
+err := enableNativeProtection(ctx, cloudAccountID, nativeRegionEnum)
+
+// Example 3: Using region constants directly
+region := aws.RegionUsEast1
+regionEnum := region.ToRegionEnum()
+
+// Example 4: Get region information
+name := region.Name()                    // "us-east-1"
+displayName := region.DisplayName()      // "US East (N. Virginia)"
+```
+
+#### Azure Region Examples
+
+```go
+import (
+    "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
+)
+
+// Parse region from user input (e.g., "eastus")
+region := azure.RegionFromName(userInput)
+if region == azure.RegionUnknown {
+    return fmt.Errorf("invalid region: %s", userInput)
+}
+
+// Example 1: Convert to AzureRegion enum (most common)
+regionEnum := region.ToRegionEnum()
+err := addExocompute(ctx, subscriptionID, regionEnum)
+
+// Example 2: Convert to AzureCloudAccountRegion enum (for cloud account operations)
+cloudAccountRegionEnum := region.ToCloudAccountRegionEnum()
+err := updateCloudAccount(ctx, cloudAccountID, cloudAccountRegionEnum)
+
+// Example 3: Convert to AzureNativeRegion enum (for native protection)
+nativeRegionEnum := region.ToNativeRegionEnum()
+err := enableNativeProtection(ctx, subscriptionID, nativeRegionEnum)
+
+// Example 4: Get region information
+name := region.Name()                         // "eastus"
+displayName := region.DisplayName()           // "East US"
+regionalName := region.RegionalDisplayName()  // "(US) East US"
+```
+
+#### GCP Region Examples
+
+```go
+import (
+    "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/gcp"
+)
+
+// Parse region from user input (e.g., "us-central1")
+region := gcp.RegionFromName(userInput)
+if region == gcp.RegionUnknown {
+    return fmt.Errorf("invalid region: %s", userInput)
+}
+
+// Example 1: Convert to GcpRegion enum
+regionEnum := region.ToRegionEnum()
+err := addExocompute(ctx, projectID, regionEnum)
+
+// Example 2: Using region constants
+region := gcp.RegionUSCentral1
+regionEnum := region.ToRegionEnum()
+
+// Example 3: Get region information
+name := region.Name()                // "us-central1"
+displayName := region.DisplayName()  // "us-central1 (Iowa, North America)"
 ```
 
 ### GraphQL Query Pattern
