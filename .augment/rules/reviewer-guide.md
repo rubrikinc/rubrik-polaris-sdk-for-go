@@ -145,7 +145,6 @@ func AddExocompute(ctx context.Context, region aws.Region) error {
 - [ ] Error messages start with lowercase (Go convention)
 
 **Error Wrapping Guidance**:
-- Use `%w` when the caller needs to take action on the specific error type (e.g., `graphql.ErrNotFound`, transient errors)
 - Use `%s` when the error is an implementation detail and wrapping would create unnecessary coupling between caller and implementation
 - When in doubt, prefer `%s` to avoid exposing implementation details as part of the interface
 

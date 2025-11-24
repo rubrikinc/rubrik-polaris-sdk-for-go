@@ -13,7 +13,7 @@ Use this checklist when reviewing or writing code for the Rubrik Polaris SDK for
 - [ ] All exported methods have documentation comments
 - [ ] All exported constants have documentation comments
 - [ ] Documentation comments start with the name of the item
-- [ ] Documentation comments use complete sentences
+- [ ] Documentation comments use complete sentences with proper punctuation (periods, commas, etc.)
 
 ## Naming Conventions
 
@@ -21,6 +21,7 @@ Use this checklist when reviewing or writing code for the Rubrik Polaris SDK for
 - [ ] Type names follow Go conventions (PascalCase for exported, camelCase for unexported)
 - [ ] Variable names are descriptive and meaningful
 - [ ] Function names clearly describe their action
+- [ ] Package names should be short and all lower case.
 
 ## GraphQL Queries
 

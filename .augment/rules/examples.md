@@ -1,3 +1,7 @@
+---
+type: "always_apply"
+---
+
 # Code Examples and Anti-Patterns
 
 This document provides comprehensive examples of correct and incorrect code patterns for the Rubrik Polaris SDK for Go.
@@ -141,8 +145,8 @@ type CdmCluster struct {
 **File**: `pkg/polaris/graphql/aws/queries/get_cloud_account.graphql`
 
 ```graphql
-query RubrikPolarisSDKRequest($cloudAccountId: UUID!) {
-  result: awsCloudAccount(cloudAccountId: $cloudAccountId) {
+query RubrikPolarisSDKRequest($cloudAccountID: UUID!) {
+  result: awsCloudAccount(cloudAccountId: $cloudAccountID) {
     id
     nativeId
     accountName
@@ -161,12 +165,12 @@ query RubrikPolarisSDKRequest($cloudAccountId: UUID!) {
 
 ```graphql
 query RubrikPolarisSDKRequest(
-  $cloudAccountId: UUID!
+  $cloudAccountID: UUID!
   $region: AwsRegion!
   $feature: CloudAccountFeature!
 ) {
   result: awsExocomputeConfigs(
-    cloudAccountId: $cloudAccountId
+    cloudAccountId: $cloudAccountID
     region: $region
     feature: $feature
   ) {
@@ -185,9 +189,9 @@ query RubrikPolarisSDKRequest(
 **File**: `pkg/polaris/graphql/aws/queries/update_cloud_account.graphql`
 
 ```graphql
-mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $name: String!) {
+mutation RubrikPolarisSDKRequest($cloudAccountID: UUID!, $name: String!) {
   result: updateAwsCloudAccount(input: {
-    cloudAccountId: $cloudAccountId,
+    cloudAccountId: $cloudAccountID,
     name: $name,
   }) {
     id
@@ -214,8 +218,8 @@ mutation RubrikPolarisSDKRequest($input: UpdateAwsCloudAccountInput!) {
 ### ❌ Incorrect: Custom Query Name
 
 ```graphql
-query GetAwsCloudAccount($cloudAccountId: UUID!) {
-  awsCloudAccount(cloudAccountId: $cloudAccountId) {
+query GetAwsCloudAccount($cloudAccountID: UUID!) {
+  awsCloudAccount(cloudAccountId: $cloudAccountID) {
     id
     nativeId
   }
@@ -225,8 +229,8 @@ query GetAwsCloudAccount($cloudAccountId: UUID!) {
 ### ❌ Incorrect: Missing Result Alias
 
 ```graphql
-query RubrikPolarisSDKRequest($cloudAccountId: UUID!) {
-  awsCloudAccount(cloudAccountId: $cloudAccountId) {
+query RubrikPolarisSDKRequest($cloudAccountID: UUID!) {
+  awsCloudAccount(cloudAccountId: $cloudAccountID) {
     id
     nativeId
   }
