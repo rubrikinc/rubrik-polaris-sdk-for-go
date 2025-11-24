@@ -33,9 +33,10 @@ import (
 )
 
 // NativeProject represents an RSC native project. NativeProjects are connected
-// to CloudAccounts through the NativeID field.
+// to CloudAccount through the CloudAccountID and NativeID fields.
 type NativeProject struct {
 	ID               uuid.UUID      `json:"id"`
+	CloudAccountID   uuid.UUID      `json:"cloudAccountId"`
 	Name             string         `json:"name"`
 	NativeID         string         `json:"nativeId"`
 	NativeName       string         `json:"nativeName"`

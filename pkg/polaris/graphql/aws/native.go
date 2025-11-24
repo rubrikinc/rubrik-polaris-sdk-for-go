@@ -32,7 +32,29 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// NativeAccount represents an RSC native account.
+// ProtectionFeature represents the protection features of an AWS cloud
+// account.
+type ProtectionFeature string
+
+const (
+	EC2      ProtectionFeature = "EC2"
+	RDS      ProtectionFeature = "RDS"
+	S3       ProtectionFeature = "S3"
+	DynamoDB ProtectionFeature = "DYNAMODB"
+	EKS      ProtectionFeature = "EKS"
+)
+
+var allProtectionFeatures = []ProtectionFeature{
+	EC2,
+	RDS,
+	S3,
+	DynamoDB,
+	EKS,
+}
+
+// NativeAccount represents an RSC native account. NativeAccount are connected
+// to CloudAccount through the ID field, i.e. both entities use the same cloud
+// account ID
 type NativeAccount struct {
 	ID      uuid.UUID `json:"id"`
 	Name    string    `json:"name"`
@@ -74,7 +96,7 @@ func (a API) NativeAccount(ctx context.Context, id uuid.UUID, feature Protection
 
 // NativeAccounts returns the native accounts matching the specified filter.
 // The filter can be used to search for a substring in account name.
-func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filter string) ([]NativeAccount, error) {
+func (a API) NativeAccounts(ctx context.Context, filter string) ([]NativeAccount, error) {
 	a.log.Print(log.Trace)
 
 	var accounts []NativeAccount
@@ -82,10 +104,11 @@ func (a API) NativeAccounts(ctx context.Context, feature ProtectionFeature, filt
 	for {
 		query := awsNativeAccountsQuery
 		buf, err := a.GQL.Request(ctx, query, struct {
-			After   string            `json:"after,omitempty"`
-			Feature ProtectionFeature `json:"awsNativeProtectionFeature"`
-			Filter  string            `json:"filter"`
-		}{After: cursor, Feature: feature, Filter: filter})
+			After    string              `json:"after,omitempty"`
+			Feature  ProtectionFeature   `json:"awsNativeProtectionFeature"`
+			Features []ProtectionFeature `json:"awsNativeProtectionFeatures"`
+			Filter   string              `json:"filter"`
+		}{After: cursor, Feature: EC2, Features: allProtectionFeatures, Filter: filter})
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
 		}

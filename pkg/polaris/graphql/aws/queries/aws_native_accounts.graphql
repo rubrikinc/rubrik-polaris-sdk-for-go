@@ -1,5 +1,18 @@
-query RubrikPolarisSDKRequest($after: String, $awsNativeProtectionFeature: AwsNativeProtectionFeature!, $filter: String!) {
-	awsNativeAccounts(after: $after, awsNativeProtectionFeature: $awsNativeProtectionFeature, accountFilters: {nameSubstringFilter: {nameSubstring: $filter}}) {
+query RubrikPolarisSDKRequest(
+    $after:                       String,
+    $awsNativeProtectionFeature:  AwsNativeProtectionFeature!,
+    $awsNativeProtectionFeatures: [AwsNativeProtectionFeature!],
+    $filter:                      String!,
+) {
+	awsNativeAccounts(
+	    after:                       $after,
+	    awsNativeProtectionFeature:  $awsNativeProtectionFeature,
+	    awsNativeProtectionFeatures: $awsNativeProtectionFeatures,
+	    accountFilters: {
+	    nameSubstringFilter: {
+	        nameSubstring: $filter
+	    }
+	}) {
 		count
 		edges {
 			node {

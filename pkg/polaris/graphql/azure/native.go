@@ -32,15 +32,16 @@ import (
 )
 
 // NativeSubscription represents an RSC native subscription. NativeSubscriptions
-// are connected to CloudAccounts through the NativeID field.
+// are connected to CloudAccount through the CloudAccountID and NativeID fields.
 type NativeSubscription struct {
-	ID            uuid.UUID      `json:"id"`
-	Name          string         `json:"name"`
-	NativeID      uuid.UUID      `json:"azureSubscriptionNativeId"`
-	Status        string         `json:"azureSubscriptionStatus"`
-	SLAAssignment sla.Assignment `json:"slaAssignment"`
-	Configured    sla.Domain     `json:"configuredSlaDomain"`
-	Effective     sla.Domain     `json:"effectiveSlaDomain"`
+	ID             uuid.UUID      `json:"id"`
+	CloudAccountID uuid.UUID      `json:"accountConnectionId"`
+	Name           string         `json:"name"`
+	NativeID       uuid.UUID      `json:"azureSubscriptionNativeId"`
+	Status         string         `json:"azureSubscriptionStatus"`
+	SLAAssignment  sla.Assignment `json:"slaAssignment"`
+	Configured     sla.DomainRef  `json:"configuredSlaDomain"`
+	Effective      sla.DomainRef  `json:"effectiveSlaDomain"`
 }
 
 // NativeSubscriptions returns the native subscriptions matching the specified

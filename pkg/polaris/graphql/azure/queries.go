@@ -118,6 +118,7 @@ var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($af
         edges {
             node {
                 id
+                accountConnectionId
                 azureSubscriptionNativeId
                 name
                 azureSubscriptionStatus
