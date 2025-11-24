@@ -58,6 +58,12 @@ type Domain struct {
 				Name string `json:"name"`
 			} `json:"location"`
 		} `json:"archivalLocationToClusterMapping"`
+		ArchivalTieringSpec *struct {
+			InstantTiering                 bool             `json:"isInstantTieringEnabled"`
+			MinAccessibleDurationInSeconds int64            `json:"minAccessibleDurationInSeconds"`
+			ColdStorageClass               ColdStorageClass `json:"coldStorageClass"`
+			TierExistingSnapshots          bool             `json:"shouldTierExistingSnapshots"`
+		} `json:"archivalTieringSpec"`
 	} `json:"archivalSpecs"`
 	BackupLocationSpecs []struct {
 		ArchivalGroup struct {

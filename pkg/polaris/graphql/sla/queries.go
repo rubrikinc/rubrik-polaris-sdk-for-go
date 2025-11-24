@@ -163,6 +163,12 @@ var slaDomainsQuery = `query SdkGolangSlaDomains($after: String, $filter: [Globa
                             name
                         }
                     }
+                    archivalTieringSpec {
+                        isInstantTieringEnabled
+                        minAccessibleDurationInSeconds
+                        coldStorageClass
+                        shouldTierExistingSnapshots
+                    }
                 }
                 backupLocationSpecs {
                     archivalGroup {
