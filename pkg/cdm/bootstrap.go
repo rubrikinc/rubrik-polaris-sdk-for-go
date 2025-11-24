@@ -66,9 +66,12 @@ func (c CDMStorageConfig) isCloudStorageConfig() {}
 // AzureStorageConfig is used to bootstrap a Rubrik Cloud Cluster Elastic
 // Storage (CCES) on Azure.
 type AzureStorageConfig struct {
-	ConnectionString   string `json:"connectionString"`
-	ContainerName      string `json:"containerName"`
-	EnableImmutability bool   `json:"isVersionLevelImmutabilitySupported"`
+	ConnectionString        string `json:"connectionString"`
+	ContainerName           string `json:"containerName"`
+	EnableImmutability      bool   `json:"isVersionLevelImmutabilitySupported"`
+	StorageAccountName      string `json:"storageAccountName"`
+	EndpointSuffix          string `json:"endpointSuffix"`
+	ManagedIdentityClientId string `json:"managedIdentityClientId"`
 }
 
 func (c AzureStorageConfig) isCloudStorageConfig() {}
