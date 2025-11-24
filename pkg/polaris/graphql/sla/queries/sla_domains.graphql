@@ -20,6 +20,12 @@ query RubrikPolarisSDKRequest($after: String, $filter: [GlobalSlaFilterInput!]) 
                             name
                         }
                     }
+                    archivalTieringSpec {
+                        isInstantTieringEnabled
+                        minAccessibleDurationInSeconds
+                        coldStorageClass
+                        shouldTierExistingSnapshots
+                    }
                 }
                 backupLocationSpecs {
                     archivalGroup {

@@ -60,6 +60,7 @@ type ArchivalSpec struct {
 	Threshold                        int                                `json:"threshold"`
 	ThresholdUnit                    RetentionUnit                      `json:"thresholdUnit"`
 	ArchivalLocationToClusterMapping []ArchivalLocationToClusterMapping `json:"archivalLocationToClusterMapping,omitempty"`
+	ArchivalTieringSpec              *ArchivalTieringSpec               `json:"archivalTieringSpecInput,omitempty"`
 }
 
 // BackupLocationSpec holds the backup location specification for an RSC global
