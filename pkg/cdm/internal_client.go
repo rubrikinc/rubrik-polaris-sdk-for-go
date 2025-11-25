@@ -54,9 +54,9 @@ type client struct {
 func newClientWithLogger(allowInsecureTLS bool, logger log.Logger) *client {
 	httpClient := &http.Client{}
 	if allowInsecureTLS {
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		httpClient.Transport = transport
 	}
 
 	return &client{
@@ -75,9 +75,9 @@ func newClientFromCredentialsWithLogger(username, password string, allowInsecure
 
 	httpClient := &http.Client{}
 	if allowInsecureTLS {
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		httpClient.Transport = transport
 	}
 
 	return &client{
@@ -100,9 +100,9 @@ func newClientFromTokenWithLogger(token string, allowInsecureTLS bool, logger lo
 
 	httpClient := &http.Client{}
 	if allowInsecureTLS {
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		httpClient.Transport = transport
 	}
 
 	return &client{
