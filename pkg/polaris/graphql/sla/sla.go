@@ -135,21 +135,32 @@ const (
 	ObjectAWSRDS                  ObjectType = "AWS_RDS_OBJECT_TYPE"
 	ObjectAWSS3                   ObjectType = "AWS_S3_OBJECT_TYPE"
 	ObjectAzure                   ObjectType = "AZURE_OBJECT_TYPE"
+	ObjectAzureAD                 ObjectType = "AZURE_AD_OBJECT_TYPE"
+	ObjectAzureBlob               ObjectType = "AZURE_BLOB_OBJECT_TYPE"
 	ObjectAzureSQLDatabase        ObjectType = "AZURE_SQL_DATABASE_OBJECT_TYPE"
 	ObjectAzureSQLManagedInstance ObjectType = "AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE"
-	ObjectAzureBlob               ObjectType = "AZURE_BLOB_OBJECT_TYPE"
+	ObjectCassandra               ObjectType = "CASSANDRA_OBJECT_TYPE"
+	ObjectDB2                     ObjectType = "DB2_OBJECT_TYPE"
 	ObjectExchange                ObjectType = "EXCHANGE_OBJECT_TYPE"
 	ObjectFileset                 ObjectType = "FILESET_OBJECT_TYPE"
 	ObjectGCP                     ObjectType = "GCP_OBJECT_TYPE"
+	ObjectGCPCloudSQL             ObjectType = "GCP_CLOUD_SQL_OBJECT_TYPE"
 	ObjectHyperV                  ObjectType = "HYPERV_OBJECT_TYPE"
 	ObjectK8s                     ObjectType = "K8S_OBJECT_TYPE"
 	ObjectManagedVolume           ObjectType = "MANAGED_VOLUME_OBJECT_TYPE"
 	ObjectMicrosoft365            ObjectType = "O365_OBJECT_TYPE"
+	ObjectMongo                   ObjectType = "MONGO_OBJECT_TYPE"
+	ObjectMongoDB                 ObjectType = "MONGODB_OBJECT_TYPE"
+	ObjectMSSQL                   ObjectType = "MSSQL_OBJECT_TYPE"
 	ObjectNAS                     ObjectType = "NAS_OBJECT_TYPE"
+	ObjectNCD                     ObjectType = "NCD_OBJECT_TYPE"
 	ObjectNutanix                 ObjectType = "NUTANIX_OBJECT_TYPE"
 	ObjectOkta                    ObjectType = "OKTA_OBJECT_TYPE"
 	ObjectOLVM                    ObjectType = "OLVM_OBJECT_TYPE"
 	ObjectOpenStack               ObjectType = "OPENSTACK_OBJECT_TYPE"
+	ObjectOracle                  ObjectType = "ORACLE_OBJECT_TYPE"
+	ObjectSAPHANA                 ObjectType = "SAP_HANA_OBJECT_TYPE"
+	ObjectSnapMirrorCloud         ObjectType = "SNAPMIRROR_CLOUD_OBJECT_TYPE"
 	ObjectVCD                     ObjectType = "VCD_OBJECT_TYPE"
 	ObjectVolumeGroup             ObjectType = "VOLUME_GROUP_OBJECT_TYPE"
 	ObjectVSphereVM               ObjectType = "VSPHERE_OBJECT_TYPE"
@@ -164,21 +175,32 @@ func AllObjectTypesAsStrings() []string {
 		string(ObjectAWSRDS),
 		string(ObjectAWSS3),
 		string(ObjectAzure),
+		string(ObjectAzureAD),
+		string(ObjectAzureBlob),
 		string(ObjectAzureSQLDatabase),
 		string(ObjectAzureSQLManagedInstance),
-		string(ObjectAzureBlob),
+		string(ObjectCassandra),
+		string(ObjectDB2),
 		string(ObjectExchange),
 		string(ObjectFileset),
 		string(ObjectGCP),
+		string(ObjectGCPCloudSQL),
 		string(ObjectHyperV),
 		string(ObjectK8s),
 		string(ObjectManagedVolume),
 		string(ObjectMicrosoft365),
+		string(ObjectMongo),
+		string(ObjectMongoDB),
+		string(ObjectMSSQL),
 		string(ObjectNAS),
+		string(ObjectNCD),
 		string(ObjectNutanix),
 		string(ObjectOkta),
 		string(ObjectOLVM),
 		string(ObjectOpenStack),
+		string(ObjectOracle),
+		string(ObjectSAPHANA),
+		string(ObjectSnapMirrorCloud),
 		string(ObjectVCD),
 		string(ObjectVolumeGroup),
 		string(ObjectVSphereVM),

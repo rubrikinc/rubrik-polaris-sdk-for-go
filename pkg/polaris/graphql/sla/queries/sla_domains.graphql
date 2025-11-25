@@ -89,6 +89,134 @@ query RubrikPolarisSDKRequest($after: String, $filter: [GlobalSlaFilterInput!]) 
                     vmwareVmConfig {
                         logRetentionSeconds
                     }
+                    sapHanaConfig {
+                        incrementalFrequency {
+                            duration
+                            unit
+                        }
+                        logRetention {
+                            duration
+                            unit
+                        }
+                        differentialFrequency {
+                            duration
+                            unit
+                        }
+                        storageSnapshotConfig {
+                            frequency {
+                                duration
+                                unit
+                            }
+                            retention {
+                                duration
+                                unit
+                            }
+                        }
+                    }
+                    db2Config {
+                        incrementalFrequency {
+                            duration
+                            unit
+                        }
+                        logRetention {
+                            duration
+                            unit
+                        }
+                        differentialFrequency {
+                            duration
+                            unit
+                        }
+                        logArchivalMethod
+                    }
+                    mssqlConfig {
+                        frequency {
+                            duration
+                            unit
+                        }
+                        logRetention {
+                            duration
+                            unit
+                        }
+                    }
+                    oracleConfig {
+                        frequency {
+                            duration
+                            unit
+                        }
+                        logRetention {
+                            duration
+                            unit
+                        }
+                        hostLogRetention {
+                            duration
+                            unit
+                        }
+                    }
+                    mongoConfig {
+                        logFrequency {
+                            duration
+                            unit
+                        }
+                        logRetention {
+                            duration
+                            unit
+                        }
+                    }
+                    managedVolumeSlaConfig {
+                        logRetention {
+                            duration
+                            unit
+                        }
+                    }
+                    postgresDbClusterSlaConfig {
+                        logRetention {
+                            duration
+                            unit
+                        }
+                    }
+                    mysqldbSlaConfig {
+                        logFrequency {
+                            duration
+                            unit
+                        }
+                        logRetention {
+                            duration
+                            unit
+                        }
+                    }
+                    ncdSlaConfig {
+                        minutelyBackupLocations
+                        hourlyBackupLocations
+                        dailyBackupLocations
+                        weeklyBackupLocations
+                        monthlyBackupLocations
+                        quarterlyBackupLocations
+                        yearlyBackupLocations
+                    }
+                    informixSlaConfig {
+                        incrementalFrequency {
+                            duration
+                            unit
+                        }
+                        incrementalRetention {
+                            duration
+                            unit
+                        }
+                        logFrequency {
+                            duration
+                            unit
+                        }
+                        logRetention {
+                            duration
+                            unit
+                        }
+                    }
+                    gcpCloudSqlConfig {
+                        logRetention {
+                            duration
+                            unit
+                        }
+                    }
                 }
                 objectTypes
                 retentionLockMode

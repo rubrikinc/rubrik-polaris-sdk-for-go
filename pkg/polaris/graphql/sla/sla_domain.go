@@ -90,13 +90,24 @@ type DayOfWeek struct {
 // ObjectSpecificConfigs holds the object-specific configurations for a global
 // RSC SLA domain.
 type ObjectSpecificConfigs struct {
-	AWSDynamoDBConfig               *AWSDynamoDBConfig `json:"awsNativeDynamoDbSlaConfigInput,omitempty"`
-	AWSS3Config                     *AWSS3Config       `json:"awsNativeS3SlaConfigInput,omitempty"`
-	AWSRDSConfig                    *AWSRDSConfig      `json:"awsRdsConfigInput,omitempty"`
-	AzureBlobConfig                 *AzureBlobConfig   `json:"azureBlobConfigInput,omitempty"`
-	AzureSQLDatabaseDBConfig        *AzureDBConfig     `json:"azureSqlDatabaseDbConfigInput,omitempty"`
-	AzureSQLManagedInstanceDBConfig *AzureDBConfig     `json:"azureSqlManagedInstanceDbConfigInput,omitempty"`
-	VMwareVMConfig                  *VMwareVMConfig    `json:"vmwareVmConfigInput,omitempty"`
+	AWSDynamoDBConfig               *AWSDynamoDBConfig          `json:"awsNativeDynamoDbSlaConfigInput,omitempty"`
+	AWSS3Config                     *AWSS3Config                `json:"awsNativeS3SlaConfigInput,omitempty"`
+	AWSRDSConfig                    *AWSRDSConfig               `json:"awsRdsConfigInput,omitempty"`
+	AzureBlobConfig                 *AzureBlobConfig            `json:"azureBlobConfigInput,omitempty"`
+	AzureSQLDatabaseDBConfig        *AzureDBConfig              `json:"azureSqlDatabaseDbConfigInput,omitempty"`
+	AzureSQLManagedInstanceDBConfig *AzureDBConfig              `json:"azureSqlManagedInstanceDbConfigInput,omitempty"`
+	VMwareVMConfig                  *VMwareVMConfig             `json:"vmwareVmConfigInput,omitempty"`
+	SapHanaConfig                   *SapHanaConfig              `json:"sapHanaConfigInput,omitempty"`
+	DB2Config                       *DB2Config                  `json:"db2ConfigInput,omitempty"`
+	MssqlConfig                     *MssqlConfig                `json:"mssqlConfigInput,omitempty"`
+	OracleConfig                    *OracleConfig               `json:"oracleConfigInput,omitempty"`
+	MongoConfig                     *MongoConfig                `json:"mongoConfigInput,omitempty"`
+	ManagedVolumeSlaConfig          *ManagedVolumeSlaConfig     `json:"managedVolumeSlaConfigInput,omitempty"`
+	PostgresDbClusterSlaConfig      *PostgresDbClusterSlaConfig `json:"postgresDbClusterSlaConfigInput,omitempty"`
+	MysqldbSlaConfig                *MysqldbSlaConfig           `json:"mysqldbConfigInput,omitempty"`
+	NcdSlaConfig                    *NcdSlaConfig               `json:"ncdConfigInput,omitempty"`
+	InformixSlaConfig               *InformixSlaConfig          `json:"informixConfigInput,omitempty"`
+	GcpCloudSqlConfig               *GcpCloudSqlConfig          `json:"gcpCloudSqlConfigInput,omitempty"`
 }
 
 // AWSDynamoDBConfig represents the configuration specific for an AWS DynamoDB
@@ -133,6 +144,107 @@ type AzureDBConfig struct {
 // object.
 type VMwareVMConfig struct {
 	LogRetentionSeconds int64 `json:"logRetentionSeconds,omitempty"`
+}
+
+// SapHanaConfig represents the configuration specific for a SAP HANA database
+// object.
+type SapHanaConfig struct {
+	IncrementalFrequency  RetentionDuration             `json:"incrementalFrequency,omitempty"`
+	LogRetention          RetentionDuration             `json:"logRetention,omitempty"`
+	DifferentialFrequency RetentionDuration             `json:"differentialFrequency,omitempty"`
+	StorageSnapshotConfig *SapHanaStorageSnapshotConfig `json:"storageSnapshotConfig,omitempty"`
+}
+
+// SapHanaStorageSnapshotConfig represents the storage snapshot configuration
+// for SAP HANA.
+type SapHanaStorageSnapshotConfig struct {
+	Frequency RetentionDuration `json:"frequency,omitempty"`
+	Retention RetentionDuration `json:"retention,omitempty"`
+}
+
+// DB2Config represents the configuration specific for a Db2 database object.
+type DB2Config struct {
+	IncrementalFrequency  RetentionDuration    `json:"incrementalFrequency,omitempty"`
+	LogRetention          RetentionDuration    `json:"logRetention,omitempty"`
+	DifferentialFrequency RetentionDuration    `json:"differentialFrequency,omitempty"`
+	LogArchivalMethod     Db2LogArchivalMethod `json:"logArchivalMethod,omitempty"`
+}
+
+// Db2LogArchivalMethod represents the log archival method for Db2 database.
+type Db2LogArchivalMethod string
+
+const (
+	// Db2LogArchivalMethod1 represents log archival method 1 for Db2.
+	Db2LogArchivalMethod1 Db2LogArchivalMethod = "LOGARCHMETH1"
+	// Db2LogArchivalMethod2 represents log archival method 2 for Db2.
+	Db2LogArchivalMethod2 Db2LogArchivalMethod = "LOGARCHMETH2"
+)
+
+// MssqlConfig represents the configuration specific for a SQL Server database
+// object.
+type MssqlConfig struct {
+	Frequency    RetentionDuration `json:"frequency,omitempty"`
+	LogRetention RetentionDuration `json:"logRetention,omitempty"`
+}
+
+// OracleConfig represents the configuration specific for an Oracle database
+// object.
+type OracleConfig struct {
+	Frequency        RetentionDuration `json:"frequency,omitempty"`
+	LogRetention     RetentionDuration `json:"logRetention,omitempty"`
+	HostLogRetention RetentionDuration `json:"hostLogRetention,omitempty"`
+}
+
+// MongoConfig represents the configuration specific for a MongoDB database
+// object.
+type MongoConfig struct {
+	LogFrequency RetentionDuration `json:"logFrequency,omitempty"`
+	LogRetention RetentionDuration `json:"logRetention,omitempty"`
+}
+
+// ManagedVolumeSlaConfig represents the configuration specific for a Managed
+// Volume object.
+type ManagedVolumeSlaConfig struct {
+	LogRetention RetentionDuration `json:"logRetention,omitempty"`
+}
+
+// PostgresDbClusterSlaConfig represents the configuration specific for a
+// Postgres DB Cluster object.
+type PostgresDbClusterSlaConfig struct {
+	LogRetention RetentionDuration `json:"logRetention,omitempty"`
+}
+
+// MysqldbSlaConfig represents the configuration specific for a MySQL object.
+type MysqldbSlaConfig struct {
+	LogFrequency RetentionDuration `json:"logFrequency,omitempty"`
+	LogRetention RetentionDuration `json:"logRetention,omitempty"`
+}
+
+// NcdSlaConfig represents the configuration specific for a NAS Cloud Direct
+// object.
+type NcdSlaConfig struct {
+	MinutelyBackupLocations  []uuid.UUID `json:"minutelyBackupLocations,omitempty"`
+	HourlyBackupLocations    []uuid.UUID `json:"hourlyBackupLocations,omitempty"`
+	DailyBackupLocations     []uuid.UUID `json:"dailyBackupLocations,omitempty"`
+	WeeklyBackupLocations    []uuid.UUID `json:"weeklyBackupLocations,omitempty"`
+	MonthlyBackupLocations   []uuid.UUID `json:"monthlyBackupLocations,omitempty"`
+	QuarterlyBackupLocations []uuid.UUID `json:"quarterlyBackupLocations,omitempty"`
+	YearlyBackupLocations    []uuid.UUID `json:"yearlyBackupLocations,omitempty"`
+}
+
+// InformixSlaConfig represents the configuration specific for an Informix
+// object.
+type InformixSlaConfig struct {
+	IncrementalFrequency RetentionDuration `json:"incrementalFrequency,omitempty"`
+	IncrementalRetention RetentionDuration `json:"incrementalRetention,omitempty"`
+	LogFrequency         RetentionDuration `json:"logFrequency,omitempty"`
+	LogRetention         RetentionDuration `json:"logRetention,omitempty"`
+}
+
+// GcpCloudSqlConfig represents the configuration specific for a GCP Cloud SQL
+// object.
+type GcpCloudSqlConfig struct {
+	LogRetention RetentionDuration `json:"logRetention,omitempty"`
 }
 
 // SnapshotSchedule holds the snapshot schedule for an RSC global SLA domain.
