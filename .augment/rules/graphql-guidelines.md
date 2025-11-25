@@ -1,3 +1,8 @@
+---
+type: "agent_requested"
+description: "Rules when adding new or updating existing graphql queries"
+---
+
 # GraphQL Query Guidelines
 
 This document defines the standards and workflow for working with GraphQL queries in the Rubrik Polaris SDK for Go.
@@ -5,7 +10,6 @@ This document defines the standards and workflow for working with GraphQL querie
 ## Query Naming Convention
 
 **Rule**: All GraphQL queries MUST use the standard query name `RubrikPolarisSDKRequest` and MUST alias the result to `result`.
-
 **Important**: GraphQL files use the API's field capitalization (e.g., `Id` in GraphQL, but `ID` in Go code). This is expected and correct.
 
 ## Input Type Handling
@@ -25,33 +29,7 @@ mutation RubrikPolarisSDKRequest($cloudAccountId: String!, $name: String!) {
 }
 ```
 
-❌ **Incorrect** - Using complex input type:
-```graphql
-mutation RubrikPolarisSDKRequest($input: UpdateAwsCloudAccountInput!) {
-  result: updateAwsCloudAccount(input: $input) {
-    id
-    status
-  }
-}
-```
-
-### Query Structure
-
-Every GraphQL query file (`.graphql`) must follow this pattern:
-
-```graphql
-query RubrikPolarisSDKRequest($param1: Type1, $param2: Type2) {
-  result: actualGraphQLOperation(
-    input: { param1: $param1, param2: $param2 }
-  ) {
-    field1
-    field2
-  }
-}
-```
-
 For queries with many parameters or long parameter names, break lines for readability:
-
 ```graphql
 query RubrikPolarisSDKRequest(
   $veryLongParameterName: String!
@@ -69,121 +47,11 @@ query RubrikPolarisSDKRequest(
 }
 ```
 
-### Examples
-
-✅ **Correct**:
-
-```graphql
-query RubrikPolarisSDKRequest($cloudAccountId: String, $region: String) {
-  result: allAwsCdmVersions(
-    input: { cloudAccountId: $cloudAccountId, region: $region }
-  ) {
-    version
-  }
-}
-```
-
-```graphql
-query RubrikPolarisSDKRequest {
-  result: allDeploymentIpAddresses
-}
-```
-
-```graphql
-query RubrikPolarisSDKRequest(
-  $feature: CloudAccountFeature!
-  $columnSearchFilter: String!
-  $statusFilters: [CloudAccountStatus!]!
-) {
-  result: allAwsCloudAccountsWithFeatures(
-    awsCloudAccountsArg: {
-      columnSearchFilter: $columnSearchFilter
-      statusFilters: $statusFilters
-      feature: $feature
-    }
-  ) {
-    awsCloudAccount {
-      id
-      accountName
-    }
-  }
-}
-```
-
-❌ **Incorrect**:
-
-```graphql
-# Wrong: Custom query name without aliasing
-query GetAwsCdmVersions($cloudAccountId: String, $region: String) {
-  allAwsCdmVersions(
-    input: { cloudAccountId: $cloudAccountId, region: $region }
-  ) {
-    version
-  }
-}
-```
-
-```graphql
-# Wrong: Missing result alias
-query RubrikPolarisSDKRequest($cloudAccountId: String) {
-  allAwsCloudAccounts(cloudAccountId: $cloudAccountId) {
-    id
-    name
-  }
-}
-```
+Refer to existing .graphql files for examples of both queries and mutations.
 
 ## Query Generation Workflow
 
 **Rule**: GraphQL queries are automatically generated from `.graphql` files. NEVER manually edit the generated `queries.go` files.
-
-### Workflow
-
-1. **Create or modify `.graphql` files** in the appropriate `queries/` subdirectory:
-   - `pkg/polaris/graphql/aws/queries/` for AWS-related queries
-   - `pkg/polaris/graphql/azure/queries/` for Azure-related queries
-   - `pkg/polaris/graphql/gcp/queries/` for GCP-related queries
-   - `pkg/polaris/graphql/core/queries/` for core queries
-   - etc.
-
-2. **Run code generation** from the repository root:
-   ```bash
-   go generate ./...
-   ```
-
-3. **Verify the generated code** in the corresponding `queries.go` file
-
-### File Organization
-
-```
-pkg/polaris/graphql/aws/
-├── aws.go                    # Contains //go:generate directive
-├── queries/                  # Directory containing .graphql files
-│   ├── all_aws_cloud_accounts_with_features.graphql
-│   ├── aws_native_account.graphql
-│   └── update_aws_cloud_account.graphql
-└── queries.go               # AUTO-GENERATED - DO NOT EDIT
-```
-
-### How It Works
-
-1. The `//go:generate` directive in package files (e.g., `aws.go`, `azure.go`) triggers the generator:
-   ```go
-   //go:generate go run ../queries_gen.go aws
-   ```
-
-2. The generator (`queries_gen.go`) reads all `.graphql` files from the `queries/` subdirectory
-
-3. For each `.graphql` file:
-   - Reads the query content
-   - Replaces `RubrikPolarisSDKRequest` with `SdkGolang<CamelCasedFileName>`
-   - Generates a Go variable named `<camelCasedFileName>Query`
-
-4. Example transformation:
-   - File: `all_aws_cloud_accounts_with_features.graphql`
-   - Query name in file: `RubrikPolarisSDKRequest`
-   - Generated variable: `allAwsCloudAccountsWithFeaturesQuery`
-   - Query name in generated code: `SdkGolangAllAwsCloudAccountsWithFeatures`
 
 ### Important Notes
 
@@ -194,16 +62,5 @@ pkg/polaris/graphql/aws/
 - File names should use snake_case (e.g., `my_query_name.graphql`)
 - The generator converts snake_case file names to camelCase variable names
 
-## Mutations
 
-Mutations follow the same pattern as queries:
-
-```graphql
-mutation RubrikPolarisSDKRequest($input: SomeInputType!) {
-  result: someMutation(input: $input) {
-    id
-    status
-  }
-}
-```
 
