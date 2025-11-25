@@ -1,6 +1,5 @@
 ---
 type: "always_apply"
-description: "Example description"
 ---
 
 When writing any code, adhere to the following rules:

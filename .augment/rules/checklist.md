@@ -1,6 +1,5 @@
 ---
 type: "always_apply"
-description: "Example description"
 ---
 
 # Code Review Checklist
