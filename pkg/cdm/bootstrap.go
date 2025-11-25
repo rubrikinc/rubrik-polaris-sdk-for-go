@@ -188,8 +188,10 @@ func (c BootstrapAPI) BootstrapCluster(ctx context.Context, config ClusterConfig
 	// potential error messages. Unmarshal errors are ignored at this time as
 	// certain responses could contain malformed JSON object.
 	var bootstrap struct {
-		ID     int    `json:"id"`
-		Status string `json:"status"`
+		ID        int    `json:"id"`
+		Status    string `json:"status"`
+		Message   string `json:"message"`
+		ErrorType string `json:"errorType"`
 	}
 	jsonErr := json.Unmarshal(buf, &bootstrap)
 
@@ -197,6 +199,8 @@ func (c BootstrapAPI) BootstrapCluster(ctx context.Context, config ClusterConfig
 		msg := fmt.Sprintf("%s (%d)", http.StatusText(code), code)
 		if bootstrap.Status != "" {
 			msg = fmt.Sprintf("%s: %s", msg, bootstrap.Status)
+		} else if bootstrap.Message != "" {
+			msg = fmt.Sprintf("%s: %s", msg, bootstrap.Message)
 		}
 
 		return 0, fmt.Errorf("failed POST request %q: %s", endpoint, msg)
