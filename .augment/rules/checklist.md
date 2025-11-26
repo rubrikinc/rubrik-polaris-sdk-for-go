@@ -57,6 +57,7 @@ When reviewing code, check for:
 1. **Forgetting to run `go generate`** - Required after modifying `.graphql` files
 2. **Manually editing `queries.go`** - These files are auto-generated
 3. **Using `string` for regions** - Always use typed region types
-4. **Missing documentation** - All exported items need doc comments
-5. **Wrong query name** - Must be `RubrikPolarisSDKRequest`
-6. **Missing result alias** - Query result must be aliased to `result`
+4. **Using `string` for sensitive data** - Always use `secret.String` for sensitive fields to prevent logging secrets
+5. **Missing documentation** - All exported items need doc comments
+6. **Wrong query name** - Must be `RubrikPolarisSDKRequest`
+7. **Missing result alias** - Query result must be aliased to `result`

@@ -63,5 +63,3 @@ These guidelines are enforced through:
 2. Augment AI when making code suggestions
 3. CI/CD linting and static analysis
 
-For detailed examples and patterns, see [examples.md](./examples.md).
-

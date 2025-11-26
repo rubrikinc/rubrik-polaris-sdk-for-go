@@ -66,7 +66,7 @@ mutation RubrikPolarisSDKRequest($cloudAccountId: String!, $name: String!) {
 ```
 Note: After adding/modifying .graphql files, run `go generate ./...` from the repository root.
 
-### 3. Region Type Enforcement
+### 2. Region Type Enforcement
 
 #### Type Safety
 - [ ] Cloud regions use typed region types (`aws.Region`, `azure.Region`, `gcp.Region`)
@@ -96,7 +96,7 @@ func AddExocompute(ctx context.Context, region aws.Region) error {
 }
 ```
 
-### 4. Code Quality and Testing
+### 3. Code Quality and Testing
 
 **Note**: For general Go error handling, function design, and best practices, see [Effective Go](https://go.dev/doc/effective_go).
 **Note**: For general Go testing conventions, see [Effective Go - Testing](https://go.dev/doc/effective_go#testing).
@@ -106,7 +106,7 @@ func AddExocompute(ctx context.Context, region aws.Region) error {
 - [ ] Tests follow existing patterns in the codebase
 - [ ] Table-driven tests are preferred when they can be implemented without too much complexity
 
-### 6. Generated Files
+### 4. Generated Files
 
 #### Code Generation
 - [ ] If `.graphql` files were added/modified, `go generate ./...` was run
