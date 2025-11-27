@@ -66,9 +66,12 @@ func (c CDMStorageConfig) isCloudStorageConfig() {}
 // AzureStorageConfig is used to bootstrap a Rubrik Cloud Cluster Elastic
 // Storage (CCES) on Azure.
 type AzureStorageConfig struct {
-	ConnectionString   string `json:"connectionString"`
-	ContainerName      string `json:"containerName"`
-	EnableImmutability bool   `json:"isVersionLevelImmutabilitySupported"`
+	ConnectionString        string `json:"connectionString"`
+	ContainerName           string `json:"containerName"`
+	EnableImmutability      bool   `json:"isVersionLevelImmutabilitySupported"`
+	StorageAccountName      string `json:"storageAccountName,omitempty"`
+	EndpointSuffix          string `json:"endpointSuffix,omitempty"`
+	ManagedIdentityClientId string `json:"managedIdentityClientId,omitempty"`
 }
 
 func (c AzureStorageConfig) isCloudStorageConfig() {}
@@ -185,8 +188,10 @@ func (c BootstrapAPI) BootstrapCluster(ctx context.Context, config ClusterConfig
 	// potential error messages. Unmarshal errors are ignored at this time as
 	// certain responses could contain malformed JSON object.
 	var bootstrap struct {
-		ID     int    `json:"id"`
-		Status string `json:"status"`
+		ID        int    `json:"id"`
+		Status    string `json:"status"`
+		Message   string `json:"message"`
+		ErrorType string `json:"errorType"`
 	}
 	jsonErr := json.Unmarshal(buf, &bootstrap)
 
@@ -194,6 +199,8 @@ func (c BootstrapAPI) BootstrapCluster(ctx context.Context, config ClusterConfig
 		msg := fmt.Sprintf("%s (%d)", http.StatusText(code), code)
 		if bootstrap.Status != "" {
 			msg = fmt.Sprintf("%s: %s", msg, bootstrap.Status)
+		} else if bootstrap.Message != "" {
+			msg = fmt.Sprintf("%s: %s", msg, bootstrap.Message)
 		}
 
 		return 0, fmt.Errorf("failed POST request %q: %s", endpoint, msg)
