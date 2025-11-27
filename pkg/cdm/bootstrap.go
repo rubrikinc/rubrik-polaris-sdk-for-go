@@ -69,9 +69,9 @@ type AzureStorageConfig struct {
 	ConnectionString        string `json:"connectionString"`
 	ContainerName           string `json:"containerName"`
 	EnableImmutability      bool   `json:"isVersionLevelImmutabilitySupported"`
-	StorageAccountName      string `json:"storageAccountName"`
-	EndpointSuffix          string `json:"endpointSuffix"`
-	ManagedIdentityClientId string `json:"managedIdentityClientId"`
+	StorageAccountName      string `json:"storageAccountName,omitempty"`
+	EndpointSuffix          string `json:"endpointSuffix,omitempty"`
+	ManagedIdentityClientId string `json:"managedIdentityClientId,omitempty"`
 }
 
 func (c AzureStorageConfig) isCloudStorageConfig() {}
