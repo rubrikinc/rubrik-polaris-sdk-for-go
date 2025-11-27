@@ -146,6 +146,7 @@ const (
 	ObjectGCP                     ObjectType = "GCP_OBJECT_TYPE"
 	ObjectGCPCloudSQL             ObjectType = "GCP_CLOUD_SQL_OBJECT_TYPE"
 	ObjectHyperV                  ObjectType = "HYPERV_OBJECT_TYPE"
+	ObjectInformixInstance        ObjectType = "INFORMIX_INSTANCE_OBJECT_TYPE"
 	ObjectK8s                     ObjectType = "K8S_OBJECT_TYPE"
 	ObjectManagedVolume           ObjectType = "MANAGED_VOLUME_OBJECT_TYPE"
 	ObjectMicrosoft365            ObjectType = "O365_OBJECT_TYPE"
@@ -159,6 +160,7 @@ const (
 	ObjectOLVM                    ObjectType = "OLVM_OBJECT_TYPE"
 	ObjectOpenStack               ObjectType = "OPENSTACK_OBJECT_TYPE"
 	ObjectOracle                  ObjectType = "ORACLE_OBJECT_TYPE"
+	ObjectPostgresDBCluster       ObjectType = "POSTGRES_DB_CLUSTER_OBJECT_TYPE"
 	ObjectSAPHANA                 ObjectType = "SAP_HANA_OBJECT_TYPE"
 	ObjectSnapMirrorCloud         ObjectType = "SNAPMIRROR_CLOUD_OBJECT_TYPE"
 	ObjectVCD                     ObjectType = "VCD_OBJECT_TYPE"
@@ -186,6 +188,7 @@ func AllObjectTypesAsStrings() []string {
 		string(ObjectGCP),
 		string(ObjectGCPCloudSQL),
 		string(ObjectHyperV),
+		string(ObjectInformixInstance),
 		string(ObjectK8s),
 		string(ObjectManagedVolume),
 		string(ObjectMicrosoft365),
@@ -199,6 +202,7 @@ func AllObjectTypesAsStrings() []string {
 		string(ObjectOLVM),
 		string(ObjectOpenStack),
 		string(ObjectOracle),
+		string(ObjectPostgresDBCluster),
 		string(ObjectSAPHANA),
 		string(ObjectSnapMirrorCloud),
 		string(ObjectVCD),
