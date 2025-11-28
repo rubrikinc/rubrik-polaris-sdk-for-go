@@ -1,0 +1,5 @@
+query RubrikPolarisSDKRequest($slaDomainId: UUID!) {
+    result: slaDomain(id: $slaDomainId) {
+        ...GlobalSlaReplyFields
+    }
+}
