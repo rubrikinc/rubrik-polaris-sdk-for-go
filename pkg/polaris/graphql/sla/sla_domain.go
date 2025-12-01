@@ -290,7 +290,7 @@ type QuarterlySnapshotSchedule struct {
 // WeeklySnapshotSchedule holds the snapshot schedule for a weekly snapshot.
 type WeeklySnapshotSchedule struct {
 	BasicSchedule BasicSnapshotSchedule `json:"basicSchedule"`
-	DayOfWeek     Day                   `json:"dayOfWeek"`
+	DayOfWeek     Day                   `json:"dayOfWeek,omitempty"`
 }
 
 // YearlySnapshotSchedule holds the snapshot schedule for a yearly snapshot.
