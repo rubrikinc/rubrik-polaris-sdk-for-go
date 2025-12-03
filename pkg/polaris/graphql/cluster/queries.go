@@ -24,6 +24,47 @@
 
 package cluster
 
+// allClusterGlobalSlas GraphQL query
+var allClusterGlobalSlasQuery = `query SdkGolangAllClusterGlobalSlas($clusterUuid: UUID!) {
+  result: allClusterGlobalSlas(cdmClusterUUID: $clusterUuid) {
+    id
+    name
+  }
+}`
+
+// canIgnoreClusterRemovalPrechecks GraphQL query
+var canIgnoreClusterRemovalPrechecksQuery = `query SdkGolangCanIgnoreClusterRemovalPrechecks($clusterUuid: UUID!) {
+  result: canIgnoreClusterRemovalPrechecks(clusterUuid: $clusterUuid) {
+    isDisconnected
+    ignorePrecheckTime
+    lastConnectionTime
+    canIgnorePrecheck
+    isAirGapped
+  }
+}`
+
+// clusterRcvLocations GraphQL query
+var clusterRcvLocationsQuery = `query SdkGolangClusterRcvLocations($clusterUuid: UUID!) {
+  result: clusterRcvLocations(cdmClusterUUID: $clusterUuid) {
+    edges {
+      cursor
+      node {
+        id
+        name
+      }
+    }
+  }
+}`
+
+// removeCdmCluster GraphQL query
+var removeCdmClusterQuery = `mutation SdkGolangRemoveCdmCluster($clusterUuid: UUID!, $expireInDays: Long, $isForce: Boolean!) {
+  result: removeCdmCluster(
+    clusterUUID: $clusterUuid
+    expireInDays: $expireInDays
+    isForce: $isForce
+  )
+}`
+
 // slaSourceClusters GraphQL query
 var slaSourceClustersQuery = `query SdkGolangSlaSourceClusters(
   $after: String
@@ -72,5 +113,15 @@ var slaSourceClustersQuery = `query SdkGolangSlaSourceClusters(
       hasNextPage
     }
     count
+  }
+}`
+
+// verifySlaWithReplicationToCluster GraphQL query
+var verifySlaWithReplicationToClusterQuery = `query SdkGolangVerifySlaWithReplicationToCluster($clusterUuid: UUID!, $includeArchived: Boolean!) {
+  result: verifySlaWithReplicationToCluster(
+    cdmClusterUUID: $clusterUuid
+    includeArchived: $includeArchived
+  ) {
+    isActiveSla
   }
 }`
