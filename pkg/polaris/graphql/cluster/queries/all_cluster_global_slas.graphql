@@ -1,0 +1,7 @@
+query RubrikPolarisSDKRequest($clusterUuid: UUID!) {
+  result: allClusterGlobalSlas(cdmClusterUUID: $clusterUuid) {
+    id
+    name
+  }
+}
+
