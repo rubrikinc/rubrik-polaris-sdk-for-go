@@ -1,0 +1,29 @@
+query RubrikPolarisSDKRequest($fid: UUID!) {
+    result: hierarchyObject(fid: $fid) {
+        id
+        name
+        objectType
+        slaAssignment
+        configuredSlaDomain {
+            ... on ClusterSlaDomain {
+                id
+                name
+            }
+            ... on GlobalSlaReply {
+                id
+                name
+            }
+        }
+        effectiveSlaDomain {
+            ... on ClusterSlaDomain {
+                id
+                name
+            }
+            ... on GlobalSlaReply {
+                id
+                name
+            }
+        }
+    }
+}
+
