@@ -9,6 +9,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cloudcluster"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cluster"
 	cloudclustergql "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
@@ -38,6 +39,7 @@ func main() {
 
 	azureClient := azure.Wrap(client)
 	cloudClusterClient := cloudcluster.Wrap(client)
+	clusterClient := cluster.Wrap(client)
 
 	azureFqdn := "my-domain.onmicrosoft.com"
 	azureSubscriptionID := "abcdefg-a123-12ab-1a23-1a2b3c45de6f"
@@ -114,5 +116,39 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Cloud Cluster: %v", cluster)
+	fmt.Printf("Cloud Cluster ID: %v\n", cluster.ID)
+	fmt.Printf("Cloud Cluster Name: %v\n", cluster.Name)
+	fmt.Printf("Cloud Cluster Status: %v\n", cluster.Status)
+
+	// Remove the cluster with comprehensive checks
+	// Set expiration days (optional - can be nil for default)
+	expireDays := int64(1)
+
+	// Attempt normal removal first (isForce = false)
+	// If the cluster has blocking conditions and is eligible for force removal,
+	// you can set isForce = true
+	info, success, err := clusterClient.RemoveCluster(ctx, cluster.ID, &expireDays, false)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Display cluster removal information
+	fmt.Printf("\nCluster Removal Prechecks:\n")
+	fmt.Printf("  Can Ignore Precheck: %v\n", info.Prechecks.IgnorePrecheck)
+	fmt.Printf("  Is Disconnected: %v\n", info.Prechecks.Disconnected)
+	fmt.Printf("  Is Air Gapped: %v\n", info.Prechecks.AirGapped)
+	fmt.Printf("  Last Connection Time: %v\n", info.Prechecks.LastConnectionTime)
+	fmt.Printf("  Ignore Precheck Time: %v\n", info.Prechecks.IgnorePrecheckTime)
+
+	fmt.Printf("\nRCV Locations for cluster:\n")
+	for _, location := range info.RCVLocations {
+		fmt.Printf("  ID: %v, Name: %v\n", location.ID, location.Name)
+	}
+
+	fmt.Printf("\nForce Removal Eligibility:\n")
+	fmt.Printf("  Blocking Conditions: %v\n", info.BlockingConditions)
+	fmt.Printf("  Force Removal Eligible: %v\n", info.ForceRemovalEligible)
+	fmt.Printf("  Force Removable: %v\n", info.ForceRemovable)
+
+	fmt.Printf("\nCluster removal initiated: %v\n", success)
 }

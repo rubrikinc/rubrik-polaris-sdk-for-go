@@ -1,0 +1,11 @@
+query RubrikPolarisSDKRequest($clusterUuid: UUID!) {
+  result: clusterRcvLocations(cdmClusterUUID: $clusterUuid) {
+    edges {
+      cursor
+      node {
+        id
+        name
+      }
+    }
+  }
+}
