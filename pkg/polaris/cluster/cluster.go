@@ -134,13 +134,11 @@ func (a API) VerifySLAReplication(ctx context.Context, clusterUUID uuid.UUID, in
 	return info, nil
 }
 
-// RemoveCDMCluster removes the specified CDM cluster. The expireInDays parameter
-// specifies the number of days before the cluster data expires. If nil, the default
-// expiration is used. The isForce parameter forces removal even if prechecks fail.
-func (a API) RemoveCDMCluster(ctx context.Context, clusterUUID uuid.UUID, expireInDays *int64, isForce bool) (bool, error) {
+// RemoveCDMCluster removes the specified CDM cluster. The isForce parameter forces removal even if prechecks fail.
+func (a API) RemoveCDMCluster(ctx context.Context, clusterUUID uuid.UUID, isForce bool) (bool, error) {
 	a.log.Print(log.Trace)
 
-	result, err := gqlcluster.RemoveCDMCluster(ctx, a.client.GQL, clusterUUID, expireInDays, isForce)
+	result, err := gqlcluster.RemoveCDMCluster(ctx, a.client.GQL, clusterUUID, 0, isForce)
 	if err != nil {
 		return false, fmt.Errorf("failed to remove CDM cluster: %s", err)
 	}
@@ -161,9 +159,6 @@ type ClusterRemovalInfo struct {
 // It first checks if the cluster removal prechecks can be ignored, retrieves RCV locations,
 // validates force removal eligibility, and then removes the cluster.
 //
-// The expireInDays parameter specifies the number of days before the cluster data expires.
-// If nil, the default expiration is used.
-//
 // The isForce parameter requests force removal. Force removal is ONLY available when ALL of these are true:
 //   - isDisconnected == true
 //   - hasBlockingConditions == true (has replication SLAs, global SLAs, or RCV locations)
@@ -175,7 +170,7 @@ type ClusterRemovalInfo struct {
 //
 // Returns ClusterRemovalInfo containing precheck results, RCV locations, and eligibility flags,
 // along with a boolean indicating if the removal was successful.
-func (a API) RemoveCluster(ctx context.Context, clusterUUID uuid.UUID, expireInDays *int64, forceRemoval bool) (ClusterRemovalInfo, bool, error) {
+func (a API) RemoveCluster(ctx context.Context, clusterUUID uuid.UUID, forceRemoval bool) (ClusterRemovalInfo, bool, error) {
 	a.log.Print(log.Trace)
 
 	var info ClusterRemovalInfo
@@ -249,7 +244,7 @@ func (a API) RemoveCluster(ctx context.Context, clusterUUID uuid.UUID, expireInD
 	}
 
 	// Remove the CDM cluster
-	success, err := a.RemoveCDMCluster(ctx, clusterUUID, expireInDays, forceRemoval)
+	success, err := a.RemoveCDMCluster(ctx, clusterUUID, forceRemoval)
 	if err != nil {
 		return info, false, fmt.Errorf("failed to remove cluster: %s", err)
 	}

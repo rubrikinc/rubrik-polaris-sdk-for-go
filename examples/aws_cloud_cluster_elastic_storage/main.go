@@ -120,14 +120,10 @@ func main() {
 	log.Printf("Cloud Cluster Name: %v\n", cluster.Name)
 	log.Printf("Cloud Cluster Status: %v\n", cluster.Status)
 
-	// Remove the cluster with comprehensive checks
-	// Set expiration days (optional - can be nil for default)
-	expireDays := int64(30)
-
 	// Attempt normal removal first (isForce = false)
 	// If the cluster has blocking conditions and is eligible for force removal,
 	// you can set isForce = true
-	info, success, err := clusterClient.RemoveCluster(ctx, cluster.ID, &expireDays, false)
+	info, success, err := clusterClient.RemoveCluster(ctx, cluster.ID, false)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -193,13 +193,13 @@ func VerifySLAWithReplicationToCluster(ctx context.Context, gql *graphql.Client,
 }
 
 // RemoveCDMCluster removes the specified CDM cluster.
-func RemoveCDMCluster(ctx context.Context, gql *graphql.Client, clusterUUID uuid.UUID, expireInDays *int64, isForce bool) (bool, error) {
+func RemoveCDMCluster(ctx context.Context, gql *graphql.Client, clusterUUID uuid.UUID, expireInDays int, isForce bool) (bool, error) {
 	gql.Log().Print(log.Trace)
 
 	query := removeCdmClusterQuery
 	buf, err := gql.Request(ctx, query, struct {
 		ClusterUUID  uuid.UUID `json:"clusterUuid"`
-		ExpireInDays *int64    `json:"expireInDays"`
+		ExpireInDays int       `json:"expireInDays"`
 		IsForce      bool      `json:"isForce"`
 	}{ClusterUUID: clusterUUID, ExpireInDays: expireInDays, IsForce: isForce})
 	if err != nil {
