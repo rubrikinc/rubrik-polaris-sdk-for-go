@@ -23,6 +23,8 @@ package sla
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -65,6 +67,7 @@ type Domain struct {
 			TierExistingSnapshots          bool             `json:"shouldTierExistingSnapshots"`
 		} `json:"archivalTieringSpec"`
 	} `json:"archivalSpecs"`
+	Archived            bool `json:"isArchived"`
 	BackupLocationSpecs []struct {
 		ArchivalGroup struct {
 			ID string `json:"id"`
@@ -157,6 +160,59 @@ type Domain struct {
 	RetentionLockMode RetentionLockMode `json:"retentionLockMode"`
 	SnapshotSchedule  SnapshotSchedule  `json:"snapshotSchedule"`
 	Version           string            `json:"version"`
+}
+
+// DomainByID returns the global SLA domain with the specified ID.
+func DomainByID(ctx context.Context, gql *graphql.Client, id uuid.UUID) (Domain, error) {
+	gql.Log().Print(log.Trace)
+
+	domain, err := domainByID(ctx, gql, id)
+	if err == nil {
+		return domain, nil
+	}
+
+	// Fallback to listing all domains if querying by ID fails with a 403 error.
+	// RSC returns a 403 error when the SLA domain isn't found.
+	var gqlErr graphql.GQLError
+	if !errors.As(err, &gqlErr) || gqlErr.Code() != 403 {
+		return Domain{}, err
+	}
+
+	domains, err := ListDomains(ctx, gql, nil)
+	if err != nil {
+		return Domain{}, err
+	}
+	for _, domain := range domains {
+		if domain.ID == id {
+			return domain, nil
+		}
+	}
+
+	return Domain{}, fmt.Errorf("global SLA domain %q %w", id, graphql.ErrNotFound)
+}
+
+func domainByID(ctx context.Context, gql *graphql.Client, id uuid.UUID) (Domain, error) {
+	query := slaDomainQuery
+	buf, err := gql.Request(ctx, query, struct {
+		ID uuid.UUID `json:"slaDomainId"`
+	}{ID: id})
+	if err != nil {
+		return Domain{}, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result Domain `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return Domain{}, graphql.UnmarshalError(query, err)
+	}
+	if payload.Data.Result.Archived {
+		return Domain{}, graphql.ErrNotFound
+	}
+
+	return payload.Data.Result, nil
 }
 
 // DomainFilter holds the filter parameters for an SLA domain list operation.
