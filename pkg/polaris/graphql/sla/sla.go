@@ -130,6 +130,7 @@ type ObjectType string
 
 const (
 	ObjectActiveDirectory         ObjectType = "ACTIVE_DIRECTORY_OBJECT_TYPE"
+	ObjectAtlassianJira           ObjectType = "ATLASSIAN_JIRA_OBJECT_TYPE"
 	ObjectAWSDynamoDB             ObjectType = "AWS_DYNAMODB_OBJECT_TYPE"
 	ObjectAWSEC2EBS               ObjectType = "AWS_EC2_EBS_OBJECT_TYPE"
 	ObjectAWSRDS                  ObjectType = "AWS_RDS_OBJECT_TYPE"
@@ -137,22 +138,28 @@ const (
 	ObjectAzure                   ObjectType = "AZURE_OBJECT_TYPE"
 	ObjectAzureAD                 ObjectType = "AZURE_AD_OBJECT_TYPE"
 	ObjectAzureBlob               ObjectType = "AZURE_BLOB_OBJECT_TYPE"
+	ObjectAzureDevOps             ObjectType = "AZURE_DEVOPS_OBJECT_TYPE"
 	ObjectAzureSQLDatabase        ObjectType = "AZURE_SQL_DATABASE_OBJECT_TYPE"
 	ObjectAzureSQLManagedInstance ObjectType = "AZURE_SQL_MANAGED_INSTANCE_OBJECT_TYPE"
 	ObjectCassandra               ObjectType = "CASSANDRA_OBJECT_TYPE"
+	ObjectD365                    ObjectType = "D365_OBJECT_TYPE"
 	ObjectDB2                     ObjectType = "DB2_OBJECT_TYPE"
 	ObjectExchange                ObjectType = "EXCHANGE_OBJECT_TYPE"
 	ObjectFileset                 ObjectType = "FILESET_OBJECT_TYPE"
 	ObjectGCP                     ObjectType = "GCP_OBJECT_TYPE"
 	ObjectGCPCloudSQL             ObjectType = "GCP_CLOUD_SQL_OBJECT_TYPE"
+	ObjectGoogleWorkspace         ObjectType = "GOOGLE_WORKSPACE_OBJECT_TYPE"
 	ObjectHyperV                  ObjectType = "HYPERV_OBJECT_TYPE"
 	ObjectInformixInstance        ObjectType = "INFORMIX_INSTANCE_OBJECT_TYPE"
 	ObjectK8s                     ObjectType = "K8S_OBJECT_TYPE"
+	ObjectKupr                    ObjectType = "KUPR_OBJECT_TYPE"
+	ObjectM365BackupStorage       ObjectType = "M365_BACKUP_STORAGE_OBJECT_TYPE"
 	ObjectManagedVolume           ObjectType = "MANAGED_VOLUME_OBJECT_TYPE"
 	ObjectMicrosoft365            ObjectType = "O365_OBJECT_TYPE"
 	ObjectMongo                   ObjectType = "MONGO_OBJECT_TYPE"
 	ObjectMongoDB                 ObjectType = "MONGODB_OBJECT_TYPE"
 	ObjectMSSQL                   ObjectType = "MSSQL_OBJECT_TYPE"
+	ObjectMySQLDB                 ObjectType = "MYSQLDB_OBJECT_TYPE"
 	ObjectNAS                     ObjectType = "NAS_OBJECT_TYPE"
 	ObjectNCD                     ObjectType = "NCD_OBJECT_TYPE"
 	ObjectNutanix                 ObjectType = "NUTANIX_OBJECT_TYPE"
@@ -161,6 +168,8 @@ const (
 	ObjectOpenStack               ObjectType = "OPENSTACK_OBJECT_TYPE"
 	ObjectOracle                  ObjectType = "ORACLE_OBJECT_TYPE"
 	ObjectPostgresDBCluster       ObjectType = "POSTGRES_DB_CLUSTER_OBJECT_TYPE"
+	ObjectProxmox                 ObjectType = "PROXMOX_OBJECT_TYPE"
+	ObjectSalesforce              ObjectType = "SALESFORCE_OBJECT_TYPE"
 	ObjectSAPHANA                 ObjectType = "SAP_HANA_OBJECT_TYPE"
 	ObjectSnapMirrorCloud         ObjectType = "SNAPMIRROR_CLOUD_OBJECT_TYPE"
 	ObjectVCD                     ObjectType = "VCD_OBJECT_TYPE"
@@ -172,6 +181,7 @@ const (
 func AllObjectTypesAsStrings() []string {
 	return []string{
 		string(ObjectActiveDirectory),
+		string(ObjectAtlassianJira),
 		string(ObjectAWSDynamoDB),
 		string(ObjectAWSEC2EBS),
 		string(ObjectAWSRDS),
@@ -179,22 +189,28 @@ func AllObjectTypesAsStrings() []string {
 		string(ObjectAzure),
 		string(ObjectAzureAD),
 		string(ObjectAzureBlob),
+		string(ObjectAzureDevOps),
 		string(ObjectAzureSQLDatabase),
 		string(ObjectAzureSQLManagedInstance),
 		string(ObjectCassandra),
+		string(ObjectD365),
 		string(ObjectDB2),
 		string(ObjectExchange),
 		string(ObjectFileset),
 		string(ObjectGCP),
 		string(ObjectGCPCloudSQL),
+		string(ObjectGoogleWorkspace),
 		string(ObjectHyperV),
 		string(ObjectInformixInstance),
 		string(ObjectK8s),
+		string(ObjectKupr),
+		string(ObjectM365BackupStorage),
 		string(ObjectManagedVolume),
 		string(ObjectMicrosoft365),
 		string(ObjectMongo),
 		string(ObjectMongoDB),
 		string(ObjectMSSQL),
+		string(ObjectMySQLDB),
 		string(ObjectNAS),
 		string(ObjectNCD),
 		string(ObjectNutanix),
@@ -203,6 +219,8 @@ func AllObjectTypesAsStrings() []string {
 		string(ObjectOpenStack),
 		string(ObjectOracle),
 		string(ObjectPostgresDBCluster),
+		string(ObjectProxmox),
+		string(ObjectSalesforce),
 		string(ObjectSAPHANA),
 		string(ObjectSnapMirrorCloud),
 		string(ObjectVCD),
