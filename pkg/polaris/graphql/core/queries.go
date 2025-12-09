@@ -70,6 +70,36 @@ var getKorgTaskchainStatusQuery = `query SdkGolangGetKorgTaskchainStatus($taskch
     }
 }`
 
+// hierarchyObject GraphQL query
+var hierarchyObjectQuery = `query SdkGolangHierarchyObject($fid: UUID!) {
+    result: hierarchyObject(fid: $fid) {
+        id
+        name
+        objectType
+        slaAssignment
+        configuredSlaDomain {
+            ... on ClusterSlaDomain {
+                id
+                name
+            }
+            ... on GlobalSlaReply {
+                id
+                name
+            }
+        }
+        effectiveSlaDomain {
+            ... on ClusterSlaDomain {
+                id
+                name
+            }
+            ... on GlobalSlaReply {
+                id
+                name
+            }
+        }
+    }
+}`
+
 // registerCluster GraphQL query
 var registerClusterQuery = `mutation SdkGolangRegisterCluster($managedByPolaris: Boolean, $nodeConfigs: [NodeRegistrationConfigsInput!], $isOfflineRegistration: Boolean) {
     result: generateClusterRegistrationToken(input: {
