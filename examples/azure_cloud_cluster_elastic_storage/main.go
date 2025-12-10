@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/google/uuid"
@@ -66,9 +65,9 @@ func main() {
 	}
 
 	// Print the subscription details.
-	fmt.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
+	log.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
 	for _, feature := range account.Features {
-		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
+		log.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
 	}
 
 	// Create the Cloud Cluster
@@ -116,9 +115,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Cloud Cluster ID: %v\n", cluster.ID)
-	fmt.Printf("Cloud Cluster Name: %v\n", cluster.Name)
-	fmt.Printf("Cloud Cluster Status: %v\n", cluster.Status)
+	log.Printf("Cloud Cluster ID: %v\n", cluster.ID)
+	log.Printf("Cloud Cluster Name: %v\n", cluster.Name)
+	log.Printf("Cloud Cluster Status: %v\n", cluster.Status)
 
 	// Attempt normal removal first (isForce = false)
 	// If the cluster has blocking conditions and is eligible for force removal,
@@ -129,22 +128,22 @@ func main() {
 	}
 
 	// Display cluster removal information
-	fmt.Printf("\nCluster Removal Prechecks:\n")
-	fmt.Printf("  Can Ignore Precheck: %v\n", info.Prechecks.IgnorePrecheck)
-	fmt.Printf("  Is Disconnected: %v\n", info.Prechecks.Disconnected)
-	fmt.Printf("  Is Air Gapped: %v\n", info.Prechecks.AirGapped)
-	fmt.Printf("  Last Connection Time: %v\n", info.Prechecks.LastConnectionTime)
-	fmt.Printf("  Ignore Precheck Time: %v\n", info.Prechecks.IgnorePrecheckTime)
+	log.Print("\nCluster Removal Prechecks:\n")
+	log.Printf("  Can Ignore Precheck: %v\n", info.Prechecks.IgnorePrecheck)
+	log.Printf("  Is Disconnected: %v\n", info.Prechecks.Disconnected)
+	log.Printf("  Is Air Gapped: %v\n", info.Prechecks.AirGapped)
+	log.Printf("  Last Connection Time: %v\n", info.Prechecks.LastConnectionTime)
+	log.Printf("  Ignore Precheck Time: %v\n", info.Prechecks.IgnorePrecheckTime)
 
-	fmt.Printf("\nRCV Locations for cluster:\n")
+	log.Print("\nRCV Locations for cluster:\n")
 	for _, location := range info.RCVLocations {
-		fmt.Printf("  ID: %v, Name: %v\n", location.ID, location.Name)
+		log.Printf("  ID: %v, Name: %v\n", location.ID, location.Name)
 	}
 
-	fmt.Printf("\nForce Removal Eligibility:\n")
-	fmt.Printf("  Blocking Conditions: %v\n", info.BlockingConditions)
-	fmt.Printf("  Force Removal Eligible: %v\n", info.ForceRemovalEligible)
-	fmt.Printf("  Force Removable: %v\n", info.ForceRemovable)
+	log.Print("\nForce Removal Eligibility:\n")
+	log.Printf("  Blocking Conditions: %v\n", info.BlockingConditions)
+	log.Printf("  Force Removal Eligible: %v\n", info.ForceRemovalEligible)
+	log.Printf("  Force Removable: %v\n", info.ForceRemovable)
 
-	fmt.Printf("\nCluster removal initiated: %v\n", success)
+	log.Printf("\nCluster removal initiated: %v\n", success)
 }
