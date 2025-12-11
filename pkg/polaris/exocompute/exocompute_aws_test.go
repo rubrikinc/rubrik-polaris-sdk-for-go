@@ -63,16 +63,16 @@ func TestAwsExocomputeWithCFT(t *testing.T) {
 
 	// Adds the AWS account identified by the specified profile to RSC. Note
 	// that the profile needs to have a default region.
-	accountID, err := awsClient.AddAccountWithCFT(ctx, aws.Profile(testAccount.Profile),
-		[]core.Feature{core.FeatureCloudNativeProtection}, aws.Name(testAccount.AccountName), aws.Regions("us-east-2"))
+	cnpFeature := []core.Feature{core.FeatureCloudNativeProtection.WithPermissionGroups(core.PermissionGroupBasic)}
+	accountID, err := awsClient.AddAccountWithCFT(ctx, aws.Profile(testAccount.Profile), cnpFeature,
+		aws.Name(testAccount.AccountName), aws.Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Enable the exocompute feature for the account.
-	exoAccountID, err := awsClient.AddAccountWithCFT(ctx, aws.Profile(testAccount.Profile),
-		[]core.Feature{core.FeatureExocompute.WithPermissionGroups(core.PermissionGroupBasic, core.PermissionGroupRSCManagedCluster)},
-		aws.Regions("us-east-2"))
+	exoFeature := []core.Feature{core.FeatureExocompute.WithPermissionGroups(core.PermissionGroupBasic, core.PermissionGroupRSCManagedCluster)}
+	exoAccountID, err := awsClient.AddAccountWithCFT(ctx, aws.Profile(testAccount.Profile), exoFeature, aws.Regions("us-east-2"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestAwsExocomputeWithCFT(t *testing.T) {
 	}
 
 	// Disable the exocompute feature for the account.
-	if err := awsClient.RemoveAccountWithCFT(ctx, aws.Profile(testAccount.Profile), []core.Feature{core.FeatureExocompute}, false); err != nil {
+	if err := awsClient.RemoveAccountWithCFT(ctx, aws.Profile(testAccount.Profile), exoFeature, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -197,7 +197,7 @@ func TestAwsExocomputeWithCFT(t *testing.T) {
 	}
 
 	// Remove the AWS account from RSC.
-	if err := awsClient.RemoveAccountWithCFT(ctx, aws.Profile(testAccount.Profile), []core.Feature{core.FeatureCloudNativeProtection}, false); err != nil {
+	if err := awsClient.RemoveAccountWithCFT(ctx, aws.Profile(testAccount.Profile), cnpFeature, false); err != nil {
 		t.Fatal(err)
 	}
 

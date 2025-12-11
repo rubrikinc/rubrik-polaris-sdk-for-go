@@ -30,6 +30,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -140,4 +141,20 @@ func (a API) DeleteTagRule(ctx context.Context, tagRuleID uuid.UUID) error {
 	}
 
 	return nil
+}
+
+// HierarchyObjectByID returns the hierarchy object with the specified ID.
+// This can be used to query any hierarchy object (VMs, databases, tag rules,
+// etc.) and retrieve its SLA assignment information including the configured
+// and effective SLA domains.
+func (a API) HierarchyObjectByID(ctx context.Context, fid uuid.UUID) (core.HierarchyObject, error) {
+	a.log.Print(log.Trace)
+
+	coreAPI := core.Wrap(a.client)
+	obj, err := coreAPI.HierarchyObjectByID(ctx, fid)
+	if err != nil {
+		return core.HierarchyObject{}, fmt.Errorf("failed to get hierarchy object: %s", err)
+	}
+
+	return obj, nil
 }
