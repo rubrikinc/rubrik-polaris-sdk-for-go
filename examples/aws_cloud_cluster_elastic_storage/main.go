@@ -123,7 +123,7 @@ func main() {
 	// Attempt normal removal first (isForce = false)
 	// If the cluster has blocking conditions and is eligible for force removal,
 	// you can set isForce = true
-	info, success, err := clusterClient.RemoveCluster(ctx, cluster.ID, false)
+	info, err := clusterClient.RemoveCluster(ctx, cluster.ID, false, 0)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -145,6 +145,4 @@ func main() {
 	log.Printf("  Blocking Conditions: %v\n", info.BlockingConditions)
 	log.Printf("  Force Removal Eligible: %v\n", info.ForceRemovalEligible)
 	log.Printf("  Force Removable: %v\n", info.ForceRemovable)
-
-	log.Printf("\nCluster removal initiated: %v\n", success)
 }

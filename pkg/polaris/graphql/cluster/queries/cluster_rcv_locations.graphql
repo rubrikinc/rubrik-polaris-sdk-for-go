@@ -1,5 +1,19 @@
-query RubrikPolarisSDKRequest($clusterUuid: UUID!) {
-  result: clusterRcvLocations(cdmClusterUUID: $clusterUuid) {
+query RubrikPolarisSDKRequest(
+  $clusterUuid: UUID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+  $sortOrder: SortOrder
+) {
+  result: clusterRcvLocations(
+    cdmClusterUUID: $clusterUuid
+    first: $first
+    after: $after
+    last: $last
+    before: $before
+    sortOrder: $sortOrder
+  ) {
     edges {
       cursor
       node {

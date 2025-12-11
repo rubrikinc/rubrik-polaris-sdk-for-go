@@ -44,8 +44,22 @@ var canIgnoreClusterRemovalPrechecksQuery = `query SdkGolangCanIgnoreClusterRemo
 }`
 
 // clusterRcvLocations GraphQL query
-var clusterRcvLocationsQuery = `query SdkGolangClusterRcvLocations($clusterUuid: UUID!) {
-  result: clusterRcvLocations(cdmClusterUUID: $clusterUuid) {
+var clusterRcvLocationsQuery = `query SdkGolangClusterRcvLocations(
+  $clusterUuid: UUID!
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+  $sortOrder: SortOrder
+) {
+  result: clusterRcvLocations(
+    cdmClusterUUID: $clusterUuid
+    first: $first
+    after: $after
+    last: $last
+    before: $before
+    sortOrder: $sortOrder
+  ) {
     edges {
       cursor
       node {

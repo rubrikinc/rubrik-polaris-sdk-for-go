@@ -30,6 +30,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlcluster "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cluster"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -98,10 +99,10 @@ func (a API) CanIgnoreClusterRemovalPrechecks(ctx context.Context, clusterUUID u
 }
 
 // RCVLocations returns all Recovery Cloud Vault locations for the specified cluster.
-func (a API) RCVLocations(ctx context.Context, clusterUUID uuid.UUID) ([]gqlcluster.RCVLocation, error) {
+func (a API) RCVLocations(ctx context.Context, clusterUUID uuid.UUID, pagination core.Pagination) ([]gqlcluster.RCVLocation, error) {
 	a.log.Print(log.Trace)
 
-	locations, err := gqlcluster.ClusterRCVLocations(ctx, a.client.GQL, clusterUUID)
+	locations, err := gqlcluster.ClusterRCVLocations(ctx, a.client.GQL, clusterUUID, pagination)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cluster RCV locations: %s", err)
 	}
@@ -135,10 +136,10 @@ func (a API) VerifySLAReplication(ctx context.Context, clusterUUID uuid.UUID, in
 }
 
 // RemoveCDMCluster removes the specified CDM cluster. The isForce parameter forces removal even if prechecks fail.
-func (a API) RemoveCDMCluster(ctx context.Context, clusterUUID uuid.UUID, isForce bool) (bool, error) {
+func (a API) RemoveCDMCluster(ctx context.Context, clusterUUID uuid.UUID, isForce bool, expireInDays int) (bool, error) {
 	a.log.Print(log.Trace)
 
-	result, err := gqlcluster.RemoveCDMCluster(ctx, a.client.GQL, clusterUUID, 0, isForce)
+	result, err := gqlcluster.RemoveCDMCluster(ctx, a.client.GQL, clusterUUID, expireInDays, isForce)
 	if err != nil {
 		return false, fmt.Errorf("failed to remove CDM cluster: %s", err)
 	}
@@ -170,7 +171,7 @@ type ClusterRemovalInfo struct {
 //
 // Returns ClusterRemovalInfo containing precheck results, RCV locations, and eligibility flags,
 // along with a boolean indicating if the removal was successful.
-func (a API) RemoveCluster(ctx context.Context, clusterUUID uuid.UUID, forceRemoval bool) (ClusterRemovalInfo, bool, error) {
+func (a API) RemoveCluster(ctx context.Context, clusterUUID uuid.UUID, forceRemoval bool, expireInDays int) (ClusterRemovalInfo, error) {
 	a.log.Print(log.Trace)
 
 	var info ClusterRemovalInfo
@@ -178,27 +179,27 @@ func (a API) RemoveCluster(ctx context.Context, clusterUUID uuid.UUID, forceRemo
 	// Check cluster removal prechecks
 	prechecks, err := a.CanIgnoreClusterRemovalPrechecks(ctx, clusterUUID)
 	if err != nil {
-		return info, false, fmt.Errorf("failed to check cluster removal prechecks: %s", err)
+		return info, fmt.Errorf("failed to check cluster removal prechecks: %s", err)
 	}
 	info.Prechecks = prechecks
 
 	// Get RCV locations
-	rcvLocations, err := a.RCVLocations(ctx, clusterUUID)
+	rcvLocations, err := a.RCVLocations(ctx, clusterUUID, core.Pagination{})
 	if err != nil {
-		return info, false, fmt.Errorf("failed to get RCV locations: %s", err)
+		return info, fmt.Errorf("failed to get RCV locations: %s", err)
 	}
 	info.RCVLocations = rcvLocations
 
 	// Check for SLA replication (excluding archived SLAs)
 	slaReplication, err := a.VerifySLAReplication(ctx, clusterUUID, false)
 	if err != nil {
-		return info, false, fmt.Errorf("failed to verify SLA replication: %s", err)
+		return info, fmt.Errorf("failed to verify SLA replication: %s", err)
 	}
 
 	// Get global SLAs
 	globalSLAs, err := a.GlobalSLAs(ctx, clusterUUID)
 	if err != nil {
-		return info, false, fmt.Errorf("failed to get global SLAs: %s", err)
+		return info, fmt.Errorf("failed to get global SLAs: %s", err)
 	}
 
 	// Calculate blocking conditions
@@ -229,25 +230,28 @@ func (a API) RemoveCluster(ctx context.Context, clusterUUID uuid.UUID, forceRemo
 	if forceRemoval {
 		// Air-gapped clusters are NEVER eligible for force removal
 		if prechecks.AirGapped {
-			return info, false, fmt.Errorf("force removal is not available for air-gapped clusters; blocking conditions must be resolved manually")
+			return info, fmt.Errorf("force removal is not available for air-gapped clusters; blocking conditions must be resolved manually")
 		}
 
 		// Check if force removal is eligible
 		if !info.ForceRemovalEligible {
-			return info, false, fmt.Errorf("force removal is not available: cluster must be disconnected with blocking conditions")
+			return info, fmt.Errorf("force removal is not available: cluster must be disconnected with blocking conditions")
 		}
 
 		// Check if force removal can be executed (cluster disconnected for ≥7 days)
 		if !info.ForceRemovable {
-			return info, false, fmt.Errorf("force removal cannot be executed: cluster has not been disconnected for at least 7 days")
+			return info, fmt.Errorf("force removal cannot be executed: cluster has not been disconnected for at least 7 days")
 		}
 	}
 
 	// Remove the CDM cluster
-	success, err := a.RemoveCDMCluster(ctx, clusterUUID, forceRemoval)
+	success, err := a.RemoveCDMCluster(ctx, clusterUUID, forceRemoval, expireInDays)
 	if err != nil {
-		return info, false, fmt.Errorf("failed to remove cluster: %s", err)
+		return info, fmt.Errorf("failed to remove cluster: %s", err)
+	}
+	if !success {
+		return info, fmt.Errorf("failed to remove cluster: unknown error")
 	}
 
-	return info, success, nil
+	return info, nil
 }

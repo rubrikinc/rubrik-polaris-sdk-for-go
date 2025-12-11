@@ -110,13 +110,25 @@ type SLAReplicationInfo struct {
 }
 
 // ClusterRCVLocations returns all RCV locations for the specified cluster.
-func ClusterRCVLocations(ctx context.Context, gql *graphql.Client, clusterUUID uuid.UUID) ([]RCVLocation, error) {
+func ClusterRCVLocations(ctx context.Context, gql *graphql.Client, clusterUUID uuid.UUID, pagination core.Pagination) ([]RCVLocation, error) {
 	gql.Log().Print(log.Trace)
 
 	query := clusterRcvLocationsQuery
 	buf, err := gql.Request(ctx, query, struct {
-		ClusterUUID uuid.UUID `json:"clusterUuid"`
-	}{ClusterUUID: clusterUUID})
+		ClusterUUID uuid.UUID       `json:"clusterUuid"`
+		First       *int            `json:"first,omitempty"`
+		After       *string         `json:"after,omitempty"`
+		Last        *int            `json:"last,omitempty"`
+		Before      *string         `json:"before,omitempty"`
+		SortOrder   *core.SortOrder `json:"sortOrder,omitempty"`
+	}{
+		ClusterUUID: clusterUUID,
+		First:       pagination.First,
+		After:       pagination.After,
+		Last:        pagination.Last,
+		Before:      pagination.Before,
+		SortOrder:   pagination.SortOrder,
+	})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
