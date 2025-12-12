@@ -241,13 +241,13 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 		return CloudCluster{}, fmt.Errorf("cdm version %s is not available for account %s", cdmVersion, account.ID)
 	}
 
-	// ensure specified instance type is supported
+	// Ensure specified instance type is supported
 	validInstanceType := slices.Contains(supportedInstanceTypes, input.VMConfig.InstanceType)
 	if !validInstanceType {
 		return CloudCluster{}, fmt.Errorf("instance type %s is not supported for cdm version %s, supported Instance types are: %v", input.VMConfig.InstanceType, input.VMConfig.CDMVersion, supportedInstanceTypes)
 	}
 
-	// validate marketplace agreement
+	// Validate marketplace agreement
 	marketplaceTerms, err := cloudcluster.Wrap(a.client).AzureMarketplaceTerms(ctx, input.CloudAccountID, cdmVersion)
 	if err != nil {
 		return CloudCluster{}, fmt.Errorf("error validating marketplace terms: %s", err)
@@ -258,6 +258,20 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 	}
 	if marketplaceTerms.MarketplaceSKU == "" {
 		return CloudCluster{}, fmt.Errorf("marketplace sku is not available for cdm version %s", cdmVersion)
+	}
+
+	// The API will default to the first logical availability zone if one is not specified usually 1, but we should validate the input if it is specified
+	if input.VMConfig.AvailabilityZone != "" {
+		cloudClusterRegionDetails, err := cloudcluster.Wrap(a.client).AzureCCRegionDetails(ctx, input.CloudAccountID)
+		if err != nil {
+			return CloudCluster{}, fmt.Errorf("failed to get availability zone details: %s", err)
+		}
+		validAvailabilityZone := slices.ContainsFunc(cloudClusterRegionDetails, func(zone cloudcluster.AzureCCRegionDetails) bool {
+			return slices.Contains(zone.LogicalAvailabilityZones, input.VMConfig.AvailabilityZone)
+		})
+		if !validAvailabilityZone {
+			return CloudCluster{}, fmt.Errorf("availability zone %s is not valid for location %s", input.VMConfig.AvailabilityZone, input.VMConfig.Location)
+		}
 	}
 
 	// Find ManagedIdentity by name and set client ID and Resource Group
