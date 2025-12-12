@@ -88,7 +88,7 @@ func (a API) AllAzureCdmVersions(ctx context.Context, cloudAccountID uuid.UUID, 
 // AzureCCRegionDetails represents the region details available for the Azure Cloud Cluster.
 type AzureCCRegionDetails struct {
 	Location                 azure.CloudAccountRegionEnum `json:"location"`
-	LogicalAvailabilityZones []azure.NativeRegionEnum     `json:"logicalAvailabilityZones"`
+	LogicalAvailabilityZones []string                     `json:"logicalAvailabilityZones"`
 }
 
 // AzureCCRegionDetails returns all the available regions for the specified cloud account.
