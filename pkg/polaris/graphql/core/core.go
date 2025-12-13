@@ -81,6 +81,15 @@ const (
 	SortOrderDesc SortOrder = "DESC"
 )
 
+// Pagination represents pagination parameters.
+type Pagination struct {
+	First     *int
+	After     *string
+	Last      *int
+	Before    *string
+	SortOrder *SortOrder
+}
+
 // Feature represents a Polaris cloud account feature with a set of permission
 // groups. If the PermissionGroups field is nil then the full set of permissions
 // are used for the feature.

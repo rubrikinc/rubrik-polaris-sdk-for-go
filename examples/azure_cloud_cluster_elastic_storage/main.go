@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cloudcluster"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cluster"
 	cloudclustergql "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
@@ -38,6 +38,7 @@ func main() {
 
 	azureClient := azure.Wrap(client)
 	cloudClusterClient := cloudcluster.Wrap(client)
+	clusterClient := cluster.Wrap(client)
 
 	azureFqdn := "my-domain.onmicrosoft.com"
 	azureSubscriptionID := "abcdefg-a123-12ab-1a23-1a2b3c45de6f"
@@ -64,9 +65,9 @@ func main() {
 	}
 
 	// Print the subscription details.
-	fmt.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
+	log.Printf("Name: %v, NativeID: %v\n", account.Name, account.NativeID)
 	for _, feature := range account.Features {
-		fmt.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
+		log.Printf("Feature: %v, Regions: %v, Status: %v\n", feature.Name, feature.Regions, feature.Status)
 	}
 
 	// Create the Cloud Cluster
@@ -114,5 +115,33 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Cloud Cluster: %v", cluster)
+	log.Printf("Cloud Cluster ID: %v\n", cluster.ID)
+	log.Printf("Cloud Cluster Name: %v\n", cluster.Name)
+	log.Printf("Cloud Cluster Status: %v\n", cluster.Status)
+
+	// Attempt normal removal first (isForce = false)
+	// If the cluster has blocking conditions and is eligible for force removal,
+	// you can set isForce = true
+	info, err := clusterClient.RemoveCluster(ctx, cluster.ID, false, 0)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Display cluster removal information
+	log.Print("\nCluster Removal Prechecks:\n")
+	log.Printf("  Can Ignore Precheck: %v\n", info.Prechecks.IgnorePrecheck)
+	log.Printf("  Is Disconnected: %v\n", info.Prechecks.Disconnected)
+	log.Printf("  Is Air Gapped: %v\n", info.Prechecks.AirGapped)
+	log.Printf("  Last Connection Time: %v\n", info.Prechecks.LastConnectionTime)
+	log.Printf("  Ignore Precheck Time: %v\n", info.Prechecks.IgnorePrecheckTime)
+
+	log.Print("\nRCV Locations for cluster:\n")
+	for _, location := range info.RCVLocations {
+		log.Printf("  ID: %v, Name: %v\n", location.ID, location.Name)
+	}
+
+	log.Print("\nForce Removal Eligibility:\n")
+	log.Printf("  Blocking Conditions: %v\n", info.BlockingConditions)
+	log.Printf("  Force Removal Eligible: %v\n", info.ForceRemovalEligible)
+	log.Printf("  Force Removable: %v\n", info.ForceRemovable)
 }
