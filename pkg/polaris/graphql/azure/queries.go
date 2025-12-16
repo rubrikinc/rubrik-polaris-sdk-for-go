@@ -109,35 +109,35 @@ var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPe
 
 // azureNativeSubscriptions GraphQL query
 var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($after: String, $filter: String!) {
-    result: azureNativeSubscriptions(after: $after, subscriptionFilters: {
-        nameSubstringFilter: {
-            nameSubstring: $filter
+  result: azureNativeSubscriptions(
+    azureNativeProtectionFeatures: [VM, SQL_DB, SQL_MI, BLOB]
+    after: $after
+    subscriptionFilters: { nameSubstringFilter: { nameSubstring: $filter } }
+  ) {
+    count
+    edges {
+      node {
+        id
+        accountConnectionId
+        azureSubscriptionNativeId
+        name
+        azureSubscriptionStatus
+        slaAssignment
+        configuredSlaDomain {
+          id
+          name
         }
-    }) {
-        count
-        edges {
-            node {
-                id
-                accountConnectionId
-                azureSubscriptionNativeId
-                name
-                azureSubscriptionStatus
-                slaAssignment
-                configuredSlaDomain {
-                    id
-                    name
-                }
-                effectiveSlaDomain {
-                    id
-                    name
-                }
-            }
+        effectiveSlaDomain {
+          id
+          name
         }
-        pageInfo {
-            endCursor
-            hasNextPage
-        }
+      }
     }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
 }`
 
 // deleteAzureCloudAccountWithoutOauth GraphQL query
