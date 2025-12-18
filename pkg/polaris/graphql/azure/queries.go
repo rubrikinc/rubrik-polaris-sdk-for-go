@@ -84,6 +84,17 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
     }
 }`
 
+// allAzureLatestPermissionsByPermissionsGroup GraphQL query
+var allAzureLatestPermissionsByPermissionsGroupQuery = `query SdkGolangAllAzureLatestPermissionsByPermissionsGroup($features: [CloudAccountFeature!]!) {
+    result: allAzureLatestPermissionsByPermissionsGroup(features: $features) {
+        feature
+        permissionsGroupPermissions {
+            permissionsGroup
+            version
+        }
+    }
+}`
+
 // azureCloudAccountPermissionConfig GraphQL query
 var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPermissionConfig($feature: CloudAccountFeature!, $permissionsGroups: [PermissionsGroup!]!) {
     result: azureCloudAccountPermissionConfig(feature: $feature, permissionsGroups: $permissionsGroups) {

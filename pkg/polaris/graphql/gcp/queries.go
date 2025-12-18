@@ -95,6 +95,17 @@ var allLatestFeaturePermissionsForCloudAccountsQuery = `query SdkGolangAllLatest
     }
 }`
 
+// allLatestPermissionsByPermissionsGroupGcp GraphQL query
+var allLatestPermissionsByPermissionsGroupGcpQuery = `query SdkGolangAllLatestPermissionsByPermissionsGroupGcp($features: [CloudAccountFeature!]!) {
+    result: allLatestPermissionsByPermissionsGroupGcp(features: $features) {
+        feature
+        permissionGroups {
+            permissionGroupType
+            policyVersion
+        }
+    }
+}`
+
 // gcpBulkSetCloudAccountProperties GraphQL query
 var gcpBulkSetCloudAccountPropertiesQuery = `mutation SdkGolangGcpBulkSetCloudAccountProperties($cloudAccountIds: [UUID!]!, $projectCredentialsJwt: String!) {
     result: gcpBulkSetCloudAccountProperties(input: {
