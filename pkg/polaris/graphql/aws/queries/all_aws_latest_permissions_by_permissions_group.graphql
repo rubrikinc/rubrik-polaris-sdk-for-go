@@ -1,0 +1,10 @@
+query RubrikPolarisSDKRequest($features: [CloudAccountFeature!]!) {
+    result: allAWSLatestPermissionsByPermissionsGroup(features: $features) {
+        feature
+        permissionsGroupPermissions {
+            permissionsGroup
+            version
+        }
+    }
+}
+
