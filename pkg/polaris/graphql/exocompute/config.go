@@ -40,27 +40,27 @@ type ListConfigurationsFilter[R ListConfigurationsResult] interface {
 // ListConfigurationsResult holds the result of an exocompute configuration list
 // operation.
 type ListConfigurationsResult interface {
-	AWSConfigurationsForCloudAccount | AzureConfigurationsForCloudAccount
+	[]AWSConfigurationsForCloudAccount | []AzureConfigurationsForCloudAccount | GCPConfigurations
 }
 
 // ListConfigurations return all exocompute configurations matching the
 // specified filter.
-func ListConfigurations[F ListConfigurationsFilter[R], R ListConfigurationsResult](ctx context.Context, gql *graphql.Client, filter F) ([]R, error) {
+func ListConfigurations[F ListConfigurationsFilter[R], R ListConfigurationsResult](ctx context.Context, gql *graphql.Client, filter F) (R, error) {
 	gql.Log().Print(log.Trace)
 
-	query, queryParams, _ := filter.ListQuery()
+	query, queryParams, emptyResult := filter.ListQuery()
 	buf, err := gql.Request(ctx, query, queryParams)
 	if err != nil {
-		return nil, graphql.RequestError(query, err)
+		return emptyResult, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
 		Data struct {
-			Result []R `json:"result"`
+			Result R `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, graphql.UnmarshalError(query, err)
+		return emptyResult, graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Result, nil
@@ -115,7 +115,7 @@ type UpdateConfigurationParams[R UpdateConfigurationResult] interface {
 // UpdateConfigurationResult holds the result of an exocompute configuration
 // update operation.
 type UpdateConfigurationResult interface {
-	UpdateAWSConfigurationResult
+	UpdateAWSConfigurationResult | UpdateGCPConfigurationResult
 	Validate() (uuid.UUID, error)
 }
 
@@ -156,7 +156,7 @@ type DeleteConfigurationParams[R DeleteConfigurationResult] interface {
 // DeleteConfigurationResult holds the result of an exocompute configuration
 // delete operation.
 type DeleteConfigurationResult interface {
-	DeleteAWSConfigurationResult | DeleteAzureConfigurationResult
+	DeleteAWSConfigurationResult | DeleteAzureConfigurationResult | DeleteGCPConfigurationResult
 	Validate() error
 }
 
