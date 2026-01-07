@@ -1,0 +1,11 @@
+mutation RubrikPolarisSDKRequest(
+    $cloudAccountId:     UUID!,
+    $regionalConfigs:    [RegionalExocomputeConfigInput!]!,
+    $triggerHealthCheck: Boolean!,
+) {
+    result: setGcpExocomputeConfigs(input: {
+        cloudAccountId:            $cloudAccountId,
+        regionalExocomputeConfigs: $regionalConfigs,
+        triggerHealthCheck:        $triggerHealthCheck,
+    })
+}
