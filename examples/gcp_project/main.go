@@ -55,8 +55,8 @@ func main() {
 	gcpClient := gcp.Wrap(client)
 
 	features := []core.Feature{
-		core.FeatureCloudNativeProtection.WithPermissionGroups("BASIC", "EXPORT_AND_RESTORE"),
-		core.FeatureGCPSharedVPCHost.WithPermissionGroups("BASIC"),
+		core.FeatureCloudNativeProtection.WithPermissionGroups(core.PermissionGroupBasic, core.PermissionGroupExportAndRestore),
+		core.FeatureGCPSharedVPCHost.WithPermissionGroups(core.PermissionGroupBasic),
 	}
 
 	// Add the GCP default project to Polaris. Usually resolved using the

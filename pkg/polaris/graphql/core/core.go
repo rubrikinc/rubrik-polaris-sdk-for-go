@@ -66,11 +66,24 @@ const (
 type PermissionGroup string
 
 const (
-	PermissionGroupInvalid                PermissionGroup = "GROUP_UNSPECIFIED"
-	PermissionGroupBasic                  PermissionGroup = "BASIC"
-	PermissionGroupCCES                   PermissionGroup = "CLOUD_CLUSTER_ES"
-	PermissionGroupRSCManagedCluster      PermissionGroup = "RSC_MANAGED_CLUSTER"
-	PermissionGroupCustomerManagedCluster PermissionGroup = "CUSTOMER_MANAGED_BASIC"
+	PermissionGroupAKSCustomPrivateDNSZone    PermissionGroup = "AKS_CUSTOM_PRIVATE_DNS_ZONE"
+	PermissionGroupBackupV2                   PermissionGroup = "BACKUP_V2"
+	PermissionGroupBasic                      PermissionGroup = "BASIC"
+	PermissionGroupCCES                       PermissionGroup = "CLOUD_CLUSTER_ES"
+	PermissionGroupCustomerManagedCluster     PermissionGroup = "CUSTOMER_MANAGED_BASIC"
+	PermissionGroupEncryption                 PermissionGroup = "ENCRYPTION"
+	PermissionGroupExportAndRestore           PermissionGroup = "EXPORT_AND_RESTORE"
+	PermissionGroupExportAndRestorePowerOffVM PermissionGroup = "EXPORT_AND_RESTORE_POWER_OFF_VM"
+	PermissionGroupFileLevelRecovery          PermissionGroup = "FILE_LEVEL_RECOVERY"
+	PermissionGroupInvalid                    PermissionGroup = "GROUP_UNSPECIFIED"
+	PermissionGroupPrivateEndpoints           PermissionGroup = "PRIVATE_ENDPOINTS"
+	PermissionGroupRecovery                   PermissionGroup = "RECOVERY"
+	PermissionGroupRSCManagedCluster          PermissionGroup = "RSC_MANAGED_CLUSTER"
+	PermissionGroupSAPHanaSSBasic             PermissionGroup = "SAP_HANA_SS_BASIC"
+	PermissionGroupSAPHanaSSRecovery          PermissionGroup = "SAP_HANA_SS_RECOVERY"
+	PermissionGroupServiceEndpointAutomation  PermissionGroup = "SERVICE_ENDPOINT_AUTOMATION"
+	PermissionGroupSnapshotPrivateAccess      PermissionGroup = "SNAPSHOT_PRIVATE_ACCESS"
+	PermissionGroupSQLArchival                PermissionGroup = "SQL_ARCHIVAL"
 )
 
 // SortOrder represents the valid sort order values.
