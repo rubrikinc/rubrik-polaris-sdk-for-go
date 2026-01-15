@@ -37,8 +37,8 @@ type PermissionGroupInfo struct {
 
 // FeaturePermissionGroups holds the permission groups for a feature.
 type FeaturePermissionGroups struct {
-	Feature           string                `json:"feature"`
-	PermissionsGroups []PermissionGroupInfo `json:"permissionsGroupPermissions"`
+	Feature          string                `json:"feature"`
+	PermissionGroups []PermissionGroupInfo `json:"permissionsGroupPermissions"`
 }
 
 // AllPermissionsGroupsByFeature returns the permission groups for the specified
