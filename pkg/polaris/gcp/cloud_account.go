@@ -64,6 +64,17 @@ type Feature struct {
 	Status core.Status
 }
 
+// SupportedFeatures returns the features supported by GCP cloud accounts.
+func SupportedFeatures() []core.Feature {
+	return []core.Feature{
+		core.FeatureCloudNativeArchival,
+		core.FeatureCloudNativeProtection,
+		core.FeatureExocompute,
+		core.FeatureGCPSharedVPCHost,
+		core.FeatureServerAndApps,
+	}
+}
+
 // ProjectByID returns the project with the specified RSC cloud account ID.
 func (a API) ProjectByID(ctx context.Context, cloudAccountID uuid.UUID) (CloudAccount, error) {
 	a.log.Print(log.Trace)

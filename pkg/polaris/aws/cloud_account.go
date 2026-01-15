@@ -276,22 +276,33 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 	return aws.Wrap(a.client).StartNativeAccountDisableJob(ctx, cloudAccountID, protectionFeature, deleteSnapshots)
 }
 
-var supportedFeatures = map[string]struct{}{
-	core.FeatureArchival.Name:                      {},
-	core.FeatureCloudNativeArchival.Name:           {},
-	core.FeatureCloudNativeDynamoDBProtection.Name: {},
-	core.FeatureCloudNativeProtection.Name:         {},
-	core.FeatureCloudNativeS3Protection.Name:       {},
-	core.FeatureDSPMData.Name:                      {},
-	core.FeatureDSPMMetadata.Name:                  {},
-	core.FeatureExocompute.Name:                    {},
-	core.FeatureLaminarCrossAccount.Name:           {},
-	core.FeatureLaminarInternal.Name:               {},
-	core.FeatureOutpost.Name:                       {},
-	core.FeatureRDSProtection.Name:                 {},
-	core.FeatureServerAndApps.Name:                 {},
-	core.FeatureKubernetesProtection.Name:          {},
+// SupportedFeatures returns the features supported by AWS cloud accounts.
+func SupportedFeatures() []core.Feature {
+	return []core.Feature{
+		core.FeatureArchival,
+		core.FeatureCloudNativeArchival,
+		core.FeatureCloudNativeDynamoDBProtection,
+		core.FeatureCloudNativeProtection,
+		core.FeatureCloudNativeS3Protection,
+		core.FeatureDSPMData,
+		core.FeatureDSPMMetadata,
+		core.FeatureExocompute,
+		core.FeatureKubernetesProtection,
+		core.FeatureLaminarCrossAccount,
+		core.FeatureLaminarInternal,
+		core.FeatureOutpost,
+		core.FeatureRDSProtection,
+		core.FeatureServerAndApps,
+	}
 }
+
+var supportedFeatures = func() map[string]struct{} {
+	m := make(map[string]struct{}, len(SupportedFeatures()))
+	for _, f := range SupportedFeatures() {
+		m[f.Name] = struct{}{}
+	}
+	return m
+}()
 
 // toCloudAccount converts a polaris/graphql/aws CloudAccountWithFeatures to a
 // polaris/aws CloudAccount.

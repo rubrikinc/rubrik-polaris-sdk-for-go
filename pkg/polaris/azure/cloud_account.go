@@ -528,16 +528,27 @@ func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipal
 	return a.AddServicePrincipal(ctx, principal, true)
 }
 
-var supportedFeatures = map[string]struct{}{
-	core.FeatureAzureSQLDBProtection.Name:          {},
-	core.FeatureAzureSQLMIProtection.Name:          {},
-	core.FeatureCloudNativeArchival.Name:           {},
-	core.FeatureCloudNativeArchivalEncryption.Name: {},
-	core.FeatureCloudNativeBlobProtection.Name:     {},
-	core.FeatureCloudNativeProtection.Name:         {},
-	core.FeatureExocompute.Name:                    {},
-	core.FeatureServerAndApps.Name:                 {},
+// SupportedFeatures returns the features supported by Azure cloud accounts.
+func SupportedFeatures() []core.Feature {
+	return []core.Feature{
+		core.FeatureAzureSQLDBProtection,
+		core.FeatureAzureSQLMIProtection,
+		core.FeatureCloudNativeArchival,
+		core.FeatureCloudNativeArchivalEncryption,
+		core.FeatureCloudNativeBlobProtection,
+		core.FeatureCloudNativeProtection,
+		core.FeatureExocompute,
+		core.FeatureServerAndApps,
+	}
 }
+
+var supportedFeatures = func() map[string]struct{} {
+	m := make(map[string]struct{}, len(SupportedFeatures()))
+	for _, f := range SupportedFeatures() {
+		m[f.Name] = struct{}{}
+	}
+	return m
+}()
 
 // toSubscriptions returns the unique subscriptions found in the rawTenants
 // slice. This function requires that the tenants include subscription details.
