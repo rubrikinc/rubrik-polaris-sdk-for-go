@@ -38,8 +38,8 @@ type AWSConfigurationsFilter struct {
 	NativeIDOrNamePrefix string `json:"awsNativeAccountIdOrNamePrefix"`
 }
 
-func (p AWSConfigurationsFilter) ListQuery() (string, any, AWSConfigurationsForCloudAccount) {
-	return allAwsExocomputeConfigsQuery, p, AWSConfigurationsForCloudAccount{}
+func (p AWSConfigurationsFilter) ListQuery() (string, any, []AWSConfigurationsForCloudAccount) {
+	return allAwsExocomputeConfigsQuery, p, []AWSConfigurationsForCloudAccount{}
 }
 
 // AWSConfigurationsForCloudAccount holds the result of an AWS exocompute

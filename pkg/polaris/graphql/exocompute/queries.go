@@ -283,6 +283,30 @@ var exocomputeGetClusterConnectionInfoQuery = `query SdkGolangExocomputeGetClust
     }
 }`
 
+// gcpExocomputeConfigs GraphQL query
+var gcpExocomputeConfigsQuery = `query SdkGolangGcpExocomputeConfigs($cloudAccountId: UUID!, $regions: [GcpCloudAccountRegion!]) {
+    result: gcpExocomputeConfigs(input: {
+        cloudAccountId:        $cloudAccountId,
+        regions:               $regions,
+        showHealthCheckStatus: true,
+    }) {
+        exocomputeConfigs {
+            configId
+            healthCheckStatus {
+                failureReason
+                lastUpdatedAt
+                status
+                taskchainId
+            }
+            regionalExocomputeConfig {
+                region
+                subnetName
+                vpcNetworkName
+            }
+        }
+    }
+}`
+
 // mapAzureCloudAccountExocomputeSubscription GraphQL query
 var mapAzureCloudAccountExocomputeSubscriptionQuery = `mutation SdkGolangMapAzureCloudAccountExocomputeSubscription(
     $exocomputeCloudAccountId: UUID!,
@@ -309,6 +333,19 @@ var mapCloudAccountExocomputeAccountQuery = `mutation SdkGolangMapCloudAccountEx
     }) {
         isSuccess
     }
+}`
+
+// setGcpExocomputeConfigs GraphQL query
+var setGcpExocomputeConfigsQuery = `mutation SdkGolangSetGcpExocomputeConfigs(
+    $cloudAccountId:     UUID!,
+    $regionalConfigs:    [RegionalExocomputeConfigInput!]!,
+    $triggerHealthCheck: Boolean!,
+) {
+    result: setGcpExocomputeConfigs(input: {
+        cloudAccountId:            $cloudAccountId,
+        regionalExocomputeConfigs: $regionalConfigs,
+        triggerHealthCheck:        $triggerHealthCheck,
+    })
 }`
 
 // unmapAzureCloudAccountExocomputeSubscription GraphQL query
