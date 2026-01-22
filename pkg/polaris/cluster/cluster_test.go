@@ -45,7 +45,7 @@ func newTestClient(srv *httptest.Server) *polaris.Client {
 }
 
 func TestCanIgnoreClusterRemovalPrechecks(t *testing.T) {
-	tmpl, err := template.ParseFiles("testdata/can_ignore_cluster_removal_prechecks_response.json")
+	tmpl, err := template.ParseFiles("testdata/can_ignore_cluster_removal_prechecks_response.json.tmpl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestCanIgnoreClusterRemovalPrechecks(t *testing.T) {
 }
 
 func TestRemoveCDMCluster(t *testing.T) {
-	tmpl, err := template.ParseFiles("testdata/remove_cdm_cluster_response.json")
+	tmpl, err := template.ParseFiles("testdata/remove_cdm_cluster_response.json.tmpl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,11 +107,11 @@ func TestRemoveCDMCluster(t *testing.T) {
 
 func TestRemoveClusterSuccess(t *testing.T) {
 	templates := template.Must(template.ParseFiles(
-		"testdata/can_ignore_cluster_removal_prechecks_response.json",
-		"testdata/cluster_rcv_locations_response.json",
-		"testdata/verify_sla_with_replication_to_cluster_response.json",
-		"testdata/all_cluster_global_slas_response.json",
-		"testdata/remove_cdm_cluster_response.json",
+		"testdata/can_ignore_cluster_removal_prechecks_response.json.tmpl",
+		"testdata/cluster_rcv_locations_response.json.tmpl",
+		"testdata/verify_sla_with_replication_to_cluster_response.json.tmpl",
+		"testdata/all_cluster_global_slas_response.json.tmpl",
+		"testdata/remove_cdm_cluster_response.json.tmpl",
 	))
 
 	ctx, cancel := context.WithCancelCause(context.Background())
@@ -135,7 +135,7 @@ func TestRemoveClusterSuccess(t *testing.T) {
 
 		switch {
 		case strings.Contains(payload.Query, "canIgnoreClusterRemovalPrechecks"):
-			if err := templates.ExecuteTemplate(w, "can_ignore_cluster_removal_prechecks_response.json", struct {
+			if err := templates.ExecuteTemplate(w, "can_ignore_cluster_removal_prechecks_response.json.tmpl", struct {
 				Disconnected   bool
 				IgnorePrecheck bool
 				AirGapped      bool
@@ -143,25 +143,25 @@ func TestRemoveClusterSuccess(t *testing.T) {
 				cancel(err)
 			}
 		case strings.Contains(payload.Query, "clusterRcvLocations"):
-			if err := templates.ExecuteTemplate(w, "cluster_rcv_locations_response.json", struct {
+			if err := templates.ExecuteTemplate(w, "cluster_rcv_locations_response.json.tmpl", struct {
 				Locations []struct{ ID, Name string }
 			}{Locations: nil}); err != nil {
 				cancel(err)
 			}
 		case strings.Contains(payload.Query, "verifySlaWithReplicationToCluster"):
-			if err := templates.ExecuteTemplate(w, "verify_sla_with_replication_to_cluster_response.json", struct {
+			if err := templates.ExecuteTemplate(w, "verify_sla_with_replication_to_cluster_response.json.tmpl", struct {
 				IsActiveSLA bool
 			}{IsActiveSLA: false}); err != nil {
 				cancel(err)
 			}
 		case strings.Contains(payload.Query, "allClusterGlobalSlas"):
-			if err := templates.ExecuteTemplate(w, "all_cluster_global_slas_response.json", struct {
+			if err := templates.ExecuteTemplate(w, "all_cluster_global_slas_response.json.tmpl", struct {
 				SLAs []struct{ ID, Name string }
 			}{SLAs: nil}); err != nil {
 				cancel(err)
 			}
 		case strings.Contains(payload.Query, "removeCdmCluster"):
-			if err := templates.ExecuteTemplate(w, "remove_cdm_cluster_response.json", struct {
+			if err := templates.ExecuteTemplate(w, "remove_cdm_cluster_response.json.tmpl", struct {
 				Result bool
 			}{Result: true}); err != nil {
 				cancel(err)
@@ -190,10 +190,10 @@ func TestRemoveClusterSuccess(t *testing.T) {
 
 func TestRemoveClusterForceRemovalNotEligibleAirGapped(t *testing.T) {
 	templates := template.Must(template.ParseFiles(
-		"testdata/can_ignore_cluster_removal_prechecks_response.json",
-		"testdata/cluster_rcv_locations_response.json",
-		"testdata/verify_sla_with_replication_to_cluster_response.json",
-		"testdata/all_cluster_global_slas_response.json",
+		"testdata/can_ignore_cluster_removal_prechecks_response.json.tmpl",
+		"testdata/cluster_rcv_locations_response.json.tmpl",
+		"testdata/verify_sla_with_replication_to_cluster_response.json.tmpl",
+		"testdata/all_cluster_global_slas_response.json.tmpl",
 	))
 
 	ctx, cancel := context.WithCancelCause(context.Background())
@@ -216,7 +216,7 @@ func TestRemoveClusterForceRemovalNotEligibleAirGapped(t *testing.T) {
 
 		switch {
 		case strings.Contains(payload.Query, "canIgnoreClusterRemovalPrechecks"):
-			if err := templates.ExecuteTemplate(w, "can_ignore_cluster_removal_prechecks_response.json", struct {
+			if err := templates.ExecuteTemplate(w, "can_ignore_cluster_removal_prechecks_response.json.tmpl", struct {
 				Disconnected   bool
 				IgnorePrecheck bool
 				AirGapped      bool
@@ -224,19 +224,19 @@ func TestRemoveClusterForceRemovalNotEligibleAirGapped(t *testing.T) {
 				cancel(err)
 			}
 		case strings.Contains(payload.Query, "clusterRcvLocations"):
-			if err := templates.ExecuteTemplate(w, "cluster_rcv_locations_response.json", struct {
+			if err := templates.ExecuteTemplate(w, "cluster_rcv_locations_response.json.tmpl", struct {
 				Locations []struct{ ID, Name string }
 			}{Locations: []struct{ ID, Name string }{{ID: "a48e7ad0-7b86-4c96-b6ba-97eb6a82f765", Name: "RCV1"}}}); err != nil {
 				cancel(err)
 			}
 		case strings.Contains(payload.Query, "verifySlaWithReplicationToCluster"):
-			if err := templates.ExecuteTemplate(w, "verify_sla_with_replication_to_cluster_response.json", struct {
+			if err := templates.ExecuteTemplate(w, "verify_sla_with_replication_to_cluster_response.json.tmpl", struct {
 				IsActiveSLA bool
 			}{IsActiveSLA: true}); err != nil {
 				cancel(err)
 			}
 		case strings.Contains(payload.Query, "allClusterGlobalSlas"):
-			if err := templates.ExecuteTemplate(w, "all_cluster_global_slas_response.json", struct {
+			if err := templates.ExecuteTemplate(w, "all_cluster_global_slas_response.json.tmpl", struct {
 				SLAs []struct{ ID, Name string }
 			}{SLAs: []struct{ ID, Name string }{{ID: "d48e7ad0-7b86-4c96-b6ba-97eb6a82f765", Name: "SLA1"}}}); err != nil {
 				cancel(err)
