@@ -1,0 +1,15 @@
+{
+    "data": {
+        "result": {
+            "edges": [{{ range $i, $e := .Locations }}{{ if $i }},{{ end }}
+                {
+                    "cursor": "cursor{{ $i }}",
+                    "node": {
+                        "id": "{{ $e.ID }}",
+                        "name": "{{ $e.Name }}"
+                    }
+                }{{ end }}
+            ]
+        }
+    }
+}

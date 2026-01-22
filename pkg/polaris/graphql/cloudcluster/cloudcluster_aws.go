@@ -242,14 +242,15 @@ type AwsVmConfig struct {
 }
 
 type AwsClusterConfig struct {
-	ClusterName      string           `json:"clusterName"`
-	UserEmail        string           `json:"userEmail"`
-	AdminPassword    secret.String    `json:"adminPassword"`
-	DNSNameServers   []string         `json:"dnsNameServers"`
-	DNSSearchDomains []string         `json:"dnsSearchDomains"`
-	NTPServers       []string         `json:"ntpServers"`
-	NumNodes         int              `json:"numNodes"`
-	AwsEsConfig      AwsEsConfigInput `json:"awsEsConfig"`
+	ClusterName           string           `json:"clusterName"`
+	UserEmail             string           `json:"userEmail"`
+	AdminPassword         secret.String    `json:"adminPassword"`
+	DNSNameServers        []string         `json:"dnsNameServers"`
+	DNSSearchDomains      []string         `json:"dnsSearchDomains"`
+	NTPServers            []string         `json:"ntpServers"`
+	NumNodes              int              `json:"numNodes"`
+	AwsEsConfig           AwsEsConfigInput `json:"awsEsConfig"`
+	DynamicScalingEnabled bool             `json:"dynamicScalingEnabled,omitempty"`
 }
 
 // CreateAwsClusterInput represents the input for creating an AWS Cloud Cluster.

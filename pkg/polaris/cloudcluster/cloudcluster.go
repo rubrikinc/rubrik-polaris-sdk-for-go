@@ -1,4 +1,4 @@
-// Copyright 2025 Rubrik, Inc.
+// Copyright 2026 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -32,6 +32,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
+	polcluster "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/event"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
@@ -108,6 +109,14 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 
 	if !validCdmVersion {
 		return CloudCluster{}, fmt.Errorf("cdm version %s is not available for account %s", input.VMConfig.CDMVersion, account.ID)
+	}
+
+	// Validate dynamic scaling is only enabled for CDM version 9.5 or higher
+	if input.ClusterConfig.DynamicScalingEnabled {
+		cdmVersion := polcluster.ParseCDMVersion(input.VMConfig.CDMVersion)
+		if cdmVersion.LessThan("9.5") {
+			return CloudCluster{}, fmt.Errorf("dynamic scaling requires CDM version 9.5 or higher, got %s", input.VMConfig.CDMVersion)
+		}
 	}
 
 	// ensure specified instance type is supported

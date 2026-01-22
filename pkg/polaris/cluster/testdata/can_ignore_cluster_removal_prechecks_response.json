@@ -1,0 +1,11 @@
+{
+    "data": {
+        "result": {
+            "isDisconnected": {{ .Disconnected }},
+            "ignorePrecheckTime": "2025-01-15T10:30:00Z",
+            "lastConnectionTime": "2025-01-14T08:00:00Z",
+            "canIgnorePrecheck": {{ .IgnorePrecheck }},
+            "isAirGapped": {{ .AirGapped }}
+        }
+    }
+}
