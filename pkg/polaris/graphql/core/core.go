@@ -87,6 +87,7 @@ const (
 	PermissionGroupExportPowerOn                 PermissionGroup = "EXPORT_POWER_ON"
 	PermissionGroupFileLevelRecovery             PermissionGroup = "FILE_LEVEL_RECOVERY"
 	PermissionGroupInvalid                       PermissionGroup = "GROUP_UNSPECIFIED"
+	PermissionGroupNATGateway                    PermissionGroup = "NAT_GATEWAY"
 	PermissionGroupPrivateEndpoints              PermissionGroup = "PRIVATE_ENDPOINTS"
 	PermissionGroupRecovery                      PermissionGroup = "RECOVERY"
 	PermissionGroupRestore                       PermissionGroup = "RESTORE"

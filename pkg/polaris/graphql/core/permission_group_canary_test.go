@@ -37,14 +37,16 @@ import (
 //
 // When running against a specific RSC version, the test will use the constants
 // for the most recent version tag that is not newer than the deployment version.
-// The version tags should be ordered from oldest to newest.
+// The version tags should be ordered from oldest to newest. Each entry can have
+// multiple version tags to support different version formats (e.g., master-XXXXX
+// and vYYYYMMDD-XX).
 var canaryPermissionGroups = []struct {
-	versionTag       string
+	versionTags      []string
 	permissionGroups map[PermissionGroup]struct{}
 }{
 	{
-		// Base version
-		versionTag: "-",
+		// Base version, should be first in the list.
+		versionTags: nil,
 		permissionGroups: map[PermissionGroup]struct{}{
 			PermissionGroupInvalid:                       {},
 			PermissionGroupAKSCustomPrivateDNSZone:       {},
@@ -76,19 +78,56 @@ var canaryPermissionGroups = []struct {
 			PermissionGroupSQLArchival:                   {},
 		},
 	},
+	{
+		versionTags: []string{"master-86924"},
+		permissionGroups: map[PermissionGroup]struct{}{
+			PermissionGroupInvalid:                       {},
+			PermissionGroupAKSCustomPrivateDNSZone:       {},
+			PermissionGroupAutomatedNetworkingSetup:      {},
+			PermissionGroupBackupV2:                      {},
+			PermissionGroupBasic:                         {},
+			PermissionGroupCCES:                          {},
+			PermissionGroupCustomerHostedLogging:         {},
+			PermissionGroupCustomerManagedCluster:        {},
+			PermissionGroupCustomerManagedStorageIndexng: {},
+			PermissionGroupDataCenterConsolidation:       {},
+			PermissionGroupDataCenterImmutability:        {},
+			PermissionGroupDataCenterKMS:                 {},
+			PermissionGroupDownloadFile:                  {},
+			PermissionGroupEncryption:                    {},
+			PermissionGroupExportAndRestore:              {},
+			PermissionGroupExportAndRestorePowerOffVM:    {},
+			PermissionGroupExportPowerOff:                {},
+			PermissionGroupExportPowerOn:                 {},
+			PermissionGroupFileLevelRecovery:             {},
+			PermissionGroupNATGateway:                    {},
+			PermissionGroupPrivateEndpoints:              {},
+			PermissionGroupRecovery:                      {},
+			PermissionGroupRestore:                       {},
+			PermissionGroupRSCManagedCluster:             {},
+			PermissionGroupSAPHanaSSBasic:                {},
+			PermissionGroupSAPHanaSSRecovery:             {},
+			PermissionGroupServiceEndpointAutomation:     {},
+			PermissionGroupSnapshotPrivateAccess:         {},
+			PermissionGroupSQLArchival:                   {},
+		},
+	},
 }
 
 // canaryPermissionGroupsForVersion returns the known PermissionGroup constants
-// for the given RSC version. It finds the most recent version entry that is not
-// newer than the deployment version.
+// for the given RSC version. It finds the last version entry (from oldest to
+// newest) where the deployment version is after or equal to the version tags.
+// Entries without a matching version format are skipped.
 func canaryPermissionGroupsForVersion(version graphql.Version) map[PermissionGroup]struct{} {
-	// Start with the base version.
+	// Start with the first entry (base version).
 	result := canaryPermissionGroups[0].permissionGroups
 
-	// Find the most recent version entry that applies.
-	for i := 1; i < len(canaryPermissionGroups); i++ {
-		if ver := canaryPermissionGroups[i]; !version.Before(ver.versionTag) {
-			result = ver.permissionGroups
+	for _, entry := range canaryPermissionGroups {
+		// Version is after or equal to the version tags if it's not before them.
+		// Skip entries where no version tag matches the version format.
+		before, err := version.Before(entry.versionTags...)
+		if err == nil && !before {
+			result = entry.permissionGroups
 		}
 	}
 
