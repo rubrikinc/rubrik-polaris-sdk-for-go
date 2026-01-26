@@ -465,13 +465,13 @@ var regionInfoMap = map[Region]struct {
 		name:                   "southamerica-east1",
 		displayName:            "southamerica-east1 (Osasco, São Paulo, Brazil, South America)",
 		regionEnum:             "SOUTHAMERICA_EAST1",
-		cloudAccountRegionEnum: "NORTHAMERICA_EAST1",
+		cloudAccountRegionEnum: "SOUTHAMERICA_EAST1",
 	},
 	RegionSouthAmericaWest1: {
 		name:                   "southamerica-west1",
 		displayName:            "southamerica-west1 (Santiago, Chile, South America)",
 		regionEnum:             "SOUTHAMERICA_WEST1",
-		cloudAccountRegionEnum: "NORTHAMERICA_WEST1",
+		cloudAccountRegionEnum: "SOUTHAMERICA_WEST1",
 	},
 	RegionUS: {
 		name:                   "us",
