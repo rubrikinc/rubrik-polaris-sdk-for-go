@@ -34,7 +34,7 @@ type redactOptions struct {
 
 func proxyArray(value reflect.Value, options *redactOptions) reflect.Value {
 	if options.debugMode {
-		log.Printf("[DEBUG] Proxy array %s", value.Type())
+		log.Printf("[DEBUG] Proxy array: %s", value.Type())
 	}
 
 	pv := reflect.New(value.Type()).Elem()
@@ -47,7 +47,7 @@ func proxyArray(value reflect.Value, options *redactOptions) reflect.Value {
 
 func proxyInterface(value reflect.Value, options *redactOptions) reflect.Value {
 	if options.debugMode {
-		log.Printf("[DEBUG] Proxy interface %s", value.Type())
+		log.Printf("[DEBUG] Proxy interface: %s", value.Type())
 	}
 
 	pv := reflect.New(value.Type()).Elem()
@@ -60,7 +60,11 @@ func proxyInterface(value reflect.Value, options *redactOptions) reflect.Value {
 
 func proxyMap(value reflect.Value, options *redactOptions) reflect.Value {
 	if options.debugMode {
-		log.Printf("[DEBUG] Proxy map %s", value.Type())
+		log.Printf("[DEBUG] Proxy map: %s", value.Type())
+	}
+
+	if value.IsNil() {
+		return value
 	}
 
 	pv := reflect.MakeMapWithSize(value.Type(), value.Len())
@@ -73,7 +77,7 @@ func proxyMap(value reflect.Value, options *redactOptions) reflect.Value {
 
 func proxyPointer(value reflect.Value, options *redactOptions) reflect.Value {
 	if options.debugMode {
-		log.Printf("[DEBUG] Proxy pointer %s", value.Type())
+		log.Printf("[DEBUG] Proxy pointer: %s", value.Type())
 	}
 
 	pv := reflect.New(value.Type()).Elem()
@@ -86,7 +90,11 @@ func proxyPointer(value reflect.Value, options *redactOptions) reflect.Value {
 
 func proxySlice(value reflect.Value, options *redactOptions) reflect.Value {
 	if options.debugMode {
-		log.Printf("[DEBUG] Proxy slice %s", value.Type())
+		log.Printf("[DEBUG] Proxy slice: %s", value.Type())
+	}
+
+	if value.IsNil() {
+		return value
 	}
 
 	pv := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
@@ -99,7 +107,7 @@ func proxySlice(value reflect.Value, options *redactOptions) reflect.Value {
 
 func proxyStruct(value reflect.Value, options *redactOptions) reflect.Value {
 	if options.debugMode {
-		log.Printf("[DEBUG] Proxy struct %s", value.Type())
+		log.Printf("[DEBUG] Proxy struct: %s", value.Type())
 	}
 
 	pv := reflect.New(value.Type()).Elem()
@@ -128,7 +136,7 @@ func proxyValue(value reflect.Value, options *redactOptions) reflect.Value {
 		return proxyStruct(value, options)
 	default:
 		if options.debugMode {
-			log.Printf("[DEBUG] Proxy value %s", value.Type())
+			log.Printf("[DEBUG] Proxy value: %s", value.Type())
 		}
 
 		if t := value.Type(); t == stringType {
