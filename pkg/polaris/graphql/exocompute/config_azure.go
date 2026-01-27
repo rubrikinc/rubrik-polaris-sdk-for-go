@@ -54,6 +54,7 @@ type AzureConfiguration struct {
 	ManagedByRubrik       bool                         `json:"isRscManaged"`
 	PodOverlayNetworkCIDR string                       `json:"podOverlayNetworkCidr"`
 	PodSubnetID           string                       `json:"podSubnetNativeId"`
+	OptionalConfig        *AzureOptionalConfig         `json:"optionalConfig"`
 
 	// HealthCheckStatus represents the health status of an exocompute cluster.
 	HealthCheckStatus struct {
@@ -73,9 +74,10 @@ type CreateAzureConfigurationParams struct {
 	// When true, Rubrik will manage the security groups.
 	IsManagedByRubrik bool `json:"isRscManaged"`
 
-	SubnetID              string `json:"subnetNativeId,omitempty"`
-	PodOverlayNetworkCIDR string `json:"podOverlayNetworkCidr,omitempty"`
-	PodSubnetID           string `json:"podSubnetNativeId,omitempty"`
+	SubnetID              string               `json:"subnetNativeId,omitempty"`
+	PodOverlayNetworkCIDR string               `json:"podOverlayNetworkCidr,omitempty"`
+	PodSubnetID           string               `json:"podSubnetNativeId,omitempty"`
+	OptionalConfig        *AzureOptionalConfig `json:"optionalConfig,omitempty"`
 
 	// When true, a health check will be triggered after the configuration is
 	// created.
@@ -114,6 +116,92 @@ func (r CreateAzureConfigurationResult) Validate() (uuid.UUID, error) {
 	return id, nil
 }
 
+func (p CreateAzureConfigurationParams) ValidateQuery() (string, any, ValidateAzureConfigurationResult) {
+	params := struct {
+		CloudAccountID                 uuid.UUID `json:"cloudAccountId"`
+		CreateAzureConfigurationParams `json:"azureExocomputeRegionConfig"`
+	}{CloudAccountID: p.CloudAccountID, CreateAzureConfigurationParams: p}
+	return validateAzureCloudAccountExocomputeConfigurationsQuery, params, ValidateAzureConfigurationResult{}
+}
+
+// ValidateAzureConfigurationResult holds the result of an Azure exocompute
+// configuration validate operation.
+type ValidateAzureConfigurationResult struct {
+	ValidationInfo []struct {
+		ErrorMessage                                           string `json:"errorMessage"`
+		BlockedSecurityRules                                   bool   `json:"hasBlockedSecurityRules"`
+		RestrictedAddressRangeOverlap                          bool   `json:"hasRestrictedAddressRangeOverlap"`
+		ExocomputePrivateDnsZoneDoesNotExist                   bool   `json:"isAksCustomPrivateDnsZoneDoesNotExist"`
+		ExocomputePrivateDnsZoneInDifferentSubscription        bool   `json:"isAksCustomPrivateDnsZoneInDifferentSubscription"`
+		ExocomputePrivateDnsZoneInvalid                        bool   `json:"isAksCustomPrivateDnsZoneInvalid"`
+		ExocomputePrivateDnsZoneNotLinkedToVnet                bool   `json:"isAksCustomPrivateDnsZoneNotLinkedToVnet"`
+		ExocomputePrivateDnsZonePermissionsGroupNotEnabled     bool   `json:"isAksCustomPrivateDnsZonePermissionsGroupNotEnabled"`
+		ClusterSubnetSizeTooSmall                              bool   `json:"isClusterSubnetSizeTooSmall"`
+		PodAndClusterSubnetSame                                bool   `json:"isPodAndClusterSubnetSame"`
+		PodAndClusterVnetDifferent                             bool   `json:"isPodAndClusterVnetDifferent" `
+		PodCidrAndSubnetCidrOverlap                            bool   `json:"isPodCidrAndSubnetCidrOverlap"`
+		PodCidrRangeTooSmall                                   bool   `json:"isPodCidrRangeTooSmall"`
+		PodSubnetSizeTooSmall                                  bool   `json:"isPodSubnetSizeTooSmall"`
+		SnapshotPrivateDnsZoneDoesNotExist                     bool   `json:"isPrivateDnsZoneDoesNotExist"`
+		SnapshotPrivateDnsZoneInDifferentSubscription          bool   `json:"isPrivateDnsZoneInDifferentSubscription"`
+		SnapshotPrivateDnsZoneInvalid                          bool   `json:"isPrivateDnsZoneInvalid"`
+		SnapshotPrivateDnsZoneNotLinkedToVnet                  bool   `json:"isPrivateDnsZoneNotLinkedToVnet"`
+		SubnetDelegated                                        bool   `json:"isSubnetDelegated"`
+		UnsupportedCustomerManagedExocomputeConfigFieldPresent bool   `json:"isUnsupportedCustomerManagedExocomputeConfigFieldPresent"`
+	} `json:"validationInfo"`
+}
+
+func (r ValidateAzureConfigurationResult) Validate() error {
+	if len(r.ValidationInfo) != 1 {
+		return errors.New("expected a single validation result")
+	}
+
+	switch info := r.ValidationInfo[0]; {
+	case info.ErrorMessage != "":
+		return errors.New(info.ErrorMessage)
+	case info.RestrictedAddressRangeOverlap:
+		return errors.New("subnet address range overlaps with restricted address ranges")
+	case info.ExocomputePrivateDnsZoneDoesNotExist:
+		return errors.New("exocompute private dns zone does not exist")
+	case info.ExocomputePrivateDnsZoneInDifferentSubscription:
+		return errors.New("exocompute private dns zone is in a different subscription than the exocompute vnet")
+	case info.ExocomputePrivateDnsZoneInvalid:
+		return errors.New("exocompute private dns zone is invalid: name must be [subzone.]privatelink.<region>.azmk8s.io")
+	case info.ExocomputePrivateDnsZoneNotLinkedToVnet:
+		return errors.New("exocompute private dns zone is not linked to the exocompute vnet")
+	case info.ExocomputePrivateDnsZonePermissionsGroupNotEnabled:
+		return errors.New("exocompute private dns zone permissions group is not enabled")
+	case info.SnapshotPrivateDnsZoneDoesNotExist:
+		return errors.New("snapshot access private dns zone does not exist")
+	case info.SnapshotPrivateDnsZoneInDifferentSubscription:
+		return errors.New("snapshot access private dns zone is in a different subscription than the exocompute vnet")
+	case info.SnapshotPrivateDnsZoneInvalid:
+		return errors.New("snapshot access private dns zone is invalid: name must be privatelink.blob.core.windows.net")
+	case info.SnapshotPrivateDnsZoneNotLinkedToVnet:
+		return errors.New("snapshot access private dns zone is not linked to the exocompute vnet")
+	case info.SubnetDelegated:
+		return errors.New("subnet is delegated")
+	case info.UnsupportedCustomerManagedExocomputeConfigFieldPresent:
+		return errors.New("unsupported fields for customer managed exocompute")
+	case info.BlockedSecurityRules:
+		return errors.New("network security group has blocking security rules")
+	case info.ClusterSubnetSizeTooSmall:
+		return errors.New("cluster subnet size is too small")
+	case info.PodAndClusterSubnetSame:
+		return errors.New("pod and cluster subnets must be different")
+	case info.PodAndClusterVnetDifferent:
+		return errors.New("pod and cluster vnet must be the same")
+	case info.PodCidrAndSubnetCidrOverlap:
+		return errors.New("pod cidr range overlaps with cluster subnet cidr range")
+	case info.PodCidrRangeTooSmall:
+		return errors.New("pod cidr range is too small")
+	case info.PodSubnetSizeTooSmall:
+		return errors.New("pod subnet size is too small")
+	default:
+		return nil
+	}
+}
+
 // DeleteAzureConfigurationParams holds the parameters for an Azure exocompute
 // configuration delete operation.
 type DeleteAzureConfigurationParams struct {
@@ -139,4 +227,51 @@ func (r DeleteAzureConfigurationResult) Validate() error {
 		return errors.New("expected a single configuration to be deleted")
 	}
 	return nil
+}
+
+// AzureClusterAccess represents the different Azure exocompute cluster access
+// types.
+type AzureClusterAccess string
+
+const (
+	AzureClusterAccessUnspecified AzureClusterAccess = "AKS_CLUSTER_ACCESS_TYPE_UNSPECIFIED"
+	AzureClusterAccessPrivate     AzureClusterAccess = "AKS_CLUSTER_ACCESS_TYPE_PRIVATE"
+	AzureClusterAccessPublic      AzureClusterAccess = "AKS_CLUSTER_ACCESS_TYPE_PUBLIC"
+)
+
+// AzureClusterTier represents the different Azure exocompute cluster tiers.
+type AzureClusterTier string
+
+const (
+	AzureClusterTierUnspecified AzureClusterTier = "AKS_CLUSTER_TIER_UNSPECIFIED"
+	AzureClusterTierFree        AzureClusterTier = "AKS_CLUSTER_TIER_FREE"
+	AzureClusterTierStandard    AzureClusterTier = "AKS_CLUSTER_TIER_STANDARD"
+)
+
+// AzureClusterNodeCount represents the different Azure exocompute cluster
+// sizes.
+type AzureClusterNodeCount string
+
+const (
+	AzureClusterNodeCountUnspecified AzureClusterNodeCount = "AKS_NODE_COUNT_BUCKET_UNSPECIFIED"
+	AzureClusterNodeCountSmall       AzureClusterNodeCount = "AKS_NODE_COUNT_BUCKET_SMALL"
+	AzureClusterNodeCountMedium      AzureClusterNodeCount = "AKS_NODE_COUNT_BUCKET_MEDIUM"
+	AzureClusterNodeCountLarge       AzureClusterNodeCount = "AKS_NODE_COUNT_BUCKET_LARGE"
+	AzureClusterNodeCountXLarge      AzureClusterNodeCount = "AKS_NODE_COUNT_BUCKET_XLARGE"
+)
+
+// AzureOptionalConfig holds an Azure exocompute optional configuration. Note,
+// AdditionalWhitelistIPs requires that the WhitelistRubrikIPs field is set to
+// true.
+type AzureOptionalConfig struct {
+	AdditionalWhitelistIPs     []string              `json:"additionalWhitelistIps,omitempty"`
+	ClusterAccess              AzureClusterAccess    `json:"aksClusterAccessType"`
+	ClusterTier                AzureClusterTier      `json:"aksClusterTier"`
+	DiskEncryptionAtHost       bool                  `json:"diskEncryptionAtHost,omitempty"`
+	ExocomputePrivateDnsZoneID string                `json:"aksCustomPrivateDnsZoneId,omitempty"`
+	NodeCount                  AzureClusterNodeCount `json:"aksNodeCountBucket"`
+	NodeRGPrefix               string                `json:"aksNodeRgPrefix,omitempty"`
+	SnapshotPrivateDnsZoneId   string                `json:"privateDnsZoneId,omitempty"`
+	UserDefinedRouting         bool                  `json:"enableUserDefinedRouting,omitempty"`
+	WhitelistRubrikIPs         bool                  `json:"shouldWhitelistRubrikIps,omitempty"`
 }

@@ -30,6 +30,18 @@ query RubrikPolarisSDKRequest(
             podSubnetNativeId
             region
             subnetNativeId
+            optionalConfig {
+                additionalWhitelistIps
+                aksClusterAccessType
+                aksClusterTier
+                diskEncryptionAtHost
+                aksCustomPrivateDnsZoneId
+                aksNodeCountBucket
+                aksNodeRgPrefix
+                privateDnsZoneId
+                enableUserDefinedRouting
+                shouldWhitelistRubrikIps
+            }
         }
         exocomputeEligibleRegions
         featureDetails {
