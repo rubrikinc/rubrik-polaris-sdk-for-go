@@ -113,7 +113,10 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 
 	// Validate dynamic scaling is only enabled for CDM version 9.5 or higher
 	if input.ClusterConfig.DynamicScalingEnabled {
-		cdmVersion := polcluster.ParseCDMVersion(input.VMConfig.CDMVersion)
+		cdmVersion, err := polcluster.ParseCDMVersion(input.VMConfig.CDMVersion)
+		if err != nil {
+			return CloudCluster{}, fmt.Errorf("failed to parse CDM version %s: %s", input.VMConfig.CDMVersion, err)
+		}
 		if cdmVersion.LessThan("9.5") {
 			return CloudCluster{}, fmt.Errorf("dynamic scaling requires CDM version 9.5 or higher, got %s", input.VMConfig.CDMVersion)
 		}

@@ -25,37 +25,45 @@ import (
 	"strings"
 )
 
-// CDMVersion represents a CDM version string (e.g., "9.4.0-p2-30507").
+// CDMVersion represents a parsed CDM version (e.g., "9.4.0-p2-30507").
 // Only the major.minor.patch portion is used for comparisons.
-type CDMVersion string
-
-// ParseCDMVersion creates a CDMVersion from a version string.
-func ParseCDMVersion(version string) CDMVersion {
-	return CDMVersion(version)
+type CDMVersion struct {
+	major int
+	minor int
+	patch int
 }
 
-// parseComponents extracts the major, minor, and patch version numbers from
-// a CDM version string. It handles formats like "9.4.0", "9.4", "9.4.0-p2-30507".
-func (v CDMVersion) parseComponents() (major, minor, patch int) {
-	version := string(v)
-
+// ParseCDMVersion parses a version string and creates a CDMVersion.
+// It handles formats like "9.4.0", "9.4", "9.4.0-p2-30507".
+func ParseCDMVersion(version string) (CDMVersion, error) {
 	// Remove any suffix after the first hyphen (e.g., "-p2-30507")
 	if idx := strings.Index(version, "-"); idx != -1 {
 		version = version[:idx]
 	}
 
+	var major, minor, patch int
+	var err error
 	parts := strings.Split(version, ".")
 	if len(parts) >= 1 {
-		major, _ = strconv.Atoi(parts[0])
+		major, err = strconv.Atoi(parts[0])
+		if err != nil {
+			return CDMVersion{}, err
+		}
 	}
 	if len(parts) >= 2 {
-		minor, _ = strconv.Atoi(parts[1])
+		minor, err = strconv.Atoi(parts[1])
+		if err != nil {
+			return CDMVersion{}, err
+		}
 	}
 	if len(parts) >= 3 {
-		patch, _ = strconv.Atoi(parts[2])
+		patch, err = strconv.Atoi(parts[2])
+		if err != nil {
+			return CDMVersion{}, err
+		}
 	}
 
-	return major, minor, patch
+	return CDMVersion{major: major, minor: minor, patch: patch}, nil
 }
 
 // Compare compares the CDM version with another version string.
@@ -67,23 +75,25 @@ func (v CDMVersion) parseComponents() (major, minor, patch int) {
 //
 // Only the major.minor.patch portion is compared; suffixes are ignored.
 func (v CDMVersion) Compare(other string) int {
-	vMajor, vMinor, vPatch := v.parseComponents()
-	oMajor, oMinor, oPatch := CDMVersion(other).parseComponents()
+	o, err := ParseCDMVersion(other)
+	if err != nil {
+		return -1
+	}
 
-	if vMajor != oMajor {
-		if vMajor < oMajor {
+	if v.major != o.major {
+		if v.major < o.major {
 			return -1
 		}
 		return 1
 	}
-	if vMinor != oMinor {
-		if vMinor < oMinor {
+	if v.minor != o.minor {
+		if v.minor < o.minor {
 			return -1
 		}
 		return 1
 	}
-	if vPatch != oPatch {
-		if vPatch < oPatch {
+	if v.patch != o.patch {
+		if v.patch < o.patch {
 			return -1
 		}
 		return 1

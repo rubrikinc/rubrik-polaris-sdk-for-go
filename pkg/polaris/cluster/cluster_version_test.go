@@ -25,7 +25,7 @@ import "testing"
 func TestCDMVersionCompare(t *testing.T) {
 	tests := []struct {
 		name     string
-		version  CDMVersion
+		version  string
 		other    string
 		expected int
 	}{
@@ -44,9 +44,13 @@ func TestCDMVersionCompare(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.version.Compare(tt.other)
+			v, err := ParseCDMVersion(tt.version)
+			if err != nil {
+				t.Fatalf("ParseCDMVersion(%q) failed: %v", tt.version, err)
+			}
+			result := v.Compare(tt.other)
 			if result != tt.expected {
-				t.Errorf("CDMVersion(%q).Compare(%q) = %d, expected %d", tt.version, tt.other, result, tt.expected)
+				t.Errorf("ParseCDMVersion(%q).Compare(%q) = %d, expected %d", tt.version, tt.other, result, tt.expected)
 			}
 		})
 	}
@@ -55,7 +59,7 @@ func TestCDMVersionCompare(t *testing.T) {
 func TestCDMVersionAtLeast(t *testing.T) {
 	tests := []struct {
 		name       string
-		version    CDMVersion
+		version    string
 		minVersion string
 		expected   bool
 	}{
@@ -68,9 +72,13 @@ func TestCDMVersionAtLeast(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.version.AtLeast(tt.minVersion)
+			v, err := ParseCDMVersion(tt.version)
+			if err != nil {
+				t.Fatalf("ParseCDMVersion(%q) failed: %v", tt.version, err)
+			}
+			result := v.AtLeast(tt.minVersion)
 			if result != tt.expected {
-				t.Errorf("CDMVersion(%q).AtLeast(%q) = %v, expected %v", tt.version, tt.minVersion, result, tt.expected)
+				t.Errorf("ParseCDMVersion(%q).AtLeast(%q) = %v, expected %v", tt.version, tt.minVersion, result, tt.expected)
 			}
 		})
 	}
@@ -79,7 +87,7 @@ func TestCDMVersionAtLeast(t *testing.T) {
 func TestCDMVersionLessThan(t *testing.T) {
 	tests := []struct {
 		name     string
-		version  CDMVersion
+		version  string
 		other    string
 		expected bool
 	}{
@@ -90,9 +98,13 @@ func TestCDMVersionLessThan(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.version.LessThan(tt.other)
+			v, err := ParseCDMVersion(tt.version)
+			if err != nil {
+				t.Fatalf("ParseCDMVersion(%q) failed: %v", tt.version, err)
+			}
+			result := v.LessThan(tt.other)
 			if result != tt.expected {
-				t.Errorf("CDMVersion(%q).LessThan(%q) = %v, expected %v", tt.version, tt.other, result, tt.expected)
+				t.Errorf("ParseCDMVersion(%q).LessThan(%q) = %v, expected %v", tt.version, tt.other, result, tt.expected)
 			}
 		})
 	}
@@ -101,7 +113,7 @@ func TestCDMVersionLessThan(t *testing.T) {
 func TestCDMVersionGreaterThan(t *testing.T) {
 	tests := []struct {
 		name     string
-		version  CDMVersion
+		version  string
 		other    string
 		expected bool
 	}{
@@ -112,9 +124,13 @@ func TestCDMVersionGreaterThan(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.version.GreaterThan(tt.other)
+			v, err := ParseCDMVersion(tt.version)
+			if err != nil {
+				t.Fatalf("ParseCDMVersion(%q) failed: %v", tt.version, err)
+			}
+			result := v.GreaterThan(tt.other)
 			if result != tt.expected {
-				t.Errorf("CDMVersion(%q).GreaterThan(%q) = %v, expected %v", tt.version, tt.other, result, tt.expected)
+				t.Errorf("ParseCDMVersion(%q).GreaterThan(%q) = %v, expected %v", tt.version, tt.other, result, tt.expected)
 			}
 		})
 	}
