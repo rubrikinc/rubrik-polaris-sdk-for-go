@@ -1,0 +1,10 @@
+{
+    "data": {
+        "result": [{{ range $i, $e := .SLAs }}{{ if $i }},{{ end }}
+            {
+                "id": "{{ $e.ID }}",
+                "name": "{{ $e.Name }}"
+            }{{ end }}
+        ]
+    }
+}
