@@ -4,16 +4,16 @@ mutation RubrikPolarisSDKRequest(
     $gcpProjectNumber:        Long!,
     $organizationName:        String,
     $serviceAccountJwtConfig: String,
-    $features:                [CloudAccountFeature!],
-    $featuresWithPG:          [FeatureWithPermissionsGroups!]
+    $features:                [FeatureWithPermissionsGroups!]!,
 ) {
-    gcpCloudAccountAddManualAuthProject(input: {
+    result: addGcpCloudAccountManualAuthProject(input: {
         gcpNativeProjectId:           $gcpNativeProjectId,
         gcpProjectName:               $gcpProjectName,
         gcpProjectNumber:             $gcpProjectNumber,
         organizationName:             $organizationName,
         serviceAccountJwtConfig:      $serviceAccountJwtConfig,
-        features:                     $features,
-        featuresWithPermissionGroups: $featuresWithPG,
-    })
+        featuresWithPermissionGroups: $features,
+    }) {
+        cloudAccountId
+    }
 }

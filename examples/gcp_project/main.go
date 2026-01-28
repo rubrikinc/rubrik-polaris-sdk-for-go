@@ -52,8 +52,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	gcpClient := gcp.Wrap(client)
-
 	features := []core.Feature{
 		core.FeatureCloudNativeProtection.WithPermissionGroups(core.PermissionGroupBasic, core.PermissionGroupExportAndRestore),
 		core.FeatureGCPSharedVPCHost.WithPermissionGroups(core.PermissionGroupBasic),
@@ -61,13 +59,13 @@ func main() {
 
 	// Add the GCP default project to Polaris. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
-	id, err := gcpClient.AddProject(ctx, gcp.Default(), features)
+	cloudAccountID, err := gcp.Wrap(client).AddProject(ctx, gcp.Default(), features)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// List the GCP projects added to Polaris.
-	account, err := gcpClient.ProjectByID(ctx, id)
+	account, err := gcp.Wrap(client).ProjectByID(ctx, cloudAccountID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -77,7 +75,7 @@ func main() {
 	}
 
 	// Remove the GCP project from RSC.
-	err = gcpClient.RemoveProject(ctx, id, features, false)
+	err = gcp.Wrap(client).RemoveProject(ctx, cloudAccountID, features, false)
 	if err != nil {
 		log.Fatal(err)
 	}
