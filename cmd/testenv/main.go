@@ -259,7 +259,12 @@ func clean(ctx context.Context, client *polaris.Client, provider string) error {
 					pn, testProj.ProjectNumber)
 			}
 
-			return gcpClient.RemoveProject(ctx, proj.ID, []core.Feature{core.FeatureCloudNativeProtection}, false)
+			var features []core.Feature
+			for _, feature := range proj.Features {
+				features = append(features, feature.Feature)
+			}
+
+			return gcpClient.RemoveProject(ctx, proj.ID, features, false)
 		})
 	}
 
