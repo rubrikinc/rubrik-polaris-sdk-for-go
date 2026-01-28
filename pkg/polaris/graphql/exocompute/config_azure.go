@@ -23,6 +23,7 @@ package exocompute
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
@@ -156,49 +157,80 @@ func (r ValidateAzureConfigurationResult) Validate() error {
 		return errors.New("expected a single validation result")
 	}
 
-	switch info := r.ValidationInfo[0]; {
-	case info.ErrorMessage != "":
-		return errors.New(info.ErrorMessage)
-	case info.RestrictedAddressRangeOverlap:
-		return errors.New("subnet address range overlaps with restricted address ranges")
-	case info.ExocomputePrivateDnsZoneDoesNotExist:
-		return errors.New("exocompute private dns zone does not exist")
-	case info.ExocomputePrivateDnsZoneInDifferentSubscription:
-		return errors.New("exocompute private dns zone is in a different subscription than the exocompute vnet")
-	case info.ExocomputePrivateDnsZoneInvalid:
-		return errors.New("exocompute private dns zone is invalid: name must be [subzone.]privatelink.<region>.azmk8s.io")
-	case info.ExocomputePrivateDnsZoneNotLinkedToVnet:
-		return errors.New("exocompute private dns zone is not linked to the exocompute vnet")
-	case info.ExocomputePrivateDnsZonePermissionsGroupNotEnabled:
-		return errors.New("exocompute private dns zone permissions group is not enabled")
-	case info.SnapshotPrivateDnsZoneDoesNotExist:
-		return errors.New("snapshot access private dns zone does not exist")
-	case info.SnapshotPrivateDnsZoneInDifferentSubscription:
-		return errors.New("snapshot access private dns zone is in a different subscription than the exocompute vnet")
-	case info.SnapshotPrivateDnsZoneInvalid:
-		return errors.New("snapshot access private dns zone is invalid: name must be privatelink.blob.core.windows.net")
-	case info.SnapshotPrivateDnsZoneNotLinkedToVnet:
-		return errors.New("snapshot access private dns zone is not linked to the exocompute vnet")
-	case info.SubnetDelegated:
-		return errors.New("subnet is delegated")
-	case info.UnsupportedCustomerManagedExocomputeConfigFieldPresent:
-		return errors.New("unsupported fields for customer managed exocompute")
-	case info.BlockedSecurityRules:
-		return errors.New("network security group has blocking security rules")
-	case info.ClusterSubnetSizeTooSmall:
-		return errors.New("cluster subnet size is too small")
-	case info.PodAndClusterSubnetSame:
-		return errors.New("pod and cluster subnets must be different")
-	case info.PodAndClusterVnetDifferent:
-		return errors.New("pod and cluster vnet must be the same")
-	case info.PodCidrAndSubnetCidrOverlap:
-		return errors.New("pod cidr range overlaps with cluster subnet cidr range")
-	case info.PodCidrRangeTooSmall:
-		return errors.New("pod cidr range is too small")
-	case info.PodSubnetSizeTooSmall:
-		return errors.New("pod subnet size is too small")
-	default:
+	var strs []string
+	if r.ValidationInfo[0].ErrorMessage != "" {
+		strs = append(strs, r.ValidationInfo[0].ErrorMessage)
+	}
+	if r.ValidationInfo[0].RestrictedAddressRangeOverlap {
+		strs = append(strs, "subnet address range overlaps with restricted address ranges")
+	}
+	if r.ValidationInfo[0].ExocomputePrivateDnsZoneDoesNotExist {
+		strs = append(strs, "exocompute private dns zone does not exist")
+	}
+	if r.ValidationInfo[0].ExocomputePrivateDnsZoneInDifferentSubscription {
+		strs = append(strs, "exocompute private dns zone is in a different subscription than the exocompute vnet")
+	}
+	if r.ValidationInfo[0].ExocomputePrivateDnsZoneInvalid {
+		strs = append(strs, "exocompute private dns zone is invalid: name must be [subzone.]privatelink.<region>.azmk8s.io")
+	}
+	if r.ValidationInfo[0].ExocomputePrivateDnsZoneNotLinkedToVnet {
+		strs = append(strs, "exocompute private dns zone is not linked to the exocompute vnet")
+	}
+	if r.ValidationInfo[0].ExocomputePrivateDnsZonePermissionsGroupNotEnabled {
+		strs = append(strs, "exocompute private dns zone permissions group is not enabled")
+	}
+	if r.ValidationInfo[0].SnapshotPrivateDnsZoneDoesNotExist {
+		strs = append(strs, "snapshot access private dns zone does not exist")
+	}
+	if r.ValidationInfo[0].SnapshotPrivateDnsZoneInDifferentSubscription {
+		strs = append(strs, "snapshot access private dns zone is in a different subscription than the exocompute vnet")
+	}
+	if r.ValidationInfo[0].SnapshotPrivateDnsZoneInvalid {
+		strs = append(strs, "snapshot access private dns zone is invalid: name must be privatelink.blob.core.windows.net")
+	}
+	if r.ValidationInfo[0].SnapshotPrivateDnsZoneNotLinkedToVnet {
+		strs = append(strs, "snapshot access private dns zone is not linked to the exocompute vnet")
+	}
+	if r.ValidationInfo[0].SubnetDelegated {
+		strs = append(strs, "subnet is delegated")
+	}
+	if r.ValidationInfo[0].UnsupportedCustomerManagedExocomputeConfigFieldPresent {
+		strs = append(strs, "unsupported fields for customer managed exocompute")
+	}
+	if r.ValidationInfo[0].BlockedSecurityRules {
+		strs = append(strs, "network security group has blocking security rules")
+	}
+	if r.ValidationInfo[0].ClusterSubnetSizeTooSmall {
+		strs = append(strs, "cluster subnet size is too small")
+	}
+	if r.ValidationInfo[0].PodAndClusterSubnetSame {
+		strs = append(strs, "pod and cluster subnets must be different")
+	}
+	if r.ValidationInfo[0].PodAndClusterVnetDifferent {
+		strs = append(strs, "pod and cluster vnet must be the same")
+	}
+	if r.ValidationInfo[0].PodCidrAndSubnetCidrOverlap {
+		strs = append(strs, "pod cidr range overlaps with cluster subnet cidr range")
+	}
+	if r.ValidationInfo[0].PodCidrRangeTooSmall {
+		strs = append(strs, "pod cidr range is too small")
+	}
+	if r.ValidationInfo[0].PodSubnetSizeTooSmall {
+		strs = append(strs, "pod subnet size is too small")
+	}
+
+	switch len(strs) {
+	case 0:
 		return nil
+	case 1:
+		return errors.New(strs[0])
+	default:
+		var str strings.Builder
+		for i, s := range strs {
+			str.WriteString(fmt.Sprintf("; (%d) %s", i+1, s))
+		}
+
+		return fmt.Errorf("multiple configuration errors: %s", str.String()[1:])
 	}
 }
 
