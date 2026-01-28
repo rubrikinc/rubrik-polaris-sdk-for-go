@@ -1,0 +1,32 @@
+query RubrikPolarisSDKRequest(
+    $cloudAccountId:              UUID!
+    $azureExocomputeRegionConfig: AzureExocomputeAddConfigInputType!,
+) {
+    result: validateAzureCloudAccountExocomputeConfigurations(input: {
+        cloudAccountId:               $cloudAccountId,
+        azureExocomputeRegionConfigs: [$azureExocomputeRegionConfig],
+    }) {
+        validationInfo {
+            errorMessage
+            hasBlockedSecurityRules
+            hasRestrictedAddressRangeOverlap
+            isAksCustomPrivateDnsZoneDoesNotExist
+            isAksCustomPrivateDnsZoneInDifferentSubscription
+            isAksCustomPrivateDnsZoneInvalid
+            isAksCustomPrivateDnsZoneNotLinkedToVnet
+            isAksCustomPrivateDnsZonePermissionsGroupNotEnabled
+            isClusterSubnetSizeTooSmall
+            isPodAndClusterSubnetSame
+            isPodAndClusterVnetDifferent
+            isPodCidrAndSubnetCidrOverlap
+            isPodCidrRangeTooSmall
+            isPodSubnetSizeTooSmall
+            isPrivateDnsZoneDoesNotExist
+            isPrivateDnsZoneInDifferentSubscription
+            isPrivateDnsZoneInvalid
+            isPrivateDnsZoneNotLinkedToVnet
+            isSubnetDelegated
+            isUnsupportedCustomerManagedExocomputeConfigFieldPresent
+        }
+    }
+}

@@ -1,0 +1,30 @@
+{
+  "data": {
+    "result": {
+      "validationInfo": [
+        {
+          "errorMessage":                                            "{{ .ErrorMessage }}",
+          "hasBlockedSecurityRules":                                  {{ .BlockedSecurityRules }},
+          "hasRestrictedAddressRangeOverlap":                         false,
+          "isAksCustomPrivateDnsZoneDoesNotExist":                    false,
+          "isAksCustomPrivateDnsZoneInDifferentSubscription":         false,
+          "isAksCustomPrivateDnsZoneInvalid":                         false,
+          "isAksCustomPrivateDnsZoneNotLinkedToVnet":                 false,
+          "isAksCustomPrivateDnsZonePermissionsGroupNotEnabled":      false,
+          "isClusterSubnetSizeTooSmall":                              {{ .ClusterSubnetSizeTooSmall }},
+          "isPodAndClusterSubnetSame":                                {{ .PodAndClusterSubnetSame }},
+          "isPodAndClusterVnetDifferent":                             false,
+          "isPodCidrAndSubnetCidrOverlap":                            false,
+          "isPodCidrRangeTooSmall":                                   {{ .PodCidrRangeTooSmall }},
+          "isPodSubnetSizeTooSmall":                                  {{ .PodSubnetSizeTooSmall }},
+          "isPrivateDnsZoneDoesNotExist":                             false,
+          "isPrivateDnsZoneInDifferentSubscription":                  false,
+          "isPrivateDnsZoneInvalid":                                  false,
+          "isPrivateDnsZoneNotLinkedToVnet":                          false,
+          "isSubnetDelegated":                                        {{ .SubnetDelegated }},
+          "isUnsupportedCustomerManagedExocomputeConfigFieldPresent": false
+        }
+      ]
+    }
+  }
+}

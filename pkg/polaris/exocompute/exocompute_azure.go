@@ -26,10 +26,9 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
-
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -160,6 +159,10 @@ func (a API) AddAzureConfiguration(ctx context.Context, cloudAccountID uuid.UUID
 	exoConfig, err := config(ctx, cloudAccountID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to parse exocompute configuration: %s", err)
+	}
+
+	if err := exocompute.ValidateConfiguration(ctx, a.client, exoConfig); err != nil {
+		return uuid.Nil, fmt.Errorf("failed to validate exocompute configuration: %s", err)
 	}
 
 	configID, err := exocompute.CreateConfiguration(ctx, a.client, exoConfig)

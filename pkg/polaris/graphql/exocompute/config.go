@@ -184,3 +184,41 @@ func DeleteConfiguration[P DeleteConfigurationParams[R], R DeleteConfigurationRe
 
 	return nil
 }
+
+// ValidateConfigurationParams holds the parameters for an exocompute
+// configuration validate operation.
+type ValidateConfigurationParams[R ValidateConfigurationResult] interface {
+	ValidateQuery() (string, any, R)
+}
+
+// ValidateConfigurationResult holds the result of an exocompute configuration
+// validate operation.
+type ValidateConfigurationResult interface {
+	ValidateAzureConfigurationResult
+	Validate() error
+}
+
+// ValidateConfiguration validates the exocompute configuration.
+func ValidateConfiguration[P ValidateConfigurationParams[R], R ValidateConfigurationResult](ctx context.Context, gql *graphql.Client, params P) error {
+	gql.Log().Print(log.Trace)
+
+	query, queryParams, _ := params.ValidateQuery()
+	buf, err := gql.Request(ctx, query, queryParams)
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result R `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if err := payload.Data.Result.Validate(); err != nil {
+		return graphql.ResponseError(query, err)
+	}
+
+	return nil
+}

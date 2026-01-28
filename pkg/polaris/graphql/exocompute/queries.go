@@ -125,6 +125,18 @@ var allAzureExocomputeConfigsInAccountQuery = `query SdkGolangAllAzureExocompute
             podSubnetNativeId
             region
             subnetNativeId
+            optionalConfig {
+                additionalWhitelistIps
+                aksClusterAccessType
+                aksClusterTier
+                diskEncryptionAtHost
+                aksCustomPrivateDnsZoneId
+                aksNodeCountBucket
+                aksNodeRgPrefix
+                privateDnsZoneId
+                enableUserDefinedRouting
+                shouldWhitelistRubrikIps
+            }
         }
         exocomputeEligibleRegions
         featureDetails {
@@ -345,6 +357,40 @@ var updateAwsExocomputeConfigsQuery = `mutation SdkGolangUpdateAwsExocomputeConf
         exocomputeConfigs {
             configUuid
             message
+        }
+    }
+}`
+
+// validateAzureCloudAccountExocomputeConfigurations GraphQL query
+var validateAzureCloudAccountExocomputeConfigurationsQuery = `query SdkGolangValidateAzureCloudAccountExocomputeConfigurations(
+    $cloudAccountId:              UUID!
+    $azureExocomputeRegionConfig: AzureExocomputeAddConfigInputType!,
+) {
+    result: validateAzureCloudAccountExocomputeConfigurations(input: {
+        cloudAccountId:               $cloudAccountId,
+        azureExocomputeRegionConfigs: [$azureExocomputeRegionConfig],
+    }) {
+        validationInfo {
+            errorMessage
+            hasBlockedSecurityRules
+            hasRestrictedAddressRangeOverlap
+            isAksCustomPrivateDnsZoneDoesNotExist
+            isAksCustomPrivateDnsZoneInDifferentSubscription
+            isAksCustomPrivateDnsZoneInvalid
+            isAksCustomPrivateDnsZoneNotLinkedToVnet
+            isAksCustomPrivateDnsZonePermissionsGroupNotEnabled
+            isClusterSubnetSizeTooSmall
+            isPodAndClusterSubnetSame
+            isPodAndClusterVnetDifferent
+            isPodCidrAndSubnetCidrOverlap
+            isPodCidrRangeTooSmall
+            isPodSubnetSizeTooSmall
+            isPrivateDnsZoneDoesNotExist
+            isPrivateDnsZoneInDifferentSubscription
+            isPrivateDnsZoneInvalid
+            isPrivateDnsZoneNotLinkedToVnet
+            isSubnetDelegated
+            isUnsupportedCustomerManagedExocomputeConfigFieldPresent
         }
     }
 }`
