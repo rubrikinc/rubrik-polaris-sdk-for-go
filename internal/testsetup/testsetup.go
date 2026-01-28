@@ -106,6 +106,12 @@ type testGcpProject struct {
 	ProjectID        string `json:"projectId"`
 	ProjectNumber    int64  `json:"projectNumber"`
 	OrganizationName string `json:"organizationName"`
+
+	Exocompute struct {
+		Region         string `json:"region"`
+		SubnetName     string `json:"subnetName"`
+		VPCNetworkName string `json:"vpcNetworkName"`
+	} `json:"exocompute"`
 }
 
 // GCPProject loads test project information from the file pointed to by the
