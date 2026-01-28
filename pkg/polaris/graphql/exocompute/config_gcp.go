@@ -28,8 +28,9 @@ import (
 // GCPConfigurationsFilter holds the filter for a GCP exocompute configuration
 // list operation.
 type GCPConfigurationsFilter struct {
-	CloudAccountID uuid.UUID                    `json:"cloudAccountId"`
-	Regions        []gcp.CloudAccountRegionEnum `json:"regions,omitempty"`
+	CloudAccountID        uuid.UUID                    `json:"cloudAccountId"`
+	Regions               []gcp.CloudAccountRegionEnum `json:"regions,omitempty"`
+	ShowHealthCheckStatus bool                         `json:"showHealthCheckStatus"`
 }
 
 func (p GCPConfigurationsFilter) ListQuery() (string, any, GCPConfigurations) {
@@ -46,7 +47,7 @@ type GCPConfigurations struct {
 type GCPConfiguration struct {
 	ID                uuid.UUID         `json:"configId"`
 	Config            GCPRegionalConfig `json:"regionalExocomputeConfig"`
-	HealthCheckStatus struct {
+	HealthCheckStatus *struct {
 		Status        string `json:"status"`
 		FailureReason string `json:"failureReason"`
 		LastUpdatedAt string `json:"lastUpdatedAt"`

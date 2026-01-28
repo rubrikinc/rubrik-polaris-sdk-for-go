@@ -296,11 +296,15 @@ var exocomputeGetClusterConnectionInfoQuery = `query SdkGolangExocomputeGetClust
 }`
 
 // gcpExocomputeConfigs GraphQL query
-var gcpExocomputeConfigsQuery = `query SdkGolangGcpExocomputeConfigs($cloudAccountId: UUID!, $regions: [GcpCloudAccountRegion!]) {
+var gcpExocomputeConfigsQuery = `query SdkGolangGcpExocomputeConfigs(
+    $cloudAccountId:        UUID!,
+    $regions:               [GcpCloudAccountRegion!],
+    $showHealthCheckStatus: Boolean!,
+) {
     result: gcpExocomputeConfigs(input: {
         cloudAccountId:        $cloudAccountId,
         regions:               $regions,
-        showHealthCheckStatus: true,
+        showHealthCheckStatus: $showHealthCheckStatus,
     }) {
         exocomputeConfigs {
             configId

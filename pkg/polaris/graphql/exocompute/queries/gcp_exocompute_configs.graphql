@@ -1,8 +1,12 @@
-query RubrikPolarisSDKRequest($cloudAccountId: UUID!, $regions: [GcpCloudAccountRegion!]) {
+query RubrikPolarisSDKRequest(
+    $cloudAccountId:        UUID!,
+    $regions:               [GcpCloudAccountRegion!],
+    $showHealthCheckStatus: Boolean!,
+) {
     result: gcpExocomputeConfigs(input: {
         cloudAccountId:        $cloudAccountId,
         regions:               $regions,
-        showHealthCheckStatus: true,
+        showHealthCheckStatus: $showHealthCheckStatus,
     }) {
         exocomputeConfigs {
             configId

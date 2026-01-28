@@ -46,12 +46,14 @@ type RegionalConfig struct {
 }
 
 // GCPConfigurationsByCloudAccountID returns all GCP exocompute configurations
-// for the cloud account with the specified ID.
-func (a API) GCPConfigurationsByCloudAccountID(ctx context.Context, cloudAccountID uuid.UUID) ([]GCPConfiguration, error) {
+// for the cloud account with the specified ID. If healthCheckStatus is true,
+// the health check status of the configuration is also retrieved.
+func (a API) GCPConfigurationsByCloudAccountID(ctx context.Context, cloudAccountID uuid.UUID, healthCheckStatus bool) ([]GCPConfiguration, error) {
 	a.log.Print(log.Trace)
 
 	accountConfigs, err := exocompute.ListConfigurations(ctx, a.client, exocompute.GCPConfigurationsFilter{
-		CloudAccountID: cloudAccountID,
+		CloudAccountID:        cloudAccountID,
+		ShowHealthCheckStatus: healthCheckStatus,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get exocompute configurations for cloud account %s: %s", cloudAccountID, err)
@@ -69,7 +71,9 @@ func (a API) GCPConfigurationsByCloudAccountID(ctx context.Context, cloudAccount
 }
 
 // GCPConfigurations returns all GCP exocompute configurations.
-func (a API) GCPConfigurations(ctx context.Context) ([]GCPConfiguration, error) {
+// If healthCheckStatus is true, the health check status of the configuration is
+// also retrieved.
+func (a API) GCPConfigurations(ctx context.Context, healthCheckStatus bool) ([]GCPConfiguration, error) {
 	a.log.Print(log.Trace)
 
 	cloudAccounts, err := gcp.WrapGQL(a.client).Projects(ctx, "")
@@ -79,7 +83,7 @@ func (a API) GCPConfigurations(ctx context.Context) ([]GCPConfiguration, error) 
 
 	var configs []GCPConfiguration
 	for _, cloudAccount := range cloudAccounts {
-		accountConfigs, err := a.GCPConfigurationsByCloudAccountID(ctx, cloudAccount.ID)
+		accountConfigs, err := a.GCPConfigurationsByCloudAccountID(ctx, cloudAccount.ID, healthCheckStatus)
 		if err != nil {
 			return nil, err
 		}
