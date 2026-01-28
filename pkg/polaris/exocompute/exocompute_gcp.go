@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
 	gqlgcp "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -65,6 +66,9 @@ func (a API) GCPConfigurationsByCloudAccountID(ctx context.Context, cloudAccount
 			CloudAccountID:   cloudAccountID,
 			GCPConfiguration: config,
 		})
+	}
+	if len(configs) == 0 {
+		return nil, fmt.Errorf("exocompute configurations for cloud account %s: %w", cloudAccountID, graphql.ErrNotFound)
 	}
 
 	return configs, nil
