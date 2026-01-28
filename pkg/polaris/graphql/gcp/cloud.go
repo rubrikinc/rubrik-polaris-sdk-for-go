@@ -88,38 +88,44 @@ func (a API) CloudAccountProjectsByFeature(ctx context.Context, feature core.Fea
 }
 
 // CloudAccountAddManualAuthProject adds the GCP project and features to RSC.
-func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, projectName string, projectNumber int64, orgName, jwtConfig string, features []core.Feature) error {
+// The cloud account ID is returned.
+func (a API) CloudAccountAddManualAuthProject(ctx context.Context, projectID, projectName string, projectNumber int64, orgName, jwtConfig string, features []core.Feature) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	featuresWithoutPG, featuresWithPG, err := core.FilterFeaturesOnPermissionGroups(features)
-	if err != nil {
-		return fmt.Errorf("failed to add project: %s", err)
-	}
-
-	query := gcpCloudAccountAddManualAuthProjectQuery
-	if _, err := a.GQL.Request(ctx, query, struct {
-		ID             string         `json:"gcpNativeProjectId"`
-		Name           string         `json:"gcpProjectName"`
-		Number         int64          `json:"gcpProjectNumber"`
-		OrgName        string         `json:"organizationName,omitempty"`
-		JwtConfig      secret.String  `json:"serviceAccountJwtConfig,omitempty"`
-		JwtConfigOpt   secret.String  `json:"serviceAccountJwtConfigOptional,omitempty"`
-		Features       []string       `json:"features,omitempty"`
-		FeaturesWithPG []core.Feature `json:"featuresWithPG,omitempty"`
+	query := addGcpCloudAccountManualAuthProjectQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ID           string         `json:"gcpNativeProjectId"`
+		Name         string         `json:"gcpProjectName"`
+		Number       int64          `json:"gcpProjectNumber"`
+		OrgName      string         `json:"organizationName,omitempty"`
+		JwtConfig    secret.String  `json:"serviceAccountJwtConfig,omitempty"`
+		JwtConfigOpt secret.String  `json:"serviceAccountJwtConfigOptional,omitempty"`
+		Features     []core.Feature `json:"features"`
 	}{
-		ID:             projectID,
-		Name:           projectName,
-		Number:         projectNumber,
-		OrgName:        orgName,
-		JwtConfig:      secret.String(jwtConfig),
-		JwtConfigOpt:   secret.String(jwtConfig),
-		Features:       featuresWithoutPG,
-		FeaturesWithPG: featuresWithPG,
-	}); err != nil {
-		return graphql.RequestError(query, err)
+		ID:           projectID,
+		Name:         projectName,
+		Number:       projectNumber,
+		OrgName:      orgName,
+		JwtConfig:    secret.String(jwtConfig),
+		JwtConfigOpt: secret.String(jwtConfig),
+		Features:     features,
+	})
+	if err != nil {
+		return uuid.Nil, graphql.RequestError(query, err)
 	}
 
-	return nil
+	var payload struct {
+		Data struct {
+			Result struct {
+				ID uuid.UUID `json:"cloudAccountId"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result.ID, nil
 }
 
 // CloudAccountDeleteProjectV1 delete the cloud account for the given RSC cloud
