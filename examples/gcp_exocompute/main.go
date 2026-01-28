@@ -77,7 +77,7 @@ func main() {
 	}
 
 	// List the Exocompute configurations in the cloud account.
-	configs, err := exoClient.GCPConfigurationsByCloudAccountID(ctx, cloudAccountID)
+	configs, err := exoClient.GCPConfigurationsByCloudAccountID(ctx, cloudAccountID, false)
 	if err != nil {
 		log.Fatal(err)
 	}
