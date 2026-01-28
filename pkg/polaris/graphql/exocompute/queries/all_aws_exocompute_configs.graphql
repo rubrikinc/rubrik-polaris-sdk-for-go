@@ -42,6 +42,9 @@ query RubrikPolarisSDKRequest($awsNativeAccountIdOrNamePrefix: String!) {
                     subnetId
                 }
                 areSecurityGroupsRscManaged
+                optionalConfig {
+                    eksClusterAccessType
+                }
             }
         }
     }
