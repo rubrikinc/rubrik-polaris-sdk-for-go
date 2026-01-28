@@ -87,6 +87,9 @@ var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsN
                     subnetId
                 }
                 areSecurityGroupsRscManaged
+                optionalConfig {
+                    eksClusterAccessType
+                }
             }
         }
     }
