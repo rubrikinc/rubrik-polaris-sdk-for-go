@@ -36,8 +36,8 @@ type AzureConfigurationsFilter struct {
 	SearchQuery string `json:"azureExocomputeSearchQuery"`
 }
 
-func (p AzureConfigurationsFilter) ListQuery() (string, any, AzureConfigurationsForCloudAccount) {
-	return allAzureExocomputeConfigsInAccountQuery, p, AzureConfigurationsForCloudAccount{}
+func (p AzureConfigurationsFilter) ListQuery() (string, any, []AzureConfigurationsForCloudAccount) {
+	return allAzureExocomputeConfigsInAccountQuery, p, []AzureConfigurationsForCloudAccount{}
 }
 
 // AzureConfigurationsForCloudAccount holds the result of an Azure exocompute

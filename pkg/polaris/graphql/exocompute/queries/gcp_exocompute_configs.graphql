@@ -1,0 +1,26 @@
+query RubrikPolarisSDKRequest(
+    $cloudAccountId:        UUID!,
+    $regions:               [GcpCloudAccountRegion!],
+    $showHealthCheckStatus: Boolean!,
+) {
+    result: gcpExocomputeConfigs(input: {
+        cloudAccountId:        $cloudAccountId,
+        regions:               $regions,
+        showHealthCheckStatus: $showHealthCheckStatus,
+    }) {
+        exocomputeConfigs {
+            configId
+            healthCheckStatus {
+                failureReason
+                lastUpdatedAt
+                status
+                taskchainId
+            }
+            regionalExocomputeConfig {
+                region
+                subnetName
+                vpcNetworkName
+            }
+        }
+    }
+}
