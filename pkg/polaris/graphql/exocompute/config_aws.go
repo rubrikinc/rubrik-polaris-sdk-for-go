@@ -70,6 +70,9 @@ type AWSConfiguration struct {
 	ClusterSecurityGroupID string `json:"clusterSecurityGroupId"`
 	NodeSecurityGroupID    string `json:"nodeSecurityGroupId"`
 
+	// Optional configuration for the EKS cluster.
+	OptionalConfig *AWSOptionalConfig `json:"optionalConfig,omitempty"`
+
 	HealthCheckStatus struct {
 		Status        string `json:"status"`
 		FailureReason string `json:"failureReason"`
@@ -95,6 +98,9 @@ type CreateAWSConfigurationParams struct {
 	// Only needs to be specified if IsPolarisManaged is false.
 	ClusterSecurityGroupId string `json:"clusterSecurityGroupId,omitempty"`
 	NodeSecurityGroupId    string `json:"nodeSecurityGroupId,omitempty"`
+
+	// Optional configuration for the EKS cluster.
+	OptionalConfig *AWSOptionalConfig `json:"optionalConfig,omitempty"`
 
 	// When true, a health check will be triggered after the configuration is
 	// created.
@@ -195,6 +201,28 @@ func (r DeleteAWSConfigurationResult) Validate() error {
 		return errors.New("failed to delete configuration")
 	}
 	return nil
+}
+
+// AWSClusterAccess represents the EKS cluster access type for AWS
+// exocompute configurations.
+type AWSClusterAccess string
+
+const (
+	// AWSClusterAccessUnspecified indicates the EKS cluster access type is
+	// not specified.
+	AWSClusterAccessUnspecified AWSClusterAccess = "EKS_CLUSTER_ACCESS_TYPE_UNSPECIFIED"
+
+	// EKSClusterAccessPublic indicates the EKS cluster has public access.
+	EKSClusterAccessPublic AWSClusterAccess = "EKS_CLUSTER_ACCESS_TYPE_PUBLIC"
+
+	// EKSClusterAccessPrivate indicates the EKS cluster has private access.
+	EKSClusterAccessPrivate AWSClusterAccess = "EKS_CLUSTER_ACCESS_TYPE_PRIVATE"
+)
+
+// AWSOptionalConfig holds optional configuration for AWS exocompute.
+type AWSOptionalConfig struct {
+	// AWSClusterAccess specifies the access type for the EKS cluster.
+	AWSClusterAccess AWSClusterAccess `json:"eksClusterAccessType,omitempty"`
 }
 
 // AWSSubnet represents an AWS VPC subnet.
