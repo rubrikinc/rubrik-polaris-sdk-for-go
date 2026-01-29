@@ -24,6 +24,27 @@
 
 package gcp
 
+// addGcpCloudAccountManualAuthProject GraphQL query
+var addGcpCloudAccountManualAuthProjectQuery = `mutation SdkGolangAddGcpCloudAccountManualAuthProject(
+    $gcpNativeProjectId:      String!,
+    $gcpProjectName:          String!,
+    $gcpProjectNumber:        Long!,
+    $organizationName:        String,
+    $serviceAccountJwtConfig: String,
+    $features:                [FeatureWithPermissionsGroups!]!,
+) {
+    result: addGcpCloudAccountManualAuthProject(input: {
+        gcpNativeProjectId:           $gcpNativeProjectId,
+        gcpProjectName:               $gcpProjectName,
+        gcpProjectNumber:             $gcpProjectNumber,
+        organizationName:             $organizationName,
+        serviceAccountJwtConfig:      $serviceAccountJwtConfig,
+        featuresWithPermissionGroups: $features,
+    }) {
+        cloudAccountId
+    }
+}`
+
 // allFeaturePermissionsForGcpCloudAccount GraphQL query
 var allFeaturePermissionsForGcpCloudAccountQuery = `query SdkGolangAllFeaturePermissionsForGcpCloudAccount($feature: CloudAccountFeature!) {
     result: allFeaturePermissionsForGcpCloudAccount(feature: $feature){
@@ -111,27 +132,6 @@ var gcpBulkSetCloudAccountPropertiesQuery = `mutation SdkGolangGcpBulkSetCloudAc
     result: gcpBulkSetCloudAccountProperties(input: {
         cloudAccountIds:       $cloudAccountIds,
         projectCredentialsJwt: $projectCredentialsJwt,
-    })
-}`
-
-// gcpCloudAccountAddManualAuthProject GraphQL query
-var gcpCloudAccountAddManualAuthProjectQuery = `mutation SdkGolangGcpCloudAccountAddManualAuthProject(
-    $gcpNativeProjectId:      String!,
-    $gcpProjectName:          String!,
-    $gcpProjectNumber:        Long!,
-    $organizationName:        String,
-    $serviceAccountJwtConfig: String,
-    $features:                [CloudAccountFeature!],
-    $featuresWithPG:          [FeatureWithPermissionsGroups!]
-) {
-    gcpCloudAccountAddManualAuthProject(input: {
-        gcpNativeProjectId:           $gcpNativeProjectId,
-        gcpProjectName:               $gcpProjectName,
-        gcpProjectNumber:             $gcpProjectNumber,
-        organizationName:             $organizationName,
-        serviceAccountJwtConfig:      $serviceAccountJwtConfig,
-        features:                     $features,
-        featuresWithPermissionGroups: $featuresWithPG,
     })
 }`
 

@@ -276,17 +276,13 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, features []cor
 		jwtConfig = string(config.creds.JSON)
 	}
 
-	if err := gcp.Wrap(a.client).CloudAccountAddManualAuthProject(
-		ctx, config.NativeID, config.name, config.number, config.orgName, jwtConfig, features); err != nil {
+	cloudAccountID, err := gcp.Wrap(a.client).CloudAccountAddManualAuthProject(ctx, config.NativeID, config.name,
+		config.number, config.orgName, jwtConfig, features)
+	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to add project: %s", err)
 	}
 
-	account, err := a.ProjectByNativeID(ctx, config.NativeID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get project: %s", err)
-	}
-
-	return account.ID, nil
+	return cloudAccountID, nil
 }
 
 // RemoveProject removes the features from the project with the specified RSC
