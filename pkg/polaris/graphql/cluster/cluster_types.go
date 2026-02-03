@@ -1,6 +1,6 @@
 package cluster
 
-// ClusterTimezoneType represents the valid cluster timezones.
+// Timezone represents the valid cluster timezones.
 type Timezone string
 
 const (
@@ -158,6 +158,7 @@ const (
 	CLUSTER_TIMEZONE_AMERICA_YAKUTAT                Timezone = "AMERICA_YAKUTAT"
 )
 
+// Product represents the valid cluster products.
 type Product string
 
 const (
@@ -167,6 +168,7 @@ const (
 	POLARIS      Product = "POLARIS"
 )
 
+// ProductType represents the valid cluster product types.
 type ProductType string
 
 const (
@@ -178,6 +180,7 @@ const (
 	UNKNOWN    ProductType = "Unknown"
 )
 
+// Status represents the valid cluster statuses.
 type Status string
 
 const (
@@ -186,6 +189,7 @@ const (
 	ClusterInitializing Status = "Initializing"
 )
 
+// SystemStatus represents the valid cluster system statuses.
 type SystemStatus string
 
 const (
@@ -194,6 +198,7 @@ const (
 	ClusterSystemStatusFATAL   SystemStatus = "FATAL"
 )
 
+// SearchFilter represents the valid cluster search filters.
 type SearchFilter struct {
 	ID              []string       `json:"id"`
 	Name            []string       `json:"name"`

@@ -44,8 +44,8 @@ func Wrap(gql *graphql.Client) API {
 	return API{GQL: gql, log: gql.Log()}
 }
 
-// ClusterRemovalPrechecks represents the precheck information for cluster removal.
-type ClusterRemovalPrechecks struct {
+// RemovalPrechecks represents the precheck information for cluster removal.
+type RemovalPrechecks struct {
 	Disconnected       bool   `json:"isDisconnected"`
 	IgnorePrecheckTime string `json:"ignorePrecheckTime"`
 	LastConnectionTime string `json:"lastConnectionTime"`
@@ -54,7 +54,7 @@ type ClusterRemovalPrechecks struct {
 }
 
 // CanIgnoreClusterRemovalPrechecks returns whether the cluster removal prechecks can be ignored.
-func CanIgnoreClusterRemovalPrechecks(ctx context.Context, gql *graphql.Client, clusterUUID uuid.UUID) (ClusterRemovalPrechecks, error) {
+func CanIgnoreClusterRemovalPrechecks(ctx context.Context, gql *graphql.Client, clusterUUID uuid.UUID) (RemovalPrechecks, error) {
 	gql.Log().Print(log.Trace)
 
 	query := canIgnoreClusterRemovalPrechecksQuery
@@ -62,16 +62,16 @@ func CanIgnoreClusterRemovalPrechecks(ctx context.Context, gql *graphql.Client, 
 		ClusterUUID uuid.UUID `json:"clusterUuid"`
 	}{ClusterUUID: clusterUUID})
 	if err != nil {
-		return ClusterRemovalPrechecks{}, graphql.RequestError(query, err)
+		return RemovalPrechecks{}, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
 		Data struct {
-			Result ClusterRemovalPrechecks `json:"result"`
+			Result RemovalPrechecks `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return ClusterRemovalPrechecks{}, graphql.UnmarshalError(query, err)
+		return RemovalPrechecks{}, graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Result, nil
@@ -294,7 +294,7 @@ type DnsServers struct {
 	Domains []string `json:"domains"`
 }
 
-// CloudClusterDnsServers returns the cluster DNS servers.
+// ClusterDnsServers returns the cluster DNS servers.
 func (a API) ClusterDnsServers(ctx context.Context, clusterID uuid.UUID) (DnsServers, error) {
 	a.log.Print(log.Trace)
 
@@ -326,13 +326,13 @@ type NTPSymmetricKey struct {
 	KeyType string `json:"keyType"`
 }
 
-// CloudClusterNtpServers represents the cloud cluster NTP servers.
+// ClusterNtpServers represents the cloud cluster NTP servers.
 type ClusterNtpServers struct {
 	Server       string          `json:"server"`
 	SymmetricKey NTPSymmetricKey `json:"symmetricKey,omitempty"`
 }
 
-// CloudClusterNtpServers returns the cloud cluster NTP servers.
+// ClusterNtpServers returns the cloud cluster NTP servers.
 func (a API) ClusterNtpServers(ctx context.Context, clusterID uuid.UUID) ([]ClusterNtpServers, error) {
 	a.log.Print(log.Trace)
 
@@ -366,7 +366,7 @@ type IpmiInfo struct {
 	UsesIkvm    bool `json:"usesIkvm"`
 }
 
-// CloudClusterSettings represents the cluster settings.
+// Settings represents the cluster settings.
 type Settings struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
@@ -377,7 +377,7 @@ type Settings struct {
 	IpmiInfo    IpmiInfo  `json:"ipmiInfo,omitempty"`
 }
 
-// CloudClusterSettings returns the cloud cluster settings.
+// ClusterSettings returns the cloud cluster settings.
 func (a API) ClusterSettings(ctx context.Context, clusterID uuid.UUID) (Settings, error) {
 	a.log.Print(log.Trace)
 
