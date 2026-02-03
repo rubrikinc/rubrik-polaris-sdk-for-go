@@ -43,6 +43,28 @@ var canIgnoreClusterRemovalPrechecksQuery = `query SdkGolangCanIgnoreClusterRemo
   }
 }`
 
+// clusterDnsServers GraphQL query
+var clusterDnsServersQuery = `query SdkGolangClusterDnsServers($clusterUuid: UUID!) {
+  result: clusterDns(clusterUuid: $clusterUuid) {
+    servers
+    domains
+  }
+}`
+
+// clusterNtpServers GraphQL query
+var clusterNtpServersQuery = `query SdkGolangClusterNtpServers($id: String!) {
+  result: clusterNtpServers(input: { id: $id }) {
+    data {
+      server
+      symmetricKey {
+        key
+        keyId
+        keyType
+      }
+    }
+  }
+}`
+
 // clusterRcvLocations GraphQL query
 var clusterRcvLocationsQuery = `query SdkGolangClusterRcvLocations(
   $clusterUuid: UUID!
@@ -66,6 +88,26 @@ var clusterRcvLocationsQuery = `query SdkGolangClusterRcvLocations(
         id
         name
       }
+    }
+  }
+}`
+
+// clusterSettings GraphQL query
+var clusterSettingsQuery = `query SdkGolangClusterSettings($id: UUID!) {
+  result: cluster(clusterUuid: $id) {
+    id
+    name
+    version
+    status
+    status
+    timezone
+    geoLocation {
+      address
+    }
+    ipmiInfo {
+      isAvailable
+      usesHttps
+      usesIkvm
     }
   }
 }`
@@ -127,6 +169,38 @@ var slaSourceClustersQuery = `query SdkGolangSlaSourceClusters(
       hasNextPage
     }
     count
+  }
+}`
+
+// updateClusterNtpServers GraphQL query
+var updateClusterNtpServersQuery = `mutation SdkGolangUpdateClusterNtpServers(
+  $id: String!
+  $server: String!
+  $keyId: Int!
+  $key: String!
+  $keyType: String!
+) {
+  result: updateClusterNtpServers(
+    input: {
+      id: $id
+      ntpServerConfigs: [
+        {
+          server: $server
+          symmetricKey: { keyId: $keyId, key: $key, keyType: $keyType }
+        }
+      ]
+    }
+  ) {
+    success
+  }
+}`
+
+// updateCusterDnsAndSearchDomains GraphQL query
+var updateCusterDnsAndSearchDomainsQuery = `mutation SdkGolangUpdateCusterDnsAndSearchDomains(
+  $input: UpdateDnsServersAndSearchDomainsInput!
+) {
+  result: updateDnsServersAndSearchDomains(input: $input) {
+    success
   }
 }`
 
