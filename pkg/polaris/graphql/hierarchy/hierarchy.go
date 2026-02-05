@@ -1,3 +1,5 @@
+//go:generate go run ../queries_gen.go hierarchy
+
 // Copyright 2024 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -18,7 +20,9 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package core
+// Package hierarchy provides a low-level interface to hierarchy GraphQL queries
+// provided by the Polaris platform.
+package hierarchy
 
 import (
 	"context"
@@ -30,17 +34,28 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// HierarchyObjectType represents the type of a hierarchy object.
-type HierarchyObjectType string
+// API wraps around GraphQL clients to give them the Polaris Hierarchy API.
+type API struct {
+	GQL *graphql.Client
+	log log.Logger
+}
 
-// HierarchyObject represents an RSC hierarchy object with SLA information.
-type HierarchyObject struct {
-	ID                  uuid.UUID           `json:"id"`
-	Name                string              `json:"name"`
-	ObjectType          HierarchyObjectType `json:"objectType"`
-	SLAAssignment       sla.Assignment      `json:"slaAssignment"`
-	ConfiguredSLADomain sla.DomainRef       `json:"configuredSlaDomain"`
-	EffectiveSLADomain  sla.DomainRef       `json:"effectiveSlaDomain"`
+// Wrap the GraphQL client in the Hierarchy API.
+func Wrap(gql *graphql.Client) API {
+	return API{GQL: gql, log: gql.Log()}
+}
+
+// ObjectType represents the type of a hierarchy object.
+type ObjectType string
+
+// Object represents an RSC hierarchy object with SLA information.
+type Object struct {
+	ID                  uuid.UUID      `json:"id"`
+	Name                string         `json:"name"`
+	ObjectType          ObjectType     `json:"objectType"`
+	SLAAssignment       sla.Assignment `json:"slaAssignment"`
+	ConfiguredSLADomain sla.DomainRef  `json:"configuredSlaDomain"`
+	EffectiveSLADomain  sla.DomainRef  `json:"effectiveSlaDomain"`
 }
 
 // DoNotProtectSLAID is the special SLA domain ID used to indicate that an
@@ -53,11 +68,11 @@ const DoNotProtectSLAID = "DO_NOT_PROTECT"
 // effectiveSlaDomain.ID when the object inherits no protection.
 const UnprotectedSLAID = "UNPROTECTED"
 
-// HierarchyObjectByID returns the hierarchy object with the specified ID.
+// ObjectByID returns the hierarchy object with the specified ID.
 // This can be used to query any hierarchy object (VMs, databases, tag rules,
 // etc.) and retrieve its SLA assignment information including the configured
 // and effective SLA domains.
-func (a API) HierarchyObjectByID(ctx context.Context, fid uuid.UUID) (HierarchyObject, error) {
+func (a API) ObjectByID(ctx context.Context, fid uuid.UUID) (Object, error) {
 	a.log.Print(log.Trace)
 
 	query := hierarchyObjectQuery
@@ -65,16 +80,16 @@ func (a API) HierarchyObjectByID(ctx context.Context, fid uuid.UUID) (HierarchyO
 		FID uuid.UUID `json:"fid"`
 	}{FID: fid})
 	if err != nil {
-		return HierarchyObject{}, graphql.RequestError(query, err)
+		return Object{}, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
 		Data struct {
-			Result HierarchyObject `json:"result"`
+			Result Object `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return HierarchyObject{}, graphql.UnmarshalError(query, err)
+		return Object{}, graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Result, nil
