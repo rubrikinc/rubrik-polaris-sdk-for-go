@@ -1,0 +1,34 @@
+query RubrikPolarisSDKRequest($after: String, $filter: [Filter!], $first: Int, $typeFilter: [HierarchyObjectTypeEnum!], $workloadHierarchy: WorkloadLevelHierarchy) {
+    result: inventoryRoot {
+        descendantConnection(after: $after, filter: $filter, first: $first, typeFilter: $typeFilter, workloadHierarchy: $workloadHierarchy) {
+            nodes {
+                name
+                id
+                objectType
+                ... on AwsNativeAccount {
+                    status
+                    awsFeatures: enabledFeatures {
+                        featureName
+                        status
+                        lastRefreshedAt
+                    }
+                }
+                ... on AzureNativeSubscription {
+                    azureSubscriptionStatus
+                    azureSubscriptionNativeId
+                    azureFeatures: enabledFeatures {
+                        featureName
+                        lastRefreshedAt
+                        status
+                    }
+                }
+            }
+            count
+            pageInfo {
+                endCursor
+                hasNextPage
+            }
+        }
+    }
+}
+

@@ -147,13 +147,32 @@ func (a API) DeleteTagRule(ctx context.Context, tagRuleID uuid.UUID) error {
 // This can be used to query any hierarchy object (VMs, databases, tag rules,
 // etc.) and retrieve its SLA assignment information including the configured
 // and effective SLA domains.
-func (a API) HierarchyObjectByID(ctx context.Context, fid uuid.UUID) (hierarchy.Object, error) {
+//
+// This function uses AllSubHierarchyType as the workload hierarchy, which
+// returns the generic SLA assignment. Use HierarchyObjectByIDAndWorkload to
+// specify a specific workload hierarchy for workload-specific SLA resolution.
+func (a API) HierarchyObjectByID(ctx context.Context, fid uuid.UUID) (hierarchy.SLAObject, error) {
+	return a.HierarchyObjectByIDAndWorkload(ctx, fid, hierarchy.WorkloadAllSubHierarchyType)
+}
+
+// HierarchyObjectByIDAndWorkload returns the hierarchy object with the
+// specified ID and workload hierarchy type.
+// This can be used to query any hierarchy object (VMs, databases, tag rules,
+// etc.) and retrieve its SLA assignment information including the configured
+// and effective SLA domains.
+//
+// The workloadHierarchy parameter determines which workload type to use for
+// SLA Domain resolution. Different workload types can have different SLA
+// assignments on the same parent object. Pass hierarchy.WorkloadAllSubHierarchyType
+// for the generic view, or a specific workload type (e.g.,
+// hierarchy.WorkloadAzureVM) for workload-specific SLA resolution.
+func (a API) HierarchyObjectByIDAndWorkload(ctx context.Context, fid uuid.UUID, workloadHierarchy hierarchy.Workload) (hierarchy.SLAObject, error) {
 	a.log.Print(log.Trace)
 
 	hierarchyAPI := hierarchy.Wrap(a.client)
-	obj, err := hierarchyAPI.ObjectByID(ctx, fid)
+	obj, err := hierarchyAPI.ObjectByIDAndWorkload(ctx, fid, workloadHierarchy)
 	if err != nil {
-		return hierarchy.Object{}, fmt.Errorf("failed to get hierarchy object: %s", err)
+		return hierarchy.SLAObject{}, fmt.Errorf("failed to get hierarchy object: %s", err)
 	}
 
 	return obj, nil

@@ -1,5 +1,5 @@
-query RubrikPolarisSDKRequest($fid: UUID!) {
-    result: hierarchyObject(fid: $fid) {
+query RubrikPolarisSDKRequest($fid: UUID!, $workloadHierarchy: WorkloadLevelHierarchy) {
+    result: hierarchyObject(fid: $fid, workloadHierarchy: $workloadHierarchy) {
         id
         name
         objectType
