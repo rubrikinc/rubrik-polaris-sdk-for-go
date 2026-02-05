@@ -195,6 +195,35 @@ var updateClusterNtpServersQuery = `mutation SdkGolangUpdateClusterNtpServers(
   }
 }`
 
+// updateClusterSettings GraphQL query
+var updateClusterSettingsQuery = `mutation SdkGolangUpdateClusterSettings(
+  $clusterID: UUID!
+  $address: String!
+  $name: String
+  $timezone: ClusterTimezoneType!
+) {
+  result: updateClusterSettings(
+    input: {
+      clusterUuid: $clusterID
+      id: "me"
+      clusterUpdate: {
+        geolocation: { address: $address }
+        name: $name
+        timezone: { timezone: $timezone }
+      }
+    }
+  ) {
+    geolocation {
+      address
+    }
+    clusterUuid
+    name
+    timezone {
+      timezone
+    }
+  }
+}`
+
 // updateCusterDnsAndSearchDomains GraphQL query
 var updateCusterDnsAndSearchDomainsQuery = `mutation SdkGolangUpdateCusterDnsAndSearchDomains(
   $domains: [String!]!
