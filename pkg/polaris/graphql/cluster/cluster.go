@@ -402,6 +402,54 @@ func (a API) ClusterSettings(ctx context.Context, clusterID uuid.UUID) (Settings
 	return payload.Data.Result, nil
 }
 
+// UpdateClusterNtpServersInput represents the input for the updateClusterNtpServers mutation.
+type UpdateClusterNtpServersInput struct {
+	ClusterID string `json:"id"`
+	Server    string `json:"server"`
+	KeyID     int    `json:"keyId"`
+	Key       string `json:"key"`
+	KeyType   string `json:"keyType"`
+}
+
+// UpdateClusterNtpServers updates the cloud cluster NTP servers.
+func (a API) UpdateClusterNtpServers(ctx context.Context, input UpdateClusterNtpServersInput) error {
+	a.log.Print(log.Trace)
+
+	query := updateClusterNtpServersQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ClusterID string `json:"id"`
+		Server    string `json:"server"`
+		KeyID     int    `json:"keyId"`
+		Key       string `json:"key"`
+		KeyType   string `json:"keyType"`
+	}{
+		ClusterID: input.ClusterID,
+		Server:    input.Server,
+		KeyID:     input.KeyID,
+		Key:       input.Key,
+		KeyType:   input.KeyType,
+	})
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Success bool `json:"success"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result.Success {
+		return graphql.ResponseError(query, errors.New("failed to update NTP servers"))
+	}
+
+	return nil
+}
+
 // UpdateClusterDnsServersAndSearchDomainsInput represents the input for the updateClusterDnsServersAndSearchDomains mutation.
 type UpdateClusterDnsServersAndSearchDomainsInput struct {
 	ClusterID      uuid.UUID `json:"clusterId"`
