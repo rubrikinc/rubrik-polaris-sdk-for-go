@@ -197,9 +197,13 @@ var updateClusterNtpServersQuery = `mutation SdkGolangUpdateClusterNtpServers(
 
 // updateCusterDnsAndSearchDomains GraphQL query
 var updateCusterDnsAndSearchDomainsQuery = `mutation SdkGolangUpdateCusterDnsAndSearchDomains(
-  $input: UpdateDnsServersAndSearchDomainsInput!
+  $domains: [String!]!
+  $id: String!
+  $servers: [String!]!
 ) {
-  result: updateDnsServersAndSearchDomains(input: $input) {
+  result: updateDnsServersAndSearchDomains(
+    input: { domains: $domains, id: $id, servers: $servers }
+  ) {
     success
   }
 }`

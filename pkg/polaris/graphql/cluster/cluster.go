@@ -452,10 +452,9 @@ func (a API) UpdateClusterNtpServers(ctx context.Context, input UpdateClusterNtp
 
 // UpdateClusterDnsServersAndSearchDomainsInput represents the input for the updateClusterDnsServersAndSearchDomains mutation.
 type UpdateClusterDnsServersAndSearchDomainsInput struct {
-	ClusterID      uuid.UUID `json:"clusterId"`
-	DnsServers     []string  `json:"dnsServers"`
-	SearchDomains  []string  `json:"searchDomains"`
-	IsUsingDefault bool      `json:"isUsingDefault"`
+	ClusterID     uuid.UUID `json:"id"`
+	DnsServers    []string  `json:"servers"`
+	SearchDomains []string  `json:"domains"`
 }
 
 // UpdateClusterDnsServersAndSearchDomains updates the cloud cluster DNS servers and search domains.
@@ -464,8 +463,14 @@ func (a API) UpdateClusterDnsServersAndSearchDomains(ctx context.Context, input 
 
 	query := updateCusterDnsAndSearchDomainsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Input UpdateClusterDnsServersAndSearchDomainsInput `json:"input"`
-	}{Input: input})
+		ClusterID     uuid.UUID `json:"id"`
+		DnsServers    []string  `json:"servers"`
+		SearchDomains []string  `json:"domains"`
+	}{
+		ClusterID:     input.ClusterID,
+		DnsServers:    input.DnsServers,
+		SearchDomains: input.SearchDomains,
+	})
 
 	if err != nil {
 		return graphql.RequestError(query, err)
