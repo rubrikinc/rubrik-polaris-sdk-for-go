@@ -1,0 +1,27 @@
+mutation RubrikPolarisSDKRequest(
+  $clusterID: UUID!
+  $address: String!
+  $name: String
+  $timezone: ClusterTimezoneType!
+) {
+  result: updateClusterSettings(
+    input: {
+      clusterUuid: $clusterID
+      id: "me"
+      clusterUpdate: {
+        geolocation: { address: $address }
+        name: $name
+        timezone: { timezone: $timezone }
+      }
+    }
+  ) {
+    geolocation {
+      address
+    }
+    clusterUuid
+    name
+    timezone {
+      timezone
+    }
+  }
+}
