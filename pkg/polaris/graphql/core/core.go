@@ -575,7 +575,7 @@ type HierarchyObjectType = hierarchy.ObjectType
 // HierarchyObject represents an RSC hierarchy object with SLA information.
 //
 // Deprecated: Use hierarchy.Object instead.
-type HierarchyObject = hierarchy.Object
+type HierarchyObject = hierarchy.SLAObject
 
 // DoNotProtectSLAID is the special SLA domain ID used to indicate that an
 // object should not be protected. This is returned in configuredSlaDomain.ID
