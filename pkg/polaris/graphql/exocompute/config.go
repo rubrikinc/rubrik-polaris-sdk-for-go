@@ -115,7 +115,7 @@ type UpdateConfigurationParams[R UpdateConfigurationResult] interface {
 // UpdateConfigurationResult holds the result of an exocompute configuration
 // update operation.
 type UpdateConfigurationResult interface {
-	UpdateAWSConfigurationResult | UpdateGCPConfigurationResult
+	UpdateGCPConfigurationResult
 	Validate() (uuid.UUID, error)
 }
 
