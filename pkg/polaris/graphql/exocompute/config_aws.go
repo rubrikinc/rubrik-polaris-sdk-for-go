@@ -139,42 +139,6 @@ func (r CreateAWSConfigurationResult) Validate() (uuid.UUID, error) {
 	return id, nil
 }
 
-// UpdateAWSConfigurationParams holds the parameters for an AWS exocompute
-// configuration update operation.
-type UpdateAWSConfigurationParams CreateAWSConfigurationParams
-
-func (p UpdateAWSConfigurationParams) UpdateQuery() (string, any, UpdateAWSConfigurationResult) {
-	params := struct {
-		CloudAccountID uuid.UUID                    `json:"cloudAccountId"`
-		Config         UpdateAWSConfigurationParams `json:"config"`
-	}{CloudAccountID: p.CloudAccountID, Config: p}
-	return updateAwsExocomputeConfigsQuery, params, UpdateAWSConfigurationResult{}
-}
-
-// UpdateAWSConfigurationResult holds the result of an AWS exocompute
-// configuration update operation.
-type UpdateAWSConfigurationResult struct {
-	Configs []struct {
-		ID      string `json:"configUuid"`
-		Message string `json:"message"`
-	} `json:"exocomputeConfigs"`
-}
-
-func (r UpdateAWSConfigurationResult) Validate() (uuid.UUID, error) {
-	if len(r.Configs) != 1 {
-		return uuid.Nil, errors.New("expected a single update result")
-	}
-	if msg := r.Configs[0].Message; msg != "" {
-		return uuid.Nil, errors.New(msg)
-	}
-	configID, err := uuid.Parse(r.Configs[0].ID)
-	if err != nil {
-		return uuid.Nil, err
-	}
-
-	return configID, nil
-}
-
 // DeleteAWSConfigurationParams holds the parameters for an AWS exocompute
 // configuration delete operation.
 type DeleteAWSConfigurationParams struct {
