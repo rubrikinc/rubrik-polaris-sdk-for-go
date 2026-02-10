@@ -102,6 +102,15 @@ func ToWorkload(s string) (Workload, error) {
 	return 0, fmt.Errorf("unknown workload string: %s", s)
 }
 
+// AllWorkloadsAsStrings returns a slice of all valid workload string values.
+func AllWorkloadsAsStrings() []string {
+	strs := make([]string, 0, len(workloadMap))
+	for _, s := range workloadMap {
+		strs = append(strs, s.Value)
+	}
+	return strs
+}
+
 // String returns the string representation of the Workload constant.
 func (w Workload) String() string {
 	if s, ok := workloadMap[w]; ok {
