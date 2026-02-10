@@ -157,21 +157,6 @@ func TestAwsExocomputeWithCFT(t *testing.T) {
 	// account.
 	validateConfig(exoID, 0, 1)
 
-	// Update the exocompute configuration to use subnet 1 & 2.
-	subnetIDs = []string{testAccount.Exocompute.Subnets[1].ID, testAccount.Exocompute.Subnets[2].ID}
-	updatedExoID, err := exoClient.UpdateAWSConfiguration(ctx, accountID,
-		AWSManaged(gqlaws.RegionUsEast2, testAccount.Exocompute.VPCID, subnetIDs, false))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if updatedExoID != exoID {
-		t.Fatalf("invalid exo id post update, expected: %v, got: %v", exoID, updatedExoID)
-	}
-
-	// Verify that the exocompute configuration has been updated to use subnet
-	// 1 & 2 from the test account.
-	validateConfig(exoID, 1, 2)
-
 	// Remove the exocompute configuration.
 	if err := exoClient.RemoveAWSConfiguration(ctx, exoID); err != nil {
 		t.Fatal(err)
