@@ -25,8 +25,8 @@
 package hierarchy
 
 // hierarchyObject GraphQL query
-var hierarchyObjectQuery = `query SdkGolangHierarchyObject($fid: UUID!) {
-    result: hierarchyObject(fid: $fid) {
+var hierarchyObjectQuery = `query SdkGolangHierarchyObject($fid: UUID!, $workloadHierarchy: WorkloadLevelHierarchy) {
+    result: hierarchyObject(fid: $fid, workloadHierarchy: $workloadHierarchy) {
         id
         name
         objectType
@@ -49,6 +49,41 @@ var hierarchyObjectQuery = `query SdkGolangHierarchyObject($fid: UUID!) {
             ... on GlobalSlaReply {
                 id
                 name
+            }
+        }
+    }
+}`
+
+// inventoryRoot GraphQL query
+var inventoryRootQuery = `query SdkGolangInventoryRoot($after: String, $filter: [Filter!], $first: Int, $typeFilter: [HierarchyObjectTypeEnum!], $workloadHierarchy: WorkloadLevelHierarchy) {
+    result: inventoryRoot {
+        descendantConnection(after: $after, filter: $filter, first: $first, typeFilter: $typeFilter, workloadHierarchy: $workloadHierarchy) {
+            nodes {
+                name
+                id
+                objectType
+                ... on AwsNativeAccount {
+                    status
+                    awsFeatures: enabledFeatures {
+                        featureName
+                        status
+                        lastRefreshedAt
+                    }
+                }
+                ... on AzureNativeSubscription {
+                    azureSubscriptionStatus
+                    azureSubscriptionNativeId
+                    azureFeatures: enabledFeatures {
+                        featureName
+                        lastRefreshedAt
+                        status
+                    }
+                }
+            }
+            count
+            pageInfo {
+                endCursor
+                hasNextPage
             }
         }
     }
