@@ -32,7 +32,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -119,14 +118,6 @@ func (w Workload) String() string {
 	panic(fmt.Sprintf("unknown workload value: %d", w))
 }
 
-// GraphQL returns the GraphQL enum representation of the Workload constant.
-func (w Workload) GraphQL() string {
-	if s, ok := workloadMap[w]; ok {
-		return s.GraphQL
-	}
-	panic(fmt.Sprintf("unknown workload value: %d", w))
-}
-
 // MarshalJSON converts the Workload constant to its JSON string value.
 func (w Workload) MarshalJSON() ([]byte, error) {
 	if s, ok := workloadMap[w]; ok {
@@ -148,71 +139,6 @@ func (w *Workload) UnmarshalJSON(data []byte) error {
 		}
 	}
 	return fmt.Errorf("unknown workload string: %s", s)
-}
-
-// SLAObject represents an RSC hierarchy object with SLA information.
-type SLAObject struct {
-	Object
-	SLAAssignment       sla.Assignment `json:"slaAssignment"`
-	ConfiguredSLADomain sla.DomainRef  `json:"configuredSlaDomain"`
-	EffectiveSLADomain  sla.DomainRef  `json:"effectiveSlaDomain"`
-}
-
-// DoNotProtectSLAID is the special SLA domain ID used to indicate that an
-// object should not be protected. This is returned in configuredSlaDomain.ID
-// when "Do Not Protect" is directly assigned to an object.
-const DoNotProtectSLAID = "DO_NOT_PROTECT"
-
-// UnprotectedSLAID is the special SLA domain ID used to indicate that an
-// object is unprotected (no SLA assigned). This is returned in
-// effectiveSlaDomain.ID when the object inherits no protection.
-const UnprotectedSLAID = "UNPROTECTED"
-
-// ObjectByID returns the hierarchy object with the specified ID.
-// This can be used to query any hierarchy object (VMs, databases, tag rules,
-// etc.) and retrieve its SLA assignment information including the configured
-// and effective SLA domains.
-//
-// This function uses AllSubHierarchyType as the workload hierarchy, which
-// returns the generic SLA assignment. Use ObjectByIDAndWorkload to specify
-// a specific workload hierarchy for workload-specific SLA resolution.
-func (a API) ObjectByID(ctx context.Context, fid uuid.UUID) (SLAObject, error) {
-	return a.ObjectByIDAndWorkload(ctx, fid, WorkloadAllSubHierarchyType)
-}
-
-// ObjectByIDAndWorkload returns the hierarchy object with the specified ID
-// and workload hierarchy type.
-// This can be used to query any hierarchy object (VMs, databases, tag rules,
-// etc.) and retrieve its SLA assignment information including the configured
-// and effective SLA domains.
-//
-// The workloadHierarchy parameter determines which workload type to use for
-// SLA Domain resolution. Different workload types can have different SLA
-// assignments on the same parent object. Pass WorkloadAllSubHierarchyType
-// for the generic view, or a specific workload type (e.g.,
-// WorkloadAzureNativeVirtualMachine) for workload-specific SLA resolution.
-func (a API) ObjectByIDAndWorkload(ctx context.Context, fid uuid.UUID, workloadHierarchy Workload) (SLAObject, error) {
-	a.log.Print(log.Trace)
-
-	query := hierarchyObjectQuery
-	buf, err := a.GQL.Request(ctx, query, struct {
-		FID               uuid.UUID `json:"fid"`
-		WorkloadHierarchy Workload  `json:"workloadHierarchy,omitempty"`
-	}{FID: fid, WorkloadHierarchy: workloadHierarchy})
-	if err != nil {
-		return SLAObject{}, graphql.RequestError(query, err)
-	}
-
-	var payload struct {
-		Data struct {
-			Result SLAObject `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return SLAObject{}, graphql.UnmarshalError(query, err)
-	}
-
-	return payload.Data.Result, nil
 }
 
 // Status represents the status of a cloud account or feature.
@@ -347,4 +273,37 @@ func ObjectsByName[T InventoryObject](ctx context.Context, a API, name string, w
 	}
 
 	return objects, nil
+}
+
+// ObjectByIDAndWorkload returns the hierarchy object with the specified ID
+// and workload hierarchy type. The type parameter T allows callers to specify
+// a custom return type that can include additional fields beyond the base
+// Object fields.
+//
+// This can be used to query any hierarchy object (VMs, databases, tag rules,
+// etc.) and retrieve its information. The workloadHierarchy parameter
+// determines which workload type to use for resolution.
+func ObjectByIDAndWorkload[T any](ctx context.Context, gql *graphql.Client, fid uuid.UUID, workloadHierarchy Workload) (T, error) {
+	gql.Log().Print(log.Trace)
+
+	var zero T
+	query := hierarchyObjectQuery
+	buf, err := gql.Request(ctx, query, struct {
+		FID               uuid.UUID `json:"fid"`
+		WorkloadHierarchy Workload  `json:"workloadHierarchy,omitempty"`
+	}{FID: fid, WorkloadHierarchy: workloadHierarchy})
+	if err != nil {
+		return zero, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result T `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return zero, graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result, nil
 }

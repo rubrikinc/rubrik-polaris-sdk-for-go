@@ -38,6 +38,7 @@ import (
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -574,31 +575,31 @@ type HierarchyObjectType = hierarchy.ObjectType
 
 // HierarchyObject represents an RSC hierarchy object with SLA information.
 //
-// Deprecated: Use hierarchy.Object instead.
-type HierarchyObject = hierarchy.SLAObject
+// Deprecated: Use sla.HierarchyObject instead.
+type HierarchyObject = sla.HierarchyObject
 
 // DoNotProtectSLAID is the special SLA domain ID used to indicate that an
 // object should not be protected. This is returned in configuredSlaDomain.ID
 // when "Do Not Protect" is directly assigned to an object.
 //
-// Deprecated: Use hierarchy.DoNotProtectSLAID instead.
-const DoNotProtectSLAID = hierarchy.DoNotProtectSLAID
+// Deprecated: Use sla.DoNotProtectSLAID instead.
+const DoNotProtectSLAID = sla.DoNotProtectSLAID
 
 // UnprotectedSLAID is the special SLA domain ID used to indicate that an
 // object is unprotected (no SLA assigned). This is returned in
 // effectiveSlaDomain.ID when the object inherits no protection.
 //
-// Deprecated: Use hierarchy.UnprotectedSLAID instead.
-const UnprotectedSLAID = hierarchy.UnprotectedSLAID
+// Deprecated: Use sla.UnprotectedSLAID instead.
+const UnprotectedSLAID = sla.UnprotectedSLAID
 
 // HierarchyObjectByID returns the hierarchy object with the specified ID.
 // This can be used to query any hierarchy object (VMs, databases, tag rules,
 // etc.) and retrieve its SLA assignment information including the configured
 // and effective SLA domains.
 //
-// Deprecated: Use hierarchy.API.ObjectByID instead.
+// Deprecated: Use sla.ObjectByID instead.
 func (a API) HierarchyObjectByID(ctx context.Context, fid uuid.UUID) (HierarchyObject, error) {
 	a.log.Print(log.Trace)
 
-	return hierarchy.Wrap(a.GQL).ObjectByID(ctx, fid)
+	return sla.ObjectByID(ctx, a.GQL, fid)
 }
