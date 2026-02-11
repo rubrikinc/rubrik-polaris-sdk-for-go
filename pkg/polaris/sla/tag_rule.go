@@ -151,7 +151,7 @@ func (a API) DeleteTagRule(ctx context.Context, tagRuleID uuid.UUID) error {
 // This function uses AllSubHierarchyType as the workload hierarchy, which
 // returns the generic SLA assignment. Use HierarchyObjectByIDAndWorkload to
 // specify a specific workload hierarchy for workload-specific SLA resolution.
-func (a API) HierarchyObjectByID(ctx context.Context, fid uuid.UUID) (hierarchy.SLAObject, error) {
+func (a API) HierarchyObjectByID(ctx context.Context, fid uuid.UUID) (sla.HierarchyObject, error) {
 	return a.HierarchyObjectByIDAndWorkload(ctx, fid, hierarchy.WorkloadAllSubHierarchyType)
 }
 
@@ -166,13 +166,12 @@ func (a API) HierarchyObjectByID(ctx context.Context, fid uuid.UUID) (hierarchy.
 // assignments on the same parent object. Pass hierarchy.WorkloadAllSubHierarchyType
 // for the generic view, or a specific workload type (e.g.,
 // hierarchy.WorkloadAzureVM) for workload-specific SLA resolution.
-func (a API) HierarchyObjectByIDAndWorkload(ctx context.Context, fid uuid.UUID, workloadHierarchy hierarchy.Workload) (hierarchy.SLAObject, error) {
+func (a API) HierarchyObjectByIDAndWorkload(ctx context.Context, fid uuid.UUID, workloadHierarchy hierarchy.Workload) (sla.HierarchyObject, error) {
 	a.log.Print(log.Trace)
 
-	hierarchyAPI := hierarchy.Wrap(a.client)
-	obj, err := hierarchyAPI.ObjectByIDAndWorkload(ctx, fid, workloadHierarchy)
+	obj, err := sla.ObjectByIDAndWorkload(ctx, a.client, fid, workloadHierarchy)
 	if err != nil {
-		return hierarchy.SLAObject{}, fmt.Errorf("failed to get hierarchy object: %s", err)
+		return sla.HierarchyObject{}, fmt.Errorf("failed to get hierarchy object: %s", err)
 	}
 
 	return obj, nil
