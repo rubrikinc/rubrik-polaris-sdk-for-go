@@ -54,10 +54,12 @@ var cloudNativeTagRulesQuery = `query SdkGolangCloudNativeTagRules($objectType: 
             id
             name
             objectType
-            tag {
-                matchAllValues
-                tagKey
-                tagValue
+            tagConditions {
+                tagPairs {
+                    key
+                    matchAllTagValues
+                    values
+                }
             }
             applyToAllCloudAccounts
             cloudNativeAccounts {
@@ -76,7 +78,8 @@ var cloudNativeTagRulesQuery = `query SdkGolangCloudNativeTagRules($objectType: 
 var createCloudNativeTagRuleQuery = `mutation SdkGolangCreateCloudNativeTagRule(
     $tagRuleName:             String!,
     $objectType:              CloudNativeTagObjectType!,
-    $tag:                     TagType!,
+    $tag:                     TagType,
+    $tagConditions:           CloudNativeTagCondition,
     $cloudNativeAccountIds:   CloudNativeIds,
     $applyToAllCloudAccounts: Boolean
 ) {
@@ -84,6 +87,7 @@ var createCloudNativeTagRuleQuery = `mutation SdkGolangCreateCloudNativeTagRule(
         tagRuleName:             $tagRuleName,
         objectType:              $objectType,
         tag:                     $tag,
+        tagConditions:           $tagConditions,
         cloudNativeAccountIds:   $cloudNativeAccountIds,
         applyToAllCloudAccounts: $applyToAllCloudAccounts
     }) {
