@@ -27,6 +27,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -473,7 +474,7 @@ type AssignDomainParams struct {
 	DomainID                  *uuid.UUID                `json:"slaOptionalId,omitempty"`
 	DomainAssignType          AssignmentType            `json:"slaDomainAssignType"`
 	ObjectIDs                 []uuid.UUID               `json:"objectIds"`
-	ApplicableWorkloadType    string                    `json:"applicableWorkloadType,omitempty"`
+	ApplicableWorkloadType    hierarchy.Workload        `json:"applicableWorkloadType,omitempty"`
 	ApplyToExistingSnapshots  *bool                     `json:"shouldApplyToExistingSnapshots,omitempty"`
 	ApplyToNonPolicySnapshots *bool                     `json:"shouldApplyToNonPolicySnapshots,omitempty"`
 	ExistingSnapshotRetention ExistingSnapshotRetention `json:"existingSnapshotRetention,omitempty"`

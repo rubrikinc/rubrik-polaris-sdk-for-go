@@ -1,0 +1,29 @@
+query RubrikPolarisSDKRequest($fid: UUID!, $workloadHierarchy: WorkloadLevelHierarchy) {
+    result: hierarchyObject(fid: $fid, workloadHierarchy: $workloadHierarchy) {
+        id
+        name
+        objectType
+        slaAssignment
+        configuredSlaDomain {
+            ... on ClusterSlaDomain {
+                id
+                name
+            }
+            ... on GlobalSlaReply {
+                id
+                name
+            }
+        }
+        effectiveSlaDomain {
+            ... on ClusterSlaDomain {
+                id
+                name
+            }
+            ... on GlobalSlaReply {
+                id
+                name
+            }
+        }
+    }
+}
+

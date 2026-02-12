@@ -4,10 +4,12 @@ query RubrikPolarisSDKRequest($objectType: CloudNativeTagObjectType!, $filters: 
             id
             name
             objectType
-            tag {
-                matchAllValues
-                tagKey
-                tagValue
+            tagConditions {
+                tagPairs {
+                    key
+                    matchAllTagValues
+                    values
+                }
             }
             applyToAllCloudAccounts
             cloudNativeAccounts {

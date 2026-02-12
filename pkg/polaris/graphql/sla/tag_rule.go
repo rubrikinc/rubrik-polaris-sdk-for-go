@@ -141,7 +141,7 @@ type TagRule struct {
 	ID                uuid.UUID         `json:"id"`
 	Name              string            `json:"name"`
 	ObjectType        ManagedObjectType `json:"objectType"`
-	Tag               Tag               `json:"tag"`
+	TagConditions     TagConditions     `json:"tagConditions"`
 	AllACloudAccounts bool              `json:"applyToAllCloudAccounts"`
 	CloudAccounts     []struct {
 		ID   uuid.UUID `json:"id"`
@@ -151,13 +151,52 @@ type TagRule struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"effectiveSla"`
+
+	// Deprecated: Use TagConditions instead. This field is populated from
+	// TagConditions for backward compatibility.
+	Tag Tag `json:"-"`
+}
+
+// populateTagFromConditions populates the deprecated Tag field from
+// TagConditions for backward compatibility. The Tag field is only populated
+// when there is exactly one tag pair with less than two values.
+func (t *TagRule) populateTagFromConditions() {
+	if len(t.TagConditions.TagPairs) != 1 {
+		return
+	}
+	pair := t.TagConditions.TagPairs[0]
+	if len(pair.Values) > 1 {
+		return
+	}
+	value := ""
+	if len(pair.Values) == 1 {
+		value = pair.Values[0]
+	}
+	t.Tag = Tag{
+		Key:       pair.Key,
+		Value:     value,
+		AllValues: pair.MatchAllTagValues,
+	}
 }
 
 // Tag represents the tag of an RSC tag rule.
+// Deprecated: Use TagConditions instead.
 type Tag struct {
 	Key       string `json:"tagKey"`
 	Value     string `json:"tagValue"`
 	AllValues bool   `json:"matchAllValues"`
+}
+
+// TagConditions represents the tag conditions for a tag rule.
+type TagConditions struct {
+	TagPairs []TagPair `json:"tagPairs"`
+}
+
+// TagPair represents a single tag pair within tag conditions.
+type TagPair struct {
+	Key               string   `json:"key"`
+	MatchAllTagValues bool     `json:"matchAllTagValues"`
+	Values            []string `json:"values"`
 }
 
 // TagRuleFilter holds the filter for a tag rules list operation.
@@ -194,6 +233,12 @@ func ListTagRules(ctx context.Context, gql *graphql.Client, objectType CloudNati
 		return nil, graphql.UnmarshalError(query, err)
 	}
 
+	// Populate the deprecated Tag field from TagConditions for backward
+	// compatibility.
+	for i := range payload.Data.Result.TagRules {
+		payload.Data.Result.TagRules[i].populateTagFromConditions()
+	}
+
 	return payload.Data.Result.TagRules, nil
 }
 
@@ -201,9 +246,30 @@ func ListTagRules(ctx context.Context, gql *graphql.Client, objectType CloudNati
 type CreateTagRuleParams struct {
 	Name             string                   `json:"tagRuleName"`
 	ObjectType       CloudNativeTagObjectType `json:"objectType"`
-	Tag              Tag                      `json:"tag"`
+	TagConditions    *TagConditions           `json:"tagConditions,omitempty"`
 	CloudAccounts    *TagRuleCloudAccounts    `json:"cloudNativeAccountIds,omitempty"`
 	AllCloudAccounts bool                     `json:"applyToAllCloudAccounts,omitempty"`
+
+	// Deprecated: Use TagConditions instead. If Tag.Key is set and
+	// TagConditions is nil, Tag will be converted to TagConditions.
+	Tag Tag `json:"tag,omitzero"`
+}
+
+// ToTagConditions converts a Tag to TagConditions format.
+func (t Tag) ToTagConditions() TagConditions {
+	values := []string{}
+	if t.Value != "" {
+		values = append(values, t.Value)
+	}
+	return TagConditions{
+		TagPairs: []TagPair{
+			{
+				Key:               t.Key,
+				MatchAllTagValues: t.AllValues,
+				Values:            values,
+			},
+		},
+	}
 }
 
 // TagRuleCloudAccounts holds the cloud accounts for a tag rule. Note, the IDs

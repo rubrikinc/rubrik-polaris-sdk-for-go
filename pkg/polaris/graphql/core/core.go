@@ -37,6 +37,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -564,4 +566,40 @@ func (a API) EnabledFeaturesForAccount(ctx context.Context) ([]Feature, error) {
 // FormatTimestamp converts a time.Time to RFC3339 format with milliseconds and Z suffix.
 func FormatTimestamp(t time.Time) string {
 	return t.UTC().Format("2006-01-02T15:04:05.000Z")
+}
+
+// HierarchyObjectType represents the type of a hierarchy object.
+//
+// Deprecated: Use hierarchy.ObjectType instead.
+type HierarchyObjectType = hierarchy.ObjectType
+
+// HierarchyObject represents an RSC hierarchy object with SLA information.
+//
+// Deprecated: Use sla.HierarchyObject instead.
+type HierarchyObject = sla.HierarchyObject
+
+// DoNotProtectSLAID is the special SLA domain ID used to indicate that an
+// object should not be protected. This is returned in configuredSlaDomain.ID
+// when "Do Not Protect" is directly assigned to an object.
+//
+// Deprecated: Use sla.DoNotProtectSLAID instead.
+const DoNotProtectSLAID = sla.DoNotProtectSLAID
+
+// UnprotectedSLAID is the special SLA domain ID used to indicate that an
+// object is unprotected (no SLA assigned). This is returned in
+// effectiveSlaDomain.ID when the object inherits no protection.
+//
+// Deprecated: Use sla.UnprotectedSLAID instead.
+const UnprotectedSLAID = sla.UnprotectedSLAID
+
+// HierarchyObjectByID returns the hierarchy object with the specified ID.
+// This can be used to query any hierarchy object (VMs, databases, tag rules,
+// etc.) and retrieve its SLA assignment information including the configured
+// and effective SLA domains.
+//
+// Deprecated: Use sla.ObjectByID instead.
+func (a API) HierarchyObjectByID(ctx context.Context, fid uuid.UUID) (HierarchyObject, error) {
+	a.log.Print(log.Trace)
+
+	return sla.ObjectByID(ctx, a.GQL, fid)
 }

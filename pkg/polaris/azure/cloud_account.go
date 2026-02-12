@@ -403,11 +403,13 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 			return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
 		}
 
-		feature, ok := account.Feature(feature)
+		// Note, if the feature is missing, it has already been removed.
+		// If it's not missing, we check if it has been disabled.
+		accountFeature, ok := account.Feature(feature)
 		if !ok {
-			return false, fmt.Errorf("failed to retrieve status for feature %s: not found", feature)
+			return true, nil
 		}
-		return feature.Status == core.StatusDisabled, nil
+		return accountFeature.Status == core.StatusDisabled, nil
 	}); err != nil {
 		return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
 	}

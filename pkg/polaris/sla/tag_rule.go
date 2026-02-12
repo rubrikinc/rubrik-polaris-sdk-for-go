@@ -31,6 +31,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -111,6 +112,52 @@ func (a API) TagRules(ctx context.Context, nameFilter string) ([]sla.TagRule, er
 func (a API) CreateTagRule(ctx context.Context, params sla.CreateTagRuleParams) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
+	// Check if the multiple key-value pairs feature flag is enabled.
+	flag, err := core.Wrap(a.client).FeatureFlag(ctx, core.FeatureFlagMultipleKeyValuePairsInTagRules)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to check feature flag: %s", err)
+	}
+
+	// Update params based on the feature flag.
+	if flag.Enabled {
+		// Feature flag enabled: use tagConditions.
+		// Convert Tag to TagConditions if needed.
+		//lint:ignore SA1019 internal use of deprecated field for feature flag compatibility
+		if params.TagConditions == nil && params.Tag.Key != "" {
+			//lint:ignore SA1019 internal use of deprecated field for feature flag compatibility
+			tagConditions := params.Tag.ToTagConditions()
+			params.TagConditions = &tagConditions
+		}
+		// Clear the deprecated Tag field.
+		//lint:ignore SA1019 internal use of deprecated field for feature flag compatibility
+		params.Tag = sla.Tag{}
+	} else {
+		// Feature flag disabled: use the deprecated tag field.
+		// Convert TagConditions to Tag if needed.
+		//lint:ignore SA1019 internal use of deprecated field for feature flag compatibility
+		if params.Tag.Key == "" && params.TagConditions != nil {
+			if len(params.TagConditions.TagPairs) != 1 {
+				return uuid.Nil, fmt.Errorf("multiple tag pairs require feature flag to be enabled")
+			}
+			pair := params.TagConditions.TagPairs[0]
+			if len(pair.Values) > 1 {
+				return uuid.Nil, fmt.Errorf("multiple tag values require feature flag to be enabled")
+			}
+			value := ""
+			if len(pair.Values) > 0 {
+				value = pair.Values[0]
+			}
+			//lint:ignore SA1019 internal use of deprecated field for feature flag compatibility
+			params.Tag = sla.Tag{
+				Key:       pair.Key,
+				Value:     value,
+				AllValues: pair.MatchAllTagValues,
+			}
+		}
+		// Clear the TagConditions field.
+		params.TagConditions = nil
+	}
+
 	id, err := sla.CreateTagRule(ctx, a.client, params)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create tag rule: %s", err)
@@ -147,13 +194,31 @@ func (a API) DeleteTagRule(ctx context.Context, tagRuleID uuid.UUID) error {
 // This can be used to query any hierarchy object (VMs, databases, tag rules,
 // etc.) and retrieve its SLA assignment information including the configured
 // and effective SLA domains.
-func (a API) HierarchyObjectByID(ctx context.Context, fid uuid.UUID) (core.HierarchyObject, error) {
+//
+// This function uses AllSubHierarchyType as the workload hierarchy, which
+// returns the generic SLA assignment. Use HierarchyObjectByIDAndWorkload to
+// specify a specific workload hierarchy for workload-specific SLA resolution.
+func (a API) HierarchyObjectByID(ctx context.Context, fid uuid.UUID) (sla.HierarchyObject, error) {
+	return a.HierarchyObjectByIDAndWorkload(ctx, fid, hierarchy.WorkloadAllSubHierarchyType)
+}
+
+// HierarchyObjectByIDAndWorkload returns the hierarchy object with the
+// specified ID and workload hierarchy type.
+// This can be used to query any hierarchy object (VMs, databases, tag rules,
+// etc.) and retrieve its SLA assignment information including the configured
+// and effective SLA domains.
+//
+// The workloadHierarchy parameter determines which workload type to use for
+// SLA Domain resolution. Different workload types can have different SLA
+// assignments on the same parent object. Pass hierarchy.WorkloadAllSubHierarchyType
+// for the generic view, or a specific workload type (e.g.,
+// hierarchy.WorkloadAzureVM) for workload-specific SLA resolution.
+func (a API) HierarchyObjectByIDAndWorkload(ctx context.Context, fid uuid.UUID, workloadHierarchy hierarchy.Workload) (sla.HierarchyObject, error) {
 	a.log.Print(log.Trace)
 
-	coreAPI := core.Wrap(a.client)
-	obj, err := coreAPI.HierarchyObjectByID(ctx, fid)
+	obj, err := sla.ObjectByIDAndWorkload(ctx, a.client, fid, workloadHierarchy)
 	if err != nil {
-		return core.HierarchyObject{}, fmt.Errorf("failed to get hierarchy object: %s", err)
+		return sla.HierarchyObject{}, fmt.Errorf("failed to get hierarchy object: %s", err)
 	}
 
 	return obj, nil

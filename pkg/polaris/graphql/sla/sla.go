@@ -23,8 +23,13 @@
 package sla
 
 import (
+	"context"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 )
 
 const (
@@ -309,3 +314,55 @@ const (
 	StatusRelic       ProtectionStatus = "RELIC"
 	StatusUnprotected ProtectionStatus = "UNPROTECTED"
 )
+
+// DomainRef is a reference to a global SLA domain in RSC. A DomainRef holds
+// the ID and name of an SLA domain.
+type DomainRef struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// DoNotProtectSLAID is the special SLA domain ID used to indicate that an
+// object should not be protected. This is returned in configuredSlaDomain.ID
+// when "Do Not Protect" is directly assigned to an object.
+const DoNotProtectSLAID = "DO_NOT_PROTECT"
+
+// UnprotectedSLAID is the special SLA domain ID used to indicate that an
+// object is unprotected (no SLA assigned). This is returned in
+// effectiveSlaDomain.ID when the object inherits no protection.
+const UnprotectedSLAID = "UNPROTECTED"
+
+// HierarchyObject represents an RSC hierarchy object with SLA information.
+type HierarchyObject struct {
+	hierarchy.Object
+	SLAAssignment       Assignment `json:"slaAssignment"`
+	ConfiguredSLADomain DomainRef  `json:"configuredSlaDomain"`
+	EffectiveSLADomain  DomainRef  `json:"effectiveSlaDomain"`
+}
+
+// ObjectByID returns the hierarchy object with the specified ID.
+// This can be used to query any hierarchy object (VMs, databases, tag rules,
+// etc.) and retrieve its SLA assignment information including the configured
+// and effective SLA domains.
+//
+// This function uses AllSubHierarchyType as the workload hierarchy, which
+// returns the generic SLA assignment. Use ObjectByIDAndWorkload to specify
+// a specific workload hierarchy for workload-specific SLA resolution.
+func ObjectByID(ctx context.Context, gql *graphql.Client, fid uuid.UUID) (HierarchyObject, error) {
+	return ObjectByIDAndWorkload(ctx, gql, fid, hierarchy.WorkloadAllSubHierarchyType)
+}
+
+// ObjectByIDAndWorkload returns the hierarchy object with the specified ID
+// and workload hierarchy type.
+// This can be used to query any hierarchy object (VMs, databases, tag rules,
+// etc.) and retrieve its SLA assignment information including the configured
+// and effective SLA domains.
+//
+// The workloadHierarchy parameter determines which workload type to use for
+// SLA Domain resolution. Different workload types can have different SLA
+// assignments on the same parent object. Pass hierarchy.WorkloadAllSubHierarchyType
+// for the generic view, or a specific workload type (e.g.,
+// hierarchy.WorkloadAzureVM) for workload-specific SLA resolution.
+func ObjectByIDAndWorkload(ctx context.Context, gql *graphql.Client, fid uuid.UUID, workloadHierarchy hierarchy.Workload) (HierarchyObject, error) {
+	return hierarchy.ObjectByIDAndWorkload[HierarchyObject](ctx, gql, fid, workloadHierarchy)
+}

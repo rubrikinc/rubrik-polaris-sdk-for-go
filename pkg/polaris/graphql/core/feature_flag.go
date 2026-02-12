@@ -33,8 +33,9 @@ import (
 type FeatureFlagName string
 
 const (
-	FeatureFlagAzureSQLDBCopyBackup     FeatureFlagName = "CNP_AZURE_SQL_DB_COPY_BACKUP"
-	FeatureFlagGCPDisableDeleteCombined FeatureFlagName = "CNP_GCP_DISABLE_DELETE_COMBINED"
+	FeatureFlagAzureSQLDBCopyBackup            FeatureFlagName = "CNP_AZURE_SQL_DB_COPY_BACKUP"
+	FeatureFlagGCPDisableDeleteCombined        FeatureFlagName = "CNP_GCP_DISABLE_DELETE_COMBINED"
+	FeatureFlagMultipleKeyValuePairsInTagRules FeatureFlagName = "CNP_MULTIPLE_KEY_VALUE_PAIRS_IN_TAG_RULES_ENABLED"
 )
 
 // FeatureFlag holds the name and state of a single RSC feature flag.

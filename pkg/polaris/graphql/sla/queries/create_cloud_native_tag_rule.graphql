@@ -1,7 +1,8 @@
 mutation RubrikPolarisSDKRequest(
     $tagRuleName:             String!,
     $objectType:              CloudNativeTagObjectType!,
-    $tag:                     TagType!,
+    $tag:                     TagType,
+    $tagConditions:           CloudNativeTagCondition,
     $cloudNativeAccountIds:   CloudNativeIds,
     $applyToAllCloudAccounts: Boolean
 ) {
@@ -9,6 +10,7 @@ mutation RubrikPolarisSDKRequest(
         tagRuleName:             $tagRuleName,
         objectType:              $objectType,
         tag:                     $tag,
+        tagConditions:           $tagConditions,
         cloudNativeAccountIds:   $cloudNativeAccountIds,
         applyToAllCloudAccounts: $applyToAllCloudAccounts
     }) {
