@@ -288,14 +288,14 @@ func SLASourceClusters(ctx context.Context, gql *graphql.Client, filters []Clust
 	return clusters, nil
 }
 
-// DnsServers represents the cloud cluster DNS servers.
-type DnsServers struct {
+// DNSServersAndDomains represents the cluster DNS servers and search domains.
+type DNSServersAndDomains struct {
 	Servers []string `json:"servers"`
 	Domains []string `json:"domains"`
 }
 
-// ClusterDnsServers returns the cluster DNS servers.
-func (a API) ClusterDnsServers(ctx context.Context, clusterID uuid.UUID) (DnsServers, error) {
+// DNSServers returns the cluster DNS servers.
+func (a API) DNSServers(ctx context.Context, clusterID uuid.UUID) (DNSServersAndDomains, error) {
 	a.log.Print(log.Trace)
 
 	query := clusterDnsServersQuery
@@ -304,16 +304,16 @@ func (a API) ClusterDnsServers(ctx context.Context, clusterID uuid.UUID) (DnsSer
 	}{ClusterID: clusterID})
 
 	if err != nil {
-		return DnsServers{}, graphql.RequestError(query, err)
+		return DNSServersAndDomains{}, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
 		Data struct {
-			Result DnsServers `json:"result"`
+			Result DNSServersAndDomains `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return DnsServers{}, graphql.UnmarshalError(query, err)
+		return DNSServersAndDomains{}, graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Result, nil
@@ -326,14 +326,14 @@ type NTPSymmetricKey struct {
 	KeyType string `json:"keyType"`
 }
 
-// ClusterNtpServers represents the cloud cluster NTP servers.
-type ClusterNtpServers struct {
+// NTPServersAndKeys represents the cluster NTP servers and symmetric keys.
+type NTPServersAndKeys struct {
 	Server       string          `json:"server"`
 	SymmetricKey NTPSymmetricKey `json:"symmetricKey,omitempty"`
 }
 
-// ClusterNtpServers returns the cloud cluster NTP servers.
-func (a API) ClusterNtpServers(ctx context.Context, clusterID uuid.UUID) ([]ClusterNtpServers, error) {
+// NTPServers returns the cluster NTP servers.
+func (a API) NTPServers(ctx context.Context, clusterID uuid.UUID) ([]NTPServersAndKeys, error) {
 	a.log.Print(log.Trace)
 
 	query := clusterNtpServersQuery
@@ -348,7 +348,7 @@ func (a API) ClusterNtpServers(ctx context.Context, clusterID uuid.UUID) ([]Clus
 	var payload struct {
 		Data struct {
 			Result struct {
-				Data []ClusterNtpServers `json:"data"`
+				Data []NTPServersAndKeys `json:"data"`
 			} `json:"result"`
 		} `json:"data"`
 	}
@@ -359,11 +359,11 @@ func (a API) ClusterNtpServers(ctx context.Context, clusterID uuid.UUID) ([]Clus
 	return payload.Data.Result.Data, nil
 }
 
-// IpmiInfo represents the cluster IPMI information.
-type IpmiInfo struct {
+// IPMIInfo represents the cluster IPMI information.
+type IPMIInfo struct {
 	IsAvailable bool `json:"isAvailable"`
-	UsesHttps   bool `json:"usesHttps"`
-	UsesIkvm    bool `json:"usesIkvm"`
+	UsesHTTPS   bool `json:"usesHttps"`
+	UsesIKVM    bool `json:"usesIkvm"`
 }
 
 // Settings represents the cluster settings.
@@ -374,7 +374,7 @@ type Settings struct {
 	Status      Status    `json:"status"`
 	GeoLocation string    `json:"geoLocation"`
 	Timezone    string    `json:"timezone"`
-	IpmiInfo    IpmiInfo  `json:"ipmiInfo,omitempty"`
+	IPMIInfo    IPMIInfo  `json:"ipmiInfo,omitempty"`
 }
 
 // ClusterSettings returns the cloud cluster settings.
@@ -402,8 +402,8 @@ func (a API) ClusterSettings(ctx context.Context, clusterID uuid.UUID) (Settings
 	return payload.Data.Result, nil
 }
 
-// UpdateClusterNtpServersInput represents the input for the updateClusterNtpServers mutation.
-type UpdateClusterNtpServersInput struct {
+// UpdateClusterNTPServersInput represents the input for the UpdateNTPServers mutation.
+type UpdateClusterNTPServersInput struct {
 	ClusterID string `json:"id"`
 	Server    string `json:"server"`
 	KeyID     int    `json:"keyId"`
@@ -411,8 +411,8 @@ type UpdateClusterNtpServersInput struct {
 	KeyType   string `json:"keyType"`
 }
 
-// UpdateClusterNtpServers updates the cloud cluster NTP servers.
-func (a API) UpdateClusterNtpServers(ctx context.Context, input UpdateClusterNtpServersInput) error {
+// UpdateNTPServers updates the cloud cluster NTP servers.
+func (a API) UpdateNTPServers(ctx context.Context, input UpdateClusterNTPServersInput) error {
 	a.log.Print(log.Trace)
 
 	query := updateClusterNtpServersQuery
@@ -450,25 +450,25 @@ func (a API) UpdateClusterNtpServers(ctx context.Context, input UpdateClusterNtp
 	return nil
 }
 
-// UpdateClusterDnsServersAndSearchDomainsInput represents the input for the updateClusterDnsServersAndSearchDomains mutation.
-type UpdateClusterDnsServersAndSearchDomainsInput struct {
+// UpdateDNSServersAndSearchDomainsInput represents the input for the updateClusterDnsServersAndSearchDomains mutation.
+type UpdateDNSServersAndSearchDomainsInput struct {
 	ClusterID     uuid.UUID `json:"id"`
-	DnsServers    []string  `json:"servers"`
+	DNSServers    []string  `json:"servers"`
 	SearchDomains []string  `json:"domains"`
 }
 
-// UpdateClusterDnsServersAndSearchDomains updates the cloud cluster DNS servers and search domains.
-func (a API) UpdateClusterDnsServersAndSearchDomains(ctx context.Context, input UpdateClusterDnsServersAndSearchDomainsInput) error {
+// UpdateDNSServersAndSearchDomains updates the cluster DNS servers and search domains.
+func (a API) UpdateDNSServersAndSearchDomains(ctx context.Context, input UpdateDNSServersAndSearchDomainsInput) error {
 	a.log.Print(log.Trace)
 
 	query := updateCusterDnsAndSearchDomainsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ClusterID     uuid.UUID `json:"id"`
-		DnsServers    []string  `json:"servers"`
+		DNSServers    []string  `json:"servers"`
 		SearchDomains []string  `json:"domains"`
 	}{
 		ClusterID:     input.ClusterID,
-		DnsServers:    input.DnsServers,
+		DNSServers:    input.DNSServers,
 		SearchDomains: input.SearchDomains,
 	})
 
