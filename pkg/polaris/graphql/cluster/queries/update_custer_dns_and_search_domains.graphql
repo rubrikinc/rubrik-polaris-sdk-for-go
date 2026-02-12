@@ -1,0 +1,11 @@
+mutation RubrikPolarisSDKRequest(
+  $domains: [String!]!
+  $id: String!
+  $servers: [String!]!
+) {
+  result: updateDnsServersAndSearchDomains(
+    input: { domains: $domains, id: $id, servers: $servers }
+  ) {
+    success
+  }
+}

@@ -1,7 +1,0 @@
-mutation RubrikPolarisSDKRequest(
-  $input: UpdateDnsServersAndSearchDomainsInput!
-) {
-  result: updateDnsServersAndSearchDomains(input: $input) {
-    success
-  }
-}

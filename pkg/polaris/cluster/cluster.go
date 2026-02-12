@@ -87,12 +87,12 @@ func (a API) SLASourceClusterByName(ctx context.Context, name string) (gqlcluste
 
 // CanIgnoreClusterRemovalPrechecks returns whether the cluster removal prechecks can be ignored
 // for the specified cluster.
-func (a API) CanIgnoreClusterRemovalPrechecks(ctx context.Context, clusterUUID uuid.UUID) (gqlcluster.ClusterRemovalPrechecks, error) {
+func (a API) CanIgnoreClusterRemovalPrechecks(ctx context.Context, clusterUUID uuid.UUID) (gqlcluster.RemovalPrechecks, error) {
 	a.log.Print(log.Trace)
 
 	prechecks, err := gqlcluster.CanIgnoreClusterRemovalPrechecks(ctx, a.client.GQL, clusterUUID)
 	if err != nil {
-		return gqlcluster.ClusterRemovalPrechecks{}, fmt.Errorf("failed to get cluster removal prechecks: %s", err)
+		return gqlcluster.RemovalPrechecks{}, fmt.Errorf("failed to get cluster removal prechecks: %s", err)
 	}
 
 	return prechecks, nil
@@ -149,7 +149,7 @@ func (a API) RemoveCDMCluster(ctx context.Context, clusterUUID uuid.UUID, isForc
 
 // ClusterRemovalInfo contains information about a cluster's removal status and RCV locations.
 type ClusterRemovalInfo struct {
-	Prechecks            gqlcluster.ClusterRemovalPrechecks
+	Prechecks            gqlcluster.RemovalPrechecks
 	RCVLocations         []gqlcluster.RCVLocation
 	BlockingConditions   bool
 	ForceRemovalEligible bool

@@ -25,6 +25,7 @@ package cluster
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -43,24 +44,8 @@ func Wrap(gql *graphql.Client) API {
 	return API{GQL: gql, log: gql.Log()}
 }
 
-// ClusterFilter represents a filter for SLA source clusters.
-type ClusterFilter struct {
-	Field  string   `json:"field"`
-	Values []string `json:"texts"`
-}
-
-// SLADataLocationCluster represents a cluster in the SLA data location.
-type SLADataLocationCluster struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Version     string    `json:"version"`
-	ClusterInfo struct {
-		IsConnected bool `json:"isConnected"`
-	} `json:"clusterInfo"`
-}
-
-// ClusterRemovalPrechecks represents the precheck information for cluster removal.
-type ClusterRemovalPrechecks struct {
+// RemovalPrechecks represents the precheck information for cluster removal.
+type RemovalPrechecks struct {
 	Disconnected       bool   `json:"isDisconnected"`
 	IgnorePrecheckTime string `json:"ignorePrecheckTime"`
 	LastConnectionTime string `json:"lastConnectionTime"`
@@ -69,7 +54,7 @@ type ClusterRemovalPrechecks struct {
 }
 
 // CanIgnoreClusterRemovalPrechecks returns whether the cluster removal prechecks can be ignored.
-func CanIgnoreClusterRemovalPrechecks(ctx context.Context, gql *graphql.Client, clusterUUID uuid.UUID) (ClusterRemovalPrechecks, error) {
+func CanIgnoreClusterRemovalPrechecks(ctx context.Context, gql *graphql.Client, clusterUUID uuid.UUID) (RemovalPrechecks, error) {
 	gql.Log().Print(log.Trace)
 
 	query := canIgnoreClusterRemovalPrechecksQuery
@@ -77,16 +62,16 @@ func CanIgnoreClusterRemovalPrechecks(ctx context.Context, gql *graphql.Client, 
 		ClusterUUID uuid.UUID `json:"clusterUuid"`
 	}{ClusterUUID: clusterUUID})
 	if err != nil {
-		return ClusterRemovalPrechecks{}, graphql.RequestError(query, err)
+		return RemovalPrechecks{}, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
 		Data struct {
-			Result ClusterRemovalPrechecks `json:"result"`
+			Result RemovalPrechecks `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return ClusterRemovalPrechecks{}, graphql.UnmarshalError(query, err)
+		return RemovalPrechecks{}, graphql.UnmarshalError(query, err)
 	}
 
 	return payload.Data.Result, nil
@@ -96,17 +81,6 @@ func CanIgnoreClusterRemovalPrechecks(ctx context.Context, gql *graphql.Client, 
 type RCVLocation struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
-}
-
-// GlobalSLA represents a global SLA configuration.
-type GlobalSLA struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-}
-
-// SLAReplicationInfo represents SLA replication information for a cluster.
-type SLAReplicationInfo struct {
-	IsActiveSLA bool `json:"isActiveSla"`
 }
 
 // ClusterRCVLocations returns all RCV locations for the specified cluster.
@@ -155,6 +129,12 @@ func ClusterRCVLocations(ctx context.Context, gql *graphql.Client, clusterUUID u
 	return locations, nil
 }
 
+// GlobalSLA represents a global SLA configuration.
+type GlobalSLA struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
 // AllClusterGlobalSLAs returns all global SLAs for the specified cluster.
 func AllClusterGlobalSLAs(ctx context.Context, gql *graphql.Client, clusterUUID uuid.UUID) ([]GlobalSLA, error) {
 	gql.Log().Print(log.Trace)
@@ -177,6 +157,11 @@ func AllClusterGlobalSLAs(ctx context.Context, gql *graphql.Client, clusterUUID 
 	}
 
 	return payload.Data.Result, nil
+}
+
+// SLAReplicationInfo represents SLA replication information for a cluster.
+type SLAReplicationInfo struct {
+	IsActiveSLA bool `json:"isActiveSla"`
 }
 
 // VerifySLAWithReplicationToCluster verifies if there are active SLAs with replication to the specified cluster.
@@ -228,6 +213,22 @@ func RemoveCDMCluster(ctx context.Context, gql *graphql.Client, clusterUUID uuid
 	}
 
 	return payload.Data.Result, nil
+}
+
+// SLADataLocationCluster represents a cluster in the SLA data location.
+type SLADataLocationCluster struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Version     string    `json:"version"`
+	ClusterInfo struct {
+		IsConnected bool `json:"isConnected"`
+	} `json:"clusterInfo"`
+}
+
+// ClusterFilter represents a filter for SLA source clusters.
+type ClusterFilter struct {
+	Field  string   `json:"field"`
+	Values []string `json:"texts"`
 }
 
 // SLASourceClusters returns all SLA source clusters matching the specified filters.
@@ -285,4 +286,209 @@ func SLASourceClusters(ctx context.Context, gql *graphql.Client, filters []Clust
 	}
 
 	return clusters, nil
+}
+
+// DNSServersAndDomains represents the cluster DNS servers and search domains.
+type DNSServersAndDomains struct {
+	Servers []string `json:"servers"`
+	Domains []string `json:"domains"`
+}
+
+// DNSServers returns the cluster DNS servers.
+func (a API) DNSServers(ctx context.Context, clusterID uuid.UUID) (DNSServersAndDomains, error) {
+	a.log.Print(log.Trace)
+
+	query := clusterDnsServersQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ClusterID uuid.UUID `json:"clusterUuid"`
+	}{ClusterID: clusterID})
+
+	if err != nil {
+		return DNSServersAndDomains{}, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result DNSServersAndDomains `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return DNSServersAndDomains{}, graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result, nil
+}
+
+// NTPSymmetricKey represents the NTP server symmetric key.
+type NTPSymmetricKey struct {
+	Key     string `json:"key"`
+	KeyId   string `json:"keyId"`
+	KeyType string `json:"keyType"`
+}
+
+// NTPServersAndKeys represents the cluster NTP servers and symmetric keys.
+type NTPServersAndKeys struct {
+	Server       string          `json:"server"`
+	SymmetricKey NTPSymmetricKey `json:"symmetricKey,omitempty"`
+}
+
+// NTPServers returns the cluster NTP servers.
+func (a API) NTPServers(ctx context.Context, clusterID uuid.UUID) ([]NTPServersAndKeys, error) {
+	a.log.Print(log.Trace)
+
+	query := clusterNtpServersQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ClusterID string `json:"id"`
+	}{ClusterID: clusterID.String()})
+
+	if err != nil {
+		return nil, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Data []NTPServersAndKeys `json:"data"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result.Data, nil
+}
+
+// IPMIInfo represents the cluster IPMI information.
+type IPMIInfo struct {
+	IsAvailable bool `json:"isAvailable"`
+	UsesHTTPS   bool `json:"usesHttps"`
+	UsesIKVM    bool `json:"usesIkvm"`
+}
+
+// Settings represents the cluster settings.
+type Settings struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Version     string    `json:"version"`
+	Status      Status    `json:"status"`
+	GeoLocation string    `json:"geoLocation"`
+	Timezone    string    `json:"timezone"`
+	IPMIInfo    IPMIInfo  `json:"ipmiInfo,omitempty"`
+}
+
+// ClusterSettings returns the cloud cluster settings.
+func (a API) ClusterSettings(ctx context.Context, clusterID uuid.UUID) (Settings, error) {
+	a.log.Print(log.Trace)
+
+	query := clusterSettingsQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ClusterID uuid.UUID `json:"id"`
+	}{ClusterID: clusterID})
+
+	if err != nil {
+		return Settings{}, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result Settings `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return Settings{}, graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result, nil
+}
+
+// UpdateClusterNTPServersInput represents the input for the UpdateNTPServers mutation.
+type UpdateClusterNTPServersInput struct {
+	ClusterID string `json:"id"`
+	Server    string `json:"server"`
+	KeyID     int    `json:"keyId"`
+	Key       string `json:"key"`
+	KeyType   string `json:"keyType"`
+}
+
+// UpdateNTPServers updates the cloud cluster NTP servers.
+func (a API) UpdateNTPServers(ctx context.Context, input UpdateClusterNTPServersInput) error {
+	a.log.Print(log.Trace)
+
+	query := updateClusterNtpServersQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ClusterID string `json:"id"`
+		Server    string `json:"server"`
+		KeyID     int    `json:"keyId"`
+		Key       string `json:"key"`
+		KeyType   string `json:"keyType"`
+	}{
+		ClusterID: input.ClusterID,
+		Server:    input.Server,
+		KeyID:     input.KeyID,
+		Key:       input.Key,
+		KeyType:   input.KeyType,
+	})
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Success bool `json:"success"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result.Success {
+		return graphql.ResponseError(query, errors.New("failed to update NTP servers"))
+	}
+
+	return nil
+}
+
+// UpdateDNSServersAndSearchDomainsInput represents the input for the updateClusterDnsServersAndSearchDomains mutation.
+type UpdateDNSServersAndSearchDomainsInput struct {
+	ClusterID     uuid.UUID `json:"id"`
+	DNSServers    []string  `json:"servers"`
+	SearchDomains []string  `json:"domains"`
+}
+
+// UpdateDNSServersAndSearchDomains updates the cluster DNS servers and search domains.
+func (a API) UpdateDNSServersAndSearchDomains(ctx context.Context, input UpdateDNSServersAndSearchDomainsInput) error {
+	a.log.Print(log.Trace)
+
+	query := updateCusterDnsAndSearchDomainsQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ClusterID     uuid.UUID `json:"id"`
+		DNSServers    []string  `json:"servers"`
+		SearchDomains []string  `json:"domains"`
+	}{
+		ClusterID:     input.ClusterID,
+		DNSServers:    input.DNSServers,
+		SearchDomains: input.SearchDomains,
+	})
+
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Success bool `json:"success"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result.Success {
+		return graphql.ResponseError(query, errors.New("failed to update DNS servers and search domains"))
+	}
+
+	return nil
 }
