@@ -168,7 +168,9 @@ func (a API) addAccountWithCFT(ctx context.Context, features []core.Feature, con
 
 func (a API) addOutpostWithCFT(ctx context.Context, feature core.Feature, config account, options options) error {
 	if options.outpostAccountID == "" {
-		return errors.New("outpost account id is not allowed to be empty")
+		// If no outpost account ID is given, we use the same account as
+		// specified by the config.
+		options.outpostAccountID = config.NativeID
 	}
 
 	if options.outpostAccountProfile != nil {
