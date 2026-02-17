@@ -290,6 +290,8 @@ func SupportedFeatures() []core.Feature {
 		core.FeatureCloudNativeDynamoDBProtection,
 		core.FeatureCloudNativeProtection,
 		core.FeatureCloudNativeS3Protection,
+		core.FeatureCyberRecoveryDataClassificationData,
+		core.FeatureCyberRecoveryDataClassificationMetadata,
 		core.FeatureDSPMData,
 		core.FeatureDSPMMetadata,
 		core.FeatureExocompute,
