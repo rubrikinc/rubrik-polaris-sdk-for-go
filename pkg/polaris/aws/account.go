@@ -104,6 +104,17 @@ func Profile(profile string) AccountFunc {
 	return ProfileWithRegionAndRole(profile, "", "")
 }
 
+// ProfileWithAccountID returns an AccountFunc that initializes the account
+// with the specified account ID and values from the named profile
+// (~/.aws/credentials and ~/.aws/config). If the profile specified is
+// "default", credentials and region from the profile can be overridden by
+// environment variables.
+func ProfileWithAccountID(profile, accountID string) AccountFunc {
+	return func(ctx context.Context) (account, error) {
+		return accountFromProfile(ctx, profile, accountID, "", "")
+	}
+}
+
 // ProfileWithRegion returns an AccountFunc that initializes the account with
 // values from the named profile (~/.aws/credentials and ~/.aws/config) and the
 // AWS cloud. If the profile specified is "default", credentials and region from
@@ -128,37 +139,47 @@ func ProfileWithRole(profile string, roleArn string) AccountFunc {
 // and region from the profile can be overridden by environment variables.
 func ProfileWithRegionAndRole(profile, region, roleARN string) AccountFunc {
 	return func(ctx context.Context) (account, error) {
-		// When profileToLoad is the empty string environment variables can be
-		// used to override the credentials loaded by LoadDefaultConfig.
-		profileToLoad := profile
-		if profileToLoad == "default" {
-			profileToLoad = ""
-		}
-		config, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profileToLoad),
-			config.WithRegion(region))
-		if err != nil {
-			return account{}, fmt.Errorf("failed to load profile %q: %v", profile, err)
-		}
+		return accountFromProfile(ctx, profile, "", region, roleARN)
+	}
+}
 
-		if config.Region == "" {
-			return account{}, errors.New("missing AWS region, used for AWS CloudFormation stack operations")
-		}
+// accountFromProfile returns an account initialized from the specified profile,
+// the cloud and passed in values.
+func accountFromProfile(ctx context.Context, profile, accountID, region, roleARN string) (account, error) {
+	// When profileToLoad is the empty string environment variables can be
+	// used to override the credentials loaded by LoadDefaultConfig.
+	profileToLoad := profile
+	if profileToLoad == "default" {
+		profileToLoad = ""
+	}
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(profileToLoad),
+		config.WithRegion(region))
+	if err != nil {
+		return account{}, fmt.Errorf("failed to load profile %q: %v", profile, err)
+	}
+	if cfg.Region == "" {
+		return account{}, errors.New("missing AWS region, used for AWS CloudFormation stack operations")
+	}
 
-		if roleARN != "" {
-			stsClient := sts.NewFromConfig(config)
-			config.Credentials = aws.NewCredentialsCache(stscreds.NewAssumeRoleProvider(stsClient, roleARN))
-		}
+	if roleARN != "" {
+		stsClient := sts.NewFromConfig(cfg)
+		cfg.Credentials = aws.NewCredentialsCache(stscreds.NewAssumeRoleProvider(stsClient, roleARN))
+	}
 
-		id, name, err := awsAccountInfo(ctx, config)
+	// If the accountID is empty, we use the profile to look up the account ID
+	// using the STS service.
+	var name string
+	if accountID == "" {
+		accountID, name, err = awsAccountInfo(ctx, cfg)
 		if err != nil {
 			return account{}, fmt.Errorf("failed to access AWS account: %v", err)
 		}
-		if name == "" {
-			name = id + " : " + profile
-		}
-
-		return account{cloud: graphqlaws.CloudStandard, NativeID: id, name: name, config: &config}, nil
 	}
+	if name == "" {
+		name = accountID + " : " + profile
+	}
+
+	return account{cloud: graphqlaws.CloudStandard, NativeID: accountID, name: name, config: &cfg}, nil
 }
 
 // awsAccount returns the account id and name. Note that if the AWS user does
