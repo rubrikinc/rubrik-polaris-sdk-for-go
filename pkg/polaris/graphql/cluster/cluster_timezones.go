@@ -654,7 +654,25 @@ func TimezoneToFriendlyName(timezone Timezone) string {
 	// Strip the CLUSTER_TIMEZONE_ prefix
 	name := strings.TrimPrefix(string(timezone), "CLUSTER_TIMEZONE_")
 
-	// Replace only the first underscore (region separator) with a slash
+	// Handle IANA timezones with two-level hierarchy (e.g., America/North_Dakota/New_Salem)
+	// These require two slashes instead of one.
+
+	// Check for AMERICA_NORTH_DAKOTA_ first since the subregion name contains an underscore
+	if strings.HasPrefix(name, "AMERICA_NORTH_DAKOTA_") {
+		city := strings.TrimPrefix(name, "AMERICA_NORTH_DAKOTA_")
+		return "AMERICA/NORTH_DAKOTA/" + city
+	}
+
+	// Check for other two-level America subregions
+	for _, subregion := range []string{"ARGENTINA", "INDIANA", "KENTUCKY"} {
+		prefix := "AMERICA_" + subregion + "_"
+		if strings.HasPrefix(name, prefix) {
+			city := strings.TrimPrefix(name, prefix)
+			return "AMERICA/" + subregion + "/" + city
+		}
+	}
+
+	// Default: replace only the first underscore (region separator) with a slash
 	return strings.Replace(name, "_", "/", 1)
 }
 

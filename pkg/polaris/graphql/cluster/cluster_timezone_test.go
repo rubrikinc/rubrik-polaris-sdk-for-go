@@ -9,9 +9,9 @@ func TestTimezoneToFriendlyName(t *testing.T) {
 		want     string
 	}{
 		{
-			name:     "unspecified timezone returns Unspecified",
+			name:     "unspecified timezone returns empty string",
 			timezone: TIMEZONE_UNSPECIFIED,
-			want:     "Unspecified",
+			want:     "",
 		},
 		{
 			name:     "UTC timezone returns UTC",
@@ -24,19 +24,39 @@ func TestTimezoneToFriendlyName(t *testing.T) {
 			want:     "AMERICA/CHICAGO",
 		},
 		{
-			name:     "multiple underscores replaced with slashes",
-			timezone: TIMEZONE_AMERICA_ARGENTINA_BUENOS_AIRES,
-			want:     "AMERICA/ARGENTINA_BUENOS_AIRES",
-		},
-		{
-			name:     "timezone with two underscores",
+			name:     "timezone with two underscores in city name",
 			timezone: TIMEZONE_AMERICA_NEW_YORK,
 			want:     "AMERICA/NEW_YORK",
 		},
 		{
-			name:     "Asia timezone",
+			name:     "Asia timezone with underscore in city name",
 			timezone: TIMEZONE_ASIA_HONG_KONG,
 			want:     "ASIA/HONG_KONG",
+		},
+		{
+			name:     "Argentina subregion has two slashes",
+			timezone: TIMEZONE_AMERICA_ARGENTINA_BUENOS_AIRES,
+			want:     "AMERICA/ARGENTINA/BUENOS_AIRES",
+		},
+		{
+			name:     "Indiana subregion has two slashes",
+			timezone: TIMEZONE_AMERICA_INDIANA_INDIANAPOLIS,
+			want:     "AMERICA/INDIANA/INDIANAPOLIS",
+		},
+		{
+			name:     "Kentucky subregion has two slashes",
+			timezone: TIMEZONE_AMERICA_KENTUCKY_LOUISVILLE,
+			want:     "AMERICA/KENTUCKY/LOUISVILLE",
+		},
+		{
+			name:     "North Dakota subregion has two slashes",
+			timezone: TIMEZONE_AMERICA_NORTH_DAKOTA_NEW_SALEM,
+			want:     "AMERICA/NORTH_DAKOTA/NEW_SALEM",
+		},
+		{
+			name:     "North Dakota Center has two slashes",
+			timezone: TIMEZONE_AMERICA_NORTH_DAKOTA_CENTER,
+			want:     "AMERICA/NORTH_DAKOTA/CENTER",
 		},
 	}
 
