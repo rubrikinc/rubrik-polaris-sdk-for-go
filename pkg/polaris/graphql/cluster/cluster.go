@@ -492,3 +492,48 @@ func (a API) UpdateDNSServersAndSearchDomains(ctx context.Context, input UpdateD
 
 	return nil
 }
+
+// UpdateClusterSettingsInput represents the input for the updateClusterSettings mutation.
+type UpdateClusterSettingsInput struct {
+	ClusterID uuid.UUID `json:"clusterID"`
+	Address   string    `json:"address"`
+	Name      string    `json:"name"`
+	Timezone  Timezone  `json:"timezone"`
+}
+
+// UpdateClusterSettings updates the cluster settings.
+func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSettingsInput) error {
+	a.log.Print(log.Trace)
+
+	query := updateClusterSettingsQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ClusterID uuid.UUID `json:"clusterID"`
+		Address   string    `json:"address"`
+		Name      string    `json:"name"`
+		Timezone  Timezone  `json:"timezone"`
+	}{
+		ClusterID: input.ClusterID,
+		Address:   input.Address,
+		Name:      input.Name,
+		Timezone:  input.Timezone,
+	})
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Success bool `json:"success"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result.Success {
+		return graphql.ResponseError(query, errors.New("failed to update cluster settings"))
+	}
+
+	return nil
+}
