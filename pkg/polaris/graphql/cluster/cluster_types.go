@@ -1,6 +1,6 @@
 package cluster
 
-// TimeZone represents the valid cluster timezones.
+// Timezone represents the valid cluster timezones.
 type Timezone string
 
 // Product represents the valid cluster products.
