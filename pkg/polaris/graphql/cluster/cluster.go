@@ -406,11 +406,11 @@ func (a API) ClusterSettings(ctx context.Context, clusterID uuid.UUID) (Settings
 
 // UpdateClusterNTPServersInput represents the input for the UpdateNTPServers mutation.
 type UpdateClusterNTPServersInput struct {
-	ClusterID string `json:"id"`
-	Server    string `json:"server"`
-	KeyID     int    `json:"keyId"`
-	Key       string `json:"key"`
-	KeyType   string `json:"keyType"`
+	ClusterID uuid.UUID `json:"id"`
+	Servers   []struct {
+		Server       string          `json:"server"`
+		SymmetricKey NTPSymmetricKey `json:"symmetricKey,omitempty"`
+	} `json:"ntpServerConfigs"`
 }
 
 // UpdateNTPServers updates the cloud cluster NTP servers.
@@ -419,17 +419,9 @@ func (a API) UpdateNTPServers(ctx context.Context, input UpdateClusterNTPServers
 
 	query := updateClusterNtpServersQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		ClusterID string `json:"id"`
-		Server    string `json:"server"`
-		KeyID     int    `json:"keyId"`
-		Key       string `json:"key"`
-		KeyType   string `json:"keyType"`
+		Input UpdateClusterNTPServersInput `json:"input"`
 	}{
-		ClusterID: input.ClusterID,
-		Server:    input.Server,
-		KeyID:     input.KeyID,
-		Key:       input.Key,
-		KeyType:   input.KeyType,
+		Input: input,
 	})
 	if err != nil {
 		return graphql.RequestError(query, err)
