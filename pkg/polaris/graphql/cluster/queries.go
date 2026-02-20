@@ -173,24 +173,8 @@ var slaSourceClustersQuery = `query SdkGolangSlaSourceClusters(
 }`
 
 // updateClusterNtpServers GraphQL query
-var updateClusterNtpServersQuery = `mutation SdkGolangUpdateClusterNtpServers(
-  $id: String!
-  $server: String!
-  $keyId: Int!
-  $key: String!
-  $keyType: String!
-) {
-  result: updateClusterNtpServers(
-    input: {
-      id: $id
-      ntpServerConfigs: [
-        {
-          server: $server
-          symmetricKey: { keyId: $keyId, key: $key, keyType: $keyType }
-        }
-      ]
-    }
-  ) {
+var updateClusterNtpServersQuery = `mutation SdkGolangUpdateClusterNtpServers($input: UpdateClusterNtpServersInput!) {
+  result: updateClusterNtpServers(input: $input) {
     success
   }
 }`
