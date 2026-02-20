@@ -532,7 +532,7 @@ func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSetti
 	return nil
 }
 
-// ParseTimeZone parses the given string as a TimeZone.
+// ParseTimeZone parses the given IANA Time Zone string as a Timezone.
 func ParseTimeZone(s string) (Timezone, error) {
 	l, err := time.LoadLocation(s)
 	if err != nil {
@@ -541,10 +541,18 @@ func ParseTimeZone(s string) (Timezone, error) {
 	return Timezone(l.String()), nil
 }
 
-// String returns the string representation of the TimeZone.
+// String returns the GraphQL enum representation of the Timezone, corresponding
+// to ClusterTimezone in the schema, in the format CLUSTER_TIMEZONE_<timezone>
+// e.g. CLUSTER_TIMEZONE_AMERICA_NEW_YORK.
 func (tz Timezone) String() string {
 	if tz == "" {
 		tz = "UNSPECIFIED"
 	}
 	return "CLUSTER_TIMEZONE_" + strings.ReplaceAll(strings.ToUpper(string(tz)), "/", "_")
+}
+
+// MarshalJSON implements the json.Marshaler interface, serializing the Timezone
+// as its GraphQL enum representation.
+func (tz Timezone) MarshalJSON() ([]byte, error) {
+	return json.Marshal(tz.String())
 }
