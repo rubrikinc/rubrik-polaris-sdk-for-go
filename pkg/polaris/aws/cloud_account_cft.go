@@ -48,6 +48,10 @@ func (a API) AddAccountWithCFT(ctx context.Context, account AccountFunc, feature
 	if account == nil {
 		return uuid.Nil, errors.New("account is not allowed to be nil")
 	}
+	if len(features) == 0 {
+		return uuid.Nil, errors.New("no features specified")
+	}
+
 	config, err := account(ctx)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to lookup account: %s", err)
@@ -84,8 +88,16 @@ func (a API) AddAccountWithCFT(ctx context.Context, account AccountFunc, feature
 			return feature.Equal(core.FeatureOutpost)
 		})
 
-		if err := a.addOutpostWithCFT(ctx, feature, config, options); err != nil {
+		separateOutpostAccount, err := a.addOutpostWithCFT(ctx, feature, config, options)
+		if err != nil {
 			return uuid.Nil, err
+		}
+
+		// When the cloud account doesn't exist and only the outpost feature is
+		// added, for a separate outpost account, the lookup of the RSC cloud
+		// account ID for the main account will fail.
+		if separateOutpostAccount && cloudAccount.ID == uuid.Nil && len(features) == 0 {
+			return uuid.Nil, nil
 		}
 	}
 	if len(features) != 0 {
@@ -116,6 +128,10 @@ func (a API) RemoveAccountWithCFT(ctx context.Context, account AccountFunc, feat
 	if account == nil {
 		return errors.New("account is not allowed to be nil")
 	}
+	if len(features) == 0 {
+		return errors.New("no features specified")
+	}
+
 	config, err := account(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to lookup account: %s", err)
@@ -166,23 +182,34 @@ func (a API) addAccountWithCFT(ctx context.Context, features []core.Feature, con
 	return nil
 }
 
-func (a API) addOutpostWithCFT(ctx context.Context, feature core.Feature, config account, options options) error {
-	if options.outpostAccountID == "" {
-		// If no outpost account ID is given, we use the same account as
-		// specified by the config.
-		options.outpostAccountID = config.NativeID
+// addOutpostWithCFT adds the Outpost feature to the account specified in the
+// options. If no account is specified in the options, the Outpost feature is
+// added to the account specified in the config. Returns true if the Outpost
+// account is a separate account, which is the case when a separate outpost
+// account ID is specified in the options.
+func (a API) addOutpostWithCFT(ctx context.Context, feature core.Feature, config account, options options) (bool, error) {
+	// If no outpost account ID is given, we use the same account as specified
+	// by the config.
+	outpostAccountID := options.outpostAccountID
+	if outpostAccountID == "" {
+		outpostAccountID = config.NativeID
+	}
+
+	var separateOutpostAccount bool
+	if outpostAccountID != config.NativeID {
+		separateOutpostAccount = true
 	}
 
 	if options.outpostAccountProfile != nil {
 		var err error
 		config, err = options.outpostAccountProfile(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to get outpost account config: %s", err)
+			return separateOutpostAccount, fmt.Errorf("failed to get outpost account config: %s", err)
 		}
 	}
-	config.NativeID = options.outpostAccountID
+	config.NativeID = outpostAccountID
 
-	return a.addAccountWithCFT(ctx, []core.Feature{feature}, config, options)
+	return separateOutpostAccount, a.addAccountWithCFT(ctx, []core.Feature{feature}, config, options)
 }
 
 func (a API) removeAccountWithCFT(ctx context.Context, config account, account CloudAccount, feature core.Feature, deleteSnapshots bool) error {
