@@ -37,11 +37,12 @@ import (
 type ProtectionFeature string
 
 const (
-	EC2      ProtectionFeature = "EC2"
-	RDS      ProtectionFeature = "RDS"
-	S3       ProtectionFeature = "S3"
-	DynamoDB ProtectionFeature = "DYNAMODB"
-	EKS      ProtectionFeature = "EKS"
+	EC2            ProtectionFeature = "EC2"
+	RDS            ProtectionFeature = "RDS"
+	S3             ProtectionFeature = "S3"
+	DynamoDB       ProtectionFeature = "DYNAMODB"
+	EKS            ProtectionFeature = "EKS"
+	CloudDiscovery ProtectionFeature = "CLOUD_DISCOVERY"
 )
 
 var allProtectionFeatures = []ProtectionFeature{
@@ -50,6 +51,7 @@ var allProtectionFeatures = []ProtectionFeature{
 	S3,
 	DynamoDB,
 	EKS,
+	CloudDiscovery,
 }
 
 // NativeAccount represents an RSC native account. NativeAccount are connected
