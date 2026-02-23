@@ -493,8 +493,8 @@ func (a API) UpdateDNSServersAndSearchDomains(ctx context.Context, input UpdateD
 	return nil
 }
 
-// UpdateClusterSettingsInput represents the input for the updateClusterSettings mutation.
-type UpdateClusterSettingsInput struct {
+// UpdateClusterSettings represents the input for the updateClusterSettings mutation.
+type UpdateClusterSettings struct {
 	ClusterID uuid.UUID `json:"clusterID"`
 	Address   string    `json:"address"`
 	Name      string    `json:"name"`
@@ -502,7 +502,7 @@ type UpdateClusterSettingsInput struct {
 }
 
 // UpdateClusterSettings updates the cluster settings.
-func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSettingsInput) error {
+func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSettings) (UpdateClusterSettings, error) {
 	a.log.Print(log.Trace)
 
 	query := updateClusterSettingsQuery
@@ -518,7 +518,7 @@ func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSetti
 		Timezone:  input.Timezone,
 	})
 	if err != nil {
-		return graphql.RequestError(query, err)
+		return UpdateClusterSettings{}, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
@@ -536,10 +536,16 @@ func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSetti
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return graphql.UnmarshalError(query, err)
+		return UpdateClusterSettings{}, graphql.UnmarshalError(query, err)
 	}
 
-	return nil
+	response := UpdateClusterSettings{
+		ClusterID: payload.Data.Result.ClusterUUID,
+		Address:   payload.Data.Result.Geolocation.Address,
+		Name:      payload.Data.Result.Name,
+		Timezone:  payload.Data.Result.Timezone.Timezone,
+	}
+	return response, nil
 }
 
 // ParseTimeZone parses the given IANA Time Zone string as a Timezone.

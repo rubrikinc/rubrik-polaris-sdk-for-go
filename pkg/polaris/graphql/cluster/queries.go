@@ -99,7 +99,6 @@ var clusterSettingsQuery = `query SdkGolangClusterSettings($id: UUID!) {
     name
     version
     status
-    status
     timezone
     rawAddress
     geoLocation {
