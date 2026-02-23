@@ -524,7 +524,14 @@ func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSetti
 	var payload struct {
 		Data struct {
 			Result struct {
-				Success bool `json:"success"`
+				Geolocation struct {
+					Address string `json:"address"`
+				} `json:"geolocation"`
+				ClusterUUID uuid.UUID `json:"clusterUuid"`
+				Name        string    `json:"name"`
+				Timezone    struct {
+					Timezone Timezone `json:"timezone"`
+				} `json:"timezone"`
 			} `json:"result"`
 		} `json:"data"`
 	}
