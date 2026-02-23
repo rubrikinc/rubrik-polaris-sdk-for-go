@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -197,6 +198,21 @@ type TagPair struct {
 	Key               string   `json:"key"`
 	MatchAllTagValues bool     `json:"matchAllTagValues"`
 	Values            []string `json:"values"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler. It strips the backend sentinel
+// value ALL_TAG_OR_LABEL_VALUES_OPTION from the Values slice, which the
+// backend uses to represent an empty values list when MatchAllTagValues is
+// true.
+func (p *TagPair) UnmarshalJSON(data []byte) error {
+	type Alias TagPair
+	if err := json.Unmarshal(data, (*Alias)(p)); err != nil {
+		return err
+	}
+	p.Values = slices.DeleteFunc(p.Values, func(v string) bool {
+		return v == "ALL_TAG_OR_LABEL_VALUES_OPTION"
+	})
+	return nil
 }
 
 // TagRuleFilter holds the filter for a tag rules list operation.
