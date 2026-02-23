@@ -101,6 +101,7 @@ var clusterSettingsQuery = `query SdkGolangClusterSettings($id: UUID!) {
     status
     status
     timezone
+    rawAddress
     geoLocation {
       address
     }

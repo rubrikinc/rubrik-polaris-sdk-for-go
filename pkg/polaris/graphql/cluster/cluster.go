@@ -368,15 +368,21 @@ type IPMIInfo struct {
 	UsesIKVM    bool `json:"usesIkvm"`
 }
 
+// GeoLocation represents the cluster geographic location.
+type GeoLocation struct {
+	Address string `json:"address"`
+}
+
 // Settings represents the cluster settings.
 type Settings struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Version     string    `json:"version"`
-	Status      Status    `json:"status"`
-	GeoLocation string    `json:"geoLocation"`
-	Timezone    string    `json:"timezone"`
-	IPMIInfo    IPMIInfo  `json:"ipmiInfo,omitempty"`
+	ID          uuid.UUID   `json:"id"`
+	Name        string      `json:"name"`
+	Version     string      `json:"version"`
+	Status      Status      `json:"status"`
+	RawAddress  string      `json:"rawAddress"`
+	GeoLocation GeoLocation `json:"geoLocation"`
+	Timezone    string      `json:"timezone"`
+	IPMIInfo    IPMIInfo    `json:"ipmiInfo,omitempty"`
 }
 
 // ClusterSettings returns the cloud cluster settings.
@@ -408,8 +414,8 @@ func (a API) ClusterSettings(ctx context.Context, clusterID uuid.UUID) (Settings
 type UpdateClusterNTPServersInput struct {
 	ClusterID uuid.UUID `json:"id"`
 	Servers   []struct {
-		Server       string          `json:"server"`
-		SymmetricKey NTPSymmetricKey `json:"symmetricKey,omitempty"`
+		Server       string           `json:"server"`
+		SymmetricKey *NTPSymmetricKey `json:"symmetricKey,omitempty"`
 	} `json:"ntpServerConfigs"`
 }
 
@@ -524,9 +530,6 @@ func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSetti
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return graphql.UnmarshalError(query, err)
-	}
-	if !payload.Data.Result.Success {
-		return graphql.ResponseError(query, errors.New("failed to update cluster settings"))
 	}
 
 	return nil
