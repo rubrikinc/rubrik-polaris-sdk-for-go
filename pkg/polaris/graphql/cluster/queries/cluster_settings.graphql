@@ -4,8 +4,8 @@ query RubrikPolarisSDKRequest($id: UUID!) {
     name
     version
     status
-    status
     timezone
+    rawAddress
     geoLocation {
       address
     }
