@@ -75,6 +75,7 @@ const (
 	PermissionGroupBackupV2                      PermissionGroup = "BACKUP_V2"
 	PermissionGroupBasic                         PermissionGroup = "BASIC"
 	PermissionGroupCCES                          PermissionGroup = "CLOUD_CLUSTER_ES"
+	PermissionGroupCloudSQL                      PermissionGroup = "CLOUDSQL"
 	PermissionGroupCustomerHostedLogging         PermissionGroup = "CUSTOMER_HOSTED_LOGGING"
 	PermissionGroupCustomerManagedCluster        PermissionGroup = "CUSTOMER_MANAGED_BASIC"
 	PermissionGroupCustomerManagedStorageIndexng PermissionGroup = "CUSTOMER_MANAGED_STORAGE_INDEXING"
