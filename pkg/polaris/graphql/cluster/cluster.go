@@ -493,16 +493,16 @@ func (a API) UpdateDNSServersAndSearchDomains(ctx context.Context, input UpdateD
 	return nil
 }
 
-// UpdateClusterSettings represents the input for the updateClusterSettings mutation.
-type UpdateClusterSettings struct {
+// UpdatedSettings represents the input for the updateClusterSettings mutation.
+type UpdatedSettings struct {
 	ClusterID uuid.UUID `json:"clusterID"`
 	Address   string    `json:"address"`
 	Name      string    `json:"name"`
 	Timezone  Timezone  `json:"timezone"`
 }
 
-// UpdateClusterSettings updates the cluster settings.
-func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSettings) (UpdateClusterSettings, error) {
+// UpdateSettings updates the cluster settings.
+func (a API) UpdateSettings(ctx context.Context, input UpdatedSettings) (UpdatedSettings, error) {
 	a.log.Print(log.Trace)
 
 	query := updateClusterSettingsQuery
@@ -518,7 +518,7 @@ func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSetti
 		Timezone:  input.Timezone,
 	})
 	if err != nil {
-		return UpdateClusterSettings{}, graphql.RequestError(query, err)
+		return UpdatedSettings{}, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
@@ -536,10 +536,10 @@ func (a API) UpdateClusterSettings(ctx context.Context, input UpdateClusterSetti
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return UpdateClusterSettings{}, graphql.UnmarshalError(query, err)
+		return UpdatedSettings{}, graphql.UnmarshalError(query, err)
 	}
 
-	response := UpdateClusterSettings{
+	response := UpdatedSettings{
 		ClusterID: payload.Data.Result.ClusterUUID,
 		Address:   payload.Data.Result.Geolocation.Address,
 		Name:      payload.Data.Result.Name,
