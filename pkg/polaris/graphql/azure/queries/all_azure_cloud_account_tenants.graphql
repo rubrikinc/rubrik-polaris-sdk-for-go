@@ -5,6 +5,7 @@ query RubrikPolarisSDKRequest($feature: CloudAccountFeature!, $includeSubscripti
         clientId
         appName
         domainName
+        entraIdGroupId
         subscriptionCount
         subscriptions {
             id
