@@ -389,22 +389,6 @@ var unmapCloudAccountExocomputeAccountQuery = `mutation SdkGolangUnmapCloudAccou
     }
 }`
 
-// updateAwsExocomputeConfigs GraphQL query
-var updateAwsExocomputeConfigsQuery = `mutation SdkGolangUpdateAwsExocomputeConfigs(
-    $cloudAccountId: UUID!,
-    $config:         AwsExocomputeConfigInput!
-) {
-    result: updateAwsExocomputeConfigs(input: {
-        cloudAccountId: $cloudAccountId,
-        configs:        [$config]}
-    ) {
-        exocomputeConfigs {
-            configUuid
-            message
-        }
-    }
-}`
-
 // validateAzureCloudAccountExocomputeConfigurations GraphQL query
 var validateAzureCloudAccountExocomputeConfigurationsQuery = `query SdkGolangValidateAzureCloudAccountExocomputeConfigurations(
     $cloudAccountId:              UUID!

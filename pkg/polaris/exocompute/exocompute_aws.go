@@ -226,25 +226,6 @@ func (a API) AddAWSConfiguration(ctx context.Context, cloudAccountID uuid.UUID, 
 	return configID, nil
 }
 
-// UpdateAWSConfiguration updates the exocompute configuration for the cloud
-// account with the specified ID. Returns the ID of the updated configuration.
-// Note, the configuration ID might change with the update.
-func (a API) UpdateAWSConfiguration(ctx context.Context, cloudAccountID uuid.UUID, config AWSConfigurationFunc) (uuid.UUID, error) {
-	a.log.Print(log.Trace)
-
-	exoConfig, err := config(ctx, a.client, cloudAccountID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to parse exocompute configuration: %s", err)
-	}
-
-	configID, err := exocompute.UpdateConfiguration(ctx, a.client, exocompute.UpdateAWSConfigurationParams(exoConfig))
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to update exocompute configuration for cloud account %s: %s", cloudAccountID, err)
-	}
-
-	return configID, nil
-}
-
 // RemoveAWSConfiguration removes the AWS exocompute configuration with the
 // specified ID.
 func (a API) RemoveAWSConfiguration(ctx context.Context, configID uuid.UUID) error {
