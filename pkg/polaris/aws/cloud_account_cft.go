@@ -152,6 +152,15 @@ func (a API) RemoveAccountWithCFT(ctx context.Context, account AccountFunc, feat
 		}
 	}
 
+	// The Cloud Discovery feature must be removed after all protection
+	// features.
+	if _, ok := core.LookupFeature(features, core.FeatureCloudDiscovery); ok {
+		features = slices.DeleteFunc(features, func(feature core.Feature) bool {
+			return feature.Equal(core.FeatureCloudDiscovery)
+		})
+		features = append(features, core.FeatureCloudDiscovery)
+	}
+
 	for _, feature := range features {
 		if err := a.removeAccountWithCFT(ctx, config, cloudAccount, feature, deleteSnapshots); err != nil {
 			return err

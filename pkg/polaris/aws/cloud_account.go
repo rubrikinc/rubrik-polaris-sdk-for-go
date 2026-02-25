@@ -215,6 +215,7 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 		core.FeatureCloudNativeS3Protection,
 		core.FeatureCloudNativeDynamoDBProtection,
 		core.FeatureExocompute,
+		core.FeatureCloudDiscovery,
 	}
 	if _, ok := core.LookupFeature(features, feature); !ok {
 		return nil
@@ -275,6 +276,8 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 		protectionFeature = aws.DynamoDB
 	case feature.Equal(core.FeatureKubernetesProtection):
 		protectionFeature = aws.EKS
+	case feature.Equal(core.FeatureCloudDiscovery):
+		protectionFeature = aws.CloudDiscovery
 	default:
 		return uuid.Nil, fmt.Errorf("feature %s is not a protection feature", feature.Name)
 	}
@@ -286,6 +289,7 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 func SupportedFeatures() []core.Feature {
 	return []core.Feature{
 		core.FeatureArchival,
+		core.FeatureCloudDiscovery,
 		core.FeatureCloudNativeArchival,
 		core.FeatureCloudNativeDynamoDBProtection,
 		core.FeatureCloudNativeProtection,

@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -125,6 +126,15 @@ func (a API) RemoveAccountWithIAM(ctx context.Context, account AccountFunc, feat
 
 func (a API) removeAccountWithIAM(ctx context.Context, account CloudAccount, features []core.Feature, deleteSnapshots bool) error {
 	a.log.Print(log.Trace)
+
+	// The Cloud Discovery feature must be removed after all protection
+	// features.
+	if _, ok := core.LookupFeature(features, core.FeatureCloudDiscovery); ok {
+		features = slices.DeleteFunc(features, func(feature core.Feature) bool {
+			return feature.Equal(core.FeatureCloudDiscovery)
+		})
+		features = append(features, core.FeatureCloudDiscovery)
+	}
 
 	for _, feature := range features {
 		// Exocompute does not need to be disabled with the IAM roles workflow.
