@@ -350,21 +350,26 @@ func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feat
 // for the Azure service principal have been updated for the specified RSC cloud
 // account id and feature.
 // The resource group is optional and only required when the Azure SQL DB
-// feature is upgraded to support resource groups, otherwise nil can be passed
-// in.
-func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature, resourceGroup *ResourceGroup) error {
+// feature is upgraded to support resource groups, otherwise nil can be passed in.
+// FeatureSpecificInfo is optional and only required when the feature needs
+// additional information to be passed in, otherwise nil can be passed in. This is typically
+// the case for features that require user-assigned managed identity to be
+// onboarded such as AZURE_SQL_DB_PROTECTION.
+func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature, resourceGroup *ResourceGroup, featureSpecificInfo *FeatureSpecificInfo) error {
 	a.log.Print(log.Trace)
 
 	query := upgradeAzureCloudAccountPermissionsWithoutOauthQuery
 	var queryFeature any = feature.Name
-	if len(feature.PermissionGroups) > 0 {
+	if len(feature.PermissionGroups) > 0 || featureSpecificInfo != nil {
 		query = upgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroupsQuery
 		queryFeature = struct {
 			core.Feature
-			ResourceGroup *ResourceGroup `json:"resourceGroup,omitempty"`
+			ResourceGroup       *ResourceGroup       `json:"resourceGroup,omitempty"`
+			FeatureSpecificInfo *FeatureSpecificInfo `json:"specificFeatureInput,omitempty"`
 		}{
-			Feature:       feature,
-			ResourceGroup: resourceGroup,
+			Feature:             feature,
+			ResourceGroup:       resourceGroup,
+			FeatureSpecificInfo: featureSpecificInfo,
 		}
 	}
 
