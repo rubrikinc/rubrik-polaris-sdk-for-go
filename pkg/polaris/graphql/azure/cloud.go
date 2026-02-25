@@ -349,9 +349,10 @@ func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feat
 // PermissionUpgrade holds the input for the
 // UpgradeCloudAccountPermissionsWithoutOAuth function.
 type PermissionUpgrade struct {
-	CloudAccountID uuid.UUID // RSC cloud account ID.
-	Feature        core.Feature
-	ResourceGroup  *ResourceGroup // Optional, only for Azure SQL DB resource group upgrades.
+	CloudAccountID      uuid.UUID // RSC cloud account ID.
+	Feature             core.Feature
+	ResourceGroup       *ResourceGroup       // Optional, only for Azure SQL DB resource group upgrades.
+	FeatureSpecificInfo *FeatureSpecificInfo // Optional, only for Azure SQL DB feature.
 }
 
 // UpgradeCloudAccountPermissionsWithoutOAuth notifies RSC that the permissions
@@ -368,10 +369,12 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, in 
 		query = upgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroupsQuery
 		queryFeature = struct {
 			core.Feature
-			ResourceGroup *ResourceGroup `json:"resourceGroup,omitempty"`
+			ResourceGroup       *ResourceGroup       `json:"resourceGroup,omitempty"`
+			FeatureSpecificInfo *FeatureSpecificInfo `json:"specificFeatureInput,omitempty"`
 		}{
-			Feature:       in.Feature,
-			ResourceGroup: in.ResourceGroup,
+			Feature:             in.Feature,
+			ResourceGroup:       in.ResourceGroup,
+			FeatureSpecificInfo: in.FeatureSpecificInfo,
 		}
 	}
 
