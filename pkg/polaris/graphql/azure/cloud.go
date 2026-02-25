@@ -346,32 +346,39 @@ func (a API) CloudAccountPermissionConfig(ctx context.Context, feature core.Feat
 	return payload.Data.Result, nil
 }
 
+// PermissionUpgrade holds the input for the
+// UpgradeCloudAccountPermissionsWithoutOAuth function.
+type PermissionUpgrade struct {
+	CloudAccountID uuid.UUID // RSC cloud account ID.
+	Feature        core.Feature
+	ResourceGroup  *ResourceGroup // Optional, only for Azure SQL DB resource group upgrades.
+}
+
 // UpgradeCloudAccountPermissionsWithoutOAuth notifies RSC that the permissions
 // for the Azure service principal have been updated for the specified RSC cloud
 // account id and feature.
-// The resource group is optional and only required when the Azure SQL DB
-// feature is upgraded to support resource groups, otherwise nil can be passed
-// in.
-func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, id uuid.UUID, feature core.Feature, resourceGroup *ResourceGroup) error {
+// The ResourceGroup field is optional and only required when the Azure SQL DB
+// feature is upgraded to support resource groups.
+func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, in PermissionUpgrade) error {
 	a.log.Print(log.Trace)
 
 	query := upgradeAzureCloudAccountPermissionsWithoutOauthQuery
-	var queryFeature any = feature.Name
-	if len(feature.PermissionGroups) > 0 {
+	var queryFeature any = in.Feature.Name
+	if len(in.Feature.PermissionGroups) > 0 {
 		query = upgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroupsQuery
 		queryFeature = struct {
 			core.Feature
 			ResourceGroup *ResourceGroup `json:"resourceGroup,omitempty"`
 		}{
-			Feature:       feature,
-			ResourceGroup: resourceGroup,
+			Feature:       in.Feature,
+			ResourceGroup: in.ResourceGroup,
 		}
 	}
 
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID `json:"cloudAccountId"`
 		Feature any       `json:"feature"`
-	}{ID: id, Feature: queryFeature})
+	}{ID: in.CloudAccountID, Feature: queryFeature})
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}

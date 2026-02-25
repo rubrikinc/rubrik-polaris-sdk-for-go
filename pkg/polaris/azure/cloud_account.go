@@ -435,7 +435,10 @@ func (a API) UpdateSubscription(ctx context.Context, cloudAccountID uuid.UUID, f
 			return fmt.Errorf("failed to get feature %s", feature)
 		}
 		if !feature.DeepEqual(azureFeature.Feature) {
-			if err := gqlazure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature, nil); err != nil {
+			if err := gqlazure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, gqlazure.PermissionUpgrade{
+				CloudAccountID: account.ID,
+				Feature:        feature,
+			}); err != nil {
 				return fmt.Errorf("failed to update subscription feature permission groups: %s", err)
 			}
 		}
