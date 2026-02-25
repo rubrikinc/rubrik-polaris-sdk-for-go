@@ -244,17 +244,24 @@ func (a API) CloudAccountDeleteProjectV2(ctx context.Context, cloudAccountID uui
 	return jobs, nil
 }
 
+// PermissionUpgrade holds the input for the
+// UpgradeCloudAccountPermissionsWithoutOAuth function.
+type PermissionUpgrade struct {
+	CloudAccountID uuid.UUID // RSC cloud account ID.
+	Feature        core.Feature
+}
+
 // UpgradeCloudAccountPermissionsWithoutOAuth notifies RSC that the permissions
 // for the GCP service account has been updated for the specified RSC cloud
 // account ID and feature.
-func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, cloudAccountID uuid.UUID, feature core.Feature) error {
+func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, in PermissionUpgrade) error {
 	a.log.Print(log.Trace)
 
 	query := upgradeGcpCloudAccountPermissionsWithoutOauthQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ID      uuid.UUID `json:"cloudAccountId"`
 		Feature string    `json:"feature"`
-	}{ID: cloudAccountID, Feature: feature.Name})
+	}{ID: in.CloudAccountID, Feature: in.Feature.Name})
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}

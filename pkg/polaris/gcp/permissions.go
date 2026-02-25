@@ -134,7 +134,10 @@ func (a API) PermissionsUpdated(ctx context.Context, cloudAccountID uuid.UUID, f
 			continue
 		}
 
-		err := gcp.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Feature)
+		err := gcp.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, gcp.PermissionUpgrade{
+			CloudAccountID: account.ID,
+			Feature:        feature.Feature,
+		})
 		if err != nil {
 			return fmt.Errorf("failed to update permissions: %s", err)
 		}
@@ -178,7 +181,10 @@ func (a API) PermissionsUpdatedForDefault(ctx context.Context, features []core.F
 				continue
 			}
 
-			err := gcp.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, account.ID, feature.Feature)
+			err := gcp.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, gcp.PermissionUpgrade{
+				CloudAccountID: account.ID,
+				Feature:        feature.Feature,
+			})
 			if err != nil {
 				return fmt.Errorf("failed to update permissions: %s", err)
 			}
