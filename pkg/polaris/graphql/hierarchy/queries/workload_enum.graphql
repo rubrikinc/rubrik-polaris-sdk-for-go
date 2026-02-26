@@ -1,0 +1,12 @@
+query SdkGolangOperationEnum {
+  result: __type(name: "WorkloadLevelHierarchy") {
+    name
+    kind
+    enumValues {
+      name
+      description
+      isDeprecated
+      deprecationReason
+    }
+  }
+}

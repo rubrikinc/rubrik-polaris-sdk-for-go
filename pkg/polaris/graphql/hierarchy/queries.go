@@ -88,3 +88,31 @@ var inventoryRootQuery = `query SdkGolangInventoryRoot($after: String, $filter: 
         }
     }
 }`
+
+// operationEnum GraphQL query
+var operationEnumQuery = `query SdkGolangOperationEnum {
+  result: __type(name: "Operation") {
+    name
+    kind
+    enumValues {
+      name
+      description
+      isDeprecated
+      deprecationReason
+    }
+  }
+}`
+
+// workloadEnum GraphQL query
+var workloadEnumQuery = `query SdkGolangOperationEnum {
+  result: __type(name: "WorkloadLevelHierarchy") {
+    name
+    kind
+    enumValues {
+      name
+      description
+      isDeprecated
+      deprecationReason
+    }
+  }
+}`
