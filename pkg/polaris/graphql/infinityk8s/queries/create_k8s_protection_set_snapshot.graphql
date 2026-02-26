@@ -1,0 +1,17 @@
+mutation RubrikPolarisSDKRequest($protectionSetId: String!, $jobConfig: BaseOnDemandSnapshotConfigInput!) {
+    createK8sProtectionSetSnapshot(input: {id: $protectionSetId, config: $jobConfig}) {
+        endTime
+        error {
+            message
+        }
+        id
+        nodeId
+        progress
+        startTime
+        status
+        links {
+            href
+            rel
+        }
+    }
+}
