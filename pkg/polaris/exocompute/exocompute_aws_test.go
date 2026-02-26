@@ -31,8 +31,44 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
+
+func TestAwsAvailabilityZone(t *testing.T) {
+	vpc := exocompute.AWSVPC{
+		ID:   "vpc-1",
+		Name: "test-vpc",
+		Subnets: []struct {
+			ID               string `json:"id"`
+			Name             string `json:"name"`
+			AvailabilityZone string `json:"availabilityZone"`
+		}{
+			{ID: "subnet-1", Name: "sn1", AvailabilityZone: "us-east-2a"},
+			{ID: "subnet-2", Name: "sn2", AvailabilityZone: "us-east-2b"},
+		},
+	}
+
+	subnet, err := awsAvailabilityZone(vpc, exocompute.AWSSubnet{ID: "subnet-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if subnet.ID != "subnet-1" || subnet.AvailabilityZone != "us-east-2a" || subnet.PodSubnetID != "" {
+		t.Fatalf("unexpected subnet: %+v", subnet)
+	}
+
+	subnet, err = awsAvailabilityZone(vpc, exocompute.AWSSubnet{ID: "subnet-2", PodSubnetID: "pod-subnet-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if subnet.ID != "subnet-2" || subnet.AvailabilityZone != "us-east-2b" || subnet.PodSubnetID != "pod-subnet-1" {
+		t.Fatalf("unexpected subnet: %+v", subnet)
+	}
+
+	if _, err := awsAvailabilityZone(vpc, exocompute.AWSSubnet{ID: "subnet-unknown"}); err == nil {
+		t.Fatal("expected error for unknown subnet id")
+	}
+}
 
 // TestAwsExocomputeWithCFT verifies that the SDK can perform basic Exocompute
 // operations on a real RSC instance.

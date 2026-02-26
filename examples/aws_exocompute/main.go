@@ -29,6 +29,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/exocompute"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	gqlexo "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -81,8 +82,11 @@ func main() {
 	}
 
 	// Add an exocompute configuration for the account.
-	exoID, err := exoClient.AddAWSConfiguration(ctx, accountID,
-		exocompute.AWSManaged(gqlaws.RegionUsEast2, "vpc-4859acb9", []string{"subnet-ea67b67b", "subnet-ea43ec78"}, false))
+	exoID, err := exoClient.AddAWSConfiguration(ctx, accountID, exocompute.AWSConfigParams{
+		Region:  gqlaws.RegionUsEast2,
+		VPCID:   "vpc-4859acb9",
+		Subnets: []gqlexo.AWSSubnet{{ID: "subnet-ea67b67b"}, {ID: "subnet-ea43ec78"}},
+	})
 	if err != nil {
 		log.Fatal(err)
 	}

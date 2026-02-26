@@ -105,98 +105,90 @@ func (a API) AWSConfigurations(ctx context.Context) ([]AWSConfiguration, error) 
 	return configs, nil
 }
 
-// AWSConfigurationFunc returns an CreateAWSConfigurationParams object
+// AWSConfig is implemented by types that can be used to create an AWS
+// exocompute configuration. Both AWSConfigurationFunc and AWSConfigParams
+// implement this interface.
+type AWSConfig interface {
+	isAWSConfig()
+}
+
+// AWSConfigParams holds the parameters for creating an AWS exocompute
+// configuration. It replaces the deprecated AWSManaged, AWSUnmanaged, and
+// AWSBYOKCluster functions:
+//   - RSC-managed security groups: leave ClusterSecurityGroupID and
+//     NodeSecurityGroupID empty.
+//   - Customer-managed security groups: set ClusterSecurityGroupID and
+//     NodeSecurityGroupID to the desired security group IDs.
+//   - BYOK (Bring-Your-Own-Kubernetes) cluster: only set the Region field,
+//     leave all other fields at their zero values.
+type AWSConfigParams struct {
+	Region aws.Region
+	VPCID  string
+
+	// Only ID, and optionally PodSubnetID, need to be set; AvailabilityZone is
+	// looked up automatically.
+	Subnets []exocompute.AWSSubnet
+
+	ClusterSecurityGroupID string                        // Omit for RSC-managed security groups
+	NodeSecurityGroupID    string                        // Omit for RSC-managed security groups
+	OptionalConfig         *exocompute.AWSOptionalConfig // Omit for no optional config
+	TriggerHealthCheck     bool
+}
+
+func (AWSConfigParams) isAWSConfig() {}
+
+// Deprecated: use AWSConfigParams instead.
+//
+// AWSConfigurationFunc returns a CreateAWSConfigurationParams object
 // initialized from the values passed to the function.
 type AWSConfigurationFunc func(ctx context.Context, gql *graphql.Client, id uuid.UUID) (exocompute.CreateAWSConfigurationParams, error)
 
+func (AWSConfigurationFunc) isAWSConfig() {}
+
+// Deprecated: use AWSConfigParams instead.
+//
 // AWSManaged returns an AWSConfigurationFunc which initializes the
 // CreateAWSConfigurationParams object with security groups managed by RSC.
 func AWSManaged(region aws.Region, vpcID string, subnetIDs []string, triggerHealthCheck bool) AWSConfigurationFunc {
 	return func(ctx context.Context, gql *graphql.Client, cloudAccountID uuid.UUID) (exocompute.CreateAWSConfigurationParams, error) {
-		// Validate VPC.
-		vpcs, err := exocompute.AWSVPCsByRegion(ctx, gql, cloudAccountID, region)
-		if err != nil {
-			return exocompute.CreateAWSConfigurationParams{}, fmt.Errorf("failed to get vpcs: %v", err)
-		}
-		vpc, err := awsFindVPC(vpcs, vpcID)
-		if err != nil {
-			return exocompute.CreateAWSConfigurationParams{}, fmt.Errorf("failed to find vpc: %v", err)
-		}
-
-		// Validate subnets.
 		if len(subnetIDs) != 2 {
-			return exocompute.CreateAWSConfigurationParams{}, errors.New("there should be exactly 2 subnet ids")
-		}
-		subnet1, err := awsFindSubnet(vpc, subnetIDs[0])
-		if err != nil {
-			return exocompute.CreateAWSConfigurationParams{}, fmt.Errorf("failed to find subnet: %v", err)
-		}
-		subnet2, err := awsFindSubnet(vpc, subnetIDs[1])
-		if err != nil {
-			return exocompute.CreateAWSConfigurationParams{}, fmt.Errorf("failed to find subnet: %v", err)
+			return exocompute.CreateAWSConfigurationParams{}, errors.New("there should be exactly 2 subnets")
 		}
 
-		return exocompute.CreateAWSConfigurationParams{
-			CloudAccountID:     cloudAccountID,
-			Region:             region.ToRegionEnum(),
-			VPCID:              vpcID,
-			Subnets:            []exocompute.AWSSubnet{subnet1, subnet2},
-			IsManagedByRubrik:  true,
-			TriggerHealthCheck: triggerHealthCheck,
-		}, nil
+		return createAWSConfigParams(ctx, gql, cloudAccountID, AWSConfigParams{
+			Region:                 region,
+			VPCID:                  vpcID,
+			Subnets:                []exocompute.AWSSubnet{{ID: subnetIDs[0]}, {ID: subnetIDs[1]}},
+			ClusterSecurityGroupID: "",
+			NodeSecurityGroupID:    "",
+			TriggerHealthCheck:     triggerHealthCheck,
+		})
 	}
 }
 
+// Deprecated: use AWSConfigParams instead.
+//
 // AWSUnmanaged returns an AWSConfigurationFunc which initializes the
 // CreateAWSConfigurationParams object with security groups managed by the user.
 func AWSUnmanaged(region aws.Region, vpcID string, subnetIDs []string, clusterSecurityGroupID, nodeSecurityGroupID string, triggerHealthCheck bool) AWSConfigurationFunc {
 	return func(ctx context.Context, gql *graphql.Client, cloudAccountID uuid.UUID) (exocompute.CreateAWSConfigurationParams, error) {
-		// Validate VPC.
-		vpcs, err := exocompute.AWSVPCsByRegion(ctx, gql, cloudAccountID, region)
-		if err != nil {
-			return exocompute.CreateAWSConfigurationParams{}, fmt.Errorf("failed to get vpcs: %v", err)
-		}
-		vpc, err := awsFindVPC(vpcs, vpcID)
-		if err != nil {
-			return exocompute.CreateAWSConfigurationParams{}, fmt.Errorf("failed to find vpc: %v", err)
-		}
-
-		// Validate subnets.
 		if len(subnetIDs) != 2 {
-			return exocompute.CreateAWSConfigurationParams{}, errors.New("there should be exactly 2 subnet ids")
-		}
-		subnet1, err := awsFindSubnet(vpc, subnetIDs[0])
-		if err != nil {
-			return exocompute.CreateAWSConfigurationParams{}, fmt.Errorf("failed to find subnet: %v", err)
-		}
-		subnet2, err := awsFindSubnet(vpc, subnetIDs[1])
-		if err != nil {
-			return exocompute.CreateAWSConfigurationParams{}, fmt.Errorf("failed to find subnet: %v", err)
+			return exocompute.CreateAWSConfigurationParams{}, errors.New("there should be exactly 2 subnets")
 		}
 
-		// Validate security groups.
-		if !awsHasSecurityGroup(vpc, clusterSecurityGroupID) {
-			return exocompute.CreateAWSConfigurationParams{},
-				fmt.Errorf("invalid cluster security group id: %v", clusterSecurityGroupID)
-		}
-		if !awsHasSecurityGroup(vpc, nodeSecurityGroupID) {
-			return exocompute.CreateAWSConfigurationParams{},
-				fmt.Errorf("invalid node security group id: %v", nodeSecurityGroupID)
-		}
-
-		return exocompute.CreateAWSConfigurationParams{
-			CloudAccountID:         cloudAccountID,
-			Region:                 region.ToRegionEnum(),
+		return createAWSConfigParams(ctx, gql, cloudAccountID, AWSConfigParams{
+			Region:                 region,
 			VPCID:                  vpcID,
-			Subnets:                []exocompute.AWSSubnet{subnet1, subnet2},
-			IsManagedByRubrik:      false,
-			ClusterSecurityGroupId: clusterSecurityGroupID,
-			NodeSecurityGroupId:    nodeSecurityGroupID,
+			Subnets:                []exocompute.AWSSubnet{{ID: subnetIDs[0]}, {ID: subnetIDs[1]}},
+			ClusterSecurityGroupID: clusterSecurityGroupID,
+			NodeSecurityGroupID:    nodeSecurityGroupID,
 			TriggerHealthCheck:     triggerHealthCheck,
-		}, nil
+		})
 	}
 }
 
+// Deprecated: use AWSConfigParams instead.
+//
 // AWSBYOKCluster returns an AWSConfigurationFunc which initializes an
 // exocompute configuration with a Bring-Your-Own-Kubernetes cluster.
 func AWSBYOKCluster(region aws.Region) AWSConfigurationFunc {
@@ -208,12 +200,71 @@ func AWSBYOKCluster(region aws.Region) AWSConfigurationFunc {
 	}
 }
 
+func createAWSConfigParams(ctx context.Context, gql *graphql.Client, cloudAccountID uuid.UUID, params AWSConfigParams) (exocompute.CreateAWSConfigurationParams, error) {
+	// Validate VPC.
+	vpcs, err := exocompute.AWSVPCsByRegion(ctx, gql, cloudAccountID, params.Region)
+	if err != nil {
+		return exocompute.CreateAWSConfigurationParams{}, fmt.Errorf("failed to get vpcs: %s", err)
+	}
+	vpc, err := awsFindVPC(vpcs, params.VPCID)
+	if err != nil {
+		return exocompute.CreateAWSConfigurationParams{}, fmt.Errorf("failed to find vpc: %s", err)
+	}
+
+	// Validate subnets.
+	if len(params.Subnets) != 2 {
+		return exocompute.CreateAWSConfigurationParams{}, errors.New("there should be exactly 2 subnets")
+	}
+	subnet1, err := awsAvailabilityZone(vpc, params.Subnets[0])
+	if err != nil {
+		return exocompute.CreateAWSConfigurationParams{}, fmt.Errorf("failed to find subnet: %s", err)
+	}
+	subnet2, err := awsAvailabilityZone(vpc, params.Subnets[1])
+	if err != nil {
+		return exocompute.CreateAWSConfigurationParams{}, fmt.Errorf("failed to find subnet: %s", err)
+	}
+
+	// Validate security groups when customer-managed.
+	isManagedByRubrik := params.ClusterSecurityGroupID == "" && params.NodeSecurityGroupID == ""
+	if !isManagedByRubrik {
+		if !awsHasSecurityGroup(vpc, params.ClusterSecurityGroupID) {
+			return exocompute.CreateAWSConfigurationParams{},
+				fmt.Errorf("invalid cluster security group id: %s", params.ClusterSecurityGroupID)
+		}
+		if !awsHasSecurityGroup(vpc, params.NodeSecurityGroupID) {
+			return exocompute.CreateAWSConfigurationParams{},
+				fmt.Errorf("invalid node security group id: %s", params.NodeSecurityGroupID)
+		}
+	}
+
+	return exocompute.CreateAWSConfigurationParams{
+		CloudAccountID:         cloudAccountID,
+		Region:                 params.Region.ToRegionEnum(),
+		VPCID:                  params.VPCID,
+		Subnets:                []exocompute.AWSSubnet{subnet1, subnet2},
+		IsManagedByRubrik:      isManagedByRubrik,
+		ClusterSecurityGroupId: params.ClusterSecurityGroupID,
+		NodeSecurityGroupId:    params.NodeSecurityGroupID,
+		OptionalConfig:         params.OptionalConfig,
+		TriggerHealthCheck:     params.TriggerHealthCheck,
+	}, nil
+}
+
 // AddAWSConfiguration adds the exocompute configuration to the cloud account
-// with the specified ID. Returns the ID of the added exocompute configuration.
-func (a API) AddAWSConfiguration(ctx context.Context, cloudAccountID uuid.UUID, config AWSConfigurationFunc) (uuid.UUID, error) {
+// with the specified ID. When using AWSConfigParams, the VPC, subnets, and
+// security groups are validated against RSC before the configuration is
+// created. Returns the ID of the added exocompute configuration.
+func (a API) AddAWSConfiguration(ctx context.Context, cloudAccountID uuid.UUID, config AWSConfig) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	exoConfig, err := config(ctx, a.client, cloudAccountID)
+	var exoConfig exocompute.CreateAWSConfigurationParams
+	var err error
+	switch cfg := config.(type) {
+	case AWSConfigurationFunc:
+		exoConfig, err = cfg(ctx, a.client, cloudAccountID)
+	case AWSConfigParams:
+		exoConfig, err = createAWSConfigParams(ctx, a.client, cloudAccountID, cfg)
+	}
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to parse exocompute configuration: %s", err)
 	}
@@ -264,7 +315,8 @@ func (a API) AWSAppCloudAccounts(ctx context.Context, hostCloudAccountID uuid.UU
 }
 
 // AWSHostCloudAccount returns the AWS exocompute host cloud account ID for the
-// specified application cloud account.
+// specified application cloud account. If no host cloud account is found,
+// graphql.ErrNotFound is returned.
 func (a API) AWSHostCloudAccount(ctx context.Context, appCloudAccountID uuid.UUID) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
@@ -310,8 +362,8 @@ func (a API) UnmapAWSCloudAccount(ctx context.Context, appCloudAccountID uuid.UU
 	return nil
 }
 
-// AWSClusterConnection returns information about an AWS exocompute cluster
-// connection.
+// AWSClusterConnection returns the connection command and cluster setup YAML
+// manifest for an AWS exocompute cluster connection.
 func (a API) AWSClusterConnection(ctx context.Context, clusterName string, configID uuid.UUID) (exocompute.AWSClusterConnectionResult, error) {
 	a.log.Print(log.Trace)
 
@@ -352,8 +404,8 @@ func (a API) DisconnectAWSCluster(ctx context.Context, clusterID uuid.UUID) erro
 	return nil
 }
 
-// hasSecurityGroup returns true if an AWS security group with the specified ID
-// exists.
+// awsHasSecurityGroup returns true if an AWS security group with the specified
+// ID exists in the VPC.
 func awsHasSecurityGroup(vpc exocompute.AWSVPC, groupID string) bool {
 	for _, group := range vpc.SecurityGroups {
 		if group.ID == groupID {
@@ -363,25 +415,25 @@ func awsHasSecurityGroup(vpc exocompute.AWSVPC, groupID string) bool {
 	return false
 }
 
-// awsFindVPC returns the AWS VPC with the specified VPC id.
+// awsFindVPC returns the AWS VPC with the specified VPC ID.
 func awsFindVPC(vpcs []exocompute.AWSVPC, vpcID string) (exocompute.AWSVPC, error) {
 	for _, vpc := range vpcs {
 		if vpc.ID == vpcID {
 			return vpc, nil
 		}
 	}
-	return exocompute.AWSVPC{}, fmt.Errorf("invalid vpc id: %v", vpcID)
+	return exocompute.AWSVPC{}, fmt.Errorf("invalid vpc id: %s", vpcID)
 }
 
-// awsFindSubnet returns the AWS subnet with the specified subnet ID.
-func awsFindSubnet(vpc exocompute.AWSVPC, subnetID string) (exocompute.AWSSubnet, error) {
-	for _, subnet := range vpc.Subnets {
-		if subnet.ID == subnetID {
-			return exocompute.AWSSubnet{
-				ID:               subnet.ID,
-				AvailabilityZone: subnet.AvailabilityZone,
-			}, nil
+// awsAvailabilityZone looks up the given subnet in the VPC and returns a copy
+// with the AvailabilityZone populated from the VPC data. All other fields from
+// the input subnet are preserved.
+func awsAvailabilityZone(vpc exocompute.AWSVPC, subnet exocompute.AWSSubnet) (exocompute.AWSSubnet, error) {
+	for _, s := range vpc.Subnets {
+		if s.ID == subnet.ID {
+			subnet.AvailabilityZone = s.AvailabilityZone
+			return subnet, nil
 		}
 	}
-	return exocompute.AWSSubnet{}, fmt.Errorf("invalid subnet id: %v", subnetID)
+	return exocompute.AWSSubnet{}, fmt.Errorf("invalid subnet ID: %s", subnet.ID)
 }
