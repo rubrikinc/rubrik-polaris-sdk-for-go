@@ -307,3 +307,63 @@ func ObjectByIDAndWorkload[T any](ctx context.Context, gql *graphql.Client, fid 
 
 	return payload.Data.Result, nil
 }
+
+func Operations(ctx context.Context, gql *graphql.Client) ([]string, error) {
+	gql.Log().Print(log.Trace)
+
+	query := operationEnumQuery
+	buf, err := gql.Request(ctx, query, struct{}{})
+	if err != nil {
+		return nil, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				EnumValues []struct {
+					Name string `json:"name"`
+				} `json:"enumValues"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, graphql.UnmarshalError(query, err)
+	}
+
+	operations := make([]string, 0, len(payload.Data.Result.EnumValues))
+	for _, op := range payload.Data.Result.EnumValues {
+		operations = append(operations, op.Name)
+	}
+
+	return operations, nil
+}
+
+func Workloads(ctx context.Context, gql *graphql.Client) ([]string, error) {
+	gql.Log().Print(log.Trace)
+
+	query := workloadEnumQuery
+	buf, err := gql.Request(ctx, query, struct{}{})
+	if err != nil {
+		return nil, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				EnumValues []struct {
+					Name string `json:"name"`
+				} `json:"enumValues"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, graphql.UnmarshalError(query, err)
+	}
+
+	workloads := make([]string, 0, len(payload.Data.Result.EnumValues))
+	for _, op := range payload.Data.Result.EnumValues {
+		workloads = append(workloads, op.Name)
+	}
+
+	return workloads, nil
+}
