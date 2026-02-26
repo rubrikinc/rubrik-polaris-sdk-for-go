@@ -41,6 +41,20 @@ var deploymentVersionQuery = `query SdkGolangDeploymentVersion {
     deploymentVersion
 }`
 
+// enumValues GraphQL query
+var enumValuesQuery = `query SdkGolangOperationEnum($enumName: String!) {
+  result: __type(name: $enumName) {
+    name
+    kind
+    enumValues {
+      name
+      description
+      isDeprecated
+      deprecationReason
+    }
+  }
+}`
+
 // featureFlag GraphQL query
 var featureFlagQuery = `query SdkGolangFeatureFlag($flagName: FeatureFlagName!) {
     result: featureFlag(flagName: $flagName, entityType: ACCOUNT, entityContext: []) {

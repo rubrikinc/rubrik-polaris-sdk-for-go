@@ -1,5 +1,5 @@
-query SdkGolangOperationEnum {
-  result: __type(name: "WorkloadLevelHierarchy") {
+query SdkGolangOperationEnum($enumName: String!) {
+  result: __type(name: $enumName) {
     name
     kind
     enumValues {
