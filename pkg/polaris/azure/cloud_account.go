@@ -479,31 +479,34 @@ func (a API) UpdateSubscription(ctx context.Context, cloudAccountID uuid.UUID, f
 		return nil
 	}
 
-	for _, accountFeature := range account.Features {
-		regions := make(map[azure.Region]struct{})
-		for _, region := range options.regions {
-			regions[region] = struct{}{}
-		}
+	accountFeature, ok := account.Feature(feature)
+	if !ok {
+		return fmt.Errorf("failed to get feature %s", feature)
+	}
 
-		var remove []azure.Region
-		for _, region := range accountFeature.Regions {
-			reg := azure.RegionFromName(region)
-			if _, ok := regions[reg]; ok {
-				delete(regions, reg)
-			} else {
-				remove = append(remove, reg)
-			}
-		}
+	regions := make(map[azure.Region]struct{})
+	for _, region := range options.regions {
+		regions[region] = struct{}{}
+	}
 
-		var add []azure.Region
-		for region := range regions {
-			add = append(add, region)
+	var remove []azure.Region
+	for _, region := range accountFeature.Regions {
+		reg := azure.RegionFromName(region)
+		if _, ok := regions[reg]; ok {
+			delete(regions, reg)
+		} else {
+			remove = append(remove, reg)
 		}
+	}
 
-		err = gqlazure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, accountFeature.Feature, options.name, add, remove)
-		if err != nil {
-			return fmt.Errorf("failed to update subscription: %v", err)
-		}
+	var add []azure.Region
+	for region := range regions {
+		add = append(add, region)
+	}
+
+	err = gqlazure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, feature, options.name, add, remove)
+	if err != nil {
+		return fmt.Errorf("failed to update subscription: %v", err)
 	}
 
 	return nil

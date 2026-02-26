@@ -632,6 +632,110 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	}
 }
 
+// TestAzureUpdateSubscriptionRegionIsolation verifies that updating the
+// regions for one feature does not affect the regions of other features on the
+// same subscription.
+//
+// This is a regression test for a bug where UpdateSubscription iterated over
+// all account features and applied the desired regions to each one, causing
+// unrelated features to have their regions overwritten.
+//
+// To run this test against an RSC instance, the following environment variables
+// need to be set:
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
+//   - AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
+func TestAzureUpdateSubscriptionRegionIsolation(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	testSubscription, err := testsetup.AzureSubscription()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	azureClient := Wrap(client)
+
+	_, err = azureClient.SetServicePrincipal(ctx, Default(testSubscription.TenantDomain))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add the subscription with CNP.
+	subscription := Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
+	cnpResourceGroup := ResourceGroup(testSubscription.CloudNativeProtection.ResourceGroupName,
+		testSubscription.CloudNativeProtection.ResourceGroupRegion, nil)
+	id, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection,
+		Name(testSubscription.SubscriptionName),
+		Regions(testSubscription.CloudNativeProtection.Regions...),
+		cnpResourceGroup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		azureClient.RemoveSubscription(ctx, id, core.FeatureExocompute, false)
+		azureClient.RemoveSubscription(ctx, id, core.FeatureCloudNativeProtection, false)
+	})
+
+	// Add Exocompute to the same subscription with its own distinct regions.
+	exoResourceGroup := ResourceGroup(testSubscription.Exocompute.ResourceGroupName,
+		testSubscription.Exocompute.ResourceGroupRegion, nil)
+	if _, err = azureClient.AddSubscription(ctx, subscription, core.FeatureExocompute,
+		Regions(testSubscription.Exocompute.Regions...),
+		exoResourceGroup); err != nil {
+		t.Fatal(err)
+	}
+
+	// Record the initial Exocompute regions before we touch CNP.
+	account, err := azureClient.SubscriptionByID(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exoFeature, ok := account.Feature(core.FeatureExocompute)
+	if !ok {
+		t.Fatalf("%s feature not found", core.FeatureExocompute)
+	}
+	initialExoRegions := slices.Clone(exoFeature.Regions)
+	slices.Sort(initialExoRegions)
+
+	// Update only CNP regions to "westus2".
+	if err := azureClient.UpdateSubscription(ctx, id, core.FeatureCloudNativeProtection,
+		Regions("westus2")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Re-read the account and verify that:
+	//   1. CNP now has the new regions.
+	//   2. Exocompute regions are unchanged.
+	account, err = azureClient.SubscriptionByID(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cnpFeature, ok := account.Feature(core.FeatureCloudNativeProtection)
+	if !ok {
+		t.Fatalf("%s feature not found after update", core.FeatureCloudNativeProtection)
+	}
+	slices.Sort(cnpFeature.Regions)
+	if !slices.Equal(cnpFeature.Regions, []string{"westus2"}) {
+		t.Fatalf("CNP regions after update: got %v, want [westus2]", cnpFeature.Regions)
+	}
+
+	exoFeature, ok = account.Feature(core.FeatureExocompute)
+	if !ok {
+		t.Fatalf("%s feature not found after CNP update", core.FeatureExocompute)
+	}
+	slices.Sort(exoFeature.Regions)
+	if !slices.Equal(exoFeature.Regions, initialExoRegions) {
+		t.Fatalf("Exocompute regions changed after CNP update: got %v, want %v",
+			exoFeature.Regions, initialExoRegions)
+	}
+}
+
 func TestToSubscription(t *testing.T) {
 	rawTenants, err := allAzureCloudAccountTenantsResponse()
 	if err != nil {
