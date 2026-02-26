@@ -1,7 +1,8 @@
-mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $feature: UpgradeAzureCloudAccountFeatureInput!) {
+mutation RubrikPolarisSDKRequest($cloudAccountId: UUID!, $feature: UpgradeAzureCloudAccountFeatureInput!, $entraIdGroupId: String) {
     result: upgradeAzureCloudAccountPermissionsWithoutOauth(input: {
         cloudAccountId:   $cloudAccountId,
         featureToUpgrade: [$feature],
+        entraIdGroupId:   $entraIdGroupId,
     }) {
         status
     }

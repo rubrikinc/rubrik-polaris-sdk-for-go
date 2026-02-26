@@ -101,6 +101,7 @@
         "domainName": "domain2.onmicrosoft.com",
         "clientId": "6688f45e-b1dc-41d8-b926-3acef4a4beaf",
         "appName": "app2",
+        "entraIdGroupId": "00000000-0000-0000-0000-000000000042",
         "subscriptionCount": 2,
         "subscriptions": [
           {
@@ -186,6 +187,7 @@
         "domainName": "domain2.onmicrosoft.com",
         "clientId": "6688f45e-b1dc-41d8-b926-3acef4a4beaf",
         "appName": "app2",
+        "entraIdGroupId": "00000000-0000-0000-0000-000000000042",
         "subscriptionCount": 2,
         "subscriptions": [
           {

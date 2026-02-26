@@ -34,6 +34,7 @@ type options struct {
 	regions             []azure.Region
 	resourceGroup       *gqlazure.ResourceGroup
 	featureSpecificInfo *gqlazure.FeatureSpecificInfo
+	entraGroupID        string
 }
 
 // OptionFunc gives the value passed to the function creating the OptionFunc
@@ -97,6 +98,17 @@ func ResourceGroup(name, region string, tags map[string]string) OptionFunc {
 			TagList: gqlazure.TagList{Tags: tagList},
 			Region:  azure.RegionFromName(region).ToCloudAccountRegionEnum(),
 		}
+		return nil
+	}
+}
+
+// EntraGroupID returns an OptionFunc that gives the specified Entra ID group
+// object ID to the option instance. This is needed for Exocompute AKS cluster
+// authentication when the CNP_AZURE_EXOCOMPUTE_ENTRA_ID_BETA_ENABLED or
+// CNP_AZURE_EXOCOMPUTE_ENTRA_ID_ENABLED feature flag is enabled.
+func EntraGroupID(groupID string) OptionFunc {
+	return func(ctx context.Context, opts *options) error {
+		opts.entraGroupID = groupID
 		return nil
 	}
 }
