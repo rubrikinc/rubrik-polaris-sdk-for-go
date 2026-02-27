@@ -201,6 +201,14 @@ func AWSBYOKCluster(region aws.Region) AWSConfigurationFunc {
 }
 
 func createAWSConfigParams(ctx context.Context, gql *graphql.Client, cloudAccountID uuid.UUID, params AWSConfigParams) (exocompute.CreateAWSConfigurationParams, error) {
+	// BYOK: only Region is set, no VPC/subnet validation needed.
+	if params.VPCID == "" {
+		return exocompute.CreateAWSConfigurationParams{
+			CloudAccountID: cloudAccountID,
+			Region:         params.Region.ToRegionEnum(),
+		}, nil
+	}
+
 	// Validate VPC.
 	vpcs, err := exocompute.AWSVPCsByRegion(ctx, gql, cloudAccountID, params.Region)
 	if err != nil {
