@@ -40,6 +40,7 @@ type CloudAccountTenant struct {
 	ClientID          uuid.UUID      `json:"clientId"`
 	AppName           string         `json:"appName"`
 	DomainName        string         `json:"domainName"`
+	EntraGroupID      string         `json:"entraIdGroupId"`
 	SubscriptionCount int            `json:"subscriptionCount"`
 	Accounts          []CloudAccount `json:"subscriptions"`
 }
@@ -157,9 +158,11 @@ func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, incl
 }
 
 // AddCloudAccountWithoutOAuth adds the Azure Subscription cloud account
-// for given feature without OAuth.
+// for given feature without OAuth. The entraGroupID is optional and only
+// required when the Entra ID authentication feature flag is enabled, otherwise
+// an empty string can be passed in.
 func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uuid.UUID, feature CloudAccountFeature,
-	name, tenantDomain string, regions []azure.Region) (string, error) {
+	name, tenantDomain, entraGroupID string, regions []azure.Region) (string, error) {
 	a.log.Print(log.Trace)
 
 	query := addAzureCloudAccountWithoutOauthQuery
@@ -170,6 +173,7 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 		SubscriptionID   uuid.UUID                      `json:"subscriptionId"`
 		TenantDomain     string                         `json:"tenantDomainName"`
 		Regions          []azure.CloudAccountRegionEnum `json:"regions"`
+		EntraGroupID     string                         `json:"entraIdGroupId,omitempty"`
 	}{
 		Cloud:            cloud,
 		Feature:          feature,
@@ -177,6 +181,7 @@ func (a API) AddCloudAccountWithoutOAuth(ctx context.Context, cloud Cloud, id uu
 		SubscriptionID:   id,
 		TenantDomain:     tenantDomain,
 		Regions:          RegionsToCloudAccountRegionEnum(regions),
+		EntraGroupID:     entraGroupID,
 	})
 	if err != nil {
 		return "", graphql.RequestError(query, err)
@@ -353,13 +358,14 @@ type PermissionUpgrade struct {
 	Feature             core.Feature
 	ResourceGroup       *ResourceGroup       // Optional, only for Azure SQL DB resource group upgrades.
 	FeatureSpecificInfo *FeatureSpecificInfo // Optional, only for Azure SQL DB feature.
+	EntraGroupID        string               // Optional, only required when the Entra ID feature flag is enabled.
 }
 
 // UpgradeCloudAccountPermissionsWithoutOAuth notifies RSC that the permissions
 // for the Azure service principal have been updated for the specified RSC cloud
 // account id and feature.
-// The ResourceGroup field is optional and only required when the Azure SQL DB
-// feature is upgraded to support resource groups.
+// The ResourceGroup and EntraGroupID fields are optional; see PermissionUpgrade
+// for details.
 func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, in PermissionUpgrade) error {
 	a.log.Print(log.Trace)
 
@@ -379,9 +385,10 @@ func (a API) UpgradeCloudAccountPermissionsWithoutOAuth(ctx context.Context, in 
 	}
 
 	buf, err := a.GQL.Request(ctx, query, struct {
-		ID      uuid.UUID `json:"cloudAccountId"`
-		Feature any       `json:"feature"`
-	}{ID: in.CloudAccountID, Feature: queryFeature})
+		ID           uuid.UUID `json:"cloudAccountId"`
+		Feature      any       `json:"feature"`
+		EntraGroupID string    `json:"entraIdGroupId,omitempty"`
+	}{ID: in.CloudAccountID, Feature: queryFeature, EntraGroupID: in.EntraGroupID})
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}

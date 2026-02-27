@@ -25,7 +25,7 @@
 package azure
 
 // addAzureCloudAccountWithoutOauth GraphQL query
-var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAccountWithoutOauth($tenantDomainName: String!, $azureCloudType: AzureCloudType!, $regions: [AzureCloudAccountRegion!]!, $feature: AddAzureCloudAccountFeatureInputWithoutOauth!, $subscriptionName: String!, $subscriptionId: String!) {
+var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAccountWithoutOauth($tenantDomainName: String!, $azureCloudType: AzureCloudType!, $regions: [AzureCloudAccountRegion!]!, $feature: AddAzureCloudAccountFeatureInputWithoutOauth!, $subscriptionName: String!, $subscriptionId: String!, $entraIdGroupId: String) {
     result: addAzureCloudAccountWithoutOauth(input: {
         tenantDomainName: $tenantDomainName,
         azureCloudType:   $azureCloudType,
@@ -36,7 +36,8 @@ var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAcco
             }
             features: [$feature]
         },
-        regions: $regions,
+        regions:        $regions,
+        entraIdGroupId: $entraIdGroupId,
     }) {
         tenantId
         status {
@@ -55,6 +56,7 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
         clientId
         appName
         domainName
+        entraIdGroupId
         subscriptionCount
         subscriptions {
             id
@@ -220,20 +222,22 @@ var updateAzureCloudAccountQuery = `mutation SdkGolangUpdateAzureCloudAccount($f
 }`
 
 // upgradeAzureCloudAccountPermissionsWithoutOauth GraphQL query
-var upgradeAzureCloudAccountPermissionsWithoutOauthQuery = `mutation SdkGolangUpgradeAzureCloudAccountPermissionsWithoutOauth($cloudAccountId: UUID!, $feature: CloudAccountFeature!) {
+var upgradeAzureCloudAccountPermissionsWithoutOauthQuery = `mutation SdkGolangUpgradeAzureCloudAccountPermissionsWithoutOauth($cloudAccountId: UUID!, $feature: CloudAccountFeature!, $entraIdGroupId: String) {
     result: upgradeAzureCloudAccountPermissionsWithoutOauth(input: {
         cloudAccountId: $cloudAccountId,
         feature:        $feature,
+        entraIdGroupId: $entraIdGroupId,
     }) {
         status
     }
 }`
 
 // upgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroups GraphQL query
-var upgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroupsQuery = `mutation SdkGolangUpgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroups($cloudAccountId: UUID!, $feature: UpgradeAzureCloudAccountFeatureInput!) {
+var upgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroupsQuery = `mutation SdkGolangUpgradeAzureCloudAccountPermissionsWithoutOauthWithPermissionGroups($cloudAccountId: UUID!, $feature: UpgradeAzureCloudAccountFeatureInput!, $entraIdGroupId: String) {
     result: upgradeAzureCloudAccountPermissionsWithoutOauth(input: {
         cloudAccountId:   $cloudAccountId,
         featureToUpgrade: [$feature],
+        entraIdGroupId:   $entraIdGroupId,
     }) {
         status
     }

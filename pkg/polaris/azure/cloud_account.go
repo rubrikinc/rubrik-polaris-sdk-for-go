@@ -43,6 +43,7 @@ type CloudAccountTenant struct {
 	ClientID          uuid.UUID // Azure app registration application id.
 	AppName           string
 	DomainName        string // Azure tenant domain.
+	EntraGroupID      string // Entra ID group object ID for Exocompute AKS auth.
 	SubscriptionCount int
 }
 
@@ -53,6 +54,10 @@ type CloudAccount struct {
 	Name         string
 	TenantID     uuid.UUID // Rubrik tenant ID.
 	TenantDomain string    // Azure tenant domain.
+	// EntraGroupID is the Entra ID group object ID for Exocompute AKS auth.
+	// Inherited from the tenant; all subscriptions within the same tenant
+	// share the same value.
+	EntraGroupID string
 	Features     []Feature
 }
 
@@ -327,7 +332,7 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 	}
 
 	_, err = gqlazure.Wrap(a.client).AddCloudAccountWithoutOAuth(ctx, gqlazure.PublicCloud, config.NativeID, cloudAccountFeature,
-		config.name, config.tenantDomain, options.regions)
+		config.name, config.tenantDomain, options.entraGroupID, options.regions)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to add subscription: %v", err)
 	}
@@ -427,6 +432,13 @@ func (a API) UpdateSubscription(ctx context.Context, cloudAccountID uuid.UUID, f
 		return fmt.Errorf("failed to get subscription: %w", err)
 	}
 
+	var options options
+	for _, option := range opts {
+		if err := option(ctx, &options); err != nil {
+			return fmt.Errorf("failed to lookup option: %s", err)
+		}
+	}
+
 	// If the feature has permission groups, we check if the permission groups
 	// has changed, if they have changed, we update the permission groups.
 	if len(feature.PermissionGroups) > 0 {
@@ -434,22 +446,17 @@ func (a API) UpdateSubscription(ctx context.Context, cloudAccountID uuid.UUID, f
 		if !ok {
 			return fmt.Errorf("failed to get feature %s", feature)
 		}
-		if !feature.DeepEqual(azureFeature.Feature) {
+		if !feature.DeepEqual(azureFeature.Feature) || options.entraGroupID != "" {
 			if err := gqlazure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, gqlazure.PermissionUpgrade{
 				CloudAccountID: account.ID,
 				Feature:        feature,
+				EntraGroupID:   options.entraGroupID,
 			}); err != nil {
 				return fmt.Errorf("failed to update subscription feature permission groups: %s", err)
 			}
 		}
 	}
 
-	var options options
-	for _, option := range opts {
-		if err := option(ctx, &options); err != nil {
-			return fmt.Errorf("failed to lookup option: %s", err)
-		}
-	}
 	if options.name == "" && len(options.regions) == 0 {
 		return nil
 	}
@@ -472,31 +479,34 @@ func (a API) UpdateSubscription(ctx context.Context, cloudAccountID uuid.UUID, f
 		return nil
 	}
 
-	for _, accountFeature := range account.Features {
-		regions := make(map[azure.Region]struct{})
-		for _, region := range options.regions {
-			regions[region] = struct{}{}
-		}
+	accountFeature, ok := account.Feature(feature)
+	if !ok {
+		return fmt.Errorf("failed to get feature %s", feature)
+	}
 
-		var remove []azure.Region
-		for _, region := range accountFeature.Regions {
-			reg := azure.RegionFromName(region)
-			if _, ok := regions[reg]; ok {
-				delete(regions, reg)
-			} else {
-				remove = append(remove, reg)
-			}
-		}
+	regions := make(map[azure.Region]struct{})
+	for _, region := range options.regions {
+		regions[region] = struct{}{}
+	}
 
-		var add []azure.Region
-		for region := range regions {
-			add = append(add, region)
+	var remove []azure.Region
+	for _, region := range accountFeature.Regions {
+		reg := azure.RegionFromName(region)
+		if _, ok := regions[reg]; ok {
+			delete(regions, reg)
+		} else {
+			remove = append(remove, reg)
 		}
+	}
 
-		err = gqlazure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, accountFeature.Feature, options.name, add, remove)
-		if err != nil {
-			return fmt.Errorf("failed to update subscription: %v", err)
-		}
+	var add []azure.Region
+	for region := range regions {
+		add = append(add, region)
+	}
+
+	err = gqlazure.Wrap(a.client).UpdateCloudAccount(ctx, account.ID, feature, options.name, add, remove)
+	if err != nil {
+		return fmt.Errorf("failed to update subscription: %v", err)
 	}
 
 	return nil
@@ -574,6 +584,7 @@ func toSubscriptions(rawTenants []gqlazure.CloudAccountTenant) []CloudAccount {
 					ClientID:          rawTenant.ClientID,
 					AppName:           rawTenant.AppName,
 					DomainName:        rawTenant.DomainName,
+					EntraGroupID:      rawTenant.EntraGroupID,
 					SubscriptionCount: rawTenant.SubscriptionCount,
 				},
 				accounts: make(map[uuid.UUID]*CloudAccount),
@@ -590,6 +601,7 @@ func toSubscriptions(rawTenants []gqlazure.CloudAccountTenant) []CloudAccount {
 					Name:         rawAccount.Name,
 					TenantID:     rawTenant.ID,
 					TenantDomain: rawTenant.DomainName,
+					EntraGroupID: rawTenant.EntraGroupID,
 				}
 				account = tenant.accounts[rawAccount.ID]
 			}
@@ -654,6 +666,7 @@ func toTenants(rawTenants []gqlazure.CloudAccountTenant) []CloudAccountTenant {
 				ClientID:          rawTenant.ClientID,
 				AppName:           rawTenant.AppName,
 				DomainName:        rawTenant.DomainName,
+				EntraGroupID:      rawTenant.EntraGroupID,
 				SubscriptionCount: rawTenant.SubscriptionCount,
 			}
 		}

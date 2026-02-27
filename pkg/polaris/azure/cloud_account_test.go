@@ -200,6 +200,182 @@ func TestAzureSubscriptionAddAndRemove(t *testing.T) {
 	}
 }
 
+// TestAzureSubscriptionAddAndRemoveWithEntraID verifies that the SDK can add
+// and remove an Azure subscription with an Entra ID group ID on a real RSC
+// instance, and that the Entra ID group ID is correctly persisted and read
+// back at the tenant level.
+//
+// To run this test against an RSC instance, the following environment variables
+// need to be set:
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
+//   - AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
+//
+// The file referred to by TEST_AZURESUBSCRIPTION_FILE should contain a single
+// testAzureSubscription JSON object.
+func TestAzureSubscriptionAddAndRemoveWithEntraID(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	testSubscription, err := testsetup.AzureSubscription()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	azureClient := Wrap(client)
+
+	// Add default Azure service principal to RSC. Usually resolved using the
+	// environment variable AZURE_AUTH_LOCATION.
+	_, err = azureClient.SetServicePrincipal(ctx, Default(testSubscription.TenantDomain))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Dummy Entra ID group object ID used for testing the field plumbing.
+	const entraGroupID = "00000000-0000-0000-0000-000000000001"
+
+	// Add Azure subscription to RSC with an Entra ID group ID.
+	subscription := Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
+	cnpRegions := Regions(testSubscription.CloudNativeProtection.Regions...)
+	cnpResourceGroup := ResourceGroup(testSubscription.CloudNativeProtection.ResourceGroupName,
+		testSubscription.CloudNativeProtection.ResourceGroupRegion, nil)
+	id, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection,
+		Name(testSubscription.SubscriptionName), cnpRegions, cnpResourceGroup,
+		EntraGroupID(entraGroupID))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the Entra ID group ID was persisted at the tenant level and
+	// is readable via the subscription.
+	account, err := azureClient.SubscriptionByID(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := account.EntraGroupID; got != entraGroupID {
+		t.Fatalf("invalid Entra ID group ID: %v", got)
+	}
+
+	// Enable the exocompute feature for the account.
+	exoRegions := Regions(testSubscription.Exocompute.Regions...)
+	exoResourceGroup := ResourceGroup(testSubscription.Exocompute.ResourceGroupName,
+		testSubscription.Exocompute.ResourceGroupRegion, nil)
+	exoAccountID, err := azureClient.AddSubscription(ctx, subscription, core.FeatureExocompute,
+		exoRegions, exoResourceGroup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exoAccountID != id {
+		t.Fatal("cloud native protection and exocompute added to different cloud accounts")
+	}
+
+	// Verify that the account now has both features and the Entra ID group ID
+	// is still correctly set.
+	account, err = azureClient.SubscriptionByID(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(account.Features); n != 2 {
+		t.Fatalf("invalid number of features: %v", n)
+	}
+	if _, ok := account.Feature(core.FeatureExocompute); !ok {
+		t.Fatalf("%s feature not found", core.FeatureExocompute)
+	}
+	if got := account.EntraGroupID; got != entraGroupID {
+		t.Fatalf("invalid Entra ID group ID after adding exocompute: %v", got)
+	}
+
+	// Remove exocompute feature first, then CNP.
+	if err := azureClient.RemoveSubscription(ctx, id, core.FeatureExocompute, false); err != nil {
+		t.Fatal(err)
+	}
+
+	// Remove the Azure subscription from RSC keeping the snapshots.
+	if err := azureClient.RemoveSubscription(ctx, id, core.FeatureCloudNativeProtection, false); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify that the account was successfully removed.
+	_, err = azureClient.SubscriptionByID(ctx, id)
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatal(err)
+	}
+}
+
+// TestAzureUpdateEntraGroupID verifies that the Entra ID group ID can be
+// changed on an existing subscription by calling
+// UpgradeCloudAccountPermissionsWithoutOAuth with a new non-empty value.
+//
+// To run this test against an RSC instance, the following environment variables
+// need to be set:
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
+//   - AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
+func TestAzureUpdateEntraGroupID(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	testSubscription, err := testsetup.AzureSubscription()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	azureClient := Wrap(client)
+
+	_, err = azureClient.SetServicePrincipal(ctx, Default(testSubscription.TenantDomain))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const (
+		entraGroupID1 = "00000000-0000-0000-0000-000000000001"
+		entraGroupID2 = "00000000-0000-0000-0000-000000000002"
+	)
+
+	// Onboard with the first Entra ID group ID.
+	subscription := Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
+	cnpRegions := Regions(testSubscription.CloudNativeProtection.Regions...)
+	cnpResourceGroup := ResourceGroup(testSubscription.CloudNativeProtection.ResourceGroupName,
+		testSubscription.CloudNativeProtection.ResourceGroupRegion, nil)
+	id, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection,
+		Name(testSubscription.SubscriptionName), cnpRegions, cnpResourceGroup,
+		EntraGroupID(entraGroupID1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		azureClient.RemoveSubscription(ctx, id, core.FeatureCloudNativeProtection, false)
+	})
+
+	// Change the Entra ID group ID by calling the upgrade mutation with the
+	// new value.
+	gqlClient := azure.Wrap(client.GQL)
+	if err := gqlClient.UpgradeCloudAccountPermissionsWithoutOAuth(ctx, azure.PermissionUpgrade{
+		CloudAccountID: id,
+		Feature:        core.FeatureCloudNativeProtection,
+		EntraGroupID:   entraGroupID2,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify the new value was accepted and persisted.
+	account, err := azureClient.SubscriptionByID(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := account.EntraGroupID; got != entraGroupID2 {
+		t.Fatalf("Entra ID group ID was not updated: got %q, want %q", got, entraGroupID2)
+	}
+}
+
 // TestAzureArchivalSubscriptionAddAndRemove verifies that the SDK can perform
 // the adding and removal of Azure subscription for archival feature on a real
 // RSC instance.
@@ -456,6 +632,110 @@ func TestAzureArchivalEncryptionSubscriptionAddAndRemove(t *testing.T) {
 	}
 }
 
+// TestAzureUpdateSubscriptionRegionIsolation verifies that updating the
+// regions for one feature does not affect the regions of other features on the
+// same subscription.
+//
+// This is a regression test for a bug where UpdateSubscription iterated over
+// all account features and applied the desired regions to each one, causing
+// unrelated features to have their regions overwritten.
+//
+// To run this test against an RSC instance, the following environment variables
+// need to be set:
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
+//   - AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
+func TestAzureUpdateSubscriptionRegionIsolation(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	testSubscription, err := testsetup.AzureSubscription()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	azureClient := Wrap(client)
+
+	_, err = azureClient.SetServicePrincipal(ctx, Default(testSubscription.TenantDomain))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add the subscription with CNP.
+	subscription := Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
+	cnpResourceGroup := ResourceGroup(testSubscription.CloudNativeProtection.ResourceGroupName,
+		testSubscription.CloudNativeProtection.ResourceGroupRegion, nil)
+	id, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection,
+		Name(testSubscription.SubscriptionName),
+		Regions(testSubscription.CloudNativeProtection.Regions...),
+		cnpResourceGroup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		azureClient.RemoveSubscription(ctx, id, core.FeatureExocompute, false)
+		azureClient.RemoveSubscription(ctx, id, core.FeatureCloudNativeProtection, false)
+	})
+
+	// Add Exocompute to the same subscription with its own distinct regions.
+	exoResourceGroup := ResourceGroup(testSubscription.Exocompute.ResourceGroupName,
+		testSubscription.Exocompute.ResourceGroupRegion, nil)
+	if _, err = azureClient.AddSubscription(ctx, subscription, core.FeatureExocompute,
+		Regions(testSubscription.Exocompute.Regions...),
+		exoResourceGroup); err != nil {
+		t.Fatal(err)
+	}
+
+	// Record the initial Exocompute regions before we touch CNP.
+	account, err := azureClient.SubscriptionByID(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exoFeature, ok := account.Feature(core.FeatureExocompute)
+	if !ok {
+		t.Fatalf("%s feature not found", core.FeatureExocompute)
+	}
+	initialExoRegions := slices.Clone(exoFeature.Regions)
+	slices.Sort(initialExoRegions)
+
+	// Update only CNP regions to "westus2".
+	if err := azureClient.UpdateSubscription(ctx, id, core.FeatureCloudNativeProtection,
+		Regions("westus2")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Re-read the account and verify that:
+	//   1. CNP now has the new regions.
+	//   2. Exocompute regions are unchanged.
+	account, err = azureClient.SubscriptionByID(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cnpFeature, ok := account.Feature(core.FeatureCloudNativeProtection)
+	if !ok {
+		t.Fatalf("%s feature not found after update", core.FeatureCloudNativeProtection)
+	}
+	slices.Sort(cnpFeature.Regions)
+	if !slices.Equal(cnpFeature.Regions, []string{"westus2"}) {
+		t.Fatalf("CNP regions after update: got %v, want [westus2]", cnpFeature.Regions)
+	}
+
+	exoFeature, ok = account.Feature(core.FeatureExocompute)
+	if !ok {
+		t.Fatalf("%s feature not found after CNP update", core.FeatureExocompute)
+	}
+	slices.Sort(exoFeature.Regions)
+	if !slices.Equal(exoFeature.Regions, initialExoRegions) {
+		t.Fatalf("Exocompute regions changed after CNP update: got %v, want %v",
+			exoFeature.Regions, initialExoRegions)
+	}
+}
+
 func TestToSubscription(t *testing.T) {
 	rawTenants, err := allAzureCloudAccountTenantsResponse()
 	if err != nil {
@@ -482,6 +762,9 @@ func TestToSubscription(t *testing.T) {
 	}
 	if subs[0].TenantDomain != "domain1.onmicrosoft.com" {
 		t.Errorf("invalid tenant domain: %v", subs[0].TenantDomain)
+	}
+	if subs[0].EntraGroupID != "" {
+		t.Errorf("invalid entra group id: %v", subs[0].EntraGroupID)
 	}
 	if !reflect.DeepEqual(subs[0].Features, []Feature{{
 		Feature: core.Feature{Name: "CLOUD_NATIVE_PROTECTION"},
@@ -523,6 +806,9 @@ func TestToSubscription(t *testing.T) {
 	if subs[1].TenantDomain != "domain2.onmicrosoft.com" {
 		t.Errorf("invalid tenant domain: %v", subs[1].TenantDomain)
 	}
+	if subs[1].EntraGroupID != "00000000-0000-0000-0000-000000000042" {
+		t.Errorf("invalid entra group id: %v", subs[1].EntraGroupID)
+	}
 	if !reflect.DeepEqual(subs[1].Features, []Feature{{
 		Feature: core.Feature{Name: "CLOUD_NATIVE_PROTECTION"},
 		ResourceGroup: FeatureResourceGroup{
@@ -562,6 +848,9 @@ func TestToSubscription(t *testing.T) {
 	}
 	if subs[2].TenantDomain != "domain2.onmicrosoft.com" {
 		t.Errorf("invalid tenant domain: %v", subs[2].TenantDomain)
+	}
+	if subs[2].EntraGroupID != "00000000-0000-0000-0000-000000000042" {
+		t.Errorf("invalid entra group id: %v", subs[2].EntraGroupID)
 	}
 	if !reflect.DeepEqual(subs[2].Features, []Feature{{
 		Feature: core.Feature{Name: "CLOUD_NATIVE_PROTECTION"},
@@ -617,6 +906,9 @@ func TestToTenant(t *testing.T) {
 	if tenants[0].DomainName != "domain1.onmicrosoft.com" {
 		t.Errorf("invalid domain: %v", tenants[0].DomainName)
 	}
+	if tenants[0].EntraGroupID != "" {
+		t.Errorf("invalid entra group id: %v", tenants[0].EntraGroupID)
+	}
 	if tenants[0].SubscriptionCount != 1 {
 		t.Errorf("invalid subscription count: %v", tenants[0].SubscriptionCount)
 	}
@@ -636,6 +928,9 @@ func TestToTenant(t *testing.T) {
 	}
 	if tenants[1].DomainName != "domain2.onmicrosoft.com" {
 		t.Errorf("invalid domain: %v", tenants[1].DomainName)
+	}
+	if tenants[1].EntraGroupID != "00000000-0000-0000-0000-000000000042" {
+		t.Errorf("invalid entra group id: %v", tenants[1].EntraGroupID)
 	}
 	if tenants[1].SubscriptionCount != 2 {
 		t.Errorf("invalid subscription count: %v", tenants[1].SubscriptionCount)
