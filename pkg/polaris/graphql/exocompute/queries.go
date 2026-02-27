@@ -80,10 +80,12 @@ var allAwsExocomputeConfigsQuery = `query SdkGolangAllAwsExocomputeConfigs($awsN
                 nodeSecurityGroupId
                 subnet1 {
                     availabilityZone
+                    podSubnetId
                     subnetId
                 }
                 subnet2 {
                     availabilityZone
+                    podSubnetId
                     subnetId
                 }
                 areSecurityGroupsRscManaged

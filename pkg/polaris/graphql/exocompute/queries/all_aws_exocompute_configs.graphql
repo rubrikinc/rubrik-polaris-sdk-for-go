@@ -35,10 +35,12 @@ query RubrikPolarisSDKRequest($awsNativeAccountIdOrNamePrefix: String!) {
                 nodeSecurityGroupId
                 subnet1 {
                     availabilityZone
+                    podSubnetId
                     subnetId
                 }
                 subnet2 {
                     availabilityZone
+                    podSubnetId
                     subnetId
                 }
                 areSecurityGroupsRscManaged

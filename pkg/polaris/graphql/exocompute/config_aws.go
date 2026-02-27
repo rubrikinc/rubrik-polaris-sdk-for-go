@@ -193,6 +193,7 @@ type AWSOptionalConfig struct {
 type AWSSubnet struct {
 	ID               string `json:"subnetId"`
 	AvailabilityZone string `json:"availabilityZone"`
+	PodSubnetID      string `json:"podSubnetId,omitempty"`
 }
 
 // AWSVPC represents an AWS VPC together with its subnets and security groups.
