@@ -1,0 +1,12 @@
+query SdkGolangOperationEnum($enumName: String!) {
+  result: __type(name: $enumName) {
+    name
+    kind
+    enumValues {
+      name
+      description
+      isDeprecated
+      deprecationReason
+    }
+  }
+}

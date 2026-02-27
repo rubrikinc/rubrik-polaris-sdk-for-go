@@ -606,3 +606,35 @@ func (a API) HierarchyObjectByID(ctx context.Context, fid uuid.UUID) (HierarchyO
 
 	return sla.ObjectByID(ctx, a.GQL, fid)
 }
+
+// ValuesByEnum returns the enum values for the specified enum name in the RSC GraphQL API.
+func (a API) ValuesByEnum(ctx context.Context, enumName string) ([]string, error) {
+	a.log.Print(log.Trace)
+
+	query := enumValuesQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		EnumName string `json:"enumName"`
+	}{EnumName: enumName})
+	if err != nil {
+		return nil, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				EnumValues []struct {
+					Name string `json:"name"`
+				} `json:"enumValues"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, graphql.UnmarshalError(query, err)
+	}
+
+	var enumValues []string
+	for _, v := range payload.Data.Result.EnumValues {
+		enumValues = append(enumValues, v.Name)
+	}
+	return enumValues, nil
+}
