@@ -439,21 +439,24 @@ func (a API) UpdateSubscription(ctx context.Context, cloudAccountID uuid.UUID, f
 		}
 	}
 
-	// If the feature has permission groups, we check if the permission groups
-	// has changed, if they have changed, we update the permission groups.
+	// Check if permission groups have changed.
+	var pgChanged bool
 	if len(feature.PermissionGroups) > 0 {
 		azureFeature, ok := account.Feature(feature)
 		if !ok {
 			return fmt.Errorf("failed to get feature %s", feature)
 		}
-		if !feature.DeepEqual(azureFeature.Feature) || options.entraGroupID != "" {
-			if err := gqlazure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, gqlazure.PermissionUpgrade{
-				CloudAccountID: account.ID,
-				Feature:        feature,
-				EntraGroupID:   options.entraGroupID,
-			}); err != nil {
-				return fmt.Errorf("failed to update subscription feature permission groups: %s", err)
-			}
+		pgChanged = !feature.DeepEqual(azureFeature.Feature)
+	}
+
+	// Update permissions and/or Entra group ID if either has changed.
+	if pgChanged || options.entraGroupID != "" {
+		if err := gqlazure.Wrap(a.client).UpgradeCloudAccountPermissionsWithoutOAuth(ctx, gqlazure.PermissionUpgrade{
+			CloudAccountID: account.ID,
+			Feature:        feature,
+			EntraGroupID:   options.entraGroupID,
+		}); err != nil {
+			return fmt.Errorf("failed to update subscription: %s", err)
 		}
 	}
 
