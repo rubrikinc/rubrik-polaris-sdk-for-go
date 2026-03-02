@@ -376,6 +376,107 @@ func TestAzureUpdateEntraGroupID(t *testing.T) {
 	}
 }
 
+// TestAzureUpdateSubscriptionEntraID verifies that UpdateSubscription
+// correctly updates the Entra ID group ID on an existing subscription, both
+// with and without explicit permission groups on the feature.
+//
+// The first update (without permission groups) is a regression test for a bug
+// where the Entra ID group ID update was silently skipped when
+// len(feature.PermissionGroups) == 0.
+//
+// To run this test against an RSC instance, the following environment variables
+// need to be set:
+//   - RUBRIK_POLARIS_SERVICEACCOUNT_FILE=<path-to-polaris-service-account-file>
+//   - TEST_INTEGRATION=1
+//   - TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
+//   - AZURE_AUTH_LOCATION=<path-to-azure-sdk-auth-file>
+func TestAzureUpdateSubscriptionEntraID(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	testSubscription, err := testsetup.AzureSubscription()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	azureClient := Wrap(client)
+
+	_, err = azureClient.SetServicePrincipal(ctx, Default(testSubscription.TenantDomain))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const (
+		entraGroupID1 = "00000000-0000-0000-0000-000000000001"
+		entraGroupID2 = "00000000-0000-0000-0000-000000000002"
+		entraGroupID3 = "00000000-0000-0000-0000-000000000003"
+	)
+
+	// Onboard the subscription without an Entra ID group ID.
+	subscription := Subscription(testSubscription.SubscriptionID, testSubscription.TenantDomain)
+	cnpRegions := Regions(testSubscription.CloudNativeProtection.Regions...)
+	cnpResourceGroup := ResourceGroup(testSubscription.CloudNativeProtection.ResourceGroupName,
+		testSubscription.CloudNativeProtection.ResourceGroupRegion, nil)
+	id, err := azureClient.AddSubscription(ctx, subscription, core.FeatureCloudNativeProtection,
+		Name(testSubscription.SubscriptionName), cnpRegions, cnpResourceGroup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		azureClient.RemoveSubscription(ctx, id, core.FeatureCloudNativeProtection, false)
+	})
+
+	// Set the Entra ID group ID via UpdateSubscription using a bare feature
+	// (no permission groups). This exercises the bug-fix path where
+	// entraGroupID is checked independently of len(feature.PermissionGroups).
+	if err := azureClient.UpdateSubscription(ctx, id, core.FeatureCloudNativeProtection,
+		EntraGroupID(entraGroupID1)); err != nil {
+		t.Fatal(err)
+	}
+
+	account, err := azureClient.SubscriptionByID(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := account.EntraGroupID; got != entraGroupID1 {
+		t.Fatalf("Entra ID group ID was not set: got %q, want %q", got, entraGroupID1)
+	}
+
+	// Update the Entra ID group ID again, still without permission groups.
+	if err := azureClient.UpdateSubscription(ctx, id, core.FeatureCloudNativeProtection,
+		EntraGroupID(entraGroupID2)); err != nil {
+		t.Fatal(err)
+	}
+
+	account, err = azureClient.SubscriptionByID(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := account.EntraGroupID; got != entraGroupID2 {
+		t.Fatalf("Entra ID group ID was not updated: got %q, want %q", got, entraGroupID2)
+	}
+
+	// Update the Entra ID group ID using a feature with explicit permission
+	// groups. The permission groups themselves have not changed, so pgChanged
+	// will be false, but the Entra ID group ID update should still be applied.
+	if err := azureClient.UpdateSubscription(ctx, id,
+		core.FeatureCloudNativeProtection.WithPermissionGroups(core.PermissionGroupBasic),
+		EntraGroupID(entraGroupID3)); err != nil {
+		t.Fatal(err)
+	}
+
+	account, err = azureClient.SubscriptionByID(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := account.EntraGroupID; got != entraGroupID3 {
+		t.Fatalf("Entra ID group ID was not updated with permission groups: got %q, want %q", got, entraGroupID3)
+	}
+}
+
 // TestAzureArchivalSubscriptionAddAndRemove verifies that the SDK can perform
 // the adding and removal of Azure subscription for archival feature on a real
 // RSC instance.
