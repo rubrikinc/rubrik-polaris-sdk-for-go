@@ -347,7 +347,7 @@ func (region RegionForReplicationEnum) String() string {
 func AllRegionNames() []string {
 	regions := make([]string, 0, len(regionInfoMap))
 	for _, info := range regionInfoMap {
-		if info.name != "" {
+		if info.name != "" && info.name != "n/a" {
 			regions = append(regions, info.name)
 		}
 	}
@@ -914,21 +914,21 @@ var regionInfoMap = map[Region]struct {
 		regionForReplicationEnum: "WEST_US3",
 	},
 	RegionSpainCentral: {
-		name:                     "n/a",
+		name:                     "spaincentral",
 		displayName:              "Spain Central",
-		regionalDisplayName:      "n/a",
-		regionEnum:               "n/a",
-		cloudAccountRegionEnum:   "n/a",
-		nativeRegionEnum:         "n/a",
+		regionalDisplayName:      "(Europe) Spain Central",
+		regionEnum:               "SPAIN_CENTRAL",
+		cloudAccountRegionEnum:   "SPAINCENTRAL",
+		nativeRegionEnum:         "SPAIN_CENTRAL",
 		regionForReplicationEnum: "SPAIN_CENTRAL",
 	},
 	RegionSwedenSouth: {
-		name:                     "n/a",
+		name:                     "swedensouth",
 		displayName:              "Sweden South",
-		regionalDisplayName:      "n/a",
-		regionEnum:               "n/a",
-		cloudAccountRegionEnum:   "n/a",
-		nativeRegionEnum:         "n/a",
+		regionalDisplayName:      "(Europe) Sweden South",
+		regionEnum:               "SWEDEN_SOUTH",
+		cloudAccountRegionEnum:   "SWEDENSOUTH",
+		nativeRegionEnum:         "SWEDEN_SOUTH",
 		regionForReplicationEnum: "SWEDEN_SOUTH",
 	},
 }
