@@ -4,6 +4,7 @@ mutation RubrikPolarisSDKRequest(
     $cmkInfo:                    [AzureCmkInput!],
     $containerName:              String!,
     $name:                       String!,
+    $networkAccessType:          AzureStorageAccountNetworkAccess,
     $redundancy:                 AzureRedundancy!,
     $storageTier:                AzureStorageTier!,
     $subscriptionNativeId:       String!
@@ -17,6 +18,7 @@ mutation RubrikPolarisSDKRequest(
         cmkInfo:                     $cmkInfo,
         containerName:               $containerName,
         name:                        $name,
+        networkAccessType:           $networkAccessType,
         redundancy:                  $redundancy,
         storageTier:                 $storageTier,
         subscriptionNativeId:        $subscriptionNativeId

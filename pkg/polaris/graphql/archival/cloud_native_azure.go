@@ -45,6 +45,7 @@ type AzureTargetMapping struct {
 		StorageAccountName   string `json:"storageAccountName"`
 		CloudNativeCompanion struct {
 			LocTemplate          string             `json:"cloudNativeLocTemplateType"`
+			NetworkAccessType    string             `json:"networkAccessType"`
 			Redundancy           string             `json:"redundancy"`
 			StorageTier          string             `json:"storageTier"`
 			NativeID             uuid.UUID          `json:"subscriptionNativeId"`
@@ -80,6 +81,7 @@ type CreateAzureStorageSettingParams struct {
 	LocTemplate          string             `json:"cloudNativeLocTemplateType"`
 	ContainerName        string             `json:"containerName"`
 	Name                 string             `json:"name"`
+	NetworkAccessType    string             `json:"networkAccessType,omitempty"`
 	Redundancy           string             `json:"redundancy"`
 	StorageTier          string             `json:"storageTier"`
 	NativeID             uuid.UUID          `json:"subscriptionNativeId"`
@@ -111,6 +113,7 @@ func (r CreateAzureStorageSettingResult) Validate() (uuid.UUID, error) {
 // Azure target mappings.
 type UpdateAzureStorageSettingParams struct {
 	Name               string             `json:"name"`
+	NetworkAccessType  string             `json:"networkAccessType,omitempty"`
 	StorageTier        string             `json:"storageTier"`
 	StorageAccountTags core.Tags          `json:"storageAccountTags"`
 	CMKInfo            []AzureCustomerKey `json:"cmkInfo,omitempty"`
