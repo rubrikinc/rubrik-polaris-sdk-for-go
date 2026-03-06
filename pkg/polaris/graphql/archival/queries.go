@@ -78,6 +78,7 @@ var allTargetMappingsQuery = `query SdkGolangAllTargetMappings($filter: [TargetM
                         keyVaultName
                         region
                     }
+                    networkAccessType
                     redundancy
                     storageAccountRegion
                     storageAccountTags {
@@ -218,6 +219,7 @@ var createCloudNativeAzureStorageSettingQuery = `mutation SdkGolangCreateCloudNa
     $cmkInfo:                    [AzureCmkInput!],
     $containerName:              String!,
     $name:                       String!,
+    $networkAccessType:          AzureStorageAccountNetworkAccess,
     $redundancy:                 AzureRedundancy!,
     $storageTier:                AzureStorageTier!,
     $subscriptionNativeId:       String!
@@ -231,6 +233,7 @@ var createCloudNativeAzureStorageSettingQuery = `mutation SdkGolangCreateCloudNa
         cmkInfo:                     $cmkInfo,
         containerName:               $containerName,
         name:                        $name,
+        networkAccessType:           $networkAccessType,
         redundancy:                  $redundancy,
         storageTier:                 $storageTier,
         subscriptionNativeId:        $subscriptionNativeId
@@ -550,6 +553,7 @@ var updateCloudNativeAwsStorageSettingQuery = `mutation SdkGolangUpdateCloudNati
 var updateCloudNativeAzureStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeAzureStorageSetting(
     $id:                 UUID!,
     $name:               String!,
+    $networkAccessType:  AzureStorageAccountNetworkAccess,
     $storageTier:        AzureStorageTier!,
     $storageAccountTags: TagsInput!,
     $cmkInfo:            [AzureCmkInput!],
@@ -557,6 +561,7 @@ var updateCloudNativeAzureStorageSettingQuery = `mutation SdkGolangUpdateCloudNa
     result: updateCloudNativeAzureStorageSetting(input: {
         id:                 $id,
         name:               $name,
+        networkAccessType:  $networkAccessType,
         storageTier:        $storageTier,
         storageAccountTags: $storageAccountTags,
         cmkInfo:            $cmkInfo,
