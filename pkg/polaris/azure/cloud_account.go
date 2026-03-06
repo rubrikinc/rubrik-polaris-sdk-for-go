@@ -95,7 +95,9 @@ func (f Feature) HasRegion(region string) bool {
 // SupportResourceGroup returns true if the feature supports being onboarded
 // with a resource group.
 func (f Feature) SupportResourceGroup() bool {
-	return !f.Equal(core.FeatureAzureSQLMIProtection) && !f.Equal(core.FeatureCloudNativeBlobProtection)
+	return !f.Equal(core.FeatureAzureSQLMIProtection) &&
+		!f.Equal(core.FeatureCloudNativeBlobProtection) &&
+		!f.Equal(core.FeatureCloudDiscovery)
 }
 
 // SupportUserAssignedManagedIdentity returns true if the feature supports
