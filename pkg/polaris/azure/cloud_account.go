@@ -100,6 +100,14 @@ func (f Feature) SupportResourceGroup() bool {
 		!f.Equal(core.FeatureCloudDiscovery)
 }
 
+// IsProtectionFeature returns true if the feature is a protection feature.
+func (f Feature) IsProtectionFeature() bool {
+	return f.Equal(core.FeatureCloudNativeProtection) ||
+		f.Equal(core.FeatureCloudNativeBlobProtection) ||
+		f.Equal(core.FeatureAzureSQLDBProtection) ||
+		f.Equal(core.FeatureAzureSQLMIProtection)
+}
+
 // SupportUserAssignedManagedIdentity returns true if the feature supports
 // being onboarded with user-assigned managed identity.
 func (f Feature) SupportUserAssignedManagedIdentity() bool {
@@ -364,11 +372,12 @@ func (a API) RemoveSubscription(ctx context.Context, cloudAccountID uuid.UUID, f
 		return fmt.Errorf("failed to retrieve subscription: %w", err)
 	}
 
-	// The Cloud Discovery feature must be removed after all other features.
+	// The Cloud Discovery feature must be removed after all protection
+	// features have been removed.
 	if feature.Equal(core.FeatureCloudDiscovery) {
 		for _, f := range account.Features {
-			if !f.Equal(core.FeatureCloudDiscovery) {
-				return errors.New("cloud discovery must be removed after all other features")
+			if f.IsProtectionFeature() {
+				return errors.New("cloud discovery must be removed after all other protection features")
 			}
 		}
 	}
