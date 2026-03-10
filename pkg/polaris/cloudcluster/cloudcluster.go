@@ -34,6 +34,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	polcluster "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/cluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/event"
+	polgcp "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -350,6 +351,106 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 	}
 
 	return cluster, nil
+}
+
+// CreateGcpCloudCluster creates a GCP Cloud Cluster with the specified configuration.
+// It validates the cloud account, CDM version, and cluster input before creating the
+// cluster. Returns the created cluster details after monitoring the creation process.
+func (a API) CreateGcpCloudCluster(ctx context.Context, input cloudcluster.CreateGcpClusterInput, useLatestCdmVersion bool) (cluster CloudCluster, err error) {
+	a.log.Print(log.Trace)
+
+	// Validate Cloud Account exists and has Server and Apps feature
+	gcpClient := polgcp.WrapGQL(a.client)
+	account, err := gcpClient.ProjectByID(ctx, input.CloudAccountID)
+	if err != nil {
+		return CloudCluster{}, err
+	}
+
+	if _, ok := account.Feature(core.FeatureServerAndApps); !ok {
+		return CloudCluster{}, fmt.Errorf("account %q missing feature %s", account.ID, core.FeatureServerAndApps.Name)
+	}
+
+	// Get available CDM versions
+	cdmVersions, err := cloudcluster.Wrap(a.client).AllGcpCdmVersions(ctx, input.CloudAccountID)
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("failed to get cdm versions: %s", err)
+	}
+
+	// Validate CDM version is available
+	validCdmVersion := false
+	var supportedInstanceTypes []cloudcluster.GcpCCInstanceType
+	for _, version := range cdmVersions {
+		if (version.IsLatest && useLatestCdmVersion) || (version.CdmVersion == input.VMConfig.CDMVersion) {
+			validCdmVersion = true
+			input.VMConfig.CDMVersion = version.CdmVersion
+			input.VMConfig.CDMProduct = version.CdmProduct
+			supportedInstanceTypes = version.SupportedInstanceTypes
+			break
+		}
+	}
+
+	if !validCdmVersion {
+		return CloudCluster{}, fmt.Errorf("cdm version %s is not available for account %s", input.VMConfig.CDMVersion, account.ID)
+	}
+
+	// Validate dynamic scaling is only enabled for CDM version 9.5 or higher
+	if input.ClusterConfig.DynamicScalingEnabled {
+		cdmVersion, err := polcluster.ParseCDMVersion(input.VMConfig.CDMVersion)
+		if err != nil {
+			return CloudCluster{}, fmt.Errorf("failed to parse CDM version %s: %s", input.VMConfig.CDMVersion, err)
+		}
+		if cdmVersion.LessThan("9.5") {
+			return CloudCluster{}, fmt.Errorf("dynamic scaling requires CDM version 9.5 or higher, got %s", input.VMConfig.CDMVersion)
+		}
+	}
+
+	// Ensure specified instance type is supported
+	validInstanceType := slices.Contains(supportedInstanceTypes, input.VMConfig.InstanceType)
+	if !validInstanceType {
+		return CloudCluster{}, fmt.Errorf("instance type %s is not supported for cdm version %s, supported Instance types are: %v", input.VMConfig.InstanceType, input.VMConfig.CDMVersion, supportedInstanceTypes)
+	}
+
+	// Validate CloudCluster Request
+	err = cloudcluster.Wrap(a.client).ValidateCreateGcpClusterInput(ctx, input)
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("failed to validate create cloud cluster: %s", err)
+	}
+
+	// JobID is ignored here due to a bug in the RSC API
+	_, err = cloudcluster.Wrap(a.client).CreateGcpCloudCluster(ctx, input)
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("failed to create cloud cluster: %s", err)
+	}
+
+	cluster, err = a.monitorCloudClusterEvents(ctx, input.ClusterConfig.ClusterName, input.CloudAccountID, input.VMConfig.CDMVersion, input.VMConfig.CDMProduct, string(input.VMConfig.InstanceType), input.Region)
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("failed to monitor cloud cluster events: %s", err)
+	}
+
+	return cluster, nil
+}
+
+// DeleteGcpCloudCluster deletes a GCP Cloud Cluster with the specified configuration.
+func (a API) DeleteGcpCloudCluster(ctx context.Context, input cloudcluster.DeleteGcpClusterInput) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	// Validate Cloud Account exists and has Server and Apps feature
+	gcpClient := polgcp.WrapGQL(a.client)
+	account, err := gcpClient.ProjectByID(ctx, input.CloudAccountID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	if _, ok := account.Feature(core.FeatureServerAndApps); !ok {
+		return uuid.Nil, fmt.Errorf("account %q missing feature %s", account.ID, core.FeatureServerAndApps.Name)
+	}
+
+	jobID, err := cloudcluster.Wrap(a.client).DeleteGcpCloudCluster(ctx, input)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to delete cloud cluster: %s", err)
+	}
+
+	return jobID, nil
 }
 
 // monitorCloudClusterEvents monitors the events for a cloud cluster create job and returns the cloud cluster object when complete.
