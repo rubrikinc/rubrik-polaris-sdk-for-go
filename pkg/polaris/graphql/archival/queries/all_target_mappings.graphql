@@ -33,6 +33,7 @@ query RubrikPolarisSDKRequest($filter: [TargetMappingFilterInput!]) {
                         keyVaultName
                         region
                     }
+                    networkAccessType
                     redundancy
                     storageAccountRegion
                     storageAccountTags {

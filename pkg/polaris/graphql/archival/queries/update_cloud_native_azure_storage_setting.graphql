@@ -1,6 +1,7 @@
 mutation RubrikPolarisSDKRequest(
     $id:                 UUID!,
     $name:               String!,
+    $networkAccessType:  AzureStorageAccountNetworkAccess,
     $storageTier:        AzureStorageTier!,
     $storageAccountTags: TagsInput!,
     $cmkInfo:            [AzureCmkInput!],
@@ -8,6 +9,7 @@ mutation RubrikPolarisSDKRequest(
     result: updateCloudNativeAzureStorageSetting(input: {
         id:                 $id,
         name:               $name,
+        networkAccessType:  $networkAccessType,
         storageTier:        $storageTier,
         storageAccountTags: $storageAccountTags,
         cmkInfo:            $cmkInfo,
