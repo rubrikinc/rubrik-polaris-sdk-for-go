@@ -299,6 +299,81 @@ var createAzureCcClusterQuery = `mutation SdkGolangCreateAzureCcCluster($input: 
   }
 }`
 
+// createGcpCloudCluster GraphQL query
+var createGcpCloudClusterQuery = `mutation SdkGolangCreateGcpCloudCluster($input: CreateGcpClusterInput!) {
+  result: createGcpCluster(input: $input) {
+    jobId
+    message
+    success
+  }
+}`
+
+// deleteGcpCcCluster GraphQL query
+var deleteGcpCcClusterQuery = `mutation SdkGolangDeleteGcpCcCluster($input: DeleteGcpClusterInput!) {
+  result: deleteGcpCluster(input: $input) {
+    jobId
+    message
+    success
+  }
+}`
+
+// gcpCcBuckets GraphQL query
+var gcpCcBucketsQuery = `query SdkGolangGcpCcBuckets($input: GcpBucketsReq!) {
+  result: gcpBuckets(input: $input) {
+    buckets {
+      bucketName
+      region
+      shouldCreateBucket
+    }
+  }
+}`
+
+// gcpCcCdmVersions GraphQL query
+var gcpCcCdmVersionsQuery = `query SdkGolangGcpCcCdmVersions($input: GcpCdmVersionReq!) {
+  result: gcpCdmVersions(input: $input) {
+    cdmVersions {
+      cdmVersion
+      cdmProduct
+      imageId
+      isLatest
+      supportedInstanceTypes
+    }
+  }
+}`
+
+// gcpCcRegions GraphQL query
+var gcpCcRegionsQuery = `query SdkGolangGcpCcRegions($input: GcpRegionsReq!) {
+  result: gcpRegions(input: $input) {
+    gcpRegions {
+      name
+      zones
+    }
+  }
+}`
+
+// gcpCcServiceAccounts GraphQL query
+var gcpCcServiceAccountsQuery = `query SdkGolangGcpCcServiceAccounts($input: GcpServiceAccountReq!) {
+  result: gcpServiceAccounts(input: $input) {
+    serviceAccounts {
+      email
+      name
+      scopes
+    }
+  }
+}`
+
+// gcpCcSubnets GraphQL query
+var gcpCcSubnetsQuery = `query SdkGolangGcpCcSubnets($input: GcpSubnetReq!) {
+  result: gcpSubnets(input: $input) {
+    subnets {
+      hostProject
+      name
+      network
+      region
+    }
+  }
+}`
+
 // removeAwsCcCluster GraphQL query
 var removeAwsCcClusterQuery = `mutation SdkGolangRemoveAwsCcCluster(
   $clusterUuid: UUID!
@@ -323,6 +398,14 @@ var validateAwsClusterCreateRequestQuery = `query SdkGolangValidateAwsClusterCre
 // validateAzureClusterCreateRequest GraphQL query
 var validateAzureClusterCreateRequestQuery = `query SdkGolangValidateAzureClusterCreateRequest($input: CreateAzureClusterInput!) {
   result: validateCreateAzureClusterInput(input: $input) {
+    message
+    isSuccessful
+  }
+}`
+
+// validateGcpClusterCreateRequest GraphQL query
+var validateGcpClusterCreateRequestQuery = `query SdkGolangValidateGcpClusterCreateRequest($input: CreateGcpClusterInput!) {
+  result: validateCreateGcpClusterInput(input: $input) {
     message
     isSuccessful
   }
