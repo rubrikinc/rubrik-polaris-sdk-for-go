@@ -55,6 +55,21 @@ var hierarchyObjectQuery = `query SdkGolangHierarchyObject($fid: UUID!, $workloa
         name
         objectType
         slaAssignment
+        ... on AwsNativeAccount {
+            status
+            awsFeatures: enabledFeatures {
+                featureName
+                status
+                lastRefreshedAt
+            }
+        }
+        ... on AzureNativeSubscription {
+            azureFeatures: enabledFeatures {
+                featureName
+                lastRefreshedAt
+                status
+            }
+        }
         configuredSlaDomain {
             ... on ClusterSlaDomain {
                 id
