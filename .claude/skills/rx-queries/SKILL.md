@@ -25,3 +25,8 @@ regenerated.
 3. Run `gofmt -l pkg/polaris/graphql/$domain/queries.go` to verify formatting.
 4. Run `git diff pkg/polaris/graphql/$domain/queries.go` to show what changed.
 5. Run `go vet ./pkg/polaris/graphql/$domain/...` to catch any errors.
+
+## Report Results
+
+Report the results of code generation for each domain package as table. If no domain package was provided, report the
+results for all domain packages that had modified `*.graphql` files.
