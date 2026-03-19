@@ -1,3 +1,23 @@
+// Copyright 2026 Rubrik, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
 package main
 
 import (
@@ -5,9 +25,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
@@ -113,8 +134,8 @@ const schemaQuery = `
 `
 
 func main() {
-	format := flag.String("format", "json", "output format: json or sdl")
-	output := flag.String("output", "", "output file (default: schema.json or schema.graphql)")
+	format := flag.String("format", "sdl", "output format: json or sdl")
+	output := flag.String("output", "", "output file (default: stdout)")
 	flag.Parse()
 
 	polAccount, err := polaris.DefaultServiceAccount(true)
@@ -137,26 +158,28 @@ func main() {
 		log.Fatal(err)
 	}
 
+	var w io.Writer = os.Stdout
+	if *output != "" {
+		f, err := os.Create(*output)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		w = f
+	}
+
 	switch *format {
 	case "json":
-		outputFile := *output
-		if outputFile == "" {
-			outputFile = "schema.json"
-		}
-		writeJSON(buf, outputFile)
+		writeJSON(buf, w)
 	case "sdl":
-		outputFile := *output
-		if outputFile == "" {
-			outputFile = "schema.graphql"
-		}
-		writeSDL(buf, outputFile)
+		writeSDL(buf, w)
 	default:
 		log.Fatalf("unknown format: %s (use json or sdl)", *format)
 	}
 }
 
 // writeJSON pretty-prints and writes the introspection result as JSON.
-func writeJSON(buf []byte, outputFile string) {
+func writeJSON(buf []byte, w io.Writer) {
 	var schema json.RawMessage
 	if err := json.Unmarshal(buf, &schema); err != nil {
 		log.Fatal(err)
@@ -166,13 +189,13 @@ func writeJSON(buf []byte, outputFile string) {
 		log.Fatal(err)
 	}
 
-	if err := os.WriteFile(outputFile, pretty, 0o644); err != nil {
+	if _, err := w.Write(pretty); err != nil {
 		log.Fatal(err)
 	}
 }
 
 // writeSDL converts the introspection result to SDL format and writes it.
-func writeSDL(buf []byte, outputFile string) {
+func writeSDL(buf []byte, w io.Writer) {
 	var resp struct {
 		Data struct {
 			Schema introspectionSchema `json:"__schema"`
@@ -194,16 +217,17 @@ func writeSDL(buf []byte, outputFile string) {
 	}
 
 	sdl := renderSDL(resp.Data.Schema)
-	if err := os.WriteFile(outputFile, []byte(sdl), 0o644); err != nil {
+	if _, err := io.WriteString(w, sdl); err != nil {
 		log.Fatal(err)
 	}
 }
 
 type introspectionSchema struct {
-	QueryType        *typeName          `json:"queryType"`
-	MutationType     *typeName          `json:"mutationType"`
-	Types            []fullType         `json:"types"`
-	Directives       []directive        `json:"directives"`
+	QueryType        *typeName   `json:"queryType"`
+	MutationType     *typeName   `json:"mutationType"`
+	SubscriptionType *typeName   `json:"subscriptionType"`
+	Types            []fullType  `json:"types"`
+	Directives       []directive `json:"directives"`
 }
 
 type typeName struct {
@@ -273,11 +297,15 @@ func renderSDL(schema introspectionSchema) string {
 
 	queryTypeName := ""
 	mutationTypeName := ""
+	subscriptionTypeName := ""
 	if schema.QueryType != nil {
 		queryTypeName = schema.QueryType.Name
 	}
 	if schema.MutationType != nil {
 		mutationTypeName = schema.MutationType.Name
+	}
+	if schema.SubscriptionType != nil {
+		subscriptionTypeName = schema.SubscriptionType.Name
 	}
 
 	for _, t := range schema.Types {
@@ -303,8 +331,8 @@ func renderSDL(schema introspectionSchema) string {
 
 	// Sort each category by name.
 	sortTypes := func(types []fullType) {
-		sort.Slice(types, func(i, j int) bool {
-			return types[i].Name < types[j].Name
+		slices.SortFunc(types, func(a, b fullType) int {
+			return strings.Compare(a.Name, b.Name)
 		})
 	}
 	sortTypes(scalars)
@@ -321,6 +349,9 @@ func renderSDL(schema introspectionSchema) string {
 	}
 	if mutationTypeName != "" {
 		fmt.Fprintf(&b, "  mutation: %s\n", mutationTypeName)
+	}
+	if subscriptionTypeName != "" {
+		fmt.Fprintf(&b, "  subscription: %s\n", subscriptionTypeName)
 	}
 	b.WriteString("}\n\n")
 
@@ -385,6 +416,32 @@ func renderSDL(schema introspectionSchema) string {
 		fmt.Fprintf(&b, "union %s = %s\n\n", t.Name, strings.Join(memberNames, " | "))
 	}
 
+	// Directives.
+	slices.SortFunc(schema.Directives, func(a, b directive) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+	builtIn := map[string]bool{"skip": true, "include": true, "deprecated": true, "specifiedBy": true}
+	for _, d := range schema.Directives {
+		if builtIn[d.Name] {
+			continue
+		}
+		writeDescription(&b, d.Description, "")
+		fmt.Fprintf(&b, "directive @%s", d.Name)
+		if len(d.Args) > 0 {
+			b.WriteString("(\n")
+			for _, arg := range d.Args {
+				writeDescription(&b, arg.Description, "  ")
+				fmt.Fprintf(&b, "  %s: %s", arg.Name, renderTypeRef(arg.Type))
+				if arg.DefaultValue != nil {
+					fmt.Fprintf(&b, " = %s", *arg.DefaultValue)
+				}
+				b.WriteString("\n")
+			}
+			b.WriteString(")")
+		}
+		fmt.Fprintf(&b, " on %s\n\n", strings.Join(d.Locations, " | "))
+	}
+
 	// Object types (Query and Mutation first, then the rest).
 	for _, t := range objects {
 		if t.Name != queryTypeName && t.Name != mutationTypeName {
@@ -446,14 +503,20 @@ func writeFieldSDL(b *strings.Builder, f field) {
 	b.WriteString("\n")
 }
 
-// writeDescription writes a description as a block comment if non-empty.
+// writeDescription writes a description using GraphQL spec syntax.
 func writeDescription(b *strings.Builder, desc, indent string) {
 	if desc == "" {
 		return
 	}
-	for line := range strings.SplitSeq(desc, "\n") {
-		fmt.Fprintf(b, "%s# %s\n", indent, line)
+	if !strings.Contains(desc, "\n") {
+		fmt.Fprintf(b, "%s\"%s\"\n", indent, desc)
+		return
 	}
+	fmt.Fprintf(b, "%s\"\"\"\n", indent)
+	for line := range strings.SplitSeq(desc, "\n") {
+		fmt.Fprintf(b, "%s%s\n", indent, line)
+	}
+	fmt.Fprintf(b, "%s\"\"\"\n", indent)
 }
 
 // renderTypeRef converts a type reference to SDL notation.
