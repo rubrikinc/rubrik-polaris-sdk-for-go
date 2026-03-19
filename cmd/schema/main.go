@@ -135,7 +135,7 @@ const schemaQuery = `
 
 func main() {
 	format := flag.String("format", "sdl", "output format: json or sdl")
-	output := flag.String("output", "", "output file (default: stdout)")
+	output := flag.String("output", "", "output file (default: schema.json or schema.graphql)")
 	flag.Parse()
 
 	polAccount, err := polaris.DefaultServiceAccount(true)
@@ -158,23 +158,30 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var w io.Writer = os.Stdout
-	if *output != "" {
-		f, err := os.Create(*output)
-		if err != nil {
-			log.Fatal(err)
+	switch *format {
+	case "json":
+		if *output == "" {
+			*output = "schema.json"
 		}
-		defer f.Close()
-		w = f
+	case "sdl":
+		if *output == "" {
+			*output = "schema.graphql"
+		}
+	default:
+		log.Fatalf("unknown format: %s (use json or sdl)", *format)
 	}
+
+	f, err := os.Create(*output)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
 
 	switch *format {
 	case "json":
-		writeJSON(buf, w)
+		writeJSON(buf, f)
 	case "sdl":
-		writeSDL(buf, w)
-	default:
-		log.Fatalf("unknown format: %s (use json or sdl)", *format)
+		writeSDL(buf, f)
 	}
 }
 
