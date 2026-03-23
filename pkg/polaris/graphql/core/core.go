@@ -71,6 +71,7 @@ type PermissionGroup string
 // canaryPermissionGroups in permission_group_canary_test.go.
 const (
 	PermissionGroupAKSCustomPrivateDNSZone       PermissionGroup = "AKS_CUSTOM_PRIVATE_DNS_ZONE"
+	PermissionGroupAlloyDB                       PermissionGroup = "ALLOYDB"
 	PermissionGroupAutomatedNetworkingSetup      PermissionGroup = "AUTOMATED_NETWORKING_SETUP"
 	PermissionGroupBackupV2                      PermissionGroup = "BACKUP_V2"
 	PermissionGroupBasic                         PermissionGroup = "BASIC"
@@ -93,6 +94,7 @@ const (
 	PermissionGroupNATGateway                    PermissionGroup = "NAT_GATEWAY"
 	PermissionGroupPrivateEndpoints              PermissionGroup = "PRIVATE_ENDPOINTS"
 	PermissionGroupRecovery                      PermissionGroup = "RECOVERY"
+	PermissionGroupRecoveryNetworking            PermissionGroup = "RECOVERY_NETWORKING"
 	PermissionGroupRestore                       PermissionGroup = "RESTORE"
 	PermissionGroupRSCManagedCluster             PermissionGroup = "RSC_MANAGED_CLUSTER"
 	PermissionGroupSAPHanaSSBasic                PermissionGroup = "SAP_HANA_SS_BASIC"
