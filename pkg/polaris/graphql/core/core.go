@@ -216,6 +216,7 @@ var (
 	FeatureLaminarTargetManagedIdentity            = Feature{Name: "LAMINAR_TARGET_MANAGED_IDENTITY"}
 	FeatureOutpost                                 = Feature{Name: "OUTPOST"}
 	FeatureRDSProtection                           = Feature{Name: "RDS_PROTECTION"}
+	FeatureRoleChaining                            = Feature{Name: "ROLE_CHAINING"}
 	FeatureServerAndApps                           = Feature{Name: "SERVERS_AND_APPS"}
 )
 
@@ -248,6 +249,7 @@ var validFeatures = map[string]struct{}{
 	FeatureLaminarTargetManagedIdentity.Name:            {},
 	FeatureOutpost.Name:                                 {},
 	FeatureRDSProtection.Name:                           {},
+	FeatureRoleChaining.Name:                            {},
 	FeatureServerAndApps.Name:                           {},
 }
 

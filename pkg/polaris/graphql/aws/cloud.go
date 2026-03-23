@@ -68,7 +68,7 @@ type Feature struct {
 	StackArn            string                 `json:"stackArn"`
 	Status              core.Status            `json:"status"`
 	MappedAccounts      []MappedAccount        `json:"mappedAccounts"`
-	RoleChainingDetails []RoleChainingDetails  `json:"roleChainingDetails"`
+	RoleChainingDetails *RoleChainingDetails   `json:"roleChainingDetails"`
 }
 
 // FeatureVersion maps an RSC Cloud Account feature to a version number.
