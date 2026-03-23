@@ -52,7 +52,7 @@ type Feature struct {
 	StackArn            string
 	Status              core.Status
 	MappedAccounts      []MappedAccount
-	RoleChainingDetails []RoleChainingDetails
+	RoleChainingDetails *RoleChainingDetails
 }
 
 // HasRegion returns true if the feature is enabled for the specified region.
@@ -304,6 +304,7 @@ func SupportedFeatures() []core.Feature {
 		core.FeatureLaminarInternal,
 		core.FeatureOutpost,
 		core.FeatureRDSProtection,
+		core.FeatureRoleChaining,
 		core.FeatureServerAndApps,
 	}
 }
@@ -341,12 +342,12 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 				},
 			})
 		}
-		roleChainingDetails := make([]RoleChainingDetails, 0, len(feature.RoleChainingDetails))
-		for _, roleChainingDetail := range feature.RoleChainingDetails {
-			roleChainingDetails = append(roleChainingDetails, RoleChainingDetails{
-				RoleArn: roleChainingDetail.RoleArn,
-				RoleUrl: roleChainingDetail.RoleUrl,
-			})
+		var roleChainingDetails *RoleChainingDetails
+		if feature.RoleChainingDetails != nil {
+			roleChainingDetails = &RoleChainingDetails{
+				RoleArn: feature.RoleChainingDetails.RoleArn,
+				RoleUrl: feature.RoleChainingDetails.RoleUrl,
+			}
 		}
 		features = append(features, Feature{
 			Feature:             core.Feature{Name: feature.Feature, PermissionGroups: feature.PermissionGroups},
