@@ -14,11 +14,12 @@ import (
 
 // CloudAccount for Amazon Web Services accounts.
 type CloudAccount struct {
-	Cloud    string
-	ID       uuid.UUID
-	NativeID string
-	Name     string
-	Features []Feature
+	Cloud                 string
+	ID                    uuid.UUID
+	NativeID              string
+	Name                  string
+	Features              []Feature
+	RoleChainingAccountID uuid.UUID // uuid.Nil when no role chaining account exists.
 }
 
 // Feature returns the specified feature from the CloudAccount's features.
@@ -360,11 +361,17 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 		})
 	}
 
+	var roleChainingAccountID uuid.UUID
+	if rca := accountWithFeatures.RoleChainingAccount; rca != nil {
+		roleChainingAccountID = rca.Account.ID
+	}
+
 	return CloudAccount{
-		Cloud:    string(accountWithFeatures.Account.Cloud),
-		ID:       accountWithFeatures.Account.ID,
-		NativeID: accountWithFeatures.Account.NativeID,
-		Name:     accountWithFeatures.Account.Name,
-		Features: features,
+		Cloud:                 string(accountWithFeatures.Account.Cloud),
+		ID:                    accountWithFeatures.Account.ID,
+		NativeID:              accountWithFeatures.Account.NativeID,
+		Name:                  accountWithFeatures.Account.Name,
+		Features:              features,
+		RoleChainingAccountID: roleChainingAccountID,
 	}
 }

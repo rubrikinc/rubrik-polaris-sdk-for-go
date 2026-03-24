@@ -62,6 +62,11 @@ var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWi
         }
       }
     }
+    roleChainingAccount {
+      awsCloudAccount {
+        id
+      }
+    }
   }
 }`
 
@@ -126,6 +131,11 @@ var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatur
             stackArn
             status
             awsRegions
+        }
+        roleChainingAccount {
+            awsCloudAccount {
+                id
+            }
         }
     }
 }`
@@ -357,7 +367,7 @@ var upgradeAwsCloudAccountFeaturesWithoutCftQuery = `mutation SdkGolangUpgradeAw
 }`
 
 // validateAndCreateAwsCloudAccount GraphQL query
-var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($cloudType: AwsCloudType!, $nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!]) {
+var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($cloudType: AwsCloudType!, $nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!], $roleChainingAccountId: UUID) {
     result: validateAndCreateAwsCloudAccount(input: {
         action: CREATE,
         awsChildAccounts: [{
@@ -366,7 +376,8 @@ var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreate
             cloudType:   $cloudType,
         }],
         features: $features,
-        featuresWithPermissionsGroups: $featuresWithPG
+        featuresWithPermissionsGroups: $featuresWithPG,
+        roleChainingAccountId: $roleChainingAccountId
     }) {
         initiateResponse {
             cloudFormationUrl
