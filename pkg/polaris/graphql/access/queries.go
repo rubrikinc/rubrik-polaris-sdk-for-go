@@ -37,6 +37,29 @@ var addRoleAssignmentQuery = `mutation SdkGolangAddRoleAssignment(
     )
 }`
 
+// allCurrentOrgIdentityProviders GraphQL query
+var allCurrentOrgIdentityProvidersQuery = `query SdkGolangAllCurrentOrgIdentityProviders {
+    result: allCurrentOrgIdentityProviders {
+        id
+        name
+        entityId
+        signInUrl
+        spInitiatedSignInUrl
+        spInitiatedTestUrl
+        signOutUrl
+        expirationDate
+        signingCertificate
+        metadataJson
+        isDefault
+        authorizedGroupsCount
+        activeUserCount
+        idpClaimAttributes {
+            name
+            attributeType
+        }
+    }
+}`
+
 // createUser GraphQL query
 var createUserQuery = `mutation SdkGolangCreateUser($email: String!, $roleIds: [String!]!) {
     result: createUser(email: $email, roleIds: $roleIds)

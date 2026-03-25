@@ -1,0 +1,21 @@
+query RubrikPolarisSDKRequest {
+    result: allCurrentOrgIdentityProviders {
+        id
+        name
+        entityId
+        signInUrl
+        spInitiatedSignInUrl
+        spInitiatedTestUrl
+        signOutUrl
+        expirationDate
+        signingCertificate
+        metadataJson
+        isDefault
+        authorizedGroupsCount
+        activeUserCount
+        idpClaimAttributes {
+            name
+            attributeType
+        }
+    }
+}
