@@ -24,26 +24,6 @@
 
 package kubernetes
 
-// activitySeries GraphQL query
-var activitySeriesQuery = `query SdkGolangActivitySeries($input: ActivitySeriesInput!, $after: String) {
-    activitySeries(input: $input) {
-        activityConnection(after: $after) {
-            nodes {
-                activityInfo
-                message
-                status
-                time
-                severity
-            }
-            pageInfo {
-                endCursor
-                hasNextPage
-            }
-            count
-        }
-    }
-}`
-
 // addK8sCluster GraphQL query
 var addK8sClusterQuery = `mutation SdkGolangAddK8sCluster(
     $clusterUuid: String!,

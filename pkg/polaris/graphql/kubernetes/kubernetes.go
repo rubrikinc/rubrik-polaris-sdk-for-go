@@ -198,30 +198,6 @@ type BaseSnapshotSummary struct {
 	SLAID string `json:"slaId"`
 }
 
-// ActivitySeriesInput is the input for the activitySeries query.
-type ActivitySeriesInput struct {
-	ActivitySeriesID uuid.UUID `json:"activitySeriesId"`
-	CDMClusterUUID   uuid.UUID `json:"clusterUuid,omitempty"`
-}
-
-// EventSeverity is the severity of the event.
-type EventSeverity string
-
-const (
-	EventSeverityCritical EventSeverity = "Critical"
-	EventSeverityWarning  EventSeverity = "Warning"
-	EventSeverityInfo     EventSeverity = "Info"
-)
-
-// ActivitySeries is the response for the activitySeries query.
-type ActivitySeries struct {
-	ActivityInfo string        `json:"activityInfo"`
-	Message      string        `json:"message"`
-	Status       string        `json:"status"`
-	Time         time.Time     `json:"time"`
-	Severity     EventSeverity `json:"severity"`
-}
-
 // EksConfigInput is the input for the EKS config.
 type EksConfigInput struct {
 	CloudAccountID string `json:"cloudAccountId"`
@@ -714,67 +690,6 @@ func (a API) protectionSetSnapshots(
 		snaps[i] = item.BaseSnapshotSummary.ID
 	}
 	return snaps, nil
-}
-
-// GetActivitySeries fetches the activity series for the given activity series
-// id.
-func (a API) GetActivitySeries(
-	ctx context.Context,
-	activitySeriesID uuid.UUID,
-	cdmClusterID uuid.UUID,
-) ([]ActivitySeries, error) {
-	var ret []ActivitySeries
-	var cursor string
-	for {
-		a.log.Print(log.Info, "polaris/graphql/kubernetes.GetActivitySeries")
-
-		buf, err := a.GQL.Request(
-			ctx,
-			activitySeriesQuery,
-			struct {
-				Input ActivitySeriesInput `json:"input"`
-				After string              `json:"after,omitempty"`
-			}{
-				Input: ActivitySeriesInput{
-					ActivitySeriesID: activitySeriesID,
-					CDMClusterUUID:   cdmClusterID,
-				},
-				After: cursor,
-			},
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		var payload struct {
-			Data struct {
-				ActivitySeriesData struct {
-					ActivityConnection struct {
-						Nodes    []ActivitySeries `json:"nodes"`
-						PageInfo struct {
-							EndCursor   string `json:"endCursor"`
-							HasNextPage bool   `json:"hasNextPage"`
-						} `json:"pageInfo"`
-						Count int `json:"count"`
-					} `json:"activityConnection"`
-				} `json:"activitySeries"`
-			} `json:"data"`
-		}
-		if err := json.Unmarshal(buf, &payload); err != nil {
-			return nil, err
-		}
-
-		cursor = payload.Data.ActivitySeriesData.ActivityConnection.PageInfo.EndCursor
-		ret = append(
-			ret,
-			payload.Data.ActivitySeriesData.ActivityConnection.Nodes...,
-		)
-
-		if !payload.Data.ActivitySeriesData.ActivityConnection.PageInfo.HasNextPage {
-			break
-		}
-	}
-	return ret, nil
 }
 
 // UpdateProtectionSet updates the K8s protection set corresponding to fid
