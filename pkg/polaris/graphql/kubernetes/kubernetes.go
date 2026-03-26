@@ -49,20 +49,20 @@ func Wrap(gql *graphql.Client) API {
 
 // JobInstanceDetail describes the state of a CDM job.
 type JobInstanceDetail struct {
-	Status            string  `json:"status"`
-	StartTime         string  `json:"startTime,omitempty"`
-	Result            string  `json:"result,omitempty"`
-	OpentracingContext string `json:"opentracingContext,omitempty"`
-	NodeID            string  `json:"nodeId"`
-	JobType           string  `json:"jobType"`
-	JobProgress       float64 `json:"jobProgress,omitempty"`
-	IsDisabled        bool    `json:"isDisabled"`
-	ID                string  `json:"id"`
-	ErrorInfo         string  `json:"errorInfo,omitempty"`
-	EventSeriesID     string  `json:"eventSeriesId,omitempty"`
-	EndTime           string  `json:"endTime,omitempty"`
-	ChildJobDebugInfo string  `json:"childJobDebugInfo,omitempty"`
-	Archived          bool    `json:"archived"`
+	Status             string  `json:"status"`
+	StartTime          string  `json:"startTime,omitempty"`
+	Result             string  `json:"result,omitempty"`
+	OpentracingContext string  `json:"opentracingContext,omitempty"`
+	NodeID             string  `json:"nodeId"`
+	JobType            string  `json:"jobType"`
+	JobProgress        float64 `json:"jobProgress,omitempty"`
+	IsDisabled         bool    `json:"isDisabled"`
+	ID                 string  `json:"id"`
+	ErrorInfo          string  `json:"errorInfo,omitempty"`
+	EventSeriesID      string  `json:"eventSeriesId,omitempty"`
+	EndTime            string  `json:"endTime,omitempty"`
+	ChildJobDebugInfo  string  `json:"childJobDebugInfo,omitempty"`
+	Archived           bool    `json:"archived"`
 }
 
 // K8sJobInstanceDetail describes the state of a K8s CDM job. It is limited to
@@ -141,7 +141,7 @@ type RequestErrorInfo struct {
 // AsyncRequestStatus is the status of the submitted jobs.
 type AsyncRequestStatus struct {
 	Status    string           `json:"status"`
-	StartTime time.Time       `json:"startTime,omitempty"`
+	StartTime time.Time        `json:"startTime,omitempty"`
 	Progress  float64          `json:"progress,omitempty"`
 	NodeID    string           `json:"nodeId,omitempty"`
 	Links     []Link           `json:"links"`
