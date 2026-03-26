@@ -125,7 +125,7 @@ func (a API) UnassignSSOGroupRole(ctx context.Context, ssoGroupID string, roleID
 		return err
 	}
 
-	var roleIDs []uuid.UUID
+	roleIDs := make([]uuid.UUID, 0, len(group.Roles))
 	for _, role := range group.Roles {
 		if role.ID != roleID {
 			roleIDs = append(roleIDs, role.ID)
@@ -152,7 +152,7 @@ func (a API) UnassignSSOGroupRoles(ctx context.Context, ssoGroupID string, roleI
 		return err
 	}
 
-	var keepRoleIDs []uuid.UUID
+	keepRoleIDs := make([]uuid.UUID, 0, len(group.Roles))
 	for _, role := range group.Roles {
 		if !slices.Contains(roleIDs, role.ID) {
 			keepRoleIDs = append(keepRoleIDs, role.ID)
@@ -163,6 +163,33 @@ func (a API) UnassignSSOGroupRoles(ctx context.Context, ssoGroupID string, roleI
 		GroupIDs: []string{ssoGroupID},
 	}); err != nil {
 		return fmt.Errorf("failed to unassign role %s from SSO group %q: %s", joinUUIDs(roleIDs), ssoGroupID, err)
+	}
+
+	return nil
+}
+
+// CreateSSOGroup creates a new SSO group with the specified name, roles, and
+// auth domain.
+func (a API) CreateSSOGroup(ctx context.Context, groupName string, roleIDs []uuid.UUID, authDomainID string) error {
+	a.client.Log().Print(log.Trace)
+
+	if err := access.InviteSSOGroup(ctx, a.client, access.InviteSSOGroupParams{
+		GroupName:    groupName,
+		RoleIDs:      roleIDs,
+		AuthDomainID: authDomainID,
+	}); err != nil {
+		return fmt.Errorf("failed to create SSO group %q: %s", groupName, err)
+	}
+
+	return nil
+}
+
+// DeleteSSOGroup deletes the SSO group with the specified ID.
+func (a API) DeleteSSOGroup(ctx context.Context, groupID string) error {
+	a.client.Log().Print(log.Trace)
+
+	if err := access.DeleteSSOGroups(ctx, a.client, []string{groupID}); err != nil {
+		return fmt.Errorf("failed to delete SSO group %q: %s", groupID, err)
 	}
 
 	return nil

@@ -23,6 +23,7 @@ package access
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -95,4 +96,69 @@ func ListSSOGroups(ctx context.Context, gql *graphql.Client, filter SSOGroupFilt
 	}
 
 	return groups, nil
+}
+
+// InviteSSOGroupParams holds the parameters for an SSO group invite operation.
+type InviteSSOGroupParams struct {
+	GroupName    string      `json:"groupName"`
+	RoleIDs      []uuid.UUID `json:"roleIds"`
+	AuthDomainID string      `json:"authDomainId"`
+}
+
+// InviteSSOGroup creates a new SSO group.
+func InviteSSOGroup(ctx context.Context, gql *graphql.Client, params InviteSSOGroupParams) error {
+	gql.Log().Print(log.Trace)
+
+	query := inviteSsoGroupQuery
+	buf, err := gql.Request(ctx, query, struct {
+		Input InviteSSOGroupParams `json:"input"`
+	}{Input: params})
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result bool `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result {
+		return graphql.ResponseError(query, fmt.Errorf("failed to invite SSO group %q", params.GroupName))
+	}
+
+	return nil
+}
+
+// DeleteSSOGroups deletes the SSO groups with the specified IDs.
+func DeleteSSOGroups(ctx context.Context, gql *graphql.Client, groupIDs []string) error {
+	gql.Log().Print(log.Trace)
+
+	query := deleteSsoGroupsFromAccountQuery
+	buf, err := gql.Request(ctx, query, struct {
+		Input struct {
+			GroupIDs []string `json:"groupIds"`
+		} `json:"input"`
+	}{Input: struct {
+		GroupIDs []string `json:"groupIds"`
+	}{GroupIDs: groupIDs}})
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result bool `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result {
+		return graphql.ResponseError(query, fmt.Errorf("failed to delete SSO groups %v", groupIDs))
+	}
+
+	return nil
 }
