@@ -27,6 +27,7 @@ package kubernetes
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -105,20 +106,57 @@ type AddProtectionSetResponse struct {
 	RSType                string   `json:"rsType"`
 }
 
+// PvcStorageClassMappingEntry represents an entry mapping a PVC name to a
+// target storage class.
+type PvcStorageClassMappingEntry struct {
+	PvcName            string `json:"pvcName"`
+	TargetStorageClass string `json:"targetStorageClass"`
+}
+
+// StorageClassMappingEntry represents an entry mapping a source storage class
+// to a target storage class.
+type StorageClassMappingEntry struct {
+	SourceStorageClass string `json:"sourceStorageClass"`
+	TargetStorageClass string `json:"targetStorageClass"`
+}
+
+// PvcStorageClassMappings wraps the list of PVC storage class mappings.
+type PvcStorageClassMappings struct {
+	PvcStorageClassMappingList []PvcStorageClassMappingEntry `json:"pvcStorageClassMappingList,omitempty"`
+}
+
+// StorageClassMappings wraps the list of storage class mappings.
+type StorageClassMappings struct {
+	StorageClassMappingList []StorageClassMappingEntry `json:"storageClassMappingList,omitempty"`
+}
+
+// StorageMapping defines storage class mappings for restore and export
+// operations.
+type StorageMapping struct {
+	// PvcStorageClassMappings maps specific PVC names to target storage
+	// classes. Takes precedence over StorageClassMappings.
+	PvcStorageClassMappings *PvcStorageClassMappings `json:"pvcStorageClassMappings,omitempty"`
+	// StorageClassMappings maps source storage classes to target storage
+	// classes.
+	StorageClassMappings *StorageClassMappings `json:"storageClassMappings,omitempty"`
+}
+
 // ExportSnapshotJobConfig defines parameters required to export a snapshot.
 type ExportSnapshotJobConfig struct {
-	TargetNamespaceName string   `json:"targetNamespaceName"`
-	TargetClusterFID    string   `json:"targetClusterId"`
-	IgnoreErrors        bool     `json:"ignoreErrors,omitempty"`
-	Filter              string   `json:"filter,omitempty"`
-	PVCNames            []string `json:"pvcNames,omitempty"`
+	TargetNamespaceName string          `json:"targetNamespaceName"`
+	TargetClusterFID    string          `json:"targetClusterId"`
+	IgnoreErrors        bool            `json:"ignoreErrors,omitempty"`
+	Filter              string          `json:"filter,omitempty"`
+	PVCNames            []string        `json:"pvcNames,omitempty"`
+	StorageMapping      *StorageMapping `json:"storageMapping,omitempty"`
 }
 
 // RestoreSnapshotJobConfig defines parameters required to restore a snapshot.
 type RestoreSnapshotJobConfig struct {
-	IgnoreErrors bool     `json:"ignoreErrors,omitempty"`
-	Filter       string   `json:"filter,omitempty"`
-	PVCNames     []string `json:"pvcNames,omitempty"`
+	IgnoreErrors   bool            `json:"ignoreErrors,omitempty"`
+	Filter         string          `json:"filter,omitempty"`
+	PVCNames       []string        `json:"pvcNames,omitempty"`
+	StorageMapping *StorageMapping `json:"storageMapping,omitempty"`
 }
 
 // BaseOnDemandSnapshotConfigInput defines parameters required to take an
@@ -229,6 +267,8 @@ type ClusterAddInput struct {
 	IsAutoPsCreationEnabled bool                       `json:"isAutoPsCreationEnabled,omitempty"`
 	OnboardingType          string                     `json:"onboardingType,omitempty"`
 	KuprServerProxyConfig   KuprServerProxyConfigInput `json:"kuprServerProxyConfig,omitempty"`
+	NadNamespace            string                     `json:"nadNamespace,omitempty"`
+	NadName                 string                     `json:"nadName,omitempty"`
 }
 
 // ClusterSummary is the response for the addK8sCluster query.
@@ -258,6 +298,18 @@ type ClusterUpdateConfigInput struct {
 	ClientID                string                     `json:"clientId,omitempty"`
 	ClientSecret            string                     `json:"clientSecret,omitempty"`
 	KuprServerProxyConfig   KuprServerProxyConfigInput `json:"kuprServerProxyConfig,omitempty"`
+	NadNamespace            string                     `json:"nadNamespace,omitempty"`
+	NadName                 string                     `json:"nadName,omitempty"`
+}
+
+// handleGraphQLError processes GraphQL errors and wraps 404 errors with
+// graphql.ErrNotFound. It returns a formatted error with the operation name.
+func handleGraphQLError(err error, operation string) error {
+	var gqlErr graphql.GQLError
+	if errors.As(err, &gqlErr) && gqlErr.Code() == 404 {
+		err = fmt.Errorf("%s: %w", gqlErr.Error(), graphql.ErrNotFound)
+	}
+	return fmt.Errorf("failed to request %s: %w", operation, err)
 }
 
 // ObjectType is the type of the Kubernetes object. One of SLA, INVENTORY or
@@ -316,9 +368,7 @@ func (a API) ProtectionSetByID(
 		}{FID: fid},
 	)
 	if err != nil {
-		return ProtectionSet{}, fmt.Errorf(
-			"failed to request kubernetesProtectionSet: %w", err,
-		)
+		return ProtectionSet{}, handleGraphQLError(err, "kubernetesProtectionSet")
 	}
 	a.log.Printf(log.Debug, "kubernetesProtectionSet(%v): %s", fid, string(buf))
 
@@ -581,7 +631,7 @@ func (a API) ObjectFIDByType(
 		},
 	)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to request k8sObjectFidByType: %w", err)
+		return uuid.Nil, handleGraphQLError(err, "k8sObjectFidByType")
 	}
 	a.log.Printf(
 		log.Debug, "k8sObjectFidByType(%v, %v, %v): %s",
@@ -645,6 +695,131 @@ func (a API) ObjectInternalIDByType(
 	}
 
 	return payload.Data.ObjectInternalID, nil
+}
+
+// ObjectFID fetches the RSC FID for the K8s object corresponding to the
+// provided internal id and CDM cluster id. Unlike ObjectFIDByType, this
+// variant does not require specifying the object type.
+func (a API) ObjectFID(
+	ctx context.Context,
+	internalID uuid.UUID,
+	cdmClusterID uuid.UUID,
+) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		k8sObjectFidQuery,
+		struct {
+			InternalID  uuid.UUID `json:"k8SObjectInternalIdArg"`
+			ClusterUUID uuid.UUID `json:"clusterUuid"`
+		}{
+			InternalID:  internalID,
+			ClusterUUID: cdmClusterID,
+		},
+	)
+	if err != nil {
+		return uuid.Nil, handleGraphQLError(err, "k8sObjectFid")
+	}
+	a.log.Printf(
+		log.Debug, "k8sObjectFid(%v, %v): %s",
+		internalID, cdmClusterID, string(buf),
+	)
+
+	var payload struct {
+		Data struct {
+			ObjectFID uuid.UUID `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, fmt.Errorf("failed to unmarshal k8sObjectFid: %v", err)
+	}
+
+	return payload.Data.ObjectFID, nil
+}
+
+// ObjectInternalID fetches the CDM internal ID for the K8s object
+// corresponding to the provided RSC FID. Unlike ObjectInternalIDByType, this
+// variant does not require specifying the cluster UUID or object type.
+func (a API) ObjectInternalID(
+	ctx context.Context,
+	fid uuid.UUID,
+) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		k8sObjectInternalIdQuery,
+		struct {
+			FID uuid.UUID `json:"fid"`
+		}{
+			FID: fid,
+		},
+	)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf(
+			"failed to request k8sObjectInternalId: %w", err,
+		)
+	}
+	a.log.Printf(log.Debug, "k8sObjectInternalId(%v): %s", fid, string(buf))
+
+	var payload struct {
+		Data struct {
+			ObjectInternalID uuid.UUID `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, fmt.Errorf(
+			"failed to unmarshal k8sObjectInternalId: %v", err,
+		)
+	}
+
+	return payload.Data.ObjectInternalID, nil
+}
+
+// JobInstance fetches information about a generic CDM job corresponding to the
+// given jobID and cdmClusterID. This returns the full JobInstanceDetail with
+// all fields, unlike K8sJobInstance which returns a K8s-specific subset.
+func (a API) JobInstance(
+	ctx context.Context,
+	jobID string,
+	cdmClusterID string,
+) (JobInstanceDetail, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		jobInstanceQuery,
+		struct {
+			JobID        string `json:"id"`
+			CDMClusterID string `json:"clusterUuid"`
+		}{
+			JobID:        jobID,
+			CDMClusterID: cdmClusterID,
+		},
+	)
+	if err != nil {
+		return JobInstanceDetail{}, fmt.Errorf(
+			"failed to request jobInstance: %w", err,
+		)
+	}
+	a.log.Printf(
+		log.Debug, "jobInstance(%q, %q): %s",
+		jobID, cdmClusterID, string(buf),
+	)
+
+	var payload struct {
+		Data struct {
+			Response JobInstanceDetail `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return JobInstanceDetail{}, fmt.Errorf(
+			"failed to unmarshal jobInstance response: %v", err,
+		)
+	}
+
+	return payload.Data.Response, nil
 }
 
 // protectionSetSnapshots gets initial snapshots for a given fid. Only used

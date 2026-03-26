@@ -139,6 +139,26 @@ var getProtectionSetSnapshotQuery = `query SdkGolangGetProtectionSetSnapshot($fi
     }
 }`
 
+// jobInstance GraphQL query
+var jobInstanceQuery = `query SdkGolangJobInstance($id: String!, $clusterUuid: String!) {
+    result: jobInstance(input: {id: $id, clusterUuid: $clusterUuid}) {
+        archived
+        endTime
+        errorInfo
+        eventSeriesId
+        id
+        isDisabled
+        jobProgress
+        jobType
+        nodeId
+        result
+        startTime
+        status
+        childJobDebugInfo
+        opentracingContext
+    }
+}`
+
 // k8sJobInstance GraphQL query
 var k8sJobInstanceQuery = `query SdkGolangK8sJobInstance($k8sJobId: String!, $clusterUuid: UUID!) {
     result: k8sJobInstance(k8sJobId: $k8sJobId, clusterUuid: $clusterUuid) {
@@ -150,9 +170,19 @@ var k8sJobInstanceQuery = `query SdkGolangK8sJobInstance($k8sJobId: String!, $cl
     }
 }`
 
+// k8sObjectFid GraphQL query
+var k8sObjectFidQuery = `query SdkGolangK8sObjectFid($k8SObjectInternalIdArg: UUID!, $clusterUuid: UUID!) {
+    result: k8sObjectFid(K8sObjectInternalIDArg: $k8SObjectInternalIdArg, clusterUuid: $clusterUuid)
+}`
+
 // k8sObjectFidByType GraphQL query
 var k8sObjectFidByTypeQuery = `query SdkGolangK8sObjectFidByType($k8SObjectInternalIdArg: UUID!, $clusterUuid: UUID!, $kubernetesObjectType: KubernetesObjectType!) {
     result: k8sObjectFidByType(k8SObjectInternalIdArg: $k8SObjectInternalIdArg, clusterUuid: $clusterUuid, kubernetesObjectType: $kubernetesObjectType)
+}`
+
+// k8sObjectInternalId GraphQL query
+var k8sObjectInternalIdQuery = `query SdkGolangK8sObjectInternalId($fid: UUID!) {
+    result: k8sObjectInternalId(fid: $fid)
 }`
 
 // k8sObjectInternalIdByType GraphQL query
