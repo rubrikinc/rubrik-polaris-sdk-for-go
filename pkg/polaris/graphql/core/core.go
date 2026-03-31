@@ -73,6 +73,7 @@ const (
 	PermissionGroupAKSCustomPrivateDNSZone       PermissionGroup = "AKS_CUSTOM_PRIVATE_DNS_ZONE"
 	PermissionGroupAlloyDB                       PermissionGroup = "ALLOYDB"
 	PermissionGroupAutomatedNetworkingSetup      PermissionGroup = "AUTOMATED_NETWORKING_SETUP"
+	PermissionGroupBaaSBasic                     PermissionGroup = "BAAS_BASIC"
 	PermissionGroupBackupV2                      PermissionGroup = "BACKUP_V2"
 	PermissionGroupBasic                         PermissionGroup = "BASIC"
 	PermissionGroupCCES                          PermissionGroup = "CLOUD_CLUSTER_ES"
