@@ -15,16 +15,16 @@ code generation for those.
 
 ## Determine Modified Domain Packages
 
-Run `git diff --name-only --diff-filter=d HEAD` filtered to `*.graphql` and `*.fragment` to determine which domain
-packages need to be regenerated.
+Run `git diff --name-only HEAD` filtered to `*.graphql` and `*.fragment` to determine which domain packages need to be
+regenerated. If no files are found and no domain argument was provided, report "nothing to regenerate" and stop.
 
 ## Run Code Generation for a Domain Package
 
 1. Validate that `pkg/polaris/graphql/$domain/` exists. If not, list available domains and stop.
 2. Run `go generate ./pkg/polaris/graphql/$domain/...` to update `queries.go`.
-3. Run `gofmt -l pkg/polaris/graphql/$domain/queries.go` to verify formatting.
-4. Run `git diff pkg/polaris/graphql/$domain/queries.go` to show what changed.
-5. Run `go vet ./pkg/polaris/graphql/$domain/...` to catch any errors.
+3. Run `gofmt -w pkg/polaris/graphql/$domain/queries.go` to ensure correct formatting.
+4. Run `go vet ./pkg/polaris/graphql/$domain/...` to catch any errors.
+5. Run `git diff pkg/polaris/graphql/$domain/queries.go` to show what changed.
 
 ## Report Results
 
