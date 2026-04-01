@@ -1,0 +1,3 @@
+mutation RubrikPolarisSDKRequest($input: DeleteSsoGroupsFromAccountInput!) {
+    result: deleteSsoGroupsFromAccount(input: $input)
+}
