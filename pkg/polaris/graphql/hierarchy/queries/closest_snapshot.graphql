@@ -1,0 +1,22 @@
+query RubrikPolarisSDKRequest(
+    $snappableIds: [String!]!,
+    $beforeTime: DateTime,
+    $afterTime: DateTime,
+    $excludeQuarantined: Boolean,
+    $excludeAnomalous: Boolean
+) {
+    result: allSnapshotsClosestToPointInTime(
+        snappableIds: $snappableIds,
+        beforeTime: $beforeTime,
+        afterTime: $afterTime,
+        excludeQuarantined: $excludeQuarantined,
+        excludeAnomalous: $excludeAnomalous
+    ) {
+        snappableId
+        snapshot {
+            id
+            date
+        }
+        error
+    }
+}

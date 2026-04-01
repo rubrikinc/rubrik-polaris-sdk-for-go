@@ -95,7 +95,17 @@ func (f Feature) HasRegion(region string) bool {
 // SupportResourceGroup returns true if the feature supports being onboarded
 // with a resource group.
 func (f Feature) SupportResourceGroup() bool {
-	return !f.Equal(core.FeatureAzureSQLMIProtection) && !f.Equal(core.FeatureCloudNativeBlobProtection)
+	return !f.Equal(core.FeatureAzureSQLMIProtection) &&
+		!f.Equal(core.FeatureCloudNativeBlobProtection) &&
+		!f.Equal(core.FeatureCloudDiscovery)
+}
+
+// IsProtectionFeature returns true if the feature is a protection feature.
+func (f Feature) IsProtectionFeature() bool {
+	return f.Equal(core.FeatureCloudNativeProtection) ||
+		f.Equal(core.FeatureCloudNativeBlobProtection) ||
+		f.Equal(core.FeatureAzureSQLDBProtection) ||
+		f.Equal(core.FeatureAzureSQLMIProtection)
 }
 
 // SupportUserAssignedManagedIdentity returns true if the feature supports
@@ -362,6 +372,16 @@ func (a API) RemoveSubscription(ctx context.Context, cloudAccountID uuid.UUID, f
 		return fmt.Errorf("failed to retrieve subscription: %w", err)
 	}
 
+	// The Cloud Discovery feature must be removed after all protection
+	// features have been removed.
+	if feature.Equal(core.FeatureCloudDiscovery) {
+		for _, f := range account.Features {
+			if f.IsProtectionFeature() {
+				return errors.New("cloud discovery must be removed after all other protection features")
+			}
+		}
+	}
+
 	if err := a.disableFeature(ctx, account, feature, deleteSnapshots); err != nil {
 		return fmt.Errorf("failed to disable subscripition feature %s: %s", feature, err)
 	}
@@ -551,6 +571,7 @@ func SupportedFeatures() []core.Feature {
 	return []core.Feature{
 		core.FeatureAzureSQLDBProtection,
 		core.FeatureAzureSQLMIProtection,
+		core.FeatureCloudDiscovery,
 		core.FeatureCloudNativeArchival,
 		core.FeatureCloudNativeArchivalEncryption,
 		core.FeatureCloudNativeBlobProtection,

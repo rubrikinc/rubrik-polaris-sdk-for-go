@@ -71,7 +71,9 @@ type PermissionGroup string
 // canaryPermissionGroups in permission_group_canary_test.go.
 const (
 	PermissionGroupAKSCustomPrivateDNSZone       PermissionGroup = "AKS_CUSTOM_PRIVATE_DNS_ZONE"
+	PermissionGroupAlloyDB                       PermissionGroup = "ALLOYDB"
 	PermissionGroupAutomatedNetworkingSetup      PermissionGroup = "AUTOMATED_NETWORKING_SETUP"
+	PermissionGroupBaaSBasic                     PermissionGroup = "BAAS_BASIC"
 	PermissionGroupBackupV2                      PermissionGroup = "BACKUP_V2"
 	PermissionGroupBasic                         PermissionGroup = "BASIC"
 	PermissionGroupCCES                          PermissionGroup = "CLOUD_CLUSTER_ES"
@@ -93,6 +95,7 @@ const (
 	PermissionGroupNATGateway                    PermissionGroup = "NAT_GATEWAY"
 	PermissionGroupPrivateEndpoints              PermissionGroup = "PRIVATE_ENDPOINTS"
 	PermissionGroupRecovery                      PermissionGroup = "RECOVERY"
+	PermissionGroupRecoveryNetworking            PermissionGroup = "RECOVERY_NETWORKING"
 	PermissionGroupRestore                       PermissionGroup = "RESTORE"
 	PermissionGroupRSCManagedCluster             PermissionGroup = "RSC_MANAGED_CLUSTER"
 	PermissionGroupSAPHanaSSBasic                PermissionGroup = "SAP_HANA_SS_BASIC"
@@ -214,6 +217,7 @@ var (
 	FeatureLaminarTargetManagedIdentity            = Feature{Name: "LAMINAR_TARGET_MANAGED_IDENTITY"}
 	FeatureOutpost                                 = Feature{Name: "OUTPOST"}
 	FeatureRDSProtection                           = Feature{Name: "RDS_PROTECTION"}
+	FeatureRoleChaining                            = Feature{Name: "ROLE_CHAINING"}
 	FeatureServerAndApps                           = Feature{Name: "SERVERS_AND_APPS"}
 )
 
@@ -246,6 +250,7 @@ var validFeatures = map[string]struct{}{
 	FeatureLaminarTargetManagedIdentity.Name:            {},
 	FeatureOutpost.Name:                                 {},
 	FeatureRDSProtection.Name:                           {},
+	FeatureRoleChaining.Name:                            {},
 	FeatureServerAndApps.Name:                           {},
 }
 

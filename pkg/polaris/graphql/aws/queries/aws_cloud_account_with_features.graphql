@@ -15,5 +15,10 @@ query RubrikPolarisSDKRequest($cloudAccountId: UUID!, $features: [CloudAccountFe
             status
             awsRegions
         }
+        roleChainingAccount {
+            awsCloudAccount {
+                id
+            }
+        }
     }
 }

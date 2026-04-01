@@ -24,6 +24,30 @@
 
 package hierarchy
 
+// closestSnapshot GraphQL query
+var closestSnapshotQuery = `query SdkGolangClosestSnapshot(
+    $snappableIds: [String!]!,
+    $beforeTime: DateTime,
+    $afterTime: DateTime,
+    $excludeQuarantined: Boolean,
+    $excludeAnomalous: Boolean
+) {
+    result: allSnapshotsClosestToPointInTime(
+        snappableIds: $snappableIds,
+        beforeTime: $beforeTime,
+        afterTime: $afterTime,
+        excludeQuarantined: $excludeQuarantined,
+        excludeAnomalous: $excludeAnomalous
+    ) {
+        snappableId
+        snapshot {
+            id
+            date
+        }
+        error
+    }
+}`
+
 // hierarchyObject GraphQL query
 var hierarchyObjectQuery = `query SdkGolangHierarchyObject($fid: UUID!, $workloadHierarchy: WorkloadLevelHierarchy) {
     result: hierarchyObject(fid: $fid, workloadHierarchy: $workloadHierarchy) {
@@ -31,6 +55,21 @@ var hierarchyObjectQuery = `query SdkGolangHierarchyObject($fid: UUID!, $workloa
         name
         objectType
         slaAssignment
+        ... on AwsNativeAccount {
+            status
+            awsFeatures: enabledFeatures {
+                featureName
+                status
+                lastRefreshedAt
+            }
+        }
+        ... on AzureNativeSubscription {
+            azureFeatures: enabledFeatures {
+                featureName
+                lastRefreshedAt
+                status
+            }
+        }
         configuredSlaDomain {
             ... on ClusterSlaDomain {
                 id

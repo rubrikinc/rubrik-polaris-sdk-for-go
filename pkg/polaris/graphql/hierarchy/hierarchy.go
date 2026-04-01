@@ -165,7 +165,7 @@ type Feature struct {
 // InventoryObject is a constraint for types that can be returned from the
 // inventory root query.
 type InventoryObject interface {
-	AWSNativeAccount | AzureNativeSubscription
+	AWSNativeAccount | AWSNativeEC2Instance | AWSNativeEBSVolume | AWSNativeRDSInstance | AzureNativeSubscription | AzureNativeVirtualMachine
 	// typeFilter returns the object type filter to use for the inventory root
 	// query. It corresponds to values in the GraphQL Enum HierarchyObjectTypeEnum.
 	typeFilter() ObjectType
@@ -189,6 +189,36 @@ func (AWSNativeAccount) typeFilter() ObjectType {
 	return "AwsNativeAccount"
 }
 
+// AWSNativeEC2Instance represents an AWS native EC2 instance from the
+// inventory root.
+type AWSNativeEC2Instance struct {
+	Object
+}
+
+func (AWSNativeEC2Instance) typeFilter() ObjectType {
+	return "AwsNativeEc2Instance"
+}
+
+// AWSNativeEBSVolume represents an AWS native EBS volume from the inventory
+// root.
+type AWSNativeEBSVolume struct {
+	Object
+}
+
+func (AWSNativeEBSVolume) typeFilter() ObjectType {
+	return "AwsNativeEbsVolume"
+}
+
+// AWSNativeRDSInstance represents an AWS native RDS instance from the
+// inventory root.
+type AWSNativeRDSInstance struct {
+	Object
+}
+
+func (AWSNativeRDSInstance) typeFilter() ObjectType {
+	return "AwsNativeRdsInstance"
+}
+
 // AzureNativeSubscription represents an Azure native subscription from the
 // inventory root.
 type AzureNativeSubscription struct {
@@ -202,6 +232,25 @@ func (AzureNativeSubscription) typeFilter() ObjectType {
 	return "AzureNativeSubscription"
 }
 
+// AzureNativeVirtualMachine represents an Azure native virtual machine from
+// the inventory root.
+type AzureNativeVirtualMachine struct {
+	Object
+}
+
+// typeFilter returns "AzureNativeVm" which is the GraphQL
+// HierarchyObjectTypeEnum value for Azure VMs. Note that the enum name differs
+// from the Go type name (AzureNativeVirtualMachine).
+func (AzureNativeVirtualMachine) typeFilter() ObjectType {
+	return "AzureNativeVm"
+}
+
+// Filter represents a GraphQL Filter input for inventory queries.
+type Filter struct {
+	Field string   `json:"field"`
+	Texts []string `json:"texts"`
+}
+
 // ObjectsByName returns hierarchy objects from the inventory root matching
 // the specified exact name. The type parameter determines which object type
 // to query for.
@@ -210,35 +259,38 @@ func (AzureNativeSubscription) typeFilter() ObjectType {
 // Domain resolution. This affects the effective SLA Domain returned for objects.
 // Pass an empty string to use AllSubHierarchyType (the default), which returns
 // a generic view without workload-specific SLA assignments. For Azure Native
-// workloads, use one of the Workload constants (e.g., WorkloadAzureNativeVirtualMachine)
+// workloads, use one of the Workload constants (e.g., WorkloadAzureVM)
 // to get the correct effective SLA for that specific workload type.
+//
+// Additional filters can be passed to further constrain the query results,
+// e.g., Filter{Field: "IS_RELIC", Texts: []string{"false"}} to exclude relics.
 //
 // Note that name isn't unique for all types, so the query can return multiple
 // objects with the same name. An example of this is AWS accounts that return
 // multiple objects for the same account if it has been added to RSC multiple
 // times. In that case the caller must inspect the features of the returned
 // objects to determine which one to use.
-func ObjectsByName[T InventoryObject](ctx context.Context, a API, name string, workloadHierarchy Workload) ([]T, error) {
+func ObjectsByName[T InventoryObject](ctx context.Context, a API, name string, workloadHierarchy Workload, filters ...Filter) ([]T, error) {
 	a.log.Print(log.Trace)
 
 	var zero T
 	typeFilter := zero.typeFilter()
+
+	f := append([]Filter{{Field: "NAME_EXACT_MATCH", Texts: []string{name}}}, filters...)
 
 	var objects []T
 	var cursor string
 	for {
 		query := inventoryRootQuery
 		buf, err := a.GQL.Request(ctx, query, struct {
-			After             string           `json:"after,omitempty"`
-			Filter            []map[string]any `json:"filter,omitempty"`
-			First             int              `json:"first,omitempty"`
-			TypeFilter        []ObjectType     `json:"typeFilter,omitempty"`
-			WorkloadHierarchy Workload         `json:"workloadHierarchy,omitempty"`
+			After             string       `json:"after,omitempty"`
+			Filter            []Filter     `json:"filter,omitempty"`
+			First             int          `json:"first,omitempty"`
+			TypeFilter        []ObjectType `json:"typeFilter,omitempty"`
+			WorkloadHierarchy Workload     `json:"workloadHierarchy,omitempty"`
 		}{
-			After: cursor,
-			Filter: []map[string]any{
-				{"field": "NAME_EXACT_MATCH", "texts": []string{name}},
-			},
+			After:             cursor,
+			Filter:            f,
 			First:             100,
 			TypeFilter:        []ObjectType{typeFilter},
 			WorkloadHierarchy: workloadHierarchy,
