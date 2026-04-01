@@ -496,6 +496,7 @@ func writeFieldSDL(b *strings.Builder, f field) {
 	} else {
 		fmt.Fprintf(b, "  %s(\n", f.Name)
 		for _, arg := range f.Args {
+			writeDescription(b, arg.Description, "    ")
 			fmt.Fprintf(b, "    %s: %s", arg.Name, renderTypeRef(arg.Type))
 			if arg.DefaultValue != nil {
 				fmt.Fprintf(b, " = %s", *arg.DefaultValue)
@@ -516,7 +517,8 @@ func writeDescription(b *strings.Builder, desc, indent string) {
 		return
 	}
 	if !strings.Contains(desc, "\n") {
-		fmt.Fprintf(b, "%s\"%s\"\n", indent, desc)
+		escaped := strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(desc)
+		fmt.Fprintf(b, "%s\"%s\"\n", indent, escaped)
 		return
 	}
 	fmt.Fprintf(b, "%s\"\"\"\n", indent)
