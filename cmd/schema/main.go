@@ -153,7 +153,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	buf, err := client.GQL.Request(context.Background(), schemaQuery, nil)
+	buf, err := client.GQL.Request(context.Background(), schemaQuery, struct{}{})
 	if err != nil {
 		log.Fatal(err)
 	}
