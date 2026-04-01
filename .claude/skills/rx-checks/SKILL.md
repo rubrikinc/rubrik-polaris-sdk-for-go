@@ -13,15 +13,16 @@ Run the local CI check suite for the Go SDK. If the `package` argument is not pr
 ## Ensure Dependencies are Installed
 
 Ensure that the `staticcheck` tool is installed. If the tool is not installed it can be installed with
-`go install honnef.co/go/tools/cmd/staticcheck@latest`.
+`go install honnef.co/go/tools/cmd/staticcheck@v0.7.0`.
 
 ## Run Checks
 
-1. Run `gofmt -l` on changed `.go` files (use `git diff --name-only --diff-filter=d HEAD` filtered to `*.go`) and report
-any unformatted files.
-2. Run `go vet $package` and report pass/fail.
-3. Run `staticcheck $package` and report pass/fail.
-4. Run `go test $package` and report pass/fail.
+1. Run `go mod tidy` and then `git diff --exit-code go.mod go.sum` to verify dependencies are in sync. Report pass/fail.
+2. Run `gofmt -l` on changed `.go` files (use `git status --porcelain` filtered to `*.go`, excluding deleted files) and
+report any unformatted files.
+3. Run `go vet $package` and report pass/fail.
+4. Run `staticcheck $package` and report pass/fail.
+5. Run `go test $package` and report pass/fail.
 
 ## Report Results
 
