@@ -1,0 +1,3 @@
+mutation RubrikPolarisSDKRequest($input: InviteSsoGroupInput!) {
+    result: inviteSsoGroup(input: $input)
+}

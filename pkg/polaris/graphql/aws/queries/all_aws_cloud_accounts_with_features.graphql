@@ -35,5 +35,10 @@ query RubrikPolarisSDKRequest(
         }
       }
     }
+    roleChainingAccount {
+      awsCloudAccount {
+        id
+      }
+    }
   }
 }

@@ -160,7 +160,7 @@ func (a API) UnassignUserRole(ctx context.Context, userID string, roleID uuid.UU
 		return err
 	}
 
-	var roleIDs []uuid.UUID
+	roleIDs := make([]uuid.UUID, 0, len(user.Roles))
 	for _, role := range user.Roles {
 		if role.ID != roleID {
 			roleIDs = append(roleIDs, role.ID)
@@ -186,7 +186,7 @@ func (a API) UnassignUserRoles(ctx context.Context, userID string, roleIDs []uui
 		return err
 	}
 
-	var keepRoleIDs []uuid.UUID
+	keepRoleIDs := make([]uuid.UUID, 0, len(user.Roles))
 	for _, role := range user.Roles {
 		if !slices.Contains(roleIDs, role.ID) {
 			keepRoleIDs = append(keepRoleIDs, role.ID)

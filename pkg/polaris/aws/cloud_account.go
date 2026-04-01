@@ -14,11 +14,12 @@ import (
 
 // CloudAccount for Amazon Web Services accounts.
 type CloudAccount struct {
-	Cloud    string
-	ID       uuid.UUID
-	NativeID string
-	Name     string
-	Features []Feature
+	Cloud                 string
+	ID                    uuid.UUID
+	NativeID              string
+	Name                  string
+	Features              []Feature
+	RoleChainingAccountID uuid.UUID // uuid.Nil when no role chaining account exists.
 }
 
 // Feature returns the specified feature from the CloudAccount's features.
@@ -52,7 +53,7 @@ type Feature struct {
 	StackArn            string
 	Status              core.Status
 	MappedAccounts      []MappedAccount
-	RoleChainingDetails []RoleChainingDetails
+	RoleChainingDetails *RoleChainingDetails
 }
 
 // HasRegion returns true if the feature is enabled for the specified region.
@@ -304,6 +305,7 @@ func SupportedFeatures() []core.Feature {
 		core.FeatureLaminarInternal,
 		core.FeatureOutpost,
 		core.FeatureRDSProtection,
+		core.FeatureRoleChaining,
 		core.FeatureServerAndApps,
 	}
 }
@@ -341,12 +343,12 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 				},
 			})
 		}
-		roleChainingDetails := make([]RoleChainingDetails, 0, len(feature.RoleChainingDetails))
-		for _, roleChainingDetail := range feature.RoleChainingDetails {
-			roleChainingDetails = append(roleChainingDetails, RoleChainingDetails{
-				RoleArn: roleChainingDetail.RoleArn,
-				RoleUrl: roleChainingDetail.RoleUrl,
-			})
+		var roleChainingDetails *RoleChainingDetails
+		if feature.RoleChainingDetails != nil {
+			roleChainingDetails = &RoleChainingDetails{
+				RoleArn: feature.RoleChainingDetails.RoleArn,
+				RoleUrl: feature.RoleChainingDetails.RoleUrl,
+			}
 		}
 		features = append(features, Feature{
 			Feature:             core.Feature{Name: feature.Feature, PermissionGroups: feature.PermissionGroups},
@@ -359,11 +361,17 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 		})
 	}
 
+	var roleChainingAccountID uuid.UUID
+	if rca := accountWithFeatures.RoleChainingAccount; rca != nil {
+		roleChainingAccountID = rca.Account.ID
+	}
+
 	return CloudAccount{
-		Cloud:    string(accountWithFeatures.Account.Cloud),
-		ID:       accountWithFeatures.Account.ID,
-		NativeID: accountWithFeatures.Account.NativeID,
-		Name:     accountWithFeatures.Account.Name,
-		Features: features,
+		Cloud:                 string(accountWithFeatures.Account.Cloud),
+		ID:                    accountWithFeatures.Account.ID,
+		NativeID:              accountWithFeatures.Account.NativeID,
+		Name:                  accountWithFeatures.Account.Name,
+		Features:              features,
+		RoleChainingAccountID: roleChainingAccountID,
 	}
 }

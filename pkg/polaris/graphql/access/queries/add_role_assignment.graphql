@@ -1,5 +1,5 @@
 mutation RubrikPolarisSDKRequest(
-    $userIds:  [String!]!,
+    $userIds:  [String!],
     $groupIds: [String!],
     $roleIds:  [String!]!,
 ) {

@@ -26,7 +26,7 @@ package access
 
 // addRoleAssignment GraphQL query
 var addRoleAssignmentQuery = `mutation SdkGolangAddRoleAssignment(
-    $userIds:  [String!]!,
+    $userIds:  [String!],
     $groupIds: [String!],
     $roleIds:  [String!]!,
 ) {
@@ -37,6 +37,29 @@ var addRoleAssignmentQuery = `mutation SdkGolangAddRoleAssignment(
     )
 }`
 
+// allCurrentOrgIdentityProviders GraphQL query
+var allCurrentOrgIdentityProvidersQuery = `query SdkGolangAllCurrentOrgIdentityProviders {
+    result: allCurrentOrgIdentityProviders {
+        id
+        name
+        entityId
+        signInUrl
+        spInitiatedSignInUrl
+        spInitiatedTestUrl
+        signOutUrl
+        expirationDate
+        signingCertificate
+        metadataJson
+        isDefault
+        authorizedGroupsCount
+        activeUserCount
+        idpClaimAttributes {
+            name
+            attributeType
+        }
+    }
+}`
+
 // createUser GraphQL query
 var createUserQuery = `mutation SdkGolangCreateUser($email: String!, $roleIds: [String!]!) {
     result: createUser(email: $email, roleIds: $roleIds)
@@ -45,6 +68,11 @@ var createUserQuery = `mutation SdkGolangCreateUser($email: String!, $roleIds: [
 // deleteRole GraphQL query
 var deleteRoleQuery = `mutation SdkGolangDeleteRole($roleId: String!) {
     result: deleteRole(roleId: $roleId)
+}`
+
+// deleteSsoGroupsFromAccount GraphQL query
+var deleteSsoGroupsFromAccountQuery = `mutation SdkGolangDeleteSsoGroupsFromAccount($input: DeleteSsoGroupsFromAccountInput!) {
+    result: deleteSsoGroupsFromAccount(input: $input)
 }`
 
 // deleteUserFromAccount GraphQL query
@@ -122,6 +150,11 @@ var groupsInCurrentAndDescendantOrganizationQuery = `query SdkGolangGroupsInCurr
     }
 }`
 
+// inviteSsoGroup GraphQL query
+var inviteSsoGroupQuery = `mutation SdkGolangInviteSsoGroup($input: InviteSsoGroupInput!) {
+    result: inviteSsoGroup(input: $input)
+}`
+
 // mutateRole GraphQL query
 var mutateRoleQuery = `mutation SdkGolangMutateRole(
     $roleId:      String,
@@ -165,7 +198,7 @@ var roleTemplatesQuery = `query SdkGolangRoleTemplates($after: String, $nameFilt
 
 // updateRoleAssignments GraphQL query
 var updateRoleAssignmentsQuery = `mutation SdkGolangUpdateRoleAssignments(
-    $userIds:  [String!]!,
+    $userIds:  [String!],
     $groupIds: [String!],
     $roleIds:  [String!]!,
 ) {

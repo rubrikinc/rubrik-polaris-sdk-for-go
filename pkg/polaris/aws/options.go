@@ -23,7 +23,9 @@ package aws
 import (
 	"context"
 	"errors"
+	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
 
@@ -32,6 +34,7 @@ type options struct {
 	regions               []aws.Region
 	outpostAccountID      string
 	outpostAccountProfile AccountFunc
+	roleChainingAccountID string
 }
 
 // OptionFunc gives the value passed to the function creating the OptionFunc
@@ -77,6 +80,18 @@ func OutpostAccountWithProfile(outpostAccountID, outpostAccountProfile string) O
 		}
 		opts.outpostAccountID = outpostAccountID
 		opts.outpostAccountProfile = Profile(outpostAccountProfile)
+		return nil
+	}
+}
+
+// RoleChainingAccountID returns an OptionFunc that gives the specified RSC
+// cloud account ID for the role chaining account to the options instance.
+func RoleChainingAccountID(id string) OptionFunc {
+	return func(ctx context.Context, opts *options) error {
+		if _, err := uuid.Parse(id); err != nil {
+			return fmt.Errorf("invalid role chaining account id: %s", err)
+		}
+		opts.roleChainingAccountID = id
 		return nil
 	}
 }
