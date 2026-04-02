@@ -1,0 +1,8 @@
+query RubrikPolarisSDKRequest($slaIds: [UUID!]!) {
+    result: countOfObjectsProtectedBySlas(slaIds: $slaIds) {
+        slaObjectCounts {
+            slaId
+            objectCount
+        }
+    }
+}
