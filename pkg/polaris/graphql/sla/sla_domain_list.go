@@ -272,6 +272,42 @@ type ObjectFilter struct {
 	OnlyDirectlyAssignedObjects bool             `json:"showOnlyDirectlyAssignedObjects"`
 }
 
+// DomainObjectCount returns the number of objects protected by the specified
+// global SLA domain.
+func DomainObjectCount(ctx context.Context, gql *graphql.Client, domainID uuid.UUID) (int, error) {
+	gql.Log().Print(log.Trace)
+
+	query := countOfObjectsProtectedBySlasQuery
+	buf, err := gql.Request(ctx, query, struct {
+		DomainIDs []uuid.UUID `json:"slaIds"`
+	}{DomainIDs: []uuid.UUID{domainID}})
+	if err != nil {
+		return 0, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Counts []struct {
+					DomainID    string `json:"slaId"`
+					ObjectCount int    `json:"objectCount"`
+				} `json:"slaObjectCounts"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return 0, graphql.UnmarshalError(query, err)
+	}
+
+	for _, c := range payload.Data.Result.Counts {
+		if c.DomainID == domainID.String() {
+			return c.ObjectCount, nil
+		}
+	}
+
+	return 0, fmt.Errorf("SLA domain %q %w", domainID, graphql.ErrNotFound)
+}
+
 // ListDomainObjects returns all objects protected by the specified global SLA
 // domain.
 func ListDomainObjects(ctx context.Context, gql *graphql.Client, slaID uuid.UUID, filter ObjectFilter) ([]Object, error) {

@@ -94,6 +94,19 @@ func (a API) DomainObjects(ctx context.Context, domainID uuid.UUID, nameFilter s
 	return objects, nil
 }
 
+// DomainObjectCount returns the number of objects protected by the specified
+// global SLA domain.
+func (a API) DomainObjectCount(ctx context.Context, domainID uuid.UUID) (int, error) {
+	a.log.Print(log.Trace)
+
+	count, err := sla.DomainObjectCount(ctx, a.client, domainID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get object count for SLA domain %q: %s", domainID, err)
+	}
+
+	return count, nil
+}
+
 // CreateDomain creates a new global SLA domain with specified parameters.
 func (a API) CreateDomain(ctx context.Context, createParams sla.CreateDomainParams) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
