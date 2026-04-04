@@ -1,0 +1,10 @@
+query RubrikPolarisSDKRequest($input: GcpSubnetReq!) {
+  result: gcpSubnets(input: $input) {
+    subnets {
+      hostProject
+      name
+      network
+      region
+    }
+  }
+}
