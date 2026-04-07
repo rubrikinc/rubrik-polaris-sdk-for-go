@@ -1,0 +1,3 @@
+mutation RubrikPolarisSDKRequest($policyId: UUID!, $policyType: PolicyType!) {
+    result: deleteSecurityPolicy(policyId: $policyId, policyType: $policyType)
+}
