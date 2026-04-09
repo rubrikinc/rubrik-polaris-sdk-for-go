@@ -29,13 +29,12 @@ consumed primarily by the `terraform-provider-polaris` Terraform provider.
 ```bash
 go build ./...           # Build all packages
 go generate ./...        # Regenerate queries.go from .graphql files
-go fmt ./...             # Format
-go vet ./...             # Lint
 go test ./...            # Run unit tests
 ```
 
-Integration tests require `TEST_INTEGRATION=1` and RSC credentials in
-`~/.rubrik/polaris-accounts.json`.
+Integration tests require `TEST_INTEGRATION=1` and RSC credentials
+configured via `~/.rubrik/polaris-accounts.json` or environment variables
+(see README for details).
 
 ## GraphQL Code Generation
 
@@ -104,8 +103,9 @@ tokens — never bare `string`. This prevents accidental logging of secrets.
 
 1. `go fmt ./...`
 2. `go vet ./...`
-3. `go generate ./...` (if any `.graphql` files changed)
-4. `go test ./...`
-5. No manual edits to generated files
-6. Region types used (not strings)
-7. `secret.String` used for sensitive fields
+3. `staticcheck ./...`
+4. `go generate ./...` (if any `.graphql` files changed)
+5. `go test ./...`
+6. No manual edits to generated files
+7. Region types used (not strings)
+8. `secret.String` used for sensitive fields
