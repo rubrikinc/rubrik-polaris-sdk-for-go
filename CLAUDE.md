@@ -24,18 +24,6 @@ consumed primarily by the `terraform-provider-polaris` Terraform provider.
 | `cmd/` | CLI tools: `schema` (introspection), `testenv` |
 | `examples/` | 30+ example programs |
 
-## Build & Test
-
-```bash
-go build ./...           # Build all packages
-go generate ./...        # Regenerate queries.go from .graphql files
-go test ./...            # Run unit tests
-```
-
-Integration tests require `TEST_INTEGRATION=1` and RSC credentials
-configured via `~/.rubrik/polaris-accounts.json` or environment variables
-(see README for details).
-
 ## GraphQL Code Generation
 
 This is the most common workflow. Each domain package under
@@ -109,3 +97,6 @@ tokens — never bare `string`. This prevents accidental logging of secrets.
 6. No manual edits to generated files
 7. Region types used (not strings)
 8. `secret.String` used for sensitive fields
+
+Integration tests require `TEST_INTEGRATION=1` and RSC credentials configured
+via `~/.rubrik/polaris-accounts.json` or environment variables (see README).
