@@ -1,0 +1,6 @@
+query RubrikPolarisSDKRequest($resourceType: PolicyResourceType!, $policyType: PolicyType!) {
+    result: allPolicyFilterTypes(
+        resourceType: $resourceType,
+        policyType: $policyType
+    )
+}

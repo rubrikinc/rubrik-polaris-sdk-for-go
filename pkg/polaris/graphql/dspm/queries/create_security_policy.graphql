@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($input: CreateSecurityPolicyInput!) {
+    result: createSecurityPolicy(input: $input) {
+        policyId
+    }
+}

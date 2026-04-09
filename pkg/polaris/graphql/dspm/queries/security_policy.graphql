@@ -1,0 +1,22 @@
+query RubrikPolarisSDKRequest($policyId: UUID!, $policyType: PolicyType!) {
+    result: securityPolicy(policyId: $policyId, policyType: $policyType) {
+        policy {
+            policyId
+            policyType
+            name
+            description
+            policyCategory
+            policySeverity
+            isEnabled
+            isPredefined
+            filter {
+                ...FilterFields
+            }
+            thresholdFilter {
+                ...FilterFields
+            }
+            createdAt
+            updatedAt
+        }
+    }
+}

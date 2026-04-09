@@ -1,0 +1,3 @@
+mutation RubrikPolarisSDKRequest($input: UpdateDSPMPolicyInput!) {
+    result: updateSecurityPolicy(input: $input)
+}
