@@ -23,6 +23,7 @@ package dspm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -326,6 +327,140 @@ func TestPolicyByID(t *testing.T) {
 	}
 	if policy.ThresholdFilter != nil {
 		t.Error("ThresholdFilter: got non-nil, want nil")
+	}
+}
+
+func TestPolicyByIDFallbackListFails(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	policyID := uuid.MustParse("d4e5f6a7-b8c9-0123-4567-89abcdef0123")
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+		// Both the primary query and the list fallback fail.
+		w.Header().Set("Content-Length", "0")
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	_, err := PolicyByID(ctx, graphql.NewTestClient(srv), policyID)
+	if err == nil {
+		t.Fatal("expected error when both queries fail")
+	}
+}
+
+func TestPolicyByIDFallbackFoundInList(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	policyID := uuid.MustParse("d4e5f6a7-b8c9-0123-4567-89abcdef0123")
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+		var body struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		switch body.OperationName {
+		case "SdkGolangSecurityPolicy":
+			// Primary query fails.
+			w.Header().Set("Content-Length", "0")
+			w.WriteHeader(http.StatusInternalServerError)
+		case "SdkGolangAllSecurityPolicies":
+			fmt.Fprint(w, `{
+				"data": {
+					"result": [
+						{
+							"policy": {
+								"policyId": "d4e5f6a7-b8c9-0123-4567-89abcdef0123",
+								"name": "Found Policy",
+								"description": "Found via list fallback",
+								"policyCategory": "MISPLACED",
+								"policySeverity": "HIGH",
+								"isEnabled": true,
+								"isPredefined": false,
+								"filter": null,
+								"thresholdFilter": null,
+								"createdAt": "2026-03-31T12:00:00Z",
+								"updatedAt": "2026-03-31T12:00:00Z"
+							}
+						}
+					]
+				}
+			}`)
+		default:
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	}))
+	defer srv.Close()
+
+	policy, err := PolicyByID(ctx, graphql.NewTestClient(srv), policyID)
+	if err != nil {
+		t.Fatalf("PolicyByID fallback should succeed: %v", err)
+	}
+	if policy.ID != policyID {
+		t.Errorf("ID: got %q, want %q", policy.ID, policyID)
+	}
+	if policy.Name != "Found Policy" {
+		t.Errorf("Name: got %q, want %q", policy.Name, "Found Policy")
+	}
+}
+
+func TestPolicyByIDFallbackNotFound(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	policyID := uuid.MustParse("d4e5f6a7-b8c9-0123-4567-89abcdef0123")
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+		var body struct {
+			OperationName string `json:"operationName"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		switch body.OperationName {
+		case "SdkGolangSecurityPolicy":
+			// Primary query fails.
+			w.Header().Set("Content-Length", "0")
+			w.WriteHeader(http.StatusInternalServerError)
+		case "SdkGolangAllSecurityPolicies":
+			// List succeeds but the target policy is not in the result.
+			fmt.Fprint(w, `{
+				"data": {
+					"result": [
+						{
+							"policy": {
+								"policyId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+								"name": "Other Policy",
+								"description": "Not the one we want",
+								"policyCategory": "OVEREXPOSED",
+								"policySeverity": "LOW",
+								"isEnabled": true,
+								"isPredefined": false,
+								"filter": null,
+								"thresholdFilter": null,
+								"createdAt": "2026-03-31T12:00:00Z",
+								"updatedAt": "2026-03-31T12:00:00Z"
+							}
+						}
+					]
+				}
+			}`)
+		default:
+			http.Error(w, "unexpected operation", http.StatusBadRequest)
+		}
+	}))
+	defer srv.Close()
+
+	_, err := PolicyByID(ctx, graphql.NewTestClient(srv), policyID)
+	if err == nil {
+		t.Fatal("expected ErrNotFound")
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Errorf("error should wrap ErrNotFound: %v", err)
 	}
 }
 
