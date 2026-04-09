@@ -412,7 +412,20 @@ func PolicyByID(ctx context.Context, gql *graphql.Client, id uuid.UUID) (Policy,
 		PolicyType string    `json:"policyType"`
 	}{PolicyID: id, PolicyType: policyTypeDataGov})
 	if err != nil {
-		return Policy{}, graphql.RequestError(query, err)
+		// Not-found errors cannot be distinguished from other errors,
+		// so fall back to listing all policies to determine whether
+		// the policy actually exists.
+		gql.Log().Printf(log.Trace, "PolicyByID: primary query failed, falling back to list: %v", err)
+		policies, listErr := Policies(ctx, gql)
+		if listErr != nil {
+			return Policy{}, fmt.Errorf("%w (list fallback also failed: %v)", graphql.RequestError(query, err), listErr)
+		}
+		for _, p := range policies {
+			if p.ID == id {
+				return p, nil
+			}
+		}
+		return Policy{}, fmt.Errorf("policy %q %w", id, graphql.ErrNotFound)
 	}
 
 	var payload struct {
