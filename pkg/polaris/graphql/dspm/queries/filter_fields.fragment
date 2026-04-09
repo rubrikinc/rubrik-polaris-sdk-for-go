@@ -1,0 +1,38 @@
+fragment FilterFields on PolicyFilter {
+    filterConfig {
+        ... on FilterGroupConfig {
+            __typename
+            logicalOperator
+            filtersList {
+                filterConfig {
+                    ... on FilterConfig {
+                        __typename
+                        type
+                        values
+                        relationship
+                    }
+                    ... on FilterGroupConfig {
+                        __typename
+                        logicalOperator
+                        filtersList {
+                            filterConfig {
+                                ... on FilterConfig {
+                                    __typename
+                                    type
+                                    values
+                                    relationship
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ... on FilterConfig {
+            __typename
+            type
+            values
+            relationship
+        }
+    }
+}

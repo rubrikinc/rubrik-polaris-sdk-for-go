@@ -74,6 +74,16 @@ var cloudNativeTagRulesQuery = `query SdkGolangCloudNativeTagRules($objectType: 
     }
 }`
 
+// countOfObjectsProtectedBySlas GraphQL query
+var countOfObjectsProtectedBySlasQuery = `query SdkGolangCountOfObjectsProtectedBySlas($slaIds: [UUID!]!) {
+    result: countOfObjectsProtectedBySlas(slaIds: $slaIds) {
+        slaObjectCounts {
+            slaId
+            objectCount
+        }
+    }
+}`
+
 // createCloudNativeTagRule GraphQL query
 var createCloudNativeTagRuleQuery = `mutation SdkGolangCreateCloudNativeTagRule(
     $tagRuleName:             String!,
