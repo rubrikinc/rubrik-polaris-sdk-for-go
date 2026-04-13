@@ -52,6 +52,8 @@ func (a API) SSOGroupByID(ctx context.Context, id string) (access.SSOGroup, erro
 }
 
 // SSOGroupByName returns the SSO group with the specified SSO group name.
+// Returns an error if multiple groups with the same name exist across different
+// auth domains. Use SSOGroupByNameAndAuthDomain to disambiguate.
 func (a API) SSOGroupByName(ctx context.Context, name string) (access.SSOGroup, error) {
 	a.client.Log().Print(log.Trace)
 
@@ -61,13 +63,58 @@ func (a API) SSOGroupByName(ctx context.Context, name string) (access.SSOGroup, 
 	}
 
 	lowerName := strings.ToLower(name)
+	var matches []access.SSOGroup
 	for _, group := range groups {
 		if strings.ToLower(group.Name) == lowerName {
-			return group, nil
+			matches = append(matches, group)
 		}
 	}
 
-	return access.SSOGroup{}, fmt.Errorf("SSO group %q %w", name, graphql.ErrNotFound)
+	switch len(matches) {
+	case 0:
+		return access.SSOGroup{}, fmt.Errorf("SSO group %q %w", name, graphql.ErrNotFound)
+	case 1:
+		return matches[0], nil
+	default:
+		return access.SSOGroup{}, fmt.Errorf("multiple SSO groups named %q found, use SSOGroupByNameAndAuthDomain to disambiguate", name)
+	}
+}
+
+// SSOGroupByNameAndAuthDomain returns the SSO group with the specified name in
+// the specified auth domain. Returns graphql.ErrNotFound if no matching group
+// is found. Returns an error if multiple groups match.
+func (a API) SSOGroupByNameAndAuthDomain(ctx context.Context, name, authDomainID string) (access.SSOGroup, error) {
+	a.client.Log().Print(log.Trace)
+
+	idp, err := a.IdentityProviderByID(ctx, authDomainID)
+	if err != nil {
+		return access.SSOGroup{}, err
+	}
+	groups, err := access.ListSSOGroups(ctx, a.client, access.SSOGroupFilter{
+		Name:          name,
+		AuthDomainIDs: []string{authDomainID},
+	})
+	if err != nil {
+		return access.SSOGroup{}, fmt.Errorf("failed to get SSO groups with name %q and auth domain %q: %s", name, authDomainID, err)
+	}
+
+	lowerName := strings.ToLower(name)
+	lowerDomainName := strings.ToLower(idp.Name)
+	var matches []access.SSOGroup
+	for _, group := range groups {
+		if strings.ToLower(group.Name) == lowerName && strings.ToLower(group.DomainName) == lowerDomainName {
+			matches = append(matches, group)
+		}
+	}
+
+	switch len(matches) {
+	case 0:
+		return access.SSOGroup{}, fmt.Errorf("SSO group %q in auth domain %q %w", name, authDomainID, graphql.ErrNotFound)
+	case 1:
+		return matches[0], nil
+	default:
+		return access.SSOGroup{}, fmt.Errorf("multiple SSO groups named %q found in auth domain %q", name, authDomainID)
+	}
 }
 
 // SSOGroups returns the SSO groups matching the specified SSO group name

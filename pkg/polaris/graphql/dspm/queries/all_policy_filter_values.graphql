@@ -1,0 +1,43 @@
+query RubrikPolarisSDKRequest($policyFilterType: FilterType!, $policyType: PolicyType!, $searchTerm: String) {
+    result: allPolicyFilterValues(
+        policyFilterType: $policyFilterType,
+        policyType: $policyType,
+        searchTerm: $searchTerm
+    ) {
+        possibleRelationships
+        possibleValues {
+            ... on FilterTreeValues {
+                __typename
+                filterValues {
+                    value {
+                        id
+                        label
+                    }
+                    children {
+                        value {
+                            id
+                            label
+                        }
+                    }
+                }
+            }
+            ... on FilterValues {
+                __typename
+                filterValues {
+                    id
+                    label
+                }
+            }
+            ... on FilterValuesWithProvider {
+                __typename
+                filterValuesWithProvider {
+                    filterValue {
+                        id
+                        label
+                    }
+                    provider
+                }
+            }
+        }
+    }
+}
