@@ -23,6 +23,7 @@ package graphql
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 )
 
@@ -30,6 +31,23 @@ var (
 	// ErrNotFound signals that the specified entity could not be found.
 	ErrNotFound = errors.New("not found")
 )
+
+// httpError represents an HTTP-level error with a status code.
+type httpError struct {
+	statusCode int
+	msg        string
+}
+
+func (e httpError) Error() string {
+	return e.msg
+}
+
+// isTemporary returns true if the HTTP status code indicates a temporary
+// condition that may resolve on retry.
+func (e httpError) isTemporary() bool {
+	return e.statusCode == http.StatusBadGateway || e.statusCode == http.StatusServiceUnavailable ||
+		e.statusCode == http.StatusGatewayTimeout || e.statusCode == http.StatusTooManyRequests
+}
 
 // GQLError is returned by RSC in the body of a response as a JSON document when
 // certain types of GraphQL errors occur.

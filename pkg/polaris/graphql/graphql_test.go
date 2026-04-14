@@ -27,6 +27,7 @@ import (
 	"strings"
 	"testing"
 	"text/template"
+	"time"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
@@ -111,6 +112,41 @@ func TestRequestWithInternalServerErrorTextBody(t *testing.T) {
 	_, err := NewTestClient(srv).Request(context.Background(), "me { name }", nil)
 	if err == nil || !strings.HasSuffix(err.Error(), "graphql response has Content-Type text/plain (status code 500): \"database is corrupt\"") {
 		t.Fatalf("invalid error: %v", err)
+	}
+}
+
+func TestRequestWithBadGatewayRetry(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	// First request responds with a 502, second request succeeds.
+	attempt := 0
+	srv := httptest.NewServer(handler.Token(func(w http.ResponseWriter, req *http.Request) {
+		attempt++
+		if attempt == 1 {
+			w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+			w.WriteHeader(502)
+			w.Write([]byte("<html><body>502 Bad Gateway</body></html>"))
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"data":{"result":"ok"}}`))
+	}))
+	defer srv.Close()
+
+	client := NewTestClient(srv)
+	client.retryDelay = 10 * time.Millisecond
+
+	buf, err := client.Request(ctx, "me { name }", nil)
+	if err != nil {
+		t.Fatalf("expected retry to succeed, got error: %v", err)
+	}
+	if !strings.Contains(string(buf), `"result":"ok"`) {
+		t.Fatalf("unexpected response: %s", string(buf))
+	}
+	if attempt != 2 {
+		t.Fatalf("expected 2 attempts, got %d", attempt)
 	}
 }
 

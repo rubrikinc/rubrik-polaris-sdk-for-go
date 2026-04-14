@@ -57,10 +57,11 @@ import (
 
 // Client is used to make GraphQL calls to the Polaris platform.
 type Client struct {
-	Version string // Deprecated: use DeploymentVersion.
-	gqlURL  string
-	client  *http.Client
-	log     log.Logger
+	Version    string // Deprecated: use DeploymentVersion.
+	retryDelay time.Duration
+	gqlURL     string
+	client     *http.Client
+	log        log.Logger
 }
 
 // Build into is used to derive SDK metrics headers.
@@ -207,16 +208,23 @@ func (c *Client) RequestWithoutLogging(ctx context.Context, query string, variab
 	for {
 		buf, err := c.RequestWithoutRetry(ctx, query, variables)
 
-		var gqlErr GQLError
-		if errors.As(err, &gqlErr) && gqlErr.isTemporary() {
+		var tempErr interface {
+			error
+			isTemporary() bool
+		}
+		if errors.As(err, &tempErr) && tempErr.isTemporary() {
 			if retryAttempt++; retryAttempt > requestRetryAttempts {
 				return nil, fmt.Errorf("request failed after %d retries: %w", retryAttempt-1, err)
 			}
 
 			c.log.Printf(log.Debug, "Endpoint temporarily unavailable (retry attempt: %d/%d): %s", retryAttempt,
 				requestRetryAttempts, err)
+			delay := c.retryDelay
+			if delay == 0 {
+				delay = 10 * time.Second
+			}
 			select {
-			case <-time.After(10 * time.Second):
+			case <-time.After(delay):
 				continue
 			case <-ctx.Done():
 				return nil, ctx.Err()
@@ -292,16 +300,19 @@ func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variable
 	}
 	defer res.Body.Close()
 
-	// Remote responded without a body. For status code 200, this means we
-	// are missing the GraphQL response. For an error, we have no additional
-	// details.
-	if res.ContentLength == 0 {
-		return nil, fmt.Errorf("graphql response has no body (status code %d)", res.StatusCode)
-	}
-
 	buf, err = io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read graphql response body (status code %d): %v", res.StatusCode, err)
+	}
+
+	// Remote responded without a body. For status code 200, this means we
+	// are missing the GraphQL response. For an error, we have no additional
+	// details.
+	if len(buf) == 0 {
+		return nil, httpError{
+			statusCode: res.StatusCode,
+			msg:        fmt.Sprintf("graphql response has no body (status code %d)", res.StatusCode),
+		}
 	}
 
 	// Verify that the content type of the body is JSON. For status code 200,
@@ -313,8 +324,11 @@ func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variable
 		if len(snippet) > 512 {
 			snippet = snippet[:512]
 		}
-		return nil, fmt.Errorf("graphql response has Content-Type %s (status code %d): %q",
-			contentType, res.StatusCode, snippet)
+		return nil, httpError{
+			statusCode: res.StatusCode,
+			msg: fmt.Sprintf("graphql response has Content-Type %s (status code %d): %q",
+				contentType, res.StatusCode, snippet),
+		}
 	}
 
 	// Remote responded with a JSON document. Try to parse it as both known
@@ -338,7 +352,10 @@ func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variable
 	}
 
 	if res.StatusCode != 200 {
-		return nil, fmt.Errorf("graphql response has status code: %s", res.Status)
+		return nil, httpError{
+			statusCode: res.StatusCode,
+			msg:        fmt.Sprintf("graphql response has status code: %s", res.Status),
+		}
 	}
 
 	return buf, nil
