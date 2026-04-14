@@ -95,9 +95,18 @@ type TrustPolicyArtifact struct {
 	ErrorMessage        string `json:"errorMessage"`
 }
 
+// TrustPolicyParams holds the parameters for a TrustPolicy operation.
+// RoleChainingAccountID is optional.
+type TrustPolicyParams struct {
+	Cloud                 Cloud
+	Features              []core.Feature
+	TrustPolicyAccounts   []TrustPolicyAccount
+	RoleChainingAccountID uuid.UUID
+}
+
 // TrustPolicy returns the trust policy for the specified account and external
-// id. Pass uuid.Nil for roleChainingAccountID when role chaining is not used.
-func (a API) TrustPolicy(ctx context.Context, cloud Cloud, features []core.Feature, trustPolicyAccounts []TrustPolicyAccount, roleChainingAccountID uuid.UUID) ([]TrustPolicy, error) {
+// id.
+func (a API) TrustPolicy(ctx context.Context, params TrustPolicyParams) ([]TrustPolicy, error) {
 	a.log.Print(log.Trace)
 
 	query := awsTrustPolicyQuery
@@ -106,7 +115,7 @@ func (a API) TrustPolicy(ctx context.Context, cloud Cloud, features []core.Featu
 		Features              []string             `json:"features"`
 		NativeAccounts        []TrustPolicyAccount `json:"awsNativeAccounts"`
 		RoleChainingAccountID uuid.UUID            `json:"roleChainingAccountId,omitzero"`
-	}{Cloud: cloud, Features: core.FeatureNames(features), NativeAccounts: trustPolicyAccounts, RoleChainingAccountID: roleChainingAccountID})
+	}{Cloud: params.Cloud, Features: core.FeatureNames(params.Features), NativeAccounts: params.TrustPolicyAccounts, RoleChainingAccountID: params.RoleChainingAccountID})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
@@ -147,10 +156,17 @@ type NativeIDToRSCIDMapping struct {
 	Message        string `json:"Message"`
 }
 
+// RegisterFeatureArtifactsParams holds the parameters for a
+// RegisterFeatureArtifacts operation. RoleChainingAccountID is optional.
+type RegisterFeatureArtifactsParams struct {
+	Cloud                 Cloud
+	Artifacts             []AccountFeatureArtifact
+	RoleChainingAccountID uuid.UUID
+}
+
 // RegisterFeatureArtifacts registers the specified artifacts with the cloud
-// account identified by the native ID. Pass uuid.Nil for roleChainingAccountID
-// when role chaining is not used.
-func (a API) RegisterFeatureArtifacts(ctx context.Context, cloud Cloud, artifacts []AccountFeatureArtifact, roleChainingAccountID uuid.UUID) ([]NativeIDToRSCIDMapping, error) {
+// account identified by the native ID.
+func (a API) RegisterFeatureArtifacts(ctx context.Context, params RegisterFeatureArtifactsParams) ([]NativeIDToRSCIDMapping, error) {
 	a.log.Print(log.Trace)
 
 	query := registerAwsFeatureArtifactsQuery
@@ -158,7 +174,7 @@ func (a API) RegisterFeatureArtifacts(ctx context.Context, cloud Cloud, artifact
 		Cloud                 Cloud                    `json:"cloudType"`
 		Artifacts             []AccountFeatureArtifact `json:"awsArtifacts"`
 		RoleChainingAccountID uuid.UUID                `json:"roleChainingAccountId,omitzero"`
-	}{Cloud: cloud, Artifacts: artifacts, RoleChainingAccountID: roleChainingAccountID})
+	}{Cloud: params.Cloud, Artifacts: params.Artifacts, RoleChainingAccountID: params.RoleChainingAccountID})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}

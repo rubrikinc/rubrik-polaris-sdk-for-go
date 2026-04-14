@@ -248,19 +248,28 @@ func (a API) AccountArtifacts(ctx context.Context, cloudAccountID uuid.UUID) (ma
 	return instanceProfiles, roles, nil
 }
 
+// AddAccountArtifactsParams holds the parameters for an AddAccountArtifacts
+// operation. RoleChainingAccountID is optional.
+type AddAccountArtifactsParams struct {
+	CloudAccountID        uuid.UUID
+	Features              []core.Feature
+	InstanceProfiles      map[string]string
+	Roles                 map[string]string
+	RoleChainingAccountID uuid.UUID
+}
+
 // AddAccountArtifacts adds the specified artifacts, instance profiles and
-// roles, to the cloud account. Pass uuid.Nil for roleChainingAccountID when
-// role chaining is not used.
-func (a API) AddAccountArtifacts(ctx context.Context, cloudAccountID uuid.UUID, features []core.Feature, instanceProfiles map[string]string, roles map[string]string, roleChainingAccountID uuid.UUID) (uuid.UUID, error) {
+// roles, to the cloud account.
+func (a API) AddAccountArtifacts(ctx context.Context, params AddAccountArtifactsParams) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	account, err := a.AccountByID(ctx, cloudAccountID)
+	account, err := a.AccountByID(ctx, params.CloudAccountID)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	externalArtifacts := make([]aws.ExternalArtifact, 0, len(instanceProfiles)+len(roles))
-	for key, value := range instanceProfiles {
+	externalArtifacts := make([]aws.ExternalArtifact, 0, len(params.InstanceProfiles)+len(params.Roles))
+	for key, value := range params.InstanceProfiles {
 		if !strings.HasSuffix(key, instanceProfileSuffix) {
 			key = key + instanceProfileSuffix
 		}
@@ -269,7 +278,7 @@ func (a API) AddAccountArtifacts(ctx context.Context, cloudAccountID uuid.UUID, 
 			ExternalArtifactValue: value,
 		})
 	}
-	for key, value := range roles {
+	for key, value := range params.Roles {
 		if !strings.HasSuffix(key, roleArnSuffix) {
 			key = key + roleArnSuffix
 		}
@@ -288,11 +297,15 @@ func (a API) AddAccountArtifacts(ctx context.Context, cloudAccountID uuid.UUID, 
 	now := time.Now()
 	var mappings []aws.NativeIDToRSCIDMapping
 	for {
-		mappings, err = aws.Wrap(a.client).RegisterFeatureArtifacts(ctx, aws.Cloud(account.Cloud), []aws.AccountFeatureArtifact{{
-			NativeID:  account.NativeID,
-			Features:  core.FeatureNames(features),
-			Artifacts: externalArtifacts,
-		}}, roleChainingAccountID)
+		mappings, err = aws.Wrap(a.client).RegisterFeatureArtifacts(ctx, aws.RegisterFeatureArtifactsParams{
+			Cloud: aws.Cloud(account.Cloud),
+			Artifacts: []aws.AccountFeatureArtifact{{
+				NativeID:  account.NativeID,
+				Features:  core.FeatureNames(params.Features),
+				Artifacts: externalArtifacts,
+			}},
+			RoleChainingAccountID: params.RoleChainingAccountID,
+		})
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("failed to register feature artifacts: %s", err)
 		}
@@ -322,27 +335,41 @@ func (a API) AddAccountArtifacts(ctx context.Context, cloudAccountID uuid.UUID, 
 // TrustPolicyMap maps the role key to the trust policy.
 type TrustPolicyMap map[string]string
 
+// TrustPoliciesParams holds the parameters for a TrustPolicies operation.
+// RoleChainingAccountID is optional.
+type TrustPoliciesParams struct {
+	Cloud                 aws.Cloud
+	CloudAccountID        uuid.UUID
+	Features              []core.Feature
+	ExternalID            string
+	RoleChainingAccountID uuid.UUID
+}
+
 // TrustPolicies returns the trust policies required by RSC for the specified
 // features. If the external ID is empty, RSC will generate an external ID.
 // The same endpoint is used both for reading and writing the trust policy,
 // a side effect of this is that the first call always set the trust policy.
-// Pass uuid.Nil for roleChainingAccountID when role chaining is not used.
 // Once the trust policy has been set, it cannot be changed.
 // If the account cannot be found, graphql.ErrNotFound is returned.
-func (a API) TrustPolicies(ctx context.Context, cloud aws.Cloud, cloudAccountID uuid.UUID, features []core.Feature, externalID string, roleChainingAccountID uuid.UUID) (TrustPolicyMap, error) {
+func (a API) TrustPolicies(ctx context.Context, params TrustPoliciesParams) (TrustPolicyMap, error) {
 	a.log.Print(log.Trace)
 
 	// We need to look up the account to obtain the AWS native account ID.
 	// The call returns graphql.NotFound if the cloud account isn't found.
-	account, err := a.AccountByID(ctx, cloudAccountID)
+	account, err := a.AccountByID(ctx, params.CloudAccountID)
 	if err != nil {
 		return nil, err
 	}
 
-	policies, err := aws.Wrap(a.client).TrustPolicy(ctx, cloud, features, []aws.TrustPolicyAccount{{
-		ID:         account.NativeID,
-		ExternalID: externalID,
-	}}, roleChainingAccountID)
+	policies, err := aws.Wrap(a.client).TrustPolicy(ctx, aws.TrustPolicyParams{
+		Cloud:    params.Cloud,
+		Features: params.Features,
+		TrustPolicyAccounts: []aws.TrustPolicyAccount{{
+			ID:         account.NativeID,
+			ExternalID: params.ExternalID,
+		}},
+		RoleChainingAccountID: params.RoleChainingAccountID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get trust policies: %s", err)
 	}
