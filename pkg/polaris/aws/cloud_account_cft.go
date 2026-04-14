@@ -51,6 +51,9 @@ func (a API) AddAccountWithCFT(ctx context.Context, account AccountFunc, feature
 	if len(features) == 0 {
 		return uuid.Nil, errors.New("no features specified")
 	}
+	if err := core.ValidateRoleChaining(features); err != nil {
+		return uuid.Nil, err
+	}
 
 	config, err := account(ctx)
 	if err != nil {

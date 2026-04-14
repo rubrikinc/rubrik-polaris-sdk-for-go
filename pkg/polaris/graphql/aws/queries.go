@@ -207,8 +207,8 @@ var awsNativeAccountsQuery = `query SdkGolangAwsNativeAccounts(
 }`
 
 // awsTrustPolicy GraphQL query
-var awsTrustPolicyQuery = `query SdkGolangAwsTrustPolicy($cloudType: AwsCloudType!, $features: [CloudAccountFeature!]!, $awsNativeAccounts: [AwsNativeAccountInput!]!) {
-    result: awsTrustPolicy(input: {cloudType: $cloudType, features: $features, awsNativeAccounts: $awsNativeAccounts}) {
+var awsTrustPolicyQuery = `query SdkGolangAwsTrustPolicy($cloudType: AwsCloudType!, $features: [CloudAccountFeature!]!, $awsNativeAccounts: [AwsNativeAccountInput!]!, $roleChainingAccountId: UUID) {
+    result: awsTrustPolicy(input: {cloudType: $cloudType, features: $features, awsNativeAccounts: $awsNativeAccounts, roleChainingAccountId: $roleChainingAccountId}) {
         result {
             artifacts {
                 externalArtifactKey
@@ -306,8 +306,8 @@ var prepareFeatureUpdateForAwsCloudAccountQuery = `mutation SdkGolangPrepareFeat
 }`
 
 // registerAwsFeatureArtifacts GraphQL query
-var registerAwsFeatureArtifactsQuery = `mutation SdkGolangRegisterAwsFeatureArtifacts($cloudType: AwsCloudType, $awsArtifacts: [AwsAccountFeatureArtifact!]!) {
-    result: registerAwsFeatureArtifacts(input: {cloudType: $cloudType, awsArtifacts: $awsArtifacts}) {
+var registerAwsFeatureArtifactsQuery = `mutation SdkGolangRegisterAwsFeatureArtifacts($cloudType: AwsCloudType, $awsArtifacts: [AwsAccountFeatureArtifact!]!, $roleChainingAccountId: UUID) {
+    result: registerAwsFeatureArtifacts(input: {cloudType: $cloudType, awsArtifacts: $awsArtifacts, roleChainingAccountId: $roleChainingAccountId}) {
         allAwsNativeIdtoRscIdMappings {
             awsCloudAccountId
             awsNativeId

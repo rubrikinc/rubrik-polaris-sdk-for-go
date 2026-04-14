@@ -96,16 +96,17 @@ type TrustPolicyArtifact struct {
 }
 
 // TrustPolicy returns the trust policy for the specified account and external
-// id.
-func (a API) TrustPolicy(ctx context.Context, cloud Cloud, features []core.Feature, trustPolicyAccounts []TrustPolicyAccount) ([]TrustPolicy, error) {
+// id. Pass uuid.Nil for roleChainingAccountID when role chaining is not used.
+func (a API) TrustPolicy(ctx context.Context, cloud Cloud, features []core.Feature, trustPolicyAccounts []TrustPolicyAccount, roleChainingAccountID uuid.UUID) ([]TrustPolicy, error) {
 	a.log.Print(log.Trace)
 
 	query := awsTrustPolicyQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Cloud          Cloud                `json:"cloudType"`
-		Features       []string             `json:"features"`
-		NativeAccounts []TrustPolicyAccount `json:"awsNativeAccounts"`
-	}{Cloud: cloud, Features: core.FeatureNames(features), NativeAccounts: trustPolicyAccounts})
+		Cloud                 Cloud                `json:"cloudType"`
+		Features              []string             `json:"features"`
+		NativeAccounts        []TrustPolicyAccount `json:"awsNativeAccounts"`
+		RoleChainingAccountID uuid.UUID            `json:"roleChainingAccountId,omitzero"`
+	}{Cloud: cloud, Features: core.FeatureNames(features), NativeAccounts: trustPolicyAccounts, RoleChainingAccountID: roleChainingAccountID})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
@@ -147,15 +148,17 @@ type NativeIDToRSCIDMapping struct {
 }
 
 // RegisterFeatureArtifacts registers the specified artifacts with the cloud
-// account identified by the native ID.
-func (a API) RegisterFeatureArtifacts(ctx context.Context, cloud Cloud, artifacts []AccountFeatureArtifact) ([]NativeIDToRSCIDMapping, error) {
+// account identified by the native ID. Pass uuid.Nil for roleChainingAccountID
+// when role chaining is not used.
+func (a API) RegisterFeatureArtifacts(ctx context.Context, cloud Cloud, artifacts []AccountFeatureArtifact, roleChainingAccountID uuid.UUID) ([]NativeIDToRSCIDMapping, error) {
 	a.log.Print(log.Trace)
 
 	query := registerAwsFeatureArtifactsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Cloud     Cloud                    `json:"cloudType"`
-		Artifacts []AccountFeatureArtifact `json:"awsArtifacts"`
-	}{Cloud: cloud, Artifacts: artifacts})
+		Cloud                 Cloud                    `json:"cloudType"`
+		Artifacts             []AccountFeatureArtifact `json:"awsArtifacts"`
+		RoleChainingAccountID uuid.UUID                `json:"roleChainingAccountId,omitzero"`
+	}{Cloud: cloud, Artifacts: artifacts, RoleChainingAccountID: roleChainingAccountID})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
