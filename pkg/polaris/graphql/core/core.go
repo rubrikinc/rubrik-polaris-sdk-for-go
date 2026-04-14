@@ -35,7 +35,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
@@ -274,6 +273,19 @@ func LookupFeature(features []Feature, feature Feature) (Feature, bool) {
 	}
 
 	return Feature{}, false
+}
+
+// ValidateRoleChaining returns an error if ROLE_CHAINING is combined with
+// other features. The ROLE_CHAINING feature is mutually exclusive with all
+// other features.
+func ValidateRoleChaining(features []Feature) error {
+	if len(features) < 2 {
+		return nil
+	}
+	if _, ok := LookupFeature(features, FeatureRoleChaining); ok {
+		return errors.New("ROLE_CHAINING is mutually exclusive with all other features")
+	}
+	return nil
 }
 
 // FilterFeaturesOnPermissionGroups verifies that all features either have no
