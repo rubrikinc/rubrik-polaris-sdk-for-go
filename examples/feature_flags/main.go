@@ -66,7 +66,10 @@ func main() {
 	}
 
 	// Fetch single feature flag.
-	featureFlag, err := core.Wrap(client.GQL).FeatureFlag(ctx, core.FeatureFlagGCPDisableDeleteCombined)
+	featureFlag, err := core.Wrap(client.GQL).FeatureFlag(
+		ctx,
+		core.FeatureFlagMultipleKeyValuePairsInTagRules,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
