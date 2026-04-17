@@ -150,24 +150,24 @@ type VMwareVMConfig struct {
 // SapHanaConfig represents the configuration specific for a SAP HANA database
 // object.
 type SapHanaConfig struct {
-	IncrementalFrequency  RetentionDuration             `json:"incrementalFrequency,omitempty"`
-	LogRetention          RetentionDuration             `json:"logRetention,omitempty"`
-	DifferentialFrequency RetentionDuration             `json:"differentialFrequency,omitempty"`
+	IncrementalFrequency  RetentionDuration             `json:"incrementalFrequency,omitzero"`
+	LogRetention          RetentionDuration             `json:"logRetention,omitzero"`
+	DifferentialFrequency RetentionDuration             `json:"differentialFrequency,omitzero"`
 	StorageSnapshotConfig *SapHanaStorageSnapshotConfig `json:"storageSnapshotConfig,omitempty"`
 }
 
 // SapHanaStorageSnapshotConfig represents the storage snapshot configuration
 // for SAP HANA.
 type SapHanaStorageSnapshotConfig struct {
-	Frequency RetentionDuration `json:"frequency,omitempty"`
-	Retention RetentionDuration `json:"retention,omitempty"`
+	Frequency RetentionDuration `json:"frequency,omitzero"`
+	Retention RetentionDuration `json:"retention,omitzero"`
 }
 
 // DB2Config represents the configuration specific for a Db2 database object.
 type DB2Config struct {
-	IncrementalFrequency  RetentionDuration    `json:"incrementalFrequency,omitempty"`
-	LogRetention          RetentionDuration    `json:"logRetention,omitempty"`
-	DifferentialFrequency RetentionDuration    `json:"differentialFrequency,omitempty"`
+	IncrementalFrequency  RetentionDuration    `json:"incrementalFrequency,omitzero"`
+	LogRetention          RetentionDuration    `json:"logRetention,omitzero"`
+	DifferentialFrequency RetentionDuration    `json:"differentialFrequency,omitzero"`
 	LogArchivalMethod     Db2LogArchivalMethod `json:"logArchivalMethod,omitempty"`
 }
 
@@ -184,41 +184,41 @@ const (
 // MssqlConfig represents the configuration specific for a SQL Server database
 // object.
 type MssqlConfig struct {
-	Frequency    RetentionDuration `json:"frequency,omitempty"`
-	LogRetention RetentionDuration `json:"logRetention,omitempty"`
+	Frequency    RetentionDuration `json:"frequency,omitzero"`
+	LogRetention RetentionDuration `json:"logRetention,omitzero"`
 }
 
 // OracleConfig represents the configuration specific for an Oracle database
 // object.
 type OracleConfig struct {
-	Frequency        RetentionDuration `json:"frequency,omitempty"`
-	LogRetention     RetentionDuration `json:"logRetention,omitempty"`
-	HostLogRetention RetentionDuration `json:"hostLogRetention,omitempty"`
+	Frequency        RetentionDuration `json:"frequency,omitzero"`
+	LogRetention     RetentionDuration `json:"logRetention,omitzero"`
+	HostLogRetention RetentionDuration `json:"hostLogRetention,omitzero"`
 }
 
 // MongoConfig represents the configuration specific for a MongoDB database
 // object.
 type MongoConfig struct {
-	LogFrequency RetentionDuration `json:"logFrequency,omitempty"`
-	LogRetention RetentionDuration `json:"logRetention,omitempty"`
+	LogFrequency RetentionDuration `json:"logFrequency,omitzero"`
+	LogRetention RetentionDuration `json:"logRetention,omitzero"`
 }
 
 // ManagedVolumeSlaConfig represents the configuration specific for a Managed
 // Volume object.
 type ManagedVolumeSlaConfig struct {
-	LogRetention RetentionDuration `json:"logRetention,omitempty"`
+	LogRetention RetentionDuration `json:"logRetention,omitzero"`
 }
 
 // PostgresDbClusterSlaConfig represents the configuration specific for a
 // Postgres DB Cluster object.
 type PostgresDbClusterSlaConfig struct {
-	LogRetention RetentionDuration `json:"logRetention,omitempty"`
+	LogRetention RetentionDuration `json:"logRetention,omitzero"`
 }
 
 // MysqldbSlaConfig represents the configuration specific for a MySQL object.
 type MysqldbSlaConfig struct {
-	LogFrequency RetentionDuration `json:"logFrequency,omitempty"`
-	LogRetention RetentionDuration `json:"logRetention,omitempty"`
+	LogFrequency RetentionDuration `json:"logFrequency,omitzero"`
+	LogRetention RetentionDuration `json:"logRetention,omitzero"`
 }
 
 // NcdSlaConfig represents the configuration specific for a NAS Cloud Direct
@@ -236,16 +236,16 @@ type NcdSlaConfig struct {
 // InformixSlaConfig represents the configuration specific for an Informix
 // object.
 type InformixSlaConfig struct {
-	IncrementalFrequency RetentionDuration `json:"incrementalFrequency,omitempty"`
-	IncrementalRetention RetentionDuration `json:"incrementalRetention,omitempty"`
-	LogFrequency         RetentionDuration `json:"logFrequency,omitempty"`
-	LogRetention         RetentionDuration `json:"logRetention,omitempty"`
+	IncrementalFrequency RetentionDuration `json:"incrementalFrequency,omitzero"`
+	IncrementalRetention RetentionDuration `json:"incrementalRetention,omitzero"`
+	LogFrequency         RetentionDuration `json:"logFrequency,omitzero"`
+	LogRetention         RetentionDuration `json:"logRetention,omitzero"`
 }
 
 // GcpCloudSqlConfig represents the configuration specific for a GCP Cloud SQL
 // object.
 type GcpCloudSqlConfig struct {
-	LogRetention RetentionDuration `json:"logRetention,omitempty"`
+	LogRetention RetentionDuration `json:"logRetention,omitzero"`
 }
 
 // SnapshotSchedule holds the snapshot schedule for an RSC global SLA domain.
