@@ -70,6 +70,13 @@ const (
 	GCPClusterNameLengthCheck  ClusterCreateValidations = "GCP_CLUSTER_NAME_LENGTH_CHECK"
 )
 
+// SubnetAzConfig represents a subnet and availability zone pair for Multi-AZ
+// deployments. Used when IsAzResilient is true.
+type SubnetAzConfig struct {
+	AvailabilityZone string `json:"availabilityZone"`
+	Subnet           string `json:"subnet"`
+}
+
 // VmConfigType represents the valid VM config types.
 type VmConfigType string
 
