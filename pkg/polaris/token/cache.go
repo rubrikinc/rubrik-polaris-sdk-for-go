@@ -33,6 +33,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/env"
 )
 
 const (
@@ -73,7 +75,7 @@ func NewCacheWithDir(source Source, dir, keyMaterial, suffixMaterial string) (*c
 func NewCache(source Source, keyMaterial, suffixMaterial string, allowEnvOverride bool) (*cache, error) {
 	suffix := fmt.Sprintf("%x", sha256.Sum256([]byte(suffixMaterial)))
 	if allowEnvOverride {
-		if tcSecret := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE_SECRET"); tcSecret != "" {
+		if tcSecret := env.Get("RUBRIK_TOKEN_CACHE_SECRET"); tcSecret != "" {
 			keyMaterial = tcSecret
 			suffix += "-env"
 		}
@@ -86,7 +88,7 @@ func NewCache(source Source, keyMaterial, suffixMaterial string, allowEnvOverrid
 
 	path := os.TempDir()
 	if allowEnvOverride {
-		if tcDir := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE_DIR"); tcDir != "" {
+		if tcDir := env.Get("RUBRIK_TOKEN_CACHE_DIR"); tcDir != "" {
 			path = tcDir
 		}
 	}

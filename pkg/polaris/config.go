@@ -28,6 +28,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/env"
 )
 
 const (
@@ -38,20 +40,20 @@ const (
 	DefaultServiceAccountFile = "~/.rubrik/polaris-service-account.json"
 
 	// UserAccount environment variables.
-	keyUserAccountCredentials = "RUBRIK_POLARIS_ACCOUNT_CREDENTIALS"
-	keyUserAccountFile        = "RUBRIK_POLARIS_ACCOUNT_FILE"
-	keyUserAccountName        = "RUBRIK_POLARIS_ACCOUNT_NAME"
-	keyUserAccountPassword    = "RUBRIK_POLARIS_ACCOUNT_PASSWORD"
-	keyUserAccountURL         = "RUBRIK_POLARIS_ACCOUNT_URL"
-	keyUserAccountUsername    = "RUBRIK_POLARIS_ACCOUNT_USERNAME"
+	keyUserAccountCredentials = "RUBRIK_ACCOUNT_CREDENTIALS"
+	keyUserAccountFile        = "RUBRIK_ACCOUNT_FILE"
+	keyUserAccountName        = "RUBRIK_ACCOUNT_NAME"
+	keyUserAccountPassword    = "RUBRIK_ACCOUNT_PASSWORD"
+	keyUserAccountURL         = "RUBRIK_ACCOUNT_URL"
+	keyUserAccountUsername    = "RUBRIK_ACCOUNT_USERNAME"
 
 	// ServiceAccount environment variables.
-	keyServiceAccountAccessTokenURI = "RUBRIK_POLARIS_SERVICEACCOUNT_ACCESSTOKENURI"
-	keyServiceAccountClientID       = "RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTID"
-	keyServiceAccountClientSecret   = "RUBRIK_POLARIS_SERVICEACCOUNT_CLIENTSECRET"
-	keyServiceAccountCredentials    = "RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS"
-	keyServiceAccountFile           = "RUBRIK_POLARIS_SERVICEACCOUNT_FILE"
-	keyServiceAccountName           = "RUBRIK_POLARIS_SERVICEACCOUNT_NAME"
+	keyServiceAccountAccessTokenURI = "RUBRIK_SERVICEACCOUNT_ACCESSTOKENURI"
+	keyServiceAccountClientID       = "RUBRIK_SERVICEACCOUNT_CLIENTID"
+	keyServiceAccountClientSecret   = "RUBRIK_SERVICEACCOUNT_CLIENTSECRET"
+	keyServiceAccountCredentials    = "RUBRIK_SERVICEACCOUNT_CREDENTIALS"
+	keyServiceAccountFile           = "RUBRIK_SERVICEACCOUNT_FILE"
+	keyServiceAccountName           = "RUBRIK_SERVICEACCOUNT_NAME"
 )
 
 var (
@@ -212,7 +214,7 @@ func (a *UserAccount) cacheSuffixMaterial() string {
 //
 // If allowEnvOverride is true environment variables can be used to override
 // user information in the file. See UserAccountFromEnv for details.
-// In addition, the environment variable RUBRIK_POLARIS_ACCOUNT_FILE can be used
+// In addition, the environment variable RUBRIK_ACCOUNT_FILE can be used
 // to override the file that the user information is read from.
 //
 // Note that RSC user accounts with MFA enabled cannot be used.
@@ -222,7 +224,7 @@ func DefaultUserAccount(name string, allowEnvOverride bool) (*UserAccount, error
 
 // UserAccountFromEnv returns a new UserAccount from the current environment.
 // The account can be stored as a single JSON encoded environment variable
-// (RUBRIK_POLARIS_ACCOUNT_CREDENTIALS) or as multiple plain text environment
+// (RUBRIK_ACCOUNT_CREDENTIALS) or as multiple plain text environment
 // variables (e.g. name, username, etc.). When using a single environment
 // variable, the JSON content should have the following structure:
 //
@@ -249,11 +251,11 @@ func DefaultUserAccount(name string, allowEnvOverride bool) (*UserAccount, error
 //	}
 //
 // The later format is used to hold multiple accounts. The environment variable
-// RUBRIK_POLARIS_ACCOUNT_NAME specifies which account to use.
+// RUBRIK_ACCOUNT_NAME specifies which account to use.
 //
 // When using multiple environment variables, they must have the same name as
 // the public UserAccount fields but be all upper case and prepended with
-// RUBRIK_POLARIS_ACCOUNT, e.g. RUBRIK_POLARIS_ACCOUNT_NAME.
+// RUBRIK_ACCOUNT, e.g. RUBRIK_ACCOUNT_NAME.
 //
 // Note that RSC user accounts with MFA enabled cannot be used.
 func UserAccountFromEnv() (*UserAccount, error) {
@@ -303,7 +305,7 @@ func UserAccountFromEnv() (*UserAccount, error) {
 //
 // If allowEnvOverride is true, environment variables can be used to override
 // user information in the file. See UserAccountFromEnv for details.
-// In addition, the environment variable RUBRIK_POLARIS_ACCOUNT_FILE can be used
+// In addition, the environment variable RUBRIK_ACCOUNT_FILE can be used
 // to override the file that the user information is read from.
 //
 // Note that RSC user accounts with MFA enabled cannot be used.
@@ -315,7 +317,7 @@ func UserAccountFromFile(file, name string, allowEnvOverride bool) (*UserAccount
 			name = envAccount.Name
 		}
 
-		if val := os.Getenv(keyUserAccountFile); val != "" {
+		if val := env.Get(keyUserAccountFile); val != "" {
 			file = val
 		}
 	}
@@ -359,24 +361,24 @@ func lookupUserAccount(name string, accounts map[string]UserAccount) UserAccount
 // environment.
 func userAccountFromEnv(name string) UserAccount {
 	var accounts map[string]UserAccount
-	if val := os.Getenv(keyUserAccountCredentials); val != "" {
+	if val := env.Get(keyUserAccountCredentials); val != "" {
 		var credAccounts map[string]UserAccount
 		if err := json.Unmarshal([]byte(val), &credAccounts); err == nil {
 			accounts = credAccounts
 		}
 	}
-	if val := os.Getenv(keyUserAccountName); val != "" {
+	if val := env.Get(keyUserAccountName); val != "" {
 		name = val
 	}
 
 	account := lookupUserAccount(name, accounts)
-	if val := os.Getenv(keyUserAccountUsername); val != "" {
+	if val := env.Get(keyUserAccountUsername); val != "" {
 		account.Username = val
 	}
-	if val := os.Getenv(keyUserAccountPassword); val != "" {
+	if val := env.Get(keyUserAccountPassword); val != "" {
 		account.Password = val
 	}
-	if val := os.Getenv(keyUserAccountURL); val != "" {
+	if val := env.Get(keyUserAccountURL); val != "" {
 		account.URL = val
 	}
 
@@ -521,7 +523,7 @@ func (a *ServiceAccount) cacheSuffixMaterial() string {
 //
 // If allowEnvOverride is true, environment variables can be used to override
 // account information in the file. See ServiceAccountFromEnv for details. In
-// addition, the environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE can be
+// addition, the environment variable RUBRIK_SERVICEACCOUNT_FILE can be
 // used to override the file that the service account is read from.
 func DefaultServiceAccount(allowEnvOverride bool) (*ServiceAccount, error) {
 	return ServiceAccountFromFile(DefaultServiceAccountFile, allowEnvOverride)
@@ -529,12 +531,12 @@ func DefaultServiceAccount(allowEnvOverride bool) (*ServiceAccount, error) {
 
 // ServiceAccountFromEnv returns a new ServiceAccount from the current
 // environment. The account can be stored as a single environment variable
-// (RUBRIK_POLARIS_SERVICEACCOUNT_CREDENTIALS) or as multiple environment
+// (RUBRIK_SERVICEACCOUNT_CREDENTIALS) or as multiple environment
 // variables. When using a single environment variable, the content should be
 // the RSC service account file downloaded from RSC when creating the service
 // account. When using multiple environment variables, they must have the same
 // name as the public ServiceAccount fields but be all upper case and prepended
-// with RUBRIK_POLARIS_SERVICEACCOUNT, e.g. RUBRIK_POLARIS_SERVICEACCOUNT_NAME.
+// with RUBRIK_SERVICEACCOUNT, e.g. RUBRIK_SERVICEACCOUNT_NAME.
 func ServiceAccountFromEnv() (*ServiceAccount, error) {
 	account := serviceAccountFromEnv()
 	account.envOverride = true
@@ -555,11 +557,11 @@ func ServiceAccountFromEnv() (*ServiceAccount, error) {
 //
 // If allowEnvOverride is true environment variables can be used to override
 // account information in the file. See ServiceAccountFromEnv for details. In
-// addition, the environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE can be
+// addition, the environment variable RUBRIK_SERVICEACCOUNT_FILE can be
 // used to override the file that the service account is read from.
 func ServiceAccountFromFile(file string, allowEnvOverride bool) (*ServiceAccount, error) {
 	if allowEnvOverride {
-		if val := os.Getenv(keyServiceAccountFile); val != "" {
+		if val := env.Get(keyServiceAccountFile); val != "" {
 			file = val
 		}
 	}
@@ -587,7 +589,7 @@ func ServiceAccountFromFile(file string, allowEnvOverride bool) (*ServiceAccount
 //
 // If allowEnvOverride is true environment variables can be used to override
 // account information in the file. See ServiceAccountFromEnv for details. In
-// addition, the environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE can be
+// addition, the environment variable RUBRIK_SERVICEACCOUNT_FILE can be
 // used to override the file that the service account is read from.
 func ServiceAccountFromText(text string, allowEnvOverride bool) (*ServiceAccount, error) {
 	account, err := serviceAccountFromString(text)
@@ -610,23 +612,23 @@ func ServiceAccountFromText(text string, allowEnvOverride bool) (*ServiceAccount
 // serviceAccountFromEnv returns a ServiceAccount from the current environment.
 func serviceAccountFromEnv() ServiceAccount {
 	var account ServiceAccount
-	if val := os.Getenv(keyServiceAccountCredentials); val != "" {
+	if val := env.Get(keyServiceAccountCredentials); val != "" {
 		var credAccount ServiceAccount
 		if err := json.Unmarshal([]byte(val), &credAccount); err == nil {
 			account = credAccount
 		}
 	}
 
-	if val := os.Getenv(keyServiceAccountName); val != "" {
+	if val := env.Get(keyServiceAccountName); val != "" {
 		account.Name = val
 	}
-	if val := os.Getenv(keyServiceAccountClientID); val != "" {
+	if val := env.Get(keyServiceAccountClientID); val != "" {
 		account.ClientID = val
 	}
-	if val := os.Getenv(keyServiceAccountClientSecret); val != "" {
+	if val := env.Get(keyServiceAccountClientSecret); val != "" {
 		account.ClientSecret = val
 	}
-	if val := os.Getenv(keyServiceAccountAccessTokenURI); val != "" {
+	if val := env.Get(keyServiceAccountAccessTokenURI); val != "" {
 		account.AccessTokenURI = val
 	}
 
