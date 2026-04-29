@@ -162,7 +162,10 @@ func (a API) AddAzureConfiguration(ctx context.Context, cloudAccountID uuid.UUID
 	}
 
 	if err := exocompute.ValidateConfiguration(ctx, a.client, exoConfig); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to validate exocompute configuration: %s", err)
+		if !exoConfig.SkipValidation {
+			return uuid.Nil, fmt.Errorf("failed to validate exocompute configuration: %s", err)
+		}
+		a.log.Printf(log.Warn, "exocompute configuration validation failed (proceeding anyway): %s", err)
 	}
 
 	configID, err := exocompute.CreateConfiguration(ctx, a.client, exoConfig)

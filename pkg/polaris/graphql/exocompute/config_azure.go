@@ -83,6 +83,10 @@ type CreateAzureConfigurationParams struct {
 	// When true, a health check will be triggered after the configuration is
 	// created.
 	TriggerHealthCheck bool `json:"-"`
+
+	// When true, a failed validation check will not block configuration
+	// creation.
+	SkipValidation bool `json:"-"`
 }
 
 func (p CreateAzureConfigurationParams) CreateQuery() (string, any, CreateAzureConfigurationResult) {
