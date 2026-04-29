@@ -30,6 +30,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/env"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/token"
@@ -37,10 +38,10 @@ import (
 
 const (
 	// Client environmental variables.
-	keyLogLevel         = "RUBRIK_POLARIS_LOGLEVEL"
-	keyTokenCache       = "RUBRIK_POLARIS_TOKEN_CACHE"
-	keyTokenCacheDir    = "RUBRIK_POLARIS_TOKEN_CACHE_DIR"
-	keyTokenCacheSecret = "RUBRIK_POLARIS_TOKEN_CACHE_SECRET"
+	keyLogLevel         = "RUBRIK_LOGLEVEL"
+	keyTokenCache       = "RUBRIK_TOKEN_CACHE"
+	keyTokenCacheDir    = "RUBRIK_TOKEN_CACHE_DIR"
+	keyTokenCacheSecret = "RUBRIK_TOKEN_CACHE_SECRET"
 )
 
 // CacheParams is used to configure the token cache.
@@ -62,7 +63,7 @@ type Client struct {
 // NewClient returns a new Client for the specified Account.
 //
 // The client will cache authentication tokens by default, this behavior can be
-// overridden by setting the environment variable RUBRIK_POLARIS_TOKEN_CACHE to
+// overridden by setting the environment variable RUBRIK_TOKEN_CACHE to
 // false, given that the account specified allows environment variable
 // overrides.
 func NewClient(account Account) (*Client, error) {
@@ -80,7 +81,7 @@ func NewClientWithCacheParams(account Account, cacheParams CacheParams) (*Client
 // NewClientWithLogger returns a new Client for the specified Account.
 //
 // The client will cache authentication tokens by default, this behavior can be
-// overridden by setting the environment variable RUBRIK_POLARIS_TOKEN_CACHE to
+// overridden by setting the environment variable RUBRIK_TOKEN_CACHE to
 // false, given that the account specified allows environment variable
 // overrides.
 func NewClientWithLogger(account Account, logger log.Logger) (*Client, error) {
@@ -94,15 +95,15 @@ func NewClientWithLogger(account Account, logger log.Logger) (*Client, error) {
 // variables if the specified account allows environment variable overrides.
 func NewClientWithLoggerAndCacheParams(account Account, cacheParams CacheParams, logger log.Logger) (*Client, error) {
 	if account.allowEnvOverride() {
-		if val := os.Getenv(keyTokenCache); val != "" {
+		if val := env.Get(keyTokenCache); val != "" {
 			if b, err := strconv.ParseBool(val); err != nil {
 				cacheParams.Enable = b
 			}
 		}
-		if val := os.Getenv(keyTokenCacheDir); val != "" {
+		if val := env.Get(keyTokenCacheDir); val != "" {
 			cacheParams.Dir = val
 		}
-		if val := os.Getenv(keyTokenCacheSecret); val != "" {
+		if val := env.Get(keyTokenCacheSecret); val != "" {
 			cacheParams.Secret = val
 		}
 	}
@@ -154,9 +155,9 @@ func (c *Client) SetLogger(logger log.Logger) {
 }
 
 // SetLogLevelFromEnv sets the log level of the logger to the log level
-// specified in the RUBRIK_POLARIS_LOGLEVEL environment variable.
+// specified in the RUBRIK_LOGLEVEL environment variable.
 func SetLogLevelFromEnv(logger log.Logger) error {
-	level := os.Getenv(keyLogLevel)
+	level := env.Get(keyLogLevel)
 	if level == "" {
 		return nil
 	}

@@ -699,6 +699,7 @@ func assertErrPrefix(t *testing.T, err error, errPrefix string) bool {
 func dropEnvs(t *testing.T, keys ...string) {
 	for _, key := range keys {
 		t.Setenv(key, "")
+		t.Setenv(strings.Replace(key, "RUBRIK_", "RUBRIK_POLARIS_", 1), "")
 	}
 }
 
