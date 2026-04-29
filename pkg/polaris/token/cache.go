@@ -33,8 +33,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/env"
 )
 
 const (
@@ -69,32 +67,6 @@ func NewCacheWithDir(source Source, dir, keyMaterial, suffixMaterial string) (*c
 		block:  block,
 		file:   filepath.Join(dir, fmt.Sprintf("token-%s", suffix)),
 	}, nil
-}
-
-// Deprecated: Use NewCacheWithDir instead.
-func NewCache(source Source, keyMaterial, suffixMaterial string, allowEnvOverride bool) (*cache, error) {
-	suffix := fmt.Sprintf("%x", sha256.Sum256([]byte(suffixMaterial)))
-	if allowEnvOverride {
-		if tcSecret := env.Get("RUBRIK_TOKEN_CACHE_SECRET"); tcSecret != "" {
-			keyMaterial = tcSecret
-			suffix += "-env"
-		}
-	}
-	key := sha256.Sum256([]byte(keyMaterial))
-	block, err := aes.NewCipher(key[:])
-	if err != nil {
-		return nil, err
-	}
-
-	path := os.TempDir()
-	if allowEnvOverride {
-		if tcDir := env.Get("RUBRIK_TOKEN_CACHE_DIR"); tcDir != "" {
-			path = tcDir
-		}
-	}
-	path = filepath.Join(path, fmt.Sprintf("token-%s", suffix))
-
-	return &cache{source: source, block: block, file: path}, nil
 }
 
 // token returns the cached token. If the cache is empty or the cached token has
