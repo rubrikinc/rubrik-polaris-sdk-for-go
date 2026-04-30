@@ -271,6 +271,18 @@ correctly to Polaris:
 }
 ```
 
+#### Kubernetes
+To run the Kubernetes integration tests a K8s cluster's kubeconfig file is required. The cluster should
+support load-balancer services. It also requires that the environment variable `TEST_K8SCONFIG_FILE` points
+to a JSON file containing the following information:
+```json
+{
+    "cdmID": "<UUID of the CDM cluster onboarded on to the RSC account>",
+    "kubeconfigFilePath": "<Path to a valid K8s cluster kubeconfig file>",
+    "slaID": "<FID of an SLA present on the RSC cluster>"
+}
+```
+
 ## Request Appliance Token for Rubrik SDK for Go
 To access Appliance REST APIs using Polaris service accounts, following are the prerequisites:
 - Appliance/Cluster must be registered with the Polaris Instance.
