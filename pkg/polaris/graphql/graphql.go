@@ -289,7 +289,7 @@ func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variable
 			sdkHeaders.lang = "terraform/go"
 		case "github.com/rubrikinc/terraform-provider-polaris":
 			sdkHeaders.ver = strings.TrimPrefix(buildInfo.Main.Version, "v")
-			sdkHeaders.lang = "terraform_polaris/go"
+			sdkHeaders.lang = "terraform_legacy/go"
 		}
 	})
 
