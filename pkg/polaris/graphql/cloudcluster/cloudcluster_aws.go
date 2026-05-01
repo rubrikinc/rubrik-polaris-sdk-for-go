@@ -237,6 +237,7 @@ type AwsVmConfig struct {
 	InstanceType        AwsCCInstanceType `json:"instanceType"`
 	SecurityGroups      []string          `json:"securityGroups"`
 	Subnet              string            `json:"subnet"`
+	SubnetAzConfigs     []SubnetAzConfig  `json:"subnetAzConfigs,omitempty"`
 	VMType              VmConfigType      `json:"vmType"`
 	VPC                 string            `json:"vpc"`
 }
@@ -257,6 +258,7 @@ type AwsClusterConfig struct {
 type CreateAwsClusterInput struct {
 	CloudAccountID       uuid.UUID                  `json:"cloudAccountId"`
 	ClusterConfig        AwsClusterConfig           `json:"clusterConfig"`
+	IsAzResilient        bool                       `json:"isAzResilient,omitempty"`
 	IsEsType             bool                       `json:"isEsType"`
 	KeepClusterOnFailure bool                       `json:"keepClusterOnFailure"`
 	Region               string                     `json:"region"`

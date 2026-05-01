@@ -287,6 +287,7 @@ type AzureClusterConfig struct {
 type AzureVMConfig struct {
 	CDMVersion                   string                         `json:"cdmVersion"`
 	Subnet                       string                         `json:"subnet"`
+	SubnetAzConfigs              []SubnetAzConfig               `json:"subnetAzConfigs,omitempty"`
 	VMType                       VmConfigType                   `json:"vmType"`
 	CDMProduct                   string                         `json:"cdmProduct"`
 	Location                     azure.Region                   `json:"location"`
@@ -304,6 +305,7 @@ type AzureVMConfig struct {
 type CreateAzureClusterInput struct {
 	CloudAccountID       uuid.UUID                  `json:"cloudAccountId"`
 	ClusterConfig        AzureClusterConfig         `json:"clusterConfig"`
+	IsAzResilient        bool                       `json:"isAzResilient,omitempty"`
 	IsESType             bool                       `json:"isEsType"`
 	KeepClusterOnFailure bool                       `json:"keepClusterOnFailure"`
 	Validations          []ClusterCreateValidations `json:"validations"`
