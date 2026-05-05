@@ -320,16 +320,19 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 		return CloudCluster{}, fmt.Errorf("resource group %s does not exist in RSC Azure account %s", input.VMConfig.ResourceGroup, account.ID)
 	}
 
-	// Validate Subnet exists in RSC metadata via AzureCCSubnets
-	subnets, err := cloudcluster.Wrap(a.client).AzureCCSubnets(ctx, input.CloudAccountID, input.VMConfig.Location)
-	if err != nil {
-		return CloudCluster{}, fmt.Errorf("failed to get subnets: %s", err)
-	}
-	validSubnet := slices.ContainsFunc(subnets, func(subnet cloudcluster.AzureCCSubnet) bool {
-		return subnet.Name == input.VMConfig.Subnet
-	})
-	if !validSubnet {
-		return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC Azure account %s", input.VMConfig.Subnet, account.ID)
+	// Validate Subnet exists in RSC metadata via AzureCCSubnets.
+	// Skip when using multi-AZ subnet configs.
+	if input.VMConfig.Subnet != "" {
+		subnets, err := cloudcluster.Wrap(a.client).AzureCCSubnets(ctx, input.CloudAccountID, input.VMConfig.Location)
+		if err != nil {
+			return CloudCluster{}, fmt.Errorf("failed to get subnets: %s", err)
+		}
+		validSubnet := slices.ContainsFunc(subnets, func(subnet cloudcluster.AzureCCSubnet) bool {
+			return subnet.Name == input.VMConfig.Subnet
+		})
+		if !validSubnet {
+			return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC Azure account %s", input.VMConfig.Subnet, account.ID)
+		}
 	}
 
 	// Validate CloudCluster Request
