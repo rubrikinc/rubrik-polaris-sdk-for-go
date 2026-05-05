@@ -283,9 +283,13 @@ func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variable
 		// The terraform provider gets special treatment here, since we want
 		// to distinguish it from the SDK without exposing the possibility to
 		// set the version from outside.
-		if buildInfo.Main.Path == "github.com/rubrikinc/terraform-provider-polaris" {
+		switch buildInfo.Main.Path {
+		case "github.com/rubrikinc/terraform-provider-rubrik":
 			sdkHeaders.ver = strings.TrimPrefix(buildInfo.Main.Version, "v")
 			sdkHeaders.lang = "terraform/go"
+		case "github.com/rubrikinc/terraform-provider-polaris":
+			sdkHeaders.ver = strings.TrimPrefix(buildInfo.Main.Version, "v")
+			sdkHeaders.lang = "terraform_legacy/go"
 		}
 	})
 
