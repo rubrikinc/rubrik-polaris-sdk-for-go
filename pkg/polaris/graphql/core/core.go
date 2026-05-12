@@ -253,6 +253,35 @@ var validFeatures = map[string]struct{}{
 	FeatureServerAndApps.Name:                           {},
 }
 
+// AllProtectionFeatures returns the protection features for the specified cloud
+// vendor.
+func AllProtectionFeatures(cloud CloudVendor) []Feature {
+	switch cloud {
+	case CloudVendorAWS:
+		return []Feature{
+			FeatureCloudNativeDynamoDBProtection,
+			FeatureCloudNativeProtection,
+			FeatureCloudNativeS3Protection,
+			FeatureKubernetesProtection,
+			FeatureRDSProtection,
+		}
+	case CloudVendorAzure:
+		return []Feature{
+			FeatureAzureSQLDBProtection,
+			FeatureAzureSQLMIProtection,
+			FeatureCloudNativeBlobProtection,
+			FeatureCloudNativeProtection,
+			FeatureKubernetesProtection,
+		}
+	case CloudVendorGCP:
+		return []Feature{
+			FeatureCloudNativeProtection,
+		}
+	default:
+		return nil
+	}
+}
+
 // FeatureNames returns the names of the features.
 func FeatureNames(features []Feature) []string {
 	var names []string
