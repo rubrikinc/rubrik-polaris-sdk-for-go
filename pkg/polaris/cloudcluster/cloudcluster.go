@@ -171,10 +171,9 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 		if err != nil {
 			return CloudCluster{}, fmt.Errorf("failed to get subnets: %s", err)
 		}
-		validSubnet := slices.ContainsFunc(subnets, func(subnet cloudcluster.AwsCloudAccountSubnets) bool {
+		if !slices.ContainsFunc(subnets, func(subnet cloudcluster.AwsCloudAccountSubnets) bool {
 			return subnet.SubnetID == input.VMConfig.Subnet
-		})
-		if !validSubnet {
+		}) {
 			return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC AWS account %s", input.VMConfig.Subnet, account.ID)
 		}
 	}
@@ -331,10 +330,9 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 		if err != nil {
 			return CloudCluster{}, fmt.Errorf("failed to get subnets: %s", err)
 		}
-		validSubnet := slices.ContainsFunc(subnets, func(subnet cloudcluster.AzureCCSubnet) bool {
+		if !slices.ContainsFunc(subnets, func(subnet cloudcluster.AzureCCSubnet) bool {
 			return subnet.Name == input.VMConfig.Subnet
-		})
-		if !validSubnet {
+		}) {
 			return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC Azure account %s", input.VMConfig.Subnet, account.ID)
 		}
 	}
