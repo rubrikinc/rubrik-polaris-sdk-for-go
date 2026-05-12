@@ -585,8 +585,9 @@ type EventSeries struct {
 	} `json:"cluster"`
 	Activities struct {
 		Nodes []struct {
-			ID      string `json:"id"`
-			Message string `json:"message"`
+			ID        string `json:"id"`
+			ErrorInfo string `json:"errorInfo"`
+			Message   string `json:"message"`
 		} `json:"nodes"`
 	} `json:"activityConnection"`
 }
@@ -662,8 +663,9 @@ type ActivitySeries struct {
 	} `json:"cluster"`
 	Activities struct {
 		Nodes []struct {
-			ID      string `json:"id"`
-			Message string `json:"message"`
+			ID        string `json:"id"`
+			ErrorInfo string `json:"errorInfo"`
+			Message   string `json:"message"`
 		} `json:"nodes"`
 	} `json:"activityConnection"`
 }

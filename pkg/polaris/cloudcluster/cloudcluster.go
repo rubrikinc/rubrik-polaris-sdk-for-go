@@ -23,6 +23,7 @@ package cloudcluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"time"
@@ -424,7 +425,30 @@ func (a API) monitorCloudClusterEvents(ctx context.Context, clusterName string, 
 				Region:         region,
 			}, nil
 		case gqlevent.ActivityStatusFailure:
-			return CloudCluster{}, fmt.Errorf("cloud cluster create failed: %s", activitySeries.Activities.Nodes[0].Message)
+			msg := activitySeries.Activities.Nodes[0].Message
+			if errInfo := activitySeries.Activities.Nodes[0].ErrorInfo; errInfo != "" {
+				var parsed struct {
+					Message   string `json:"message"`
+					Reason    string `json:"reason"`
+					Remedy    string `json:"remedy"`
+					ErrorCode string `json:"error_code"`
+				}
+				if json.Unmarshal([]byte(errInfo), &parsed) == nil {
+					if parsed.Message != "" {
+						msg = parsed.Message
+					}
+					if parsed.Reason != "" {
+						msg += " Reason: " + parsed.Reason
+					}
+					if parsed.Remedy != "" {
+						msg += " Remedy: " + parsed.Remedy
+					}
+					if parsed.ErrorCode != "" {
+						msg += fmt.Sprintf(" (error code: %s)", parsed.ErrorCode)
+					}
+				}
+			}
+			return CloudCluster{}, fmt.Errorf("cloud cluster create failed: %s", msg)
 		case gqlevent.ActivityStatusCanceled:
 			return CloudCluster{}, fmt.Errorf("cloud cluster create was canceled: %s", activitySeries.Activities.Nodes[0].Message)
 		case gqlevent.ActivityStatusCanceling:
