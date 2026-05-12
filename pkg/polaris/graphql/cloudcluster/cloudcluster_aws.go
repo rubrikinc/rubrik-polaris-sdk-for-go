@@ -236,7 +236,7 @@ type AwsVmConfig struct {
 	InstanceProfileName string            `json:"instanceProfileName"`
 	InstanceType        AwsCCInstanceType `json:"instanceType"`
 	SecurityGroups      []string          `json:"securityGroups"`
-	Subnet              string            `json:"subnet"`
+	Subnet              string            `json:"subnet,omitempty"`
 	SubnetAzConfigs     []SubnetAzConfig  `json:"subnetAzConfigs,omitempty"`
 	VMType              VmConfigType      `json:"vmType"`
 	VPC                 string            `json:"vpc"`

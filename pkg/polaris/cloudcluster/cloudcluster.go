@@ -163,16 +163,19 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 		return CloudCluster{}, fmt.Errorf("instance profile %s does not exist in RSC AWS account %s", input.VMConfig.InstanceProfileName, account.ID)
 	}
 
-	// Validate Subnet exists in RSC metadata via AwsCloudAccountListSubnets
-	subnets, err := cloudcluster.Wrap(a.client).AwsCloudAccountListSubnets(ctx, input.CloudAccountID, inputRegion, input.VMConfig.VPC)
-	if err != nil {
-		return CloudCluster{}, fmt.Errorf("failed to get subnets: %s", err)
-	}
-	validSubnet := slices.ContainsFunc(subnets, func(subnet cloudcluster.AwsCloudAccountSubnets) bool {
-		return subnet.SubnetID == input.VMConfig.Subnet
-	})
-	if !validSubnet {
-		return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC AWS account %s", input.VMConfig.Subnet, account.ID)
+	// Validate Subnet exists in RSC metadata via AwsCloudAccountListSubnets.
+	// Skip when using multi-AZ (subnets come from SubnetAzConfigs instead).
+	if input.VMConfig.Subnet != "" {
+		subnets, err := cloudcluster.Wrap(a.client).AwsCloudAccountListSubnets(ctx, input.CloudAccountID, inputRegion, input.VMConfig.VPC)
+		if err != nil {
+			return CloudCluster{}, fmt.Errorf("failed to get subnets: %s", err)
+		}
+		validSubnet := slices.ContainsFunc(subnets, func(subnet cloudcluster.AwsCloudAccountSubnets) bool {
+			return subnet.SubnetID == input.VMConfig.Subnet
+		})
+		if !validSubnet {
+			return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC AWS account %s", input.VMConfig.Subnet, account.ID)
+		}
 	}
 
 	// Validate Security Groups
