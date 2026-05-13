@@ -23,6 +23,7 @@ package cloudcluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"time"
@@ -163,16 +164,18 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 		return CloudCluster{}, fmt.Errorf("instance profile %s does not exist in RSC AWS account %s", input.VMConfig.InstanceProfileName, account.ID)
 	}
 
-	// Validate Subnet exists in RSC metadata via AwsCloudAccountListSubnets
-	subnets, err := cloudcluster.Wrap(a.client).AwsCloudAccountListSubnets(ctx, input.CloudAccountID, inputRegion, input.VMConfig.VPC)
-	if err != nil {
-		return CloudCluster{}, fmt.Errorf("failed to get subnets: %s", err)
-	}
-	validSubnet := slices.ContainsFunc(subnets, func(subnet cloudcluster.AwsCloudAccountSubnets) bool {
-		return subnet.SubnetID == input.VMConfig.Subnet
-	})
-	if !validSubnet {
-		return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC AWS account %s", input.VMConfig.Subnet, account.ID)
+	// Validate Subnet exists in RSC metadata via AwsCloudAccountListSubnets.
+	// Skip when using multi-AZ (subnets come from SubnetAzConfigs instead).
+	if input.VMConfig.Subnet != "" {
+		subnets, err := cloudcluster.Wrap(a.client).AwsCloudAccountListSubnets(ctx, input.CloudAccountID, inputRegion, input.VMConfig.VPC)
+		if err != nil {
+			return CloudCluster{}, fmt.Errorf("failed to get subnets: %s", err)
+		}
+		if !slices.ContainsFunc(subnets, func(subnet cloudcluster.AwsCloudAccountSubnets) bool {
+			return subnet.SubnetID == input.VMConfig.Subnet
+		}) {
+			return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC AWS account %s", input.VMConfig.Subnet, account.ID)
+		}
 	}
 
 	// Validate Security Groups
@@ -320,16 +323,18 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 		return CloudCluster{}, fmt.Errorf("resource group %s does not exist in RSC Azure account %s", input.VMConfig.ResourceGroup, account.ID)
 	}
 
-	// Validate Subnet exists in RSC metadata via AzureCCSubnets
-	subnets, err := cloudcluster.Wrap(a.client).AzureCCSubnets(ctx, input.CloudAccountID, input.VMConfig.Location)
-	if err != nil {
-		return CloudCluster{}, fmt.Errorf("failed to get subnets: %s", err)
-	}
-	validSubnet := slices.ContainsFunc(subnets, func(subnet cloudcluster.AzureCCSubnet) bool {
-		return subnet.Name == input.VMConfig.Subnet
-	})
-	if !validSubnet {
-		return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC Azure account %s", input.VMConfig.Subnet, account.ID)
+	// Validate Subnet exists in RSC metadata via AzureCCSubnets.
+	// Skip when using multi-AZ subnet configs.
+	if input.VMConfig.Subnet != "" {
+		subnets, err := cloudcluster.Wrap(a.client).AzureCCSubnets(ctx, input.CloudAccountID, input.VMConfig.Location)
+		if err != nil {
+			return CloudCluster{}, fmt.Errorf("failed to get subnets: %s", err)
+		}
+		if !slices.ContainsFunc(subnets, func(subnet cloudcluster.AzureCCSubnet) bool {
+			return subnet.Name == input.VMConfig.Subnet
+		}) {
+			return CloudCluster{}, fmt.Errorf("subnet %s does not exist in RSC Azure account %s", input.VMConfig.Subnet, account.ID)
+		}
 	}
 
 	// Validate CloudCluster Request
@@ -418,7 +423,30 @@ func (a API) monitorCloudClusterEvents(ctx context.Context, clusterName string, 
 				Region:         region,
 			}, nil
 		case gqlevent.ActivityStatusFailure:
-			return CloudCluster{}, fmt.Errorf("cloud cluster create failed: %s", activitySeries.Activities.Nodes[0].Message)
+			msg := activitySeries.Activities.Nodes[0].Message
+			if errInfo := activitySeries.Activities.Nodes[0].ErrorInfo; errInfo != "" {
+				var parsed struct {
+					Message   string `json:"message"`
+					Reason    string `json:"reason"`
+					Remedy    string `json:"remedy"`
+					ErrorCode string `json:"error_code"`
+				}
+				if json.Unmarshal([]byte(errInfo), &parsed) == nil {
+					if parsed.Message != "" {
+						msg = parsed.Message
+					}
+					if parsed.Reason != "" {
+						msg += " Reason: " + parsed.Reason
+					}
+					if parsed.Remedy != "" {
+						msg += " Remedy: " + parsed.Remedy
+					}
+					if parsed.ErrorCode != "" {
+						msg += fmt.Sprintf(" (error code: %s)", parsed.ErrorCode)
+					}
+				}
+			}
+			return CloudCluster{}, fmt.Errorf("cloud cluster create failed: %s", msg)
 		case gqlevent.ActivityStatusCanceled:
 			return CloudCluster{}, fmt.Errorf("cloud cluster create was canceled: %s", activitySeries.Activities.Nodes[0].Message)
 		case gqlevent.ActivityStatusCanceling:

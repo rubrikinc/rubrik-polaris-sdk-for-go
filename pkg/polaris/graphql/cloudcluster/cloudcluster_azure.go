@@ -286,11 +286,12 @@ type AzureClusterConfig struct {
 // AzureVMConfig represents the VM configuration for the Azure Cloud Cluster.
 type AzureVMConfig struct {
 	CDMVersion                   string                         `json:"cdmVersion"`
-	Subnet                       string                         `json:"subnet"`
+	Subnet                       string                         `json:"subnet,omitempty"`
+	SubnetAzConfigs              []SubnetAzConfig               `json:"subnetAzConfigs,omitempty"`
 	VMType                       VmConfigType                   `json:"vmType"`
 	CDMProduct                   string                         `json:"cdmProduct"`
 	Location                     azure.Region                   `json:"location"`
-	AvailabilityZone             string                         `json:"availabilityZone"`
+	AvailabilityZone             string                         `json:"availabilityZone,omitempty"`
 	Vnet                         string                         `json:"vnet"`
 	ResourceGroup                string                         `json:"resourceGroup"`
 	NetworkResourceGroup         string                         `json:"networkResourceGroup"`
@@ -304,6 +305,7 @@ type AzureVMConfig struct {
 type CreateAzureClusterInput struct {
 	CloudAccountID       uuid.UUID                  `json:"cloudAccountId"`
 	ClusterConfig        AzureClusterConfig         `json:"clusterConfig"`
+	IsAzResilient        bool                       `json:"isAzResilient,omitempty"`
 	IsESType             bool                       `json:"isEsType"`
 	KeepClusterOnFailure bool                       `json:"keepClusterOnFailure"`
 	Validations          []ClusterCreateValidations `json:"validations"`
