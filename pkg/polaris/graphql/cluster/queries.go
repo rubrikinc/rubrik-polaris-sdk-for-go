@@ -121,6 +121,22 @@ var removeCdmClusterQuery = `mutation SdkGolangRemoveCdmCluster($clusterUuid: UU
   )
 }`
 
+// selfServeRollingUpgrade GraphQL query
+var selfServeRollingUpgradeQuery = `query SdkGolangSelfServeRollingUpgrade {
+  result: selfServeRollingUpgrade {
+    enabled
+  }
+}`
+
+// setSelfServeRollingUpgrade GraphQL query
+var setSelfServeRollingUpgradeQuery = `mutation SdkGolangSetSelfServeRollingUpgrade($enabled: Boolean!) {
+  result: setSelfServeRollingUpgrade(input: {
+    enabled: $enabled,
+  }) {
+    enabled
+  }
+}`
+
 // slaSourceClusters GraphQL query
 var slaSourceClustersQuery = `query SdkGolangSlaSourceClusters(
   $after: String
