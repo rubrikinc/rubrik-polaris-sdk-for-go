@@ -300,9 +300,10 @@ func (a API) AddAccountArtifacts(ctx context.Context, params AddAccountArtifacts
 		mappings, err = aws.Wrap(a.client).RegisterFeatureArtifacts(ctx, aws.RegisterFeatureArtifactsParams{
 			Cloud: aws.Cloud(account.Cloud),
 			Artifacts: []aws.AccountFeatureArtifact{{
-				NativeID:  account.NativeID,
-				Features:  core.FeatureNames(params.Features),
-				Artifacts: externalArtifacts,
+				NativeID:                      account.NativeID,
+				Features:                      core.FeatureNames(params.Features),
+				FeaturesWithPermissionsGroups: params.Features,
+				Artifacts:                     externalArtifacts,
 			}},
 			RoleChainingAccountID: params.RoleChainingAccountID,
 		})
