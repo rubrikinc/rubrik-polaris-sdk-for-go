@@ -12,6 +12,20 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+// OnboardingMode identifies the workflow used to onboard an AWS account or
+// feature into RSC.
+type OnboardingMode string
+
+const (
+	// OnboardingModeCFT indicates onboarding via the CloudFormation workflow.
+	OnboardingModeCFT OnboardingMode = "CFT"
+
+	// OnboardingModeIAM indicates onboarding via the IAM workflow, where the
+	// caller provides their own IAM roles instead of letting RSC create them
+	// via a CloudFormation stack.
+	OnboardingModeIAM OnboardingMode = "IAM"
+)
+
 // CloudAccount for Amazon Web Services accounts.
 type CloudAccount struct {
 	Cloud                 string
@@ -31,6 +45,18 @@ func (c CloudAccount) Feature(feature core.Feature) (Feature, bool) {
 	}
 
 	return Feature{}, false
+}
+
+// OnboardingMode returns the onboarding workflow used for the account. An
+// account is considered CFT-onboarded if any of its features was onboarded
+// via the CloudFormation workflow.
+func (c CloudAccount) OnboardingMode() OnboardingMode {
+	for _, feature := range c.Features {
+		if feature.OnboardingMode() == OnboardingModeCFT {
+			return OnboardingModeCFT
+		}
+	}
+	return OnboardingModeIAM
 }
 
 type MappedAccount struct {
@@ -65,6 +91,16 @@ func (f Feature) HasRegion(region string) bool {
 	}
 
 	return false
+}
+
+// OnboardingMode returns the onboarding workflow used for this feature.
+// CFT-onboarded features carry a CloudFormation stack ARN, IAM-onboarded
+// features do not.
+func (f Feature) OnboardingMode() OnboardingMode {
+	if f.StackArn != "" {
+		return OnboardingModeCFT
+	}
+	return OnboardingModeIAM
 }
 
 // AccountByID returns the account with the specified RSC cloud account ID.
