@@ -187,6 +187,128 @@ var clusterSettingsQuery = `query SdkGolangClusterSettings($id: UUID!) {
   }
 }`
 
+// clusterWithUpgradesInfo GraphQL query
+var clusterWithUpgradesInfoQuery = `query SdkGolangClusterWithUpgradesInfo(
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+  $sortOrder: SortOrder
+  $sortBy: UpgradeInfoSortByEnum
+  $clusterLocation: [String!]
+  $connectionState: [ClusterStatus!]
+  $downloadedVersion: [String!]
+  $eosStatus: [ClusterEosStatus!]
+  $id: [UUID!]
+  $installedVersion: [String!]
+  $minSoftwareVersion: String
+  $name: [String!]
+  $prechecksStatus: [PrechecksStatusTypeEnum!]
+  $productType: [ClusterProductEnum!]
+  $registrationTimeGt: DateTime
+  $registrationTimeLt: DateTime
+  $type: [ClusterTypeEnum!]
+  $upgradeJobStatus: [ClusterJobStatusTypeEnum!]
+  $upgradeScheduled: Boolean
+  $upgradeStatusCategory: [String!]
+  $versionStatus: [VersionStatus!]
+) {
+  result: clusterWithUpgradesInfo(
+    first: $first
+    after: $after
+    last: $last
+    before: $before
+    sortOrder: $sortOrder
+    sortBy: $sortBy
+    upgradeFilter: {
+      clusterLocation: $clusterLocation
+      connectionState: $connectionState
+      downloadedVersion: $downloadedVersion
+      eosStatus: $eosStatus
+      id: $id
+      installedVersion: $installedVersion
+      minSoftwareVersion: $minSoftwareVersion
+      name: $name
+      prechecksStatus: $prechecksStatus
+      productType: $productType
+      registrationTime_gt: $registrationTimeGt
+      registrationTime_lt: $registrationTimeLt
+      type: $type
+      upgradeJobStatus: $upgradeJobStatus
+      upgradeScheduled: $upgradeScheduled
+      upgradeStatusCategory: $upgradeStatusCategory
+      versionStatus: $versionStatus
+    }
+  ) {
+    edges {
+      cursor
+      node {
+        id
+        name
+        cdmUpgradeInfo {
+          clusterUuid
+          version
+          versionStatus
+          clusterJobStatus
+          clusterStatus {
+            message
+            status
+            statusInfo {
+              completedNodes
+              currentNode
+            }
+          }
+          currentStateProgress
+          downloadedVersion
+          fastUpgradePreferred
+          finishedStates
+          isRuSupported
+          overallProgress
+          pendingStates
+          previousVersion
+          ruUnsupportabilityReason
+          scheduleUpgradeAction
+          scheduleUpgradeAt
+          scheduleUpgradeMode
+          stateMachineStatus
+          stateMachineStatusAt
+          upgradeEndAt
+          upgradeEventSeriesId
+          upgradeStartAt
+          upgradeStatusV2 {
+            rscClusterUpgradeStatus
+            uiStatus
+            uiStatusAttributes {
+              sourceVersion
+              targetVersion
+              progress
+              errorMsg
+              upgradeMode
+            }
+          }
+          upgradeRecommendationInfo {
+            recommendation
+            nextReleaseRecommendation
+            upgradability
+          }
+          lastUpgradeDuration {
+            clusterUuid
+            fastUpgradeDuration
+            rollingUpgradeDuration
+          }
+        }
+      }
+    }
+    pageInfo {
+      startCursor
+      endCursor
+      hasPreviousPage
+      hasNextPage
+    }
+    count
+  }
+}`
+
 // removeCdmCluster GraphQL query
 var removeCdmClusterQuery = `mutation SdkGolangRemoveCdmCluster($clusterUuid: UUID!, $expireInDays: Long, $isForce: Boolean!) {
   result: removeCdmCluster(
