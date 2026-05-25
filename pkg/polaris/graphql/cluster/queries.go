@@ -32,6 +32,81 @@ var allClusterGlobalSlasQuery = `query SdkGolangAllClusterGlobalSlas($clusterUui
   }
 }`
 
+// allClustersConnection GraphQL query
+var allClustersConnectionQuery = `query SdkGolangAllClustersConnection(
+  $first: Int
+  $after: String
+  $filter: ClusterFilterInput
+  $sortBy: ClusterSortByEnum
+  $sortOrder: SortOrder
+) {
+  result: allClusterConnection(
+    filter: $filter
+    sortBy: $sortBy
+    sortOrder: $sortOrder
+    first: $first
+    after: $after
+  ) {
+    edges {
+      cursor
+      node {
+        id
+        name
+        ccprovisionInfo {
+          progress
+          jobStatus
+          jobType
+          vendor
+        }
+        cloudInfo {
+          name
+          region
+          regionId
+          networkName
+          nativeCloudAccountName
+          vendor
+          nativeCloudAccountId
+          cloudAccount
+          storageConfig {
+            locationName
+            locationId
+            isImmutable
+            isUsingManagedIdentity
+          }
+        }
+        clusterNodeConnection {
+          edges {
+            node {
+              brikId
+              ipAddress
+              needsInspection
+              cpuCores
+              ram
+              clusterId
+              networkSpeed
+              hostname
+              id
+            }
+          }
+        }
+        productType
+        type
+        status
+        systemStatus
+        timezone
+        version
+      }
+    }
+    pageInfo {
+      startCursor
+      endCursor
+      hasNextPage
+      hasPreviousPage
+    }
+    count
+  }
+}`
+
 // canIgnoreClusterRemovalPrechecks GraphQL query
 var canIgnoreClusterRemovalPrechecksQuery = `query SdkGolangCanIgnoreClusterRemovalPrechecks($clusterUuid: UUID!) {
   result: canIgnoreClusterRemovalPrechecks(clusterUuid: $clusterUuid) {
