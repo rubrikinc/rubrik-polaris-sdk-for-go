@@ -24,10 +24,108 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
+
+// UpgradeInfoPage is one page of results from clusterWithUpgradesInfo.
+type UpgradeInfoPage struct {
+	Details  []UpgradeDetails
+	PageInfo core.PageInfo
+	Count    int
+}
+
+// ClusterWithUpgradesInfo returns one page of cluster upgrade information,
+// applying the optional filter and sort and using the supplied pagination.
+func ClusterWithUpgradesInfo(ctx context.Context, gql *graphql.Client, filter *CDMInfoFilter, sortBy UpgradeInfoSortBy, page core.Pagination) (UpgradeInfoPage, error) {
+	gql.Log().Print(log.Trace)
+
+	if filter == nil {
+		filter = &CDMInfoFilter{}
+	}
+	query := clusterWithUpgradesInfoQuery
+	buf, err := gql.Request(ctx, query, struct {
+		First                 *int               `json:"first,omitempty"`
+		After                 *string            `json:"after,omitempty"`
+		Last                  *int               `json:"last,omitempty"`
+		Before                *string            `json:"before,omitempty"`
+		SortOrder             *core.SortOrder    `json:"sortOrder,omitempty"`
+		SortBy                UpgradeInfoSortBy  `json:"sortBy,omitempty"`
+		ClusterLocation       []string           `json:"clusterLocation,omitempty"`
+		ConnectionState       []Status           `json:"connectionState,omitempty"`
+		DownloadedVersion     []string           `json:"downloadedVersion,omitempty"`
+		EOSStatus             []ClusterEOSStatus `json:"eosStatus,omitempty"`
+		ID                    []uuid.UUID        `json:"id,omitempty"`
+		InstalledVersion      []string           `json:"installedVersion,omitempty"`
+		MinSoftwareVersion    string             `json:"minSoftwareVersion,omitempty"`
+		Name                  []string           `json:"name,omitempty"`
+		PrechecksStatus       []PrechecksStatus  `json:"prechecksStatus,omitempty"`
+		ProductType           []Product          `json:"productType,omitempty"`
+		RegistrationTimeGT    *time.Time         `json:"registrationTimeGt,omitzero"`
+		RegistrationTimeLT    *time.Time         `json:"registrationTimeLt,omitzero"`
+		Type                  []ProductType      `json:"type,omitempty"`
+		UpgradeJobStatus      []ClusterJobStatus `json:"upgradeJobStatus,omitempty"`
+		UpgradeScheduled      *bool              `json:"upgradeScheduled,omitempty"`
+		UpgradeStatusCategory []string           `json:"upgradeStatusCategory,omitempty"`
+		VersionStatus         []VersionStatus    `json:"versionStatus,omitempty"`
+	}{
+		First:                 page.First,
+		After:                 page.After,
+		Last:                  page.Last,
+		Before:                page.Before,
+		SortOrder:             page.SortOrder,
+		SortBy:                sortBy,
+		ClusterLocation:       filter.ClusterLocation,
+		ConnectionState:       filter.ConnectionState,
+		DownloadedVersion:     filter.DownloadedVersion,
+		EOSStatus:             filter.EOSStatus,
+		ID:                    filter.ID,
+		InstalledVersion:      filter.InstalledVersion,
+		MinSoftwareVersion:    filter.MinSoftwareVersion,
+		Name:                  filter.Name,
+		PrechecksStatus:       filter.PrechecksStatus,
+		ProductType:           filter.ProductType,
+		RegistrationTimeGT:    filter.RegistrationTimeGT,
+		RegistrationTimeLT:    filter.RegistrationTimeLT,
+		Type:                  filter.Type,
+		UpgradeJobStatus:      filter.UpgradeJobStatus,
+		UpgradeScheduled:      filter.UpgradeScheduled,
+		UpgradeStatusCategory: filter.UpgradeStatusCategory,
+		VersionStatus:         filter.VersionStatus,
+	})
+	if err != nil {
+		return UpgradeInfoPage{}, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Edges []struct {
+					Node UpgradeDetails `json:"node"`
+				} `json:"edges"`
+				PageInfo core.PageInfo `json:"pageInfo"`
+				Count    int           `json:"count"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return UpgradeInfoPage{}, graphql.UnmarshalError(query, err)
+	}
+
+	details := make([]UpgradeDetails, 0, len(payload.Data.Result.Edges))
+	for _, edge := range payload.Data.Result.Edges {
+		details = append(details, edge.Node)
+	}
+	return UpgradeInfoPage{
+		Details:  details,
+		PageInfo: payload.Data.Result.PageInfo,
+		Count:    payload.Data.Result.Count,
+	}, nil
+}
 
 // SelfServeRollingUpgrade returns whether self-serve rolling upgrade is
 // enabled for the account.
@@ -80,4 +178,196 @@ func SetSelfServeRollingUpgrade(ctx context.Context, gql *graphql.Client, enable
 		return graphql.ResponseError(query, fmt.Errorf("self-serve rolling upgrade not set: requested %t, got %t", enabled, payload.Data.Result.Enabled))
 	}
 	return nil
+}
+
+// UpgradeInfoSortBy represents the sort field for cluster upgrade info queries.
+type UpgradeInfoSortBy string
+
+const (
+	UpgradeInfoSortByClusterJobStatus  UpgradeInfoSortBy = "ClusterJobStatus"
+	UpgradeInfoSortByClusterLocation   UpgradeInfoSortBy = "ClusterLocation"
+	UpgradeInfoSortByClusterName       UpgradeInfoSortBy = "ClusterName"
+	UpgradeInfoSortByClusterType       UpgradeInfoSortBy = "ClusterType"
+	UpgradeInfoSortByDownloadedVersion UpgradeInfoSortBy = "DownloadedVersion"
+	UpgradeInfoSortByInstalledVersion  UpgradeInfoSortBy = "InstalledVersion"
+	UpgradeInfoSortByRegisteredAt      UpgradeInfoSortBy = "RegisteredAt"
+	UpgradeInfoSortByUpgradeType       UpgradeInfoSortBy = "UpgradeType"
+	UpgradeInfoSortByVersionStatus     UpgradeInfoSortBy = "VersionStatus"
+)
+
+// ClusterJobStatus represents the cluster upgrade job status.
+type ClusterJobStatus string
+
+const (
+	ClusterJobStatusDownloadPackageFailed   ClusterJobStatus = "DownloadPackageFailed"
+	ClusterJobStatusDownloadingPackage      ClusterJobStatus = "DownloadingPackage"
+	ClusterJobStatusFailedToInitiateUpgrade ClusterJobStatus = "FailedToInitiateUpgrade"
+	ClusterJobStatusPreCheckFailureError    ClusterJobStatus = "PreCheckFailureError"
+	ClusterJobStatusPreCheckFailureWarning  ClusterJobStatus = "PreCheckFailureWarning"
+	ClusterJobStatusReadyForDownload        ClusterJobStatus = "ReadyForDownload"
+	ClusterJobStatusReadyForUpgrade         ClusterJobStatus = "ReadyForUpgrade"
+	ClusterJobStatusResumingUpgrade         ClusterJobStatus = "ResumingUpgrade"
+	ClusterJobStatusRollbackFailed          ClusterJobStatus = "RollbackFailed"
+	ClusterJobStatusRollingBackUpgrade      ClusterJobStatus = "RollingBackUpgrade"
+	ClusterJobStatusUnknown                 ClusterJobStatus = "Unknown"
+	ClusterJobStatusUpToDate                ClusterJobStatus = "UpToDate"
+	ClusterJobStatusUpgradeFailed           ClusterJobStatus = "UpgradeFailed"
+	ClusterJobStatusUpgrading               ClusterJobStatus = "Upgrading"
+)
+
+// ClusterEOSStatus represents the end-of-support status of a cluster.
+type ClusterEOSStatus string
+
+const (
+	ClusterEOSStatusPlanUpgrade ClusterEOSStatus = "EOS_STATUS_PLAN_UPGRADE"
+	ClusterEOSStatusSupported   ClusterEOSStatus = "EOS_STATUS_SUPPORTED"
+	ClusterEOSStatusUnknown     ClusterEOSStatus = "EOS_STATUS_UNKNOWN"
+	ClusterEOSStatusUnsupported ClusterEOSStatus = "EOS_STATUS_UNSUPPORTED"
+)
+
+// PrechecksStatus represents the precheck status of a cluster.
+type PrechecksStatus string
+
+const (
+	PrechecksStatusFailureError   PrechecksStatus = "PrechecksFailureError"
+	PrechecksStatusFailureWarning PrechecksStatus = "PrechecksFailureWarning"
+	PrechecksStatusRunning        PrechecksStatus = "PrechecksRunning"
+	PrechecksStatusSuccess        PrechecksStatus = "PrechecksSuccess"
+	PrechecksStatusUnknown        PrechecksStatus = "Unknown"
+)
+
+// VersionStatus represents the version status of a cluster.
+type VersionStatus string
+
+const (
+	VersionStatusStable             VersionStatus = "STABLE"
+	VersionStatusUnknown            VersionStatus = "UNKNOWN"
+	VersionStatusUpgradeRecommended VersionStatus = "UPGRADE_RECOMMENDED"
+)
+
+// CDMInfoFilter is the filter input for clusterWithUpgradesInfo.
+type CDMInfoFilter struct {
+	ClusterLocation       []string           `json:"clusterLocation,omitempty"`
+	ConnectionState       []Status           `json:"connectionState,omitempty"`
+	DownloadedVersion     []string           `json:"downloadedVersion,omitempty"`
+	EOSStatus             []ClusterEOSStatus `json:"eosStatus,omitempty"`
+	ID                    []uuid.UUID        `json:"id,omitempty"`
+	InstalledVersion      []string           `json:"installedVersion,omitempty"`
+	MinSoftwareVersion    string             `json:"minSoftwareVersion,omitempty"`
+	Name                  []string           `json:"name,omitempty"`
+	PrechecksStatus       []PrechecksStatus  `json:"prechecksStatus,omitempty"`
+	ProductType           []Product          `json:"productType,omitempty"`
+	RegistrationTimeGT    *time.Time         `json:"registrationTime_gt,omitzero"`
+	RegistrationTimeLT    *time.Time         `json:"registrationTime_lt,omitzero"`
+	Type                  []ProductType      `json:"type,omitempty"`
+	UpgradeJobStatus      []ClusterJobStatus `json:"upgradeJobStatus,omitempty"`
+	UpgradeScheduled      *bool              `json:"upgradeScheduled,omitempty"`
+	UpgradeStatusCategory []string           `json:"upgradeStatusCategory,omitempty"`
+	VersionStatus         []VersionStatus    `json:"versionStatus,omitempty"`
+}
+
+// RSCUpgradeStatusType is the V2 enum that supersedes ClusterJobStatus for
+// reporting cluster upgrade progress. The V1 ClusterJobStatus field can lag
+// (e.g. on stub clusters), so the V2 status is preferred when available.
+type RSCUpgradeStatusType string
+
+const (
+	RSCUpgradeStatusCDMOnlyOperation         RSCUpgradeStatusType = "CDM_ONLY_OPERATION"
+	RSCUpgradeStatusDisconnected             RSCUpgradeStatusType = "DISCONNECTED"
+	RSCUpgradeStatusDownloading              RSCUpgradeStatusType = "DOWNLOADING"
+	RSCUpgradeStatusDownloadFailed           RSCUpgradeStatusType = "DOWNLOAD_FAILED"
+	RSCUpgradeStatusInitializing             RSCUpgradeStatusType = "INITIALIZING"
+	RSCUpgradeStatusPrechecking              RSCUpgradeStatusType = "PRECHECKING"
+	RSCUpgradeStatusPrecheckFailed           RSCUpgradeStatusType = "PRECHECK_FAILED"
+	RSCUpgradeStatusReadyForDownload         RSCUpgradeStatusType = "READY_FOR_DOWNLOAD"
+	RSCUpgradeStatusReadyForUpgrade          RSCUpgradeStatusType = "READY_FOR_UPGRADE"
+	RSCUpgradeStatusRollingBack              RSCUpgradeStatusType = "ROLLINGBACK"
+	RSCUpgradeStatusRollingBackFailed        RSCUpgradeStatusType = "ROLLINGBACK_FAILED"
+	RSCUpgradeStatusUnknown                  RSCUpgradeStatusType = "UNKNOWN"
+	RSCUpgradeStatusUpgradeFailed            RSCUpgradeStatusType = "UPGRADE_FAILED"
+	RSCUpgradeStatusUpgrading                RSCUpgradeStatusType = "UPGRADING"
+	RSCUpgradeStatusWaitingForOperationStart RSCUpgradeStatusType = "WAITING_FOR_OPERATION_TO_START"
+)
+
+// UIStatusAttributes is the V2 detail payload for the cluster's upgrade
+// status. Fields are nullable in the schema; empty values mean "not
+// applicable for the current state".
+type UIStatusAttributes struct {
+	SourceVersion string  `json:"sourceVersion,omitempty"`
+	TargetVersion string  `json:"targetVersion,omitempty"`
+	Progress      float64 `json:"progress"`
+	ErrorMsg      string  `json:"errorMsg,omitempty"`
+	UpgradeMode   string  `json:"upgradeMode,omitempty"`
+}
+
+// UpgradeStatusV2 is the authoritative upgrade-status payload (preferred
+// over the V1 ClusterJobStatus + DownloadedVersion fields when present).
+type UpgradeStatusV2 struct {
+	RSCClusterUpgradeStatus RSCUpgradeStatusType `json:"rscClusterUpgradeStatus"`
+	UIStatus                string               `json:"uiStatus"`
+	UIStatusAttributes      UIStatusAttributes   `json:"uiStatusAttributes"`
+}
+
+// CDMClusterStatusInfo describes the upgrade tasks state.
+type CDMClusterStatusInfo struct {
+	CompletedNodes string `json:"completedNodes,omitempty"`
+	CurrentNode    string `json:"currentNode,omitempty"`
+}
+
+// CDMClusterStatus describes the cluster upgrade status.
+type CDMClusterStatus struct {
+	Message    string                `json:"message,omitempty"`
+	Status     string                `json:"status,omitempty"`
+	StatusInfo *CDMClusterStatusInfo `json:"statusInfo,omitzero"`
+}
+
+// UpgradeRecommendationInfo describes recommended upgrade versions.
+type UpgradeRecommendationInfo struct {
+	Recommendation            string   `json:"recommendation"`
+	NextReleaseRecommendation string   `json:"nextReleaseRecommendation"`
+	Upgradability             []string `json:"upgradability"`
+}
+
+// UpgradeDuration describes the duration of the last successful upgrade.
+type UpgradeDuration struct {
+	ClusterID              uuid.UUID `json:"clusterUuid"`
+	FastUpgradeDuration    int64     `json:"fastUpgradeDuration"`
+	RollingUpgradeDuration int64     `json:"rollingUpgradeDuration"`
+}
+
+// CDMInfo describes the upgrade state of a CDM cluster.
+type CDMInfo struct {
+	ClusterID                 uuid.UUID                  `json:"clusterUuid"`
+	Version                   string                     `json:"version"`
+	VersionStatus             VersionStatus              `json:"versionStatus,omitempty"`
+	ClusterJobStatus          ClusterJobStatus           `json:"clusterJobStatus,omitempty"`
+	ClusterStatus             *CDMClusterStatus          `json:"clusterStatus,omitzero"`
+	CurrentStateProgress      float64                    `json:"currentStateProgress"`
+	DownloadedVersion         string                     `json:"downloadedVersion,omitempty"`
+	FastUpgradePreferred      bool                       `json:"fastUpgradePreferred,omitempty"`
+	FinishedStates            string                     `json:"finishedStates,omitempty"`
+	IsRUSupported             bool                       `json:"isRuSupported,omitempty"`
+	OverallProgress           float64                    `json:"overallProgress"`
+	PendingStates             string                     `json:"pendingStates,omitempty"`
+	PreviousVersion           string                     `json:"previousVersion,omitempty"`
+	RUUnsupportabilityReason  string                     `json:"ruUnsupportabilityReason,omitempty"`
+	ScheduleUpgradeAction     string                     `json:"scheduleUpgradeAction,omitempty"`
+	ScheduleUpgradeAt         *time.Time                 `json:"scheduleUpgradeAt,omitzero"`
+	ScheduleUpgradeMode       string                     `json:"scheduleUpgradeMode,omitempty"`
+	StateMachineStatus        string                     `json:"stateMachineStatus,omitempty"`
+	StateMachineStatusAt      *time.Time                 `json:"stateMachineStatusAt,omitzero"`
+	UpgradeEndAt              *time.Time                 `json:"upgradeEndAt,omitzero"`
+	UpgradeEventSeriesID      string                     `json:"upgradeEventSeriesId,omitempty"`
+	UpgradeStartAt            *time.Time                 `json:"upgradeStartAt,omitzero"`
+	UpgradeStatusV2           *UpgradeStatusV2           `json:"upgradeStatusV2,omitzero"`
+	UpgradeRecommendationInfo *UpgradeRecommendationInfo `json:"upgradeRecommendationInfo,omitzero"`
+	LastUpgradeDuration       *UpgradeDuration           `json:"lastUpgradeDuration,omitzero"`
+}
+
+// UpgradeDetails bundles the cluster identity with its upgrade info, as
+// returned by clusterWithUpgradesInfo.
+type UpgradeDetails struct {
+	ID      uuid.UUID `json:"id"`
+	Name    string    `json:"name"`
+	CDMInfo *CDMInfo  `json:"cdmUpgradeInfo,omitzero"`
 }

@@ -24,9 +24,63 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlcluster "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cluster"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
+
+// listClusterUpgradesPageSize is the per-request page size used when
+// iterating clusterWithUpgradesInfo.
+const listClusterUpgradesPageSize = 50
+
+// ListClusterUpgrades returns the upgrade information for every cluster
+// matching filter, paginating through the underlying connection.
+func (a API) ListClusterUpgrades(ctx context.Context, filter *gqlcluster.CDMInfoFilter, sortBy gqlcluster.UpgradeInfoSortBy, sortOrder core.SortOrder) ([]gqlcluster.UpgradeDetails, error) {
+	a.log.Print(log.Trace)
+
+	pageSize := listClusterUpgradesPageSize
+	page := core.Pagination{First: &pageSize}
+	if sortOrder != "" {
+		page.SortOrder = &sortOrder
+	}
+
+	var details []gqlcluster.UpgradeDetails
+	for {
+		result, err := gqlcluster.ClusterWithUpgradesInfo(ctx, a.client.GQL, filter, sortBy, page)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list cluster upgrades: %s", err)
+		}
+		details = append(details, result.Details...)
+		if !result.PageInfo.HasNextPage || result.PageInfo.EndCursor == "" {
+			return details, nil
+		}
+		if page.After != nil && *page.After == result.PageInfo.EndCursor {
+			return details, nil
+		}
+		cursor := result.PageInfo.EndCursor
+		page.After = &cursor
+	}
+}
+
+// ClusterUpgrade returns the upgrade information for a single cluster.
+// Returns graphql.ErrNotFound when no cluster with that UUID is registered.
+func (a API) ClusterUpgrade(ctx context.Context, clusterID uuid.UUID) (gqlcluster.UpgradeDetails, error) {
+	a.log.Print(log.Trace)
+
+	pageSize := 1
+	page := core.Pagination{First: &pageSize}
+	filter := &gqlcluster.CDMInfoFilter{ID: []uuid.UUID{clusterID}}
+	result, err := gqlcluster.ClusterWithUpgradesInfo(ctx, a.client.GQL, filter, "", page)
+	if err != nil {
+		return gqlcluster.UpgradeDetails{}, fmt.Errorf("failed to get cluster upgrade info: %s", err)
+	}
+	if len(result.Details) == 0 || result.Details[0].ID != clusterID {
+		return gqlcluster.UpgradeDetails{}, fmt.Errorf("cluster %q %w", clusterID, graphql.ErrNotFound)
+	}
+	return result.Details[0], nil
+}
 
 // SelfServeRollingUpgrade returns whether the account-level self-serve
 // rolling upgrade setting is enabled.
