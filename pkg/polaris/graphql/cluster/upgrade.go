@@ -200,6 +200,47 @@ func ListUpgrades(ctx context.Context, gql *graphql.Client, clusters []uuid.UUID
 	return payload.Data.Result.ReleaseDetails, nil
 }
 
+// MultiHopUpgradePath returns the ordered sequence of CDM versions required
+// to upgrade the cluster from sourceVersion to targetVersion (both inclusive).
+// If sourceVersion is empty, the server uses the cluster's currently installed
+// version. When fullVersionName is true, each hop is returned as the full
+// release name including patch and build number.
+func MultiHopUpgradePath(ctx context.Context, gql *graphql.Client, clusterID uuid.UUID, sourceVersion, targetVersion string, fullVersionName bool) ([]string, error) {
+	gql.Log().Print(log.Trace)
+
+	if targetVersion == "" {
+		return nil, fmt.Errorf("target version is required")
+	}
+
+	query := multiHopUpgradePathQuery
+	buf, err := gql.Request(ctx, query, struct {
+		ClusterUUID                  uuid.UUID `json:"clusterUuid"`
+		SourceVersion                string    `json:"sourceVersion,omitempty"`
+		TargetVersion                string    `json:"targetVersion"`
+		ShouldIncludeFullVersionName bool      `json:"shouldIncludeFullVersionName"`
+	}{
+		ClusterUUID:                  clusterID,
+		SourceVersion:                sourceVersion,
+		TargetVersion:                targetVersion,
+		ShouldIncludeFullVersionName: fullVersionName,
+	})
+	if err != nil {
+		return nil, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				VersionPath []string `json:"versionPath"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, graphql.UnmarshalError(query, err)
+	}
+	return payload.Data.Result.VersionPath, nil
+}
+
 // SelfServeRollingUpgrade returns whether self-serve rolling upgrade is
 // enabled for the account.
 func SelfServeRollingUpgrade(ctx context.Context, gql *graphql.Client) (bool, error) {
