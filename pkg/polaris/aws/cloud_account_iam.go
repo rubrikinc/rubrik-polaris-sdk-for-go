@@ -218,12 +218,12 @@ func (a API) AccountArtifacts(ctx context.Context, cloudAccountID uuid.UUID) (ma
 
 	account, err := a.AccountByID(ctx, cloudAccountID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to get account %s: %s", cloudAccountID, err)
 	}
 
 	artifacts, err := aws.Wrap(a.client).ArtifactsToDelete(ctx, account.NativeID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get artifacts registered with account: %s", err)
+		return nil, nil, fmt.Errorf("failed to get artifacts registered with account %s: %s", cloudAccountID, err)
 	}
 
 	instanceProfiles := make(map[string]string)
