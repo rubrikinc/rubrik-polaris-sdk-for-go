@@ -339,6 +339,23 @@ var clusterWithUpgradesInfoQuery = `query SdkGolangClusterWithUpgradesInfo(
   }
 }`
 
+// multiHopUpgradePath GraphQL query
+var multiHopUpgradePathQuery = `query SdkGolangMultiHopUpgradePath(
+  $clusterUuid: UUID!
+  $sourceVersion: String
+  $targetVersion: String!
+  $shouldIncludeFullVersionName: Boolean
+) {
+  result: multiHopUpgradePath(
+    clusterUuid: $clusterUuid
+    sourceVersion: $sourceVersion
+    targetVersion: $targetVersion
+    shouldIncludeFullVersionName: $shouldIncludeFullVersionName
+  ) {
+    versionPath
+  }
+}`
+
 // removeCdmCluster GraphQL query
 var removeCdmClusterQuery = `mutation SdkGolangRemoveCdmCluster($clusterUuid: UUID!, $expireInDays: Long, $isForce: Boolean!) {
   result: removeCdmCluster(
