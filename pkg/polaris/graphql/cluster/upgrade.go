@@ -127,6 +127,79 @@ func ClusterWithUpgradesInfo(ctx context.Context, gql *graphql.Client, filter *C
 	}, nil
 }
 
+// ReleaseDetail describes one available CDM release as reported by
+// cdmReleaseDetailsForClusterFromSupportPortal. The fields used to drive a
+// download are Name (version), URL, MD5Sum, Size.
+type ReleaseDetail struct {
+	Name        string `json:"name"`
+	Recommended bool   `json:"isRecommended"`
+	Upgradable  bool   `json:"isUpgradable"`
+	MD5Sum      string `json:"md5Sum"`
+	Size        int64  `json:"size"`
+	URL         string `json:"tarDownloadLink"`
+}
+
+// ListUpgradesOptions controls the filter knobs of the underlying query.
+// All boolean fields default to false; callers must opt in to each filter.
+// SortOrder is the only truly optional field — leave it empty to let the
+// server decide.
+type ListUpgradesOptions struct {
+	FilterVersion     string
+	FetchLinks        bool
+	FilterUpgradeable bool
+	ShouldShowAll     bool
+	FilterAfterSource bool
+	SortOrder         core.SortOrder
+}
+
+// ListUpgrades returns the available CDM releases for the supplied clusters,
+// optionally filtered by version (server-defined match semantics). RSC fetches
+// the underlying data from the Rubrik support portal on the SDK's behalf.
+func ListUpgrades(ctx context.Context, gql *graphql.Client, clusters []uuid.UUID, opts ListUpgradesOptions) ([]ReleaseDetail, error) {
+	gql.Log().Print(log.Trace)
+
+	if len(clusters) == 0 {
+		return nil, fmt.Errorf("at least one cluster UUID is required")
+	}
+
+	query := cdmReleaseDetailsForClusterFromSupportPortalQuery
+	vars := struct {
+		ListClusterUUID   []uuid.UUID     `json:"listClusterUuid"`
+		FilterVersion     string          `json:"filterVersion"`
+		FetchLinks        bool            `json:"fetchLinks"`
+		FilterUpgradeable bool            `json:"filterUpgradeable"`
+		ShouldShowAll     bool            `json:"shouldShowAll"`
+		FilterAfterSource bool            `json:"filterAfterSource"`
+		SortOrder         *core.SortOrder `json:"sortOrder,omitempty"`
+	}{
+		ListClusterUUID:   clusters,
+		FilterVersion:     opts.FilterVersion,
+		FetchLinks:        opts.FetchLinks,
+		FilterUpgradeable: opts.FilterUpgradeable,
+		ShouldShowAll:     opts.ShouldShowAll,
+		FilterAfterSource: opts.FilterAfterSource,
+	}
+	if opts.SortOrder != "" {
+		vars.SortOrder = &opts.SortOrder
+	}
+	buf, err := gql.Request(ctx, query, vars)
+	if err != nil {
+		return nil, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				ReleaseDetails []ReleaseDetail `json:"releaseDetails"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, graphql.UnmarshalError(query, err)
+	}
+	return payload.Data.Result.ReleaseDetails, nil
+}
+
 // SelfServeRollingUpgrade returns whether self-serve rolling upgrade is
 // enabled for the account.
 func SelfServeRollingUpgrade(ctx context.Context, gql *graphql.Client) (bool, error) {

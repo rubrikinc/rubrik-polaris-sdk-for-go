@@ -118,6 +118,36 @@ var canIgnoreClusterRemovalPrechecksQuery = `query SdkGolangCanIgnoreClusterRemo
   }
 }`
 
+// cdmReleaseDetailsForClusterFromSupportPortal GraphQL query
+var cdmReleaseDetailsForClusterFromSupportPortalQuery = `query SdkGolangCdmReleaseDetailsForClusterFromSupportPortal(
+  $listClusterUuid: [UUID!]!
+  $filterVersion: String!
+  $fetchLinks: Boolean!
+  $filterUpgradeable: Boolean!
+  $shouldShowAll: Boolean!
+  $filterAfterSource: Boolean!
+  $sortOrder: SortOrder
+) {
+  result: getCdmReleaseDetailsForClusterFromSupportPortal(
+    listClusterUuid: $listClusterUuid
+    filterVersion: $filterVersion
+    fetchLinks: $fetchLinks
+    filterUpgradeable: $filterUpgradeable
+    shouldShowAll: $shouldShowAll
+    filterAfterSource: $filterAfterSource
+    sortOrder: $sortOrder
+  ) {
+    releaseDetails {
+      name
+      isRecommended
+      isUpgradable
+      md5Sum
+      size
+      tarDownloadLink
+    }
+  }
+}`
+
 // clusterDnsServers GraphQL query
 var clusterDnsServersQuery = `query SdkGolangClusterDnsServers($clusterUuid: UUID!) {
   result: clusterDns(clusterUuid: $clusterUuid) {
