@@ -338,6 +338,72 @@ func SetUpgradeType(ctx context.Context, gql *graphql.Client, clusterID uuid.UUI
 	return payload.Data.Result, nil
 }
 
+// UpgradeState is the cluster's current upgrade-state-machine state, as
+// reported by the upgradeStatus query. The set below covers every value the
+// upgrade service is known to emit; new entries may be added by the server
+// before the SDK is updated, so callers comparing against an unknown value
+// should fall through gracefully.
+type UpgradeState string
+
+const (
+	UpgradeStateIdle              UpgradeState = "IDLE"
+	UpgradeStateAcquiring         UpgradeState = "ACQUIRING"
+	UpgradeStateDeploying         UpgradeState = "DEPLOYING"
+	UpgradeStatePrechecking       UpgradeState = "PRECHECKING"
+	UpgradeStateUpgrading         UpgradeState = "UPGRADING"
+	UpgradeStateError             UpgradeState = "ERROR"
+	UpgradeStateCopying           UpgradeState = "COPYING"
+	UpgradeStateVerifying         UpgradeState = "VERIFYING"
+	UpgradeStateUntaring          UpgradeState = "UNTARING"
+	UpgradeStatePreparing         UpgradeState = "PREPARING"
+	UpgradeStateRestarting        UpgradeState = "RESTARTING"
+	UpgradeStateImaging           UpgradeState = "IMAGING"
+	UpgradeStateConfiguring       UpgradeState = "CONFIGURING"
+	UpgradeStateMigrating         UpgradeState = "MIGRATING"
+	UpgradeStateRollingBack       UpgradeState = "ROLLING_BACK"
+	UpgradeStateStaged            UpgradeState = "STAGED"
+	UpgradeStateRUPrecheckLock    UpgradeState = "RU_PRECHECK_LOCK"
+	UpgradeStateRUCRDBUpgrade     UpgradeState = "RU_CRDB_UPGRADE"
+	UpgradeStateRUMetadataUpgrade UpgradeState = "RU_METADATA_UPGRADE"
+	UpgradeStateRollingUpgrade    UpgradeState = "ROLLING_UPGRADE"
+	UpgradeStateRUClusterWrapup   UpgradeState = "RU_CLUSTER_WRAPUP"
+	UpgradeStateRUIdle            UpgradeState = "RU_IDLE"
+	UpgradeStateRUPrecheck        UpgradeState = "RU_PRECHECK"
+	UpgradeStateRUPreparing       UpgradeState = "RU_PREPARING"
+	UpgradeStateRUConfiguring     UpgradeState = "RU_CONFIGURING"
+	UpgradeStateRUMigrating       UpgradeState = "RU_MIGRATING"
+	UpgradeStateRURestarting      UpgradeState = "RU_RESTARTING"
+	UpgradeStateRUDone            UpgradeState = "RU_DONE"
+	UpgradeStateUnknown           UpgradeState = "UNKNOWN"
+)
+
+// UpgradeStatus returns the cluster's real-time upgrade state via a live read
+// from the upgrade service, bypassing the aggregated UpgradeStatusV2 view in
+// ClusterUpgrade which can lag by tracker-poll intervals.
+func UpgradeStatus(ctx context.Context, gql *graphql.Client, clusterID uuid.UUID) (UpgradeState, error) {
+	gql.Log().Print(log.Trace)
+
+	query := upgradeStatusQuery
+	buf, err := gql.Request(ctx, query, struct {
+		ClusterUUID uuid.UUID `json:"clusterUuid"`
+	}{ClusterUUID: clusterID})
+	if err != nil {
+		return "", graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				CurrentStateName UpgradeState `json:"currentStateName"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return "", graphql.UnmarshalError(query, err)
+	}
+	return payload.Data.Result.CurrentStateName, nil
+}
+
 // UpgradeInfoSortBy represents the sort field for cluster upgrade info queries.
 type UpgradeInfoSortBy string
 

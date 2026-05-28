@@ -117,3 +117,16 @@ func (a API) SetUpgradeType(ctx context.Context, clusterID uuid.UUID, upgradeTyp
 	}
 	return reply, nil
 }
+
+// UpgradeStatus returns the cluster's real-time upgrade state via a live read
+// from the upgrade service. Prefer this over ClusterUpgrade when authoritative
+// state is required.
+func (a API) UpgradeStatus(ctx context.Context, clusterID uuid.UUID) (gqlcluster.UpgradeState, error) {
+	a.log.Print(log.Trace)
+
+	state, err := gqlcluster.UpgradeStatus(ctx, a.client.GQL, clusterID)
+	if err != nil {
+		return "", fmt.Errorf("failed to read upgrade status: %s", err)
+	}
+	return state, nil
+}
