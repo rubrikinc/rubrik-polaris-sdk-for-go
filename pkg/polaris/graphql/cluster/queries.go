@@ -493,6 +493,13 @@ var updateCusterDnsAndSearchDomainsQuery = `mutation SdkGolangUpdateCusterDnsAnd
   }
 }`
 
+// upgradeStatus GraphQL query
+var upgradeStatusQuery = `query SdkGolangUpgradeStatus($clusterUuid: UUID!) {
+  result: upgradeStatus(clusterUuid: $clusterUuid) {
+    currentStateName
+  }
+}`
+
 // verifySlaWithReplicationToCluster GraphQL query
 var verifySlaWithReplicationToClusterQuery = `query SdkGolangVerifySlaWithReplicationToCluster($clusterUuid: UUID!, $includeArchived: Boolean!) {
   result: verifySlaWithReplicationToCluster(
