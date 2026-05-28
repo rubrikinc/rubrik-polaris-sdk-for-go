@@ -32,6 +32,81 @@ var allClusterGlobalSlasQuery = `query SdkGolangAllClusterGlobalSlas($clusterUui
   }
 }`
 
+// allClustersConnection GraphQL query
+var allClustersConnectionQuery = `query SdkGolangAllClustersConnection(
+  $first: Int
+  $after: String
+  $filter: ClusterFilterInput
+  $sortBy: ClusterSortByEnum
+  $sortOrder: SortOrder
+) {
+  result: allClusterConnection(
+    filter: $filter
+    sortBy: $sortBy
+    sortOrder: $sortOrder
+    first: $first
+    after: $after
+  ) {
+    edges {
+      cursor
+      node {
+        id
+        name
+        ccprovisionInfo {
+          progress
+          jobStatus
+          jobType
+          vendor
+        }
+        cloudInfo {
+          name
+          region
+          regionId
+          networkName
+          nativeCloudAccountName
+          vendor
+          nativeCloudAccountId
+          cloudAccount
+          storageConfig {
+            locationName
+            locationId
+            isImmutable
+            isUsingManagedIdentity
+          }
+        }
+        clusterNodeConnection {
+          edges {
+            node {
+              brikId
+              ipAddress
+              needsInspection
+              cpuCores
+              ram
+              clusterId
+              networkSpeed
+              hostname
+              id
+            }
+          }
+        }
+        productType
+        type
+        status
+        systemStatus
+        timezone
+        version
+      }
+    }
+    pageInfo {
+      startCursor
+      endCursor
+      hasNextPage
+      hasPreviousPage
+    }
+    count
+  }
+}`
+
 // canIgnoreClusterRemovalPrechecks GraphQL query
 var canIgnoreClusterRemovalPrechecksQuery = `query SdkGolangCanIgnoreClusterRemovalPrechecks($clusterUuid: UUID!) {
   result: canIgnoreClusterRemovalPrechecks(clusterUuid: $clusterUuid) {
@@ -40,6 +115,36 @@ var canIgnoreClusterRemovalPrechecksQuery = `query SdkGolangCanIgnoreClusterRemo
     lastConnectionTime
     canIgnorePrecheck
     isAirGapped
+  }
+}`
+
+// cdmReleaseDetailsForClusterFromSupportPortal GraphQL query
+var cdmReleaseDetailsForClusterFromSupportPortalQuery = `query SdkGolangCdmReleaseDetailsForClusterFromSupportPortal(
+  $listClusterUuid: [UUID!]!
+  $filterVersion: String!
+  $fetchLinks: Boolean!
+  $filterUpgradeable: Boolean!
+  $shouldShowAll: Boolean!
+  $filterAfterSource: Boolean!
+  $sortOrder: SortOrder
+) {
+  result: getCdmReleaseDetailsForClusterFromSupportPortal(
+    listClusterUuid: $listClusterUuid
+    filterVersion: $filterVersion
+    fetchLinks: $fetchLinks
+    filterUpgradeable: $filterUpgradeable
+    shouldShowAll: $shouldShowAll
+    filterAfterSource: $filterAfterSource
+    sortOrder: $sortOrder
+  ) {
+    releaseDetails {
+      name
+      isRecommended
+      isUpgradable
+      md5Sum
+      size
+      tarDownloadLink
+    }
   }
 }`
 
@@ -112,6 +217,145 @@ var clusterSettingsQuery = `query SdkGolangClusterSettings($id: UUID!) {
   }
 }`
 
+// clusterWithUpgradesInfo GraphQL query
+var clusterWithUpgradesInfoQuery = `query SdkGolangClusterWithUpgradesInfo(
+  $first: Int
+  $after: String
+  $last: Int
+  $before: String
+  $sortOrder: SortOrder
+  $sortBy: UpgradeInfoSortByEnum
+  $clusterLocation: [String!]
+  $connectionState: [ClusterStatus!]
+  $downloadedVersion: [String!]
+  $eosStatus: [ClusterEosStatus!]
+  $id: [UUID!]
+  $installedVersion: [String!]
+  $minSoftwareVersion: String
+  $name: [String!]
+  $prechecksStatus: [PrechecksStatusTypeEnum!]
+  $productType: [ClusterProductEnum!]
+  $registrationTimeGt: DateTime
+  $registrationTimeLt: DateTime
+  $type: [ClusterTypeEnum!]
+  $upgradeJobStatus: [ClusterJobStatusTypeEnum!]
+  $upgradeScheduled: Boolean
+  $upgradeStatusCategory: [String!]
+  $versionStatus: [VersionStatus!]
+) {
+  result: clusterWithUpgradesInfo(
+    first: $first
+    after: $after
+    last: $last
+    before: $before
+    sortOrder: $sortOrder
+    sortBy: $sortBy
+    upgradeFilter: {
+      clusterLocation: $clusterLocation
+      connectionState: $connectionState
+      downloadedVersion: $downloadedVersion
+      eosStatus: $eosStatus
+      id: $id
+      installedVersion: $installedVersion
+      minSoftwareVersion: $minSoftwareVersion
+      name: $name
+      prechecksStatus: $prechecksStatus
+      productType: $productType
+      registrationTime_gt: $registrationTimeGt
+      registrationTime_lt: $registrationTimeLt
+      type: $type
+      upgradeJobStatus: $upgradeJobStatus
+      upgradeScheduled: $upgradeScheduled
+      upgradeStatusCategory: $upgradeStatusCategory
+      versionStatus: $versionStatus
+    }
+  ) {
+    edges {
+      cursor
+      node {
+        id
+        name
+        cdmUpgradeInfo {
+          clusterUuid
+          version
+          versionStatus
+          clusterJobStatus
+          clusterStatus {
+            message
+            status
+            statusInfo {
+              completedNodes
+              currentNode
+            }
+          }
+          currentStateProgress
+          downloadedVersion
+          fastUpgradePreferred
+          finishedStates
+          isRuSupported
+          overallProgress
+          pendingStates
+          previousVersion
+          ruUnsupportabilityReason
+          scheduleUpgradeAction
+          scheduleUpgradeAt
+          scheduleUpgradeMode
+          stateMachineStatus
+          stateMachineStatusAt
+          upgradeEndAt
+          upgradeEventSeriesId
+          upgradeStartAt
+          upgradeStatusV2 {
+            rscClusterUpgradeStatus
+            uiStatus
+            uiStatusAttributes {
+              sourceVersion
+              targetVersion
+              progress
+              errorMsg
+              upgradeMode
+            }
+          }
+          upgradeRecommendationInfo {
+            recommendation
+            nextReleaseRecommendation
+            upgradability
+          }
+          lastUpgradeDuration {
+            clusterUuid
+            fastUpgradeDuration
+            rollingUpgradeDuration
+          }
+        }
+      }
+    }
+    pageInfo {
+      startCursor
+      endCursor
+      hasPreviousPage
+      hasNextPage
+    }
+    count
+  }
+}`
+
+// multiHopUpgradePath GraphQL query
+var multiHopUpgradePathQuery = `query SdkGolangMultiHopUpgradePath(
+  $clusterUuid: UUID!
+  $sourceVersion: String
+  $targetVersion: String!
+  $shouldIncludeFullVersionName: Boolean
+) {
+  result: multiHopUpgradePath(
+    clusterUuid: $clusterUuid
+    sourceVersion: $sourceVersion
+    targetVersion: $targetVersion
+    shouldIncludeFullVersionName: $shouldIncludeFullVersionName
+  ) {
+    versionPath
+  }
+}`
+
 // removeCdmCluster GraphQL query
 var removeCdmClusterQuery = `mutation SdkGolangRemoveCdmCluster($clusterUuid: UUID!, $expireInDays: Long, $isForce: Boolean!) {
   result: removeCdmCluster(
@@ -134,6 +378,18 @@ var setSelfServeRollingUpgradeQuery = `mutation SdkGolangSetSelfServeRollingUpgr
     enabled: $enabled,
   }) {
     enabled
+  }
+}`
+
+// setUpgradeType GraphQL query
+var setUpgradeTypeQuery = `mutation SdkGolangSetUpgradeType($clusterUuid: UUID!, $upgradeType: UpgradeType!) {
+  result: setUpgradeType(input: {
+    clusterUuid: $clusterUuid,
+    upgradeType: $upgradeType,
+  }) {
+    code
+    excepshuns
+    message
   }
 }`
 

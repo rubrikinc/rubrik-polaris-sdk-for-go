@@ -135,11 +135,14 @@ func (a API) TrustPolicy(ctx context.Context, params TrustPolicyParams) ([]Trust
 }
 
 // AccountFeatureArtifact holds the artifacts for a cloud account, identified by
-// the native ID.
+// the native ID. FeaturesWithPermissionsGroups carries permission groups for
+// each feature and, when populated, takes precedence over Features on the RSC
+// backend.
 type AccountFeatureArtifact struct {
-	NativeID  string             `json:"awsNativeId"`
-	Features  []string           `json:"features"`
-	Artifacts []ExternalArtifact `json:"externalArtifacts"`
+	NativeID                      string             `json:"awsNativeId"`
+	Features                      []string           `json:"features"`
+	FeaturesWithPermissionsGroups []core.Feature     `json:"featuresWithPermissionsGroups,omitempty"`
+	Artifacts                     []ExternalArtifact `json:"externalArtifacts"`
 }
 
 // ExternalArtifact holds the key and value for an artifact.

@@ -62,6 +62,15 @@ const (
 	UpdateRegions       CloudAccountAction = "UPDATE_REGIONS"
 )
 
+// PageInfo describes the result page metadata returned alongside a Relay-style
+// cursor connection.
+type PageInfo struct {
+	StartCursor     string `json:"startCursor"`
+	EndCursor       string `json:"endCursor"`
+	HasPreviousPage bool   `json:"hasPreviousPage"`
+	HasNextPage     bool   `json:"hasNextPage"`
+}
+
 // PermissionGroup represents a named set of permissions for a feature. Note,
 // not all permission groups are applicable to all features.
 type PermissionGroup string
