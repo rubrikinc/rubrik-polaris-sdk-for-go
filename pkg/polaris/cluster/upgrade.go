@@ -104,3 +104,16 @@ func (a API) SetSelfServeRollingUpgrade(ctx context.Context, enabled bool) error
 	}
 	return nil
 }
+
+// SetUpgradeType sets the upgrade type (fast or rolling) for the specified
+// cluster. The returned reply carries the server-side status code and message;
+// callers should inspect Code for operational outcomes.
+func (a API) SetUpgradeType(ctx context.Context, clusterID uuid.UUID, upgradeType gqlcluster.UpgradeType) (gqlcluster.SetUpgradeTypeReply, error) {
+	a.log.Print(log.Trace)
+
+	reply, err := gqlcluster.SetUpgradeType(ctx, a.client.GQL, clusterID, upgradeType)
+	if err != nil {
+		return gqlcluster.SetUpgradeTypeReply{}, fmt.Errorf("failed to set cluster upgrade type: %s", err)
+	}
+	return reply, nil
+}
