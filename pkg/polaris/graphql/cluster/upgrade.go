@@ -294,6 +294,50 @@ func SetSelfServeRollingUpgrade(ctx context.Context, gql *graphql.Client, enable
 	return nil
 }
 
+// UpgradeType represents the per-cluster upgrade type preference.
+type UpgradeType string
+
+const (
+	UpgradeTypeFast    UpgradeType = "FAST"
+	UpgradeTypeRolling UpgradeType = "ROLLING"
+)
+
+// SetUpgradeTypeReply is returned by setUpgradeType. The JSON tag for
+// Exceptions preserves the schema-level typo ("excepshuns").
+type SetUpgradeTypeReply struct {
+	Code       string `json:"code"`
+	Exceptions string `json:"excepshuns"`
+	Message    string `json:"message"`
+}
+
+// SetUpgradeType sets the upgrade type (fast or rolling) for the specified
+// cluster.
+func SetUpgradeType(ctx context.Context, gql *graphql.Client, clusterID uuid.UUID, upgradeType UpgradeType) (SetUpgradeTypeReply, error) {
+	gql.Log().Print(log.Trace)
+
+	query := setUpgradeTypeQuery
+	buf, err := gql.Request(ctx, query, struct {
+		ClusterUUID uuid.UUID   `json:"clusterUuid"`
+		UpgradeType UpgradeType `json:"upgradeType"`
+	}{
+		ClusterUUID: clusterID,
+		UpgradeType: upgradeType,
+	})
+	if err != nil {
+		return SetUpgradeTypeReply{}, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result SetUpgradeTypeReply `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return SetUpgradeTypeReply{}, graphql.UnmarshalError(query, err)
+	}
+	return payload.Data.Result, nil
+}
+
 // UpgradeInfoSortBy represents the sort field for cluster upgrade info queries.
 type UpgradeInfoSortBy string
 

@@ -381,6 +381,18 @@ var setSelfServeRollingUpgradeQuery = `mutation SdkGolangSetSelfServeRollingUpgr
   }
 }`
 
+// setUpgradeType GraphQL query
+var setUpgradeTypeQuery = `mutation SdkGolangSetUpgradeType($clusterUuid: UUID!, $upgradeType: UpgradeType!) {
+  result: setUpgradeType(input: {
+    clusterUuid: $clusterUuid,
+    upgradeType: $upgradeType,
+  }) {
+    code
+    excepshuns
+    message
+  }
+}`
+
 // slaSourceClusters GraphQL query
 var slaSourceClustersQuery = `query SdkGolangSlaSourceClusters(
   $after: String
