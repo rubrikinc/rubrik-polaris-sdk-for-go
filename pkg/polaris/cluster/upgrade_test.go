@@ -218,16 +218,21 @@ func TestClusterUpgradeFound(t *testing.T) {
 	}
 }
 
-// shortenPollDelays sets the WaitForDownload poll intervals to a few
+// shortenPollDelays sets all wait/transition poll intervals to a few
 // milliseconds so polling-loop tests finish quickly.
 func shortenPollDelays(t *testing.T) {
 	t.Helper()
-	origInitial, origMax := upgradePollInitialDelay, upgradePollMaxDelay
+	origUpgradeInitial, origUpgradeMax := upgradePollInitialDelay, upgradePollMaxDelay
+	origTransInitial, origTransMax := transitionPollInitialDelay, transitionPollMaxDelay
 	upgradePollInitialDelay = 5 * time.Millisecond
 	upgradePollMaxDelay = 10 * time.Millisecond
+	transitionPollInitialDelay = 2 * time.Millisecond
+	transitionPollMaxDelay = 5 * time.Millisecond
 	t.Cleanup(func() {
-		upgradePollInitialDelay = origInitial
-		upgradePollMaxDelay = origMax
+		upgradePollInitialDelay = origUpgradeInitial
+		upgradePollMaxDelay = origUpgradeMax
+		transitionPollInitialDelay = origTransInitial
+		transitionPollMaxDelay = origTransMax
 	})
 }
 
@@ -281,6 +286,10 @@ func (s *scriptedGraphQL) handler() http.HandlerFunc {
 
 func clusterUpgradeResp(node string) string {
 	return fmt.Sprintf(`{"data":{"result":{"edges":[{"cursor":"c","node":%s}],"pageInfo":{"startCursor":"","endCursor":"c","hasPreviousPage":false,"hasNextPage":false},"count":1}}}`, node)
+}
+
+func upgradeStatusResp(state gqlcluster.UpgradeState) string {
+	return fmt.Sprintf(`{"data":{"result":{"currentStateName":%q}}}`, state)
 }
 
 func TestWaitForDownloadStagesSuccessfully(t *testing.T) {
@@ -434,5 +443,183 @@ func TestWaitForDownloadTargetVer(t *testing.T) {
 	}
 	if s.calls["SdkGolangClusterWithUpgradesInfo"] != 3 {
 		t.Errorf("expected 3 polls (stale READY_FOR_UPGRADE must not short-circuit), got %d", s.calls["SdkGolangClusterWithUpgradesInfo"])
+	}
+}
+
+// TestDownloadPackageAndWaitGuardsAgainstStaleSuccess simulates the
+// re-trigger-same-version race observed against a real cluster: the cluster is
+// already in READY_FOR_UPGRADE for the requested version when
+// DownloadPackageAndWait is called. The composite must NOT short-circuit on
+// the pre-trigger state; it must wait for V2 to transition (via
+// WAITING_FOR_OPERATION_TO_START) before applying completion checks.
+func TestDownloadPackageAndWaitGuardsAgainstStaleSuccess(t *testing.T) {
+	shortenPollDelays(t)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	id := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	target := "9.3.3-p8-29908"
+	staleStaged := upgradeNode(id, gqlcluster.RSCUpgradeStatusReadyForUpgrade, target)
+	// WAITING_FOR_OPERATION_TO_START arrives with empty UIStatusAttributes per
+	// observed live cluster snapshots after a fresh download trigger.
+	waitingForOp := upgradeNode(id, gqlcluster.RSCUpgradeStatusWaitingForOperationStart, "")
+	downloading := upgradeNode(id, gqlcluster.RSCUpgradeStatusDownloading, target)
+	freshStaged := upgradeNode(id, gqlcluster.RSCUpgradeStatusReadyForUpgrade, target)
+
+	s := newScriptedGraphQL(t)
+	// ClusterUpgrade sequence:
+	//   1: snapshot (stale ReadyForUpgrade for target)
+	//   2: gate iter 1 — V2 still stale
+	//   3: gate iter 2 — V2 transitions to WAITING_FOR_OPERATION_TO_START;
+	//      gate releases here
+	//   4: WaitForDownload poll 1 — WAITING_FOR_OPERATION_TO_START (still
+	//      not "post-download", keep polling)
+	//   5: WaitForDownload poll 2 — DOWNLOADING
+	//   6: WaitForDownload poll 3 — ReadyForUpgrade (IsStaged → done)
+	s.script("SdkGolangClusterWithUpgradesInfo",
+		clusterUpgradeResp(staleStaged),
+		clusterUpgradeResp(staleStaged),
+		clusterUpgradeResp(waitingForOp),
+		clusterUpgradeResp(waitingForOp),
+		clusterUpgradeResp(downloading),
+		clusterUpgradeResp(freshStaged),
+	)
+	s.script("SdkGolangStartDownloadPackageBatchJob",
+		`{"data":{"result":[{"jobId":"STAGE_CDM_SOFTWARE_DUMMY_ID"}]}}`)
+	// Pre-staged: V1 is never consulted (snapshot skipped, gate ignores it) —
+	// V2 alone catches the change, so no SdkGolangUpgradeStatus is scripted.
+
+	srv := httptest.NewServer(handler.GraphQL(s.handler()))
+	defer srv.Close()
+
+	info, err := Wrap(newTestClient(srv)).DownloadPackageAndWait(ctx, id, "https://example/rubrik-image-"+target+".zip", "checksum", target)
+	if err != nil {
+		t.Fatalf("DownloadPackageAndWait: %v", err)
+	}
+	if info.UpgradeStatusV2.RSCClusterUpgradeStatus != gqlcluster.RSCUpgradeStatusReadyForUpgrade {
+		t.Errorf("expected final ReadyForUpgrade, got %s", info.UpgradeStatusV2.RSCClusterUpgradeStatus)
+	}
+	if got := s.calls["SdkGolangUpgradeStatus"]; got != 0 {
+		t.Errorf("pre-staged path must not read V1 at all, got %d V1 calls", got)
+	}
+	if got := s.calls["SdkGolangStartDownloadPackageBatchJob"]; got != 1 {
+		t.Errorf("trigger should be called exactly once, got %d", got)
+	}
+	// At least 4 ClusterUpgrade calls: 1 snapshot + 2 gate polls (stale, then
+	// transitioned) + 1+ post-transition polls in WaitForDownload.
+	if got := s.calls["SdkGolangClusterWithUpgradesInfo"]; got < 4 {
+		t.Errorf("expected at least 4 ClusterUpgrade polls (must not short-circuit on stale state), got %d", got)
+	}
+}
+
+// TestDownloadPackageAndWaitPreStagedWaitsForV2 verifies that when the cluster
+// is already staged for the target version, the gate ignores the (faster) V1
+// signal and waits for V2 to actually leave the stale staged state, so
+// WaitForDownload can't short-circuit on the pre-trigger observation.
+func TestDownloadPackageAndWaitPreStagedWaitsForV2(t *testing.T) {
+	shortenPollDelays(t)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	id := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	target := "9.3.3-p8-29908"
+	staleStaged := upgradeNode(id, gqlcluster.RSCUpgradeStatusReadyForUpgrade, target)
+	downloading := upgradeNode(id, gqlcluster.RSCUpgradeStatusDownloading, target)
+	freshStaged := upgradeNode(id, gqlcluster.RSCUpgradeStatusReadyForUpgrade, target)
+
+	s := newScriptedGraphQL(t)
+	//   1: snapshot — staleStaged (→ preStaged)
+	//   2: gate iter 1 — still staleStaged (IsStaged → keep waiting)
+	//   3: gate iter 2 — DOWNLOADING (IsStaged false → release)
+	//   4: WaitForDownload poll — freshStaged (final, IsStaged → done)
+	s.script("SdkGolangClusterWithUpgradesInfo",
+		clusterUpgradeResp(staleStaged),
+		clusterUpgradeResp(staleStaged),
+		clusterUpgradeResp(downloading),
+		clusterUpgradeResp(freshStaged),
+	)
+	s.script("SdkGolangStartDownloadPackageBatchJob",
+		`{"data":{"result":[{"jobId":"STAGE_CDM_SOFTWARE_DUMMY_ID"}]}}`)
+	// No SdkGolangUpgradeStatus is scripted: in the pre-staged path V1 is never
+	// read — not for the snapshot, not as a release signal.
+
+	srv := httptest.NewServer(handler.GraphQL(s.handler()))
+	defer srv.Close()
+
+	info, err := Wrap(newTestClient(srv)).DownloadPackageAndWait(ctx, id, "https://example/rubrik-image-"+target+".zip", "checksum", target)
+	if err != nil {
+		t.Fatalf("DownloadPackageAndWait: %v", err)
+	}
+	if info.UpgradeStatusV2.RSCClusterUpgradeStatus != gqlcluster.RSCUpgradeStatusReadyForUpgrade {
+		t.Errorf("expected final ReadyForUpgrade, got %s", info.UpgradeStatusV2.RSCClusterUpgradeStatus)
+	}
+	// V1 must not be read at all. If it were a release signal, a COPYING
+	// transition would short-circuit the gate while V2 was still stale
+	// staged@target.
+	if got := s.calls["SdkGolangUpgradeStatus"]; got != 0 {
+		t.Errorf("pre-staged gate must not read V1; got %d V1 calls", got)
+	}
+	// At least 3 V2 reads: snapshot + stale gate poll + the non-staged poll
+	// that releases.
+	if got := s.calls["SdkGolangClusterWithUpgradesInfo"]; got < 3 {
+		t.Errorf("expected the gate to wait for V2 to leave the staged state, got %d V2 polls", got)
+	}
+}
+
+// TestDownloadPackageAndWaitReleasesOnV1WhenNotPreStaged verifies the retained
+// V1-release path: when the pre-trigger state is not staged for the target
+// version, a V1 transition is a safe release signal (WaitForDownload cannot
+// falsely short-circuit, since V2 is not in the success state for target).
+func TestDownloadPackageAndWaitReleasesOnV1WhenNotPreStaged(t *testing.T) {
+	shortenPollDelays(t)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	id := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	target := "9.3.3-p8-29908"
+	otherVer := "9.2.1-p1-00000"
+	// Staged for a DIFFERENT version, so IsStaged(target) is false → not
+	// pre-staged.
+	stagedOther := upgradeNode(id, gqlcluster.RSCUpgradeStatusReadyForUpgrade, otherVer)
+	downloading := upgradeNode(id, gqlcluster.RSCUpgradeStatusDownloading, target)
+	freshStaged := upgradeNode(id, gqlcluster.RSCUpgradeStatusReadyForUpgrade, target)
+
+	s := newScriptedGraphQL(t)
+	//   1: snapshot — stagedOther (not staged for target)
+	//   (gate iter 1 — V1 transitions before V2 is queried; entry not consumed)
+	//   2: WaitForDownload poll 1 — DOWNLOADING (keep polling)
+	//   3: WaitForDownload poll 2 — freshStaged (final, IsStaged → done)
+	s.script("SdkGolangClusterWithUpgradesInfo",
+		clusterUpgradeResp(stagedOther),
+		clusterUpgradeResp(downloading),
+		clusterUpgradeResp(freshStaged),
+	)
+	s.script("SdkGolangStartDownloadPackageBatchJob",
+		`{"data":{"result":[{"jobId":"STAGE_CDM_SOFTWARE_DUMMY_ID"}]}}`)
+	// V1: snapshot IDLE, gate iter 1 COPYING — gate releases here (V1 first,
+	// before V2 in the same iteration is queried).
+	s.script("SdkGolangUpgradeStatus",
+		upgradeStatusResp(gqlcluster.UpgradeStateIdle),
+		upgradeStatusResp(gqlcluster.UpgradeStateCopying),
+	)
+
+	srv := httptest.NewServer(handler.GraphQL(s.handler()))
+	defer srv.Close()
+
+	info, err := Wrap(newTestClient(srv)).DownloadPackageAndWait(ctx, id, "https://example/rubrik-image-"+target+".zip", "checksum", target)
+	if err != nil {
+		t.Fatalf("DownloadPackageAndWait: %v", err)
+	}
+	if info.UpgradeStatusV2.RSCClusterUpgradeStatus != gqlcluster.RSCUpgradeStatusReadyForUpgrade {
+		t.Errorf("expected final ReadyForUpgrade, got %s", info.UpgradeStatusV2.RSCClusterUpgradeStatus)
+	}
+	// V1 read twice: snapshot + the gate iter that transitioned and released.
+	if got := s.calls["SdkGolangUpgradeStatus"]; got != 2 {
+		t.Errorf("expected 2 V1 calls (snapshot + gate iter that released), got %d", got)
+	}
+	// Snapshot consumes one V2 read; the gate releases on V1 before its own V2
+	// poll, so the remaining V2 reads belong to WaitForDownload.
+	if got := s.calls["SdkGolangClusterWithUpgradesInfo"]; got != 3 {
+		t.Errorf("expected 3 V2 calls (snapshot + 2 WaitForDownload polls), got %d", got)
 	}
 }
