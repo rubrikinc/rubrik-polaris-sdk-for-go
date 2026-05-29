@@ -379,3 +379,159 @@ func (a API) waitForDownloadTransition(ctx context.Context, clusterID uuid.UUID,
 		delay = nextBackoff(delay, transitionPollMaxDelay)
 	}
 }
+
+// Upgrade kicks off a fresh upgrade on the specified cluster. upgradeType
+// selects between fast (UpgradeTypeFast) and rolling (UpgradeTypeRolling).
+// Returns the per-cluster server reply; if the server rejects the job
+// (reply.Success false), the returned error wraps reply.Message. Poll
+// WaitForUpgrade to block until the cluster is on targetVersion.
+//
+// The mutation also sets the cluster's stored upgrade-type preference (the
+// same value SetUpgradeType configures) to match the chosen upgradeType.
+//
+// Upgrade only triggers a fresh upgrade (START). Recovery actions (resume a
+// failed upgrade, roll back) are not exposed here; callers needing those
+// can use gqlcluster.StartUpgrade directly.
+func (a API) Upgrade(ctx context.Context, clusterID uuid.UUID, upgradeType gqlcluster.UpgradeType, version string) (gqlcluster.UpgradeJobReply, error) {
+	a.log.Print(log.Trace)
+
+	mode := "normal"
+	if upgradeType == gqlcluster.UpgradeTypeRolling {
+		mode = "rolling"
+	}
+	reply, err := gqlcluster.StartUpgrade(ctx, a.client.GQL, clusterID, mode, gqlcluster.ActionStart, version, "")
+	if err != nil {
+		return gqlcluster.UpgradeJobReply{}, fmt.Errorf("failed to start upgrade: %s", err)
+	}
+	if !reply.Success {
+		msg := reply.Message
+		if msg == "" {
+			msg = "no message returned"
+		}
+		return reply, fmt.Errorf("cluster %q upgrade rejected: %s", clusterID, msg)
+	}
+	return reply, nil
+}
+
+// WaitForUpgrade polls the cluster's upgrade state until the installed version
+// matches targetVersion (success), a terminal upgrade failure is observed
+// (returned as a wrapped error), or ctx is cancelled. The returned CDMInfo is
+// the most recent observation regardless of outcome. Backoff is exponential,
+// capped at upgradePollMaxDelay. Transient errors from individual poll
+// requests are logged at Warn and tolerated — only ctx cancellation aborts
+// the wait.
+//
+// An observed ROLLINGBACK status is returned as a wrapped error: once the
+// cluster has decided to roll back, the target version will not be reached
+// without operator intervention. Use WaitForRollback to wait through the
+// rollback itself.
+func (a API) WaitForUpgrade(ctx context.Context, clusterID uuid.UUID, targetVersion string) (gqlcluster.CDMInfo, error) {
+	a.log.Print(log.Trace)
+
+	delay := upgradePollInitialDelay
+	var last gqlcluster.CDMInfo
+	for {
+		details, err := a.ClusterUpgrade(ctx, clusterID)
+		if err != nil {
+			a.log.Printf(log.Warn, "WaitForUpgrade poll for cluster %q failed (will retry): %s", clusterID, err)
+		} else if details.CDMInfo != nil {
+			last = *details.CDMInfo
+			if last.Version == targetVersion {
+				return last, nil
+			}
+			if status, failed := upgradeTerminalFailure(last); failed {
+				return last, fmt.Errorf("cluster %q upgrade to %q failed: %s", clusterID, targetVersion, status)
+			}
+			if upgradeStatus(last) == gqlcluster.RSCUpgradeStatusRollingBack {
+				return last, fmt.Errorf("cluster %q upgrade to %q is rolling back", clusterID, targetVersion)
+			}
+		}
+
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return last, fmt.Errorf("wait for cluster %q upgrade to %q: %w", clusterID, targetVersion, ctx.Err())
+		case <-timer.C:
+		}
+
+		delay = nextBackoff(delay, upgradePollMaxDelay)
+	}
+}
+
+// WaitForRollback polls the cluster's upgrade state until a rollback settles.
+// When previousVersion is non-empty, success means Version == previousVersion.
+// When previousVersion is empty (the caller doesn't know the target — e.g.
+// CDMInfo.PreviousVersion was not populated), success means the V2 status has
+// left ROLLINGBACK for any non-failure state. ROLLINGBACK_FAILED is returned
+// as a wrapped error.
+//
+// Use this after observing ROLLINGBACK from WaitForUpgrade — WaitForUpgrade
+// treats ROLLINGBACK as a terminal failure of the original upgrade attempt,
+// so this is the dedicated primitive for waiting through the rollback.
+func (a API) WaitForRollback(ctx context.Context, clusterID uuid.UUID, previousVersion string) (gqlcluster.CDMInfo, error) {
+	a.log.Print(log.Trace)
+
+	delay := upgradePollInitialDelay
+	var last gqlcluster.CDMInfo
+	for {
+		details, err := a.ClusterUpgrade(ctx, clusterID)
+		if err != nil {
+			a.log.Printf(log.Warn, "WaitForRollback poll for cluster %q failed (will retry): %s", clusterID, err)
+		} else if details.CDMInfo != nil {
+			last = *details.CDMInfo
+			status := upgradeStatus(last)
+			if status == gqlcluster.RSCUpgradeStatusRollingBackFailed {
+				target := previousVersion
+				if target == "" {
+					target = "previous version"
+				}
+				return last, fmt.Errorf("cluster %q rollback to %q failed", clusterID, target)
+			}
+			if previousVersion != "" {
+				if last.Version == previousVersion {
+					return last, nil
+				}
+			} else if last.UpgradeStatusV2 != nil && status != gqlcluster.RSCUpgradeStatusRollingBack {
+				return last, nil
+			}
+		}
+
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return last, fmt.Errorf("wait for cluster %q rollback to %q: %w", clusterID, previousVersion, ctx.Err())
+		case <-timer.C:
+		}
+
+		delay = nextBackoff(delay, upgradePollMaxDelay)
+	}
+}
+
+// upgradeStatus returns the V2 status if available; otherwise UNKNOWN.
+func upgradeStatus(info gqlcluster.CDMInfo) gqlcluster.RSCUpgradeStatusType {
+	if info.UpgradeStatusV2 != nil {
+		return info.UpgradeStatusV2.RSCClusterUpgradeStatus
+	}
+	return gqlcluster.RSCUpgradeStatusUnknown
+}
+
+// upgradeTerminalFailure reports whether info indicates a terminal upgrade
+// failure (UPGRADE_FAILED via V2, or the equivalent V1 cluster-job statuses
+// when V2 is absent). The returned string is the status name for use in
+// error messages.
+func upgradeTerminalFailure(info gqlcluster.CDMInfo) (string, bool) {
+	if info.UpgradeStatusV2 != nil {
+		if info.UpgradeStatusV2.RSCClusterUpgradeStatus == gqlcluster.RSCUpgradeStatusUpgradeFailed {
+			return string(info.UpgradeStatusV2.RSCClusterUpgradeStatus), true
+		}
+		return "", false
+	}
+	switch info.ClusterJobStatus {
+	case gqlcluster.ClusterJobStatusUpgradeFailed,
+		gqlcluster.ClusterJobStatusFailedToInitiateUpgrade:
+		return string(info.ClusterJobStatus), true
+	}
+	return "", false
+}

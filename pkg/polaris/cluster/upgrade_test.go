@@ -623,3 +623,171 @@ func TestDownloadPackageAndWaitReleasesOnV1WhenNotPreStaged(t *testing.T) {
 		t.Errorf("expected 3 V2 calls (snapshot + 2 WaitForDownload polls), got %d", got)
 	}
 }
+
+// upgradeNodeAtVersion is like upgradeNode but also sets the installed
+// version on CDMInfo so WaitForUpgrade's `last.Version == targetVersion`
+// completion check can fire.
+func upgradeNodeAtVersion(id uuid.UUID, v2 gqlcluster.RSCUpgradeStatusType, installedVersion string) string {
+	return fmt.Sprintf(`{"id":%q,"name":"c","cdmUpgradeInfo":{"clusterUuid":%q,"version":%q,"upgradeStatusV2":{"rscClusterUpgradeStatus":%q,"uiStatus":"","uiStatusAttributes":{"sourceVersion":"","targetVersion":%q,"progress":0,"errorMsg":"","upgradeMode":""}}}}`, id, id, installedVersion, v2, installedVersion)
+}
+
+func TestUpgradeRejectedReturnsError(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	id := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+		fmt.Fprint(w, `{"data":{"result":[{"upgradeJobReply":{"message":"upgrade path not supported","success":false}}]}}`)
+	}))
+	defer srv.Close()
+
+	reply, err := Wrap(newTestClient(srv)).Upgrade(ctx, id, gqlcluster.UpgradeTypeFast, "9.3.3-p8-29908")
+	if err == nil {
+		t.Fatal("expected error from server rejection")
+	}
+	if !strings.Contains(err.Error(), "upgrade path not supported") {
+		t.Errorf("error should contain server message, got: %v", err)
+	}
+	if reply.Success {
+		t.Errorf("reply.Success should be false")
+	}
+}
+
+func TestWaitForUpgradeReachesTargetVersion(t *testing.T) {
+	shortenPollDelays(t)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	id := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	target := "9.3.3-p8-29908"
+	prev := "9.2.3-p3-29515"
+
+	s := newScriptedGraphQL(t)
+	s.script("SdkGolangClusterWithUpgradesInfo",
+		clusterUpgradeResp(upgradeNodeAtVersion(id, gqlcluster.RSCUpgradeStatusUpgrading, prev)),
+		clusterUpgradeResp(upgradeNodeAtVersion(id, gqlcluster.RSCUpgradeStatusUpgrading, prev)),
+		clusterUpgradeResp(upgradeNodeAtVersion(id, gqlcluster.RSCUpgradeStatusReadyForUpgrade, target)),
+	)
+
+	srv := httptest.NewServer(handler.GraphQL(s.handler()))
+	defer srv.Close()
+
+	info, err := Wrap(newTestClient(srv)).WaitForUpgrade(ctx, id, target)
+	if err != nil {
+		t.Fatalf("WaitForUpgrade: %v", err)
+	}
+	if info.Version != target {
+		t.Errorf("expected installed Version %q, got %q", target, info.Version)
+	}
+}
+
+func TestWaitForUpgradeTerminalFailure(t *testing.T) {
+	shortenPollDelays(t)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	id := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	target := "9.3.3-p8-29908"
+	prev := "9.2.3-p3-29515"
+
+	s := newScriptedGraphQL(t)
+	s.script("SdkGolangClusterWithUpgradesInfo",
+		clusterUpgradeResp(upgradeNodeAtVersion(id, gqlcluster.RSCUpgradeStatusUpgrading, prev)),
+		clusterUpgradeResp(upgradeNodeAtVersion(id, gqlcluster.RSCUpgradeStatusUpgradeFailed, prev)),
+	)
+
+	srv := httptest.NewServer(handler.GraphQL(s.handler()))
+	defer srv.Close()
+
+	_, err := Wrap(newTestClient(srv)).WaitForUpgrade(ctx, id, target)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "UPGRADE_FAILED") {
+		t.Errorf("error should mention UPGRADE_FAILED, got: %v", err)
+	}
+}
+
+// TestWaitForUpgradeRollingbackReturnsError verifies WaitForUpgrade returns
+// an error when the cluster has decided to roll back — the original upgrade
+// won't reach its target without operator intervention.
+func TestWaitForUpgradeRollingbackReturnsError(t *testing.T) {
+	shortenPollDelays(t)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	id := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	target := "9.3.3-p8-29908"
+	prev := "9.2.3-p3-29515"
+
+	s := newScriptedGraphQL(t)
+	s.script("SdkGolangClusterWithUpgradesInfo",
+		clusterUpgradeResp(upgradeNodeAtVersion(id, gqlcluster.RSCUpgradeStatusUpgrading, prev)),
+		clusterUpgradeResp(upgradeNodeAtVersion(id, gqlcluster.RSCUpgradeStatusRollingBack, prev)),
+	)
+
+	srv := httptest.NewServer(handler.GraphQL(s.handler()))
+	defer srv.Close()
+
+	_, err := Wrap(newTestClient(srv)).WaitForUpgrade(ctx, id, target)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "rolling back") {
+		t.Errorf("error should mention rolling back, got: %v", err)
+	}
+}
+
+func TestWaitForRollbackReachesPreviousVersion(t *testing.T) {
+	shortenPollDelays(t)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	id := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	target := "9.3.3-p8-29908"
+	prev := "9.2.3-p3-29515"
+
+	s := newScriptedGraphQL(t)
+	s.script("SdkGolangClusterWithUpgradesInfo",
+		clusterUpgradeResp(upgradeNodeAtVersion(id, gqlcluster.RSCUpgradeStatusRollingBack, target)),
+		clusterUpgradeResp(upgradeNodeAtVersion(id, gqlcluster.RSCUpgradeStatusRollingBack, target)),
+		clusterUpgradeResp(upgradeNodeAtVersion(id, gqlcluster.RSCUpgradeStatusReadyForUpgrade, prev)),
+	)
+
+	srv := httptest.NewServer(handler.GraphQL(s.handler()))
+	defer srv.Close()
+
+	info, err := Wrap(newTestClient(srv)).WaitForRollback(ctx, id, prev)
+	if err != nil {
+		t.Fatalf("WaitForRollback: %v", err)
+	}
+	if info.Version != prev {
+		t.Errorf("expected installed Version %q, got %q", prev, info.Version)
+	}
+}
+
+func TestWaitForRollbackFailure(t *testing.T) {
+	shortenPollDelays(t)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	id := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+
+	s := newScriptedGraphQL(t)
+	s.script("SdkGolangClusterWithUpgradesInfo",
+		clusterUpgradeResp(upgradeNodeAtVersion(id, gqlcluster.RSCUpgradeStatusRollingBack, "9.3.3-p8-29908")),
+		clusterUpgradeResp(upgradeNodeAtVersion(id, gqlcluster.RSCUpgradeStatusRollingBackFailed, "9.3.3-p8-29908")),
+	)
+
+	srv := httptest.NewServer(handler.GraphQL(s.handler()))
+	defer srv.Close()
+
+	_, err := Wrap(newTestClient(srv)).WaitForRollback(ctx, id, "9.2.3-p3-29515")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "rollback") || !strings.Contains(err.Error(), "failed") {
+		t.Errorf("error should mention rollback failed, got: %v", err)
+	}
+}

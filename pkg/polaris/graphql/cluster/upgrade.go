@@ -302,6 +302,67 @@ const (
 	UpgradeTypeRolling UpgradeType = "ROLLING"
 )
 
+// ActionType represents the upgrade action.
+type ActionType string
+
+const (
+	ActionResume   ActionType = "RESUME"
+	ActionRollback ActionType = "ROLLBACK"
+	ActionStart    ActionType = "START"
+)
+
+// UpgradeJobReply is the per-cluster reply from startUpgradeBatchJob (and
+// scheduleUpgradeBatchJob). Success=false signals the server rejected the
+// job; Message carries the rejection reason.
+type UpgradeJobReply struct {
+	Message string `json:"message"`
+	Success bool   `json:"success"`
+}
+
+// StartUpgrade kicks off an immediate upgrade for the specified cluster.
+// mode is the upgrade mode (e.g. "normal", "rolling"); action is one of the
+// ActionType constants. contextTag is optional — pass an empty string for the
+// server default.
+func StartUpgrade(ctx context.Context, gql *graphql.Client, clusterID uuid.UUID, mode string, action ActionType, version, contextTag string) (UpgradeJobReply, error) {
+	gql.Log().Print(log.Trace)
+
+	query := startUpgradeBatchJobQuery
+	vars := struct {
+		ListClusterUUID []uuid.UUID `json:"listClusterUuid"`
+		Mode            string      `json:"mode"`
+		Action          ActionType  `json:"action"`
+		Version         string      `json:"version"`
+		ContextTag      *string     `json:"contextTag,omitempty"`
+	}{
+		ListClusterUUID: []uuid.UUID{clusterID},
+		Mode:            mode,
+		Action:          action,
+		Version:         version,
+	}
+	if contextTag != "" {
+		vars.ContextTag = &contextTag
+	}
+	buf, err := gql.Request(ctx, query, vars)
+	if err != nil {
+		return UpgradeJobReply{}, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result []struct {
+				UpgradeJobReply UpgradeJobReply `json:"upgradeJobReply"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return UpgradeJobReply{}, graphql.UnmarshalError(query, err)
+	}
+	if len(payload.Data.Result) != 1 {
+		return UpgradeJobReply{}, graphql.ResponseError(query, fmt.Errorf("expected 1 reply, got %d", len(payload.Data.Result)))
+	}
+	return payload.Data.Result[0].UpgradeJobReply, nil
+}
+
 // SetUpgradeTypeReply is returned by setUpgradeType. The JSON tag for
 // Exceptions preserves the schema-level typo ("excepshuns").
 type SetUpgradeTypeReply struct {
