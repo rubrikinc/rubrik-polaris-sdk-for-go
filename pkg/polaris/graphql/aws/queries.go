@@ -140,6 +140,23 @@ var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatur
     }
 }`
 
+// awsLatestPermissionsByPermissionsGroup GraphQL query
+var awsLatestPermissionsByPermissionsGroupQuery = `query SdkGolangAwsLatestPermissionsByPermissionsGroup($features: [CloudAccountFeature!]!) {
+    result: allAWSLatestPermissionsByPermissionsGroup(features: $features) {
+        feature
+        permissionsGroupPermissions {
+            permissionsGroup
+            version
+            permissionStatements {
+                actions {
+                    action
+                    usecase
+                }
+            }
+        }
+    }
+}`
+
 // awsNativeAccount GraphQL query
 var awsNativeAccountQuery = `query SdkGolangAwsNativeAccount($awsNativeAccountRubrikId: UUID!, $awsNativeProtectionFeature: AwsNativeProtectionFeature!) {
 	awsNativeAccount(awsNativeAccountRubrikId: $awsNativeAccountRubrikId, awsNativeProtectionFeature: $awsNativeProtectionFeature) {
