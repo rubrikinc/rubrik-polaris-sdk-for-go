@@ -192,9 +192,7 @@ func (a API) RetryDownloadPackage(ctx context.Context, clusterID uuid.UUID) (str
 // race-prone: if the cluster was already in READY_FOR_UPGRADE for
 // targetVersion (e.g. from a previous successful download), the first poll
 // will see that stale state and return before the new operation has even
-// registered. Callers wanting trigger-then-wait semantics should capture the
-// pre-trigger state and wait for a transition before applying completion
-// checks.
+// registered. Use DownloadPackageAndWait for the race-safe composite.
 func (a API) WaitForDownload(ctx context.Context, clusterID uuid.UUID, targetVersion string) (gqlcluster.CDMInfo, error) {
 	a.log.Print(log.Trace)
 
@@ -239,12 +237,7 @@ func (a API) WaitForDownload(ctx context.Context, clusterID uuid.UUID, targetVer
 		case <-timer.C:
 		}
 
-		if delay < upgradePollMaxDelay {
-			delay *= 2
-			if delay > upgradePollMaxDelay {
-				delay = upgradePollMaxDelay
-			}
-		}
+		delay = nextBackoff(delay, upgradePollMaxDelay)
 	}
 }
 
@@ -260,4 +253,129 @@ func downloadFailureReason(info gqlcluster.CDMInfo) string {
 		return string(info.UpgradeStatusV2.RSCClusterUpgradeStatus)
 	}
 	return string(info.ClusterJobStatus)
+}
+
+// nextBackoff doubles cur, clamping to max. Shared by the upgrade poll loops.
+func nextBackoff(cur, max time.Duration) time.Duration {
+	if cur >= max {
+		return max
+	}
+	if cur *= 2; cur > max {
+		return max
+	}
+	return cur
+}
+
+// transitionPollInitialDelay is the first sleep when polling for a
+// post-trigger state transition. Short because the cluster typically picks
+// the new operation up within seconds.
+var transitionPollInitialDelay = time.Second
+
+// transitionPollMaxDelay caps the exponential backoff between transition
+// polls.
+var transitionPollMaxDelay = 5 * time.Second
+
+// DownloadPackageAndWait triggers a download of the package at packageURL onto
+// the specified cluster and blocks until the package is staged or a terminal
+// download failure is observed. The returned CDMInfo is the most recent
+// observation regardless of outcome.
+//
+// Unlike calling DownloadPackage followed by WaitForDownload, this composite
+// snapshots the cluster's pre-trigger state and waits for an observed state
+// transition before applying completion checks. That avoids a race where the
+// cluster was already in READY_FOR_UPGRADE for targetVersion (e.g. a previous
+// download attempt), which would otherwise cause WaitForDownload to return
+// success before the new operation has registered.
+//
+// targetVersion is required and must match the version encoded in the package
+// URL filename (which the server itself parses for the trigger).
+func (a API) DownloadPackageAndWait(ctx context.Context, clusterID uuid.UUID, packageURL, md5checksum, targetVersion string) (gqlcluster.CDMInfo, error) {
+	a.log.Print(log.Trace)
+
+	preDetails, err := a.ClusterUpgrade(ctx, clusterID)
+	if err != nil {
+		return gqlcluster.CDMInfo{}, fmt.Errorf("snapshot pre-trigger cluster upgrade: %s", err)
+	}
+	var preV2 gqlcluster.RSCUpgradeStatusType
+	if preDetails.CDMInfo != nil && preDetails.CDMInfo.UpgradeStatusV2 != nil {
+		preV2 = preDetails.CDMInfo.UpgradeStatusV2.RSCClusterUpgradeStatus
+	}
+	// If the cluster already looks staged for targetVersion, the live V1 state
+	// can lead the slower V2 aggregator: releasing on a V1 transition would let
+	// WaitForDownload succeed on the stale READY_FOR_UPGRADE@targetVersion. In
+	// that case the gate ignores V1, so skip the V1 snapshot entirely. IsStaged
+	// is nil-safe.
+	preStaged := preDetails.CDMInfo.IsStaged(targetVersion)
+	var preV1 gqlcluster.UpgradeState
+	if !preStaged {
+		if preV1, err = a.UpgradeStatus(ctx, clusterID); err != nil {
+			return gqlcluster.CDMInfo{}, fmt.Errorf("snapshot pre-trigger upgrade status: %s", err)
+		}
+	}
+	a.log.Printf(log.Debug, "DownloadPackageAndWait cluster %q baseline: V1=%s V2=%s staged=%t", clusterID, preV1, preV2, preStaged)
+
+	if _, err := a.DownloadPackage(ctx, clusterID, packageURL, md5checksum); err != nil {
+		return gqlcluster.CDMInfo{}, err
+	}
+
+	if err := a.waitForDownloadTransition(ctx, clusterID, preV1, preV2, targetVersion, preStaged); err != nil {
+		return gqlcluster.CDMInfo{}, err
+	}
+
+	return a.WaitForDownload(ctx, clusterID, targetVersion)
+}
+
+// waitForDownloadTransition polls until the just-triggered operation has
+// registered, then returns.
+//
+// Normally it releases as soon as either V1 (live upgradeStatus) or V2
+// (aggregated UpgradeStatusV2) differs from the captured baselines. When the
+// cluster was already staged for targetVersion before the trigger (preStaged),
+// the V1 signal is ignored: V1 leads the slower V2 aggregator, and releasing on
+// V1 alone would let WaitForDownload short-circuit on the stale
+// READY_FOR_UPGRADE@targetVersion. In that case the gate releases only once a
+// V2 observation is no longer staged for targetVersion.
+//
+// Transient errors from individual polls are tolerated; only ctx cancellation
+// aborts.
+func (a API) waitForDownloadTransition(ctx context.Context, clusterID uuid.UUID, preV1 gqlcluster.UpgradeState, preV2 gqlcluster.RSCUpgradeStatusType, targetVersion string, preStaged bool) error {
+	delay := transitionPollInitialDelay
+	for {
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return fmt.Errorf("wait for cluster %q to register download: %w", clusterID, ctx.Err())
+		case <-timer.C:
+		}
+
+		// V1 leads the V2 aggregator, so trust it only when the pre-trigger
+		// state was not already staged for targetVersion.
+		if !preStaged {
+			if v1, err := a.UpgradeStatus(ctx, clusterID); err != nil {
+				a.log.Printf(log.Warn, "DownloadPackageAndWait V1 poll for cluster %q failed (will retry): %s", clusterID, err)
+			} else if v1 != preV1 {
+				a.log.Printf(log.Debug, "DownloadPackageAndWait cluster %q V1 transitioned %s -> %s", clusterID, preV1, v1)
+				return nil
+			}
+		}
+
+		if details, err := a.ClusterUpgrade(ctx, clusterID); err != nil {
+			a.log.Printf(log.Warn, "DownloadPackageAndWait V2 poll for cluster %q failed (will retry): %s", clusterID, err)
+		} else if details.CDMInfo != nil {
+			if preStaged {
+				// Release only once V2 has left the stale staged state, so
+				// WaitForDownload cannot succeed on the pre-trigger observation.
+				if !details.CDMInfo.IsStaged(targetVersion) {
+					a.log.Printf(log.Debug, "DownloadPackageAndWait cluster %q V2 left stale staged state", clusterID)
+					return nil
+				}
+			} else if v2 := details.CDMInfo.UpgradeStatusV2; v2 != nil && v2.RSCClusterUpgradeStatus != preV2 {
+				a.log.Printf(log.Debug, "DownloadPackageAndWait cluster %q V2 transitioned %s -> %s", clusterID, preV2, v2.RSCClusterUpgradeStatus)
+				return nil
+			}
+		}
+
+		delay = nextBackoff(delay, transitionPollMaxDelay)
+	}
 }
