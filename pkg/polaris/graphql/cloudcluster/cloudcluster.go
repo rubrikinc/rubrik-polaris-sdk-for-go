@@ -26,7 +26,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -130,128 +129,86 @@ type OciEsConfigInput struct {
 }
 
 // CcpJobStatus represents the valid job statuses.
-type CcpJobStatus string
+//
+// Deprecated: use cluster.CCPJobStatus instead.
+type CcpJobStatus = cluster.CCPJobStatus
 
+// Deprecated: use the cluster.CCPJobStatus* constants instead.
 const (
-	CcpJobStatusInitializing               CcpJobStatus = "INITIALIZING"
-	CcpJobStatusNodeCreate                 CcpJobStatus = "NODE_CREATE"
-	CcpJobStatusNodeConnectionVerification CcpJobStatus = "NODE_CONNECTION_VERIFICATION"
-	CcpJobStatusNodeInfoExtraction         CcpJobStatus = "NODE_INFO_EXTRACTION"
-	CcpJobStatusBootstrapping              CcpJobStatus = "BOOTSTRAPPING"
-	CcpJobStatusRotateToken                CcpJobStatus = "ROTATE_TOKEN"
-	CcpJobStatusFailed                     CcpJobStatus = "FAILED"
-	CcpJobStatusCompleted                  CcpJobStatus = "COMPLETED"
-	CcpJobStatusInvalid                    CcpJobStatus = "INVALID"
+	CcpJobStatusInitializing               = cluster.CCPJobStatusInitializing
+	CcpJobStatusNodeCreate                 = cluster.CCPJobStatusNodeCreate
+	CcpJobStatusNodeConnectionVerification = cluster.CCPJobStatusNodeConnectionVerification
+	CcpJobStatusNodeInfoExtraction         = cluster.CCPJobStatusNodeInfoExtraction
+	CcpJobStatusBootstrapping              = cluster.CCPJobStatusBootstrapping
+	CcpJobStatusRotateToken                = cluster.CCPJobStatusRotateToken
+	CcpJobStatusFailed                     = cluster.CCPJobStatusFailed
+	CcpJobStatusCompleted                  = cluster.CCPJobStatusCompleted
+	CcpJobStatusInvalid                    = cluster.CCPJobStatusInvalid
 )
 
 // CcpJobType represents the valid job types.
-type CcpJobType string
+//
+// Deprecated: use cluster.CCPJobType instead.
+type CcpJobType = cluster.CCPJobType
 
+// Deprecated: use the cluster.CCPJobType* constants instead.
 const (
-	CcpJobTypeClusterCreate                   CcpJobType = "CLUSTER_CREATE"
-	CcpJobTypeClusterDelete                   CcpJobType = "CLUSTER_DELETE"
-	CcpJobTypeAddNode                         CcpJobType = "ADD_NODE"
-	CcpJobTypeRemoveNode                      CcpJobType = "REMOVE_NODE"
-	CcpJobTypeReplaceNode                     CcpJobType = "REPLACE_NODE"
-	CcpJobTypeClusterRecover                  CcpJobType = "CLUSTER_RECOVER"
-	CcpJobTypeClusterOps                      CcpJobType = "CLUSTER_OPS"
-	CcpJobTypeMigrateNodes                    CcpJobType = "MIGRATE_NODES"
-	CcpJobTypeMigrateClusterToManagedIdentity CcpJobType = "MIGRATE_CLUSTER_TO_MANAGED_IDENTITY"
-	CcpJobTypeManualAddNodes                  CcpJobType = "MANUAL_ADD_NODES"
+	CcpJobTypeClusterCreate                   = cluster.CCPJobTypeClusterCreate
+	CcpJobTypeClusterDelete                   = cluster.CCPJobTypeClusterDelete
+	CcpJobTypeAddNode                         = cluster.CCPJobTypeAddNode
+	CcpJobTypeRemoveNode                      = cluster.CCPJobTypeRemoveNode
+	CcpJobTypeReplaceNode                     = cluster.CCPJobTypeReplaceNode
+	CcpJobTypeClusterRecover                  = cluster.CCPJobTypeClusterRecover
+	CcpJobTypeClusterOps                      = cluster.CCPJobTypeClusterOps
+	CcpJobTypeMigrateNodes                    = cluster.CCPJobTypeMigrateNodes
+	CcpJobTypeMigrateClusterToManagedIdentity = cluster.CCPJobTypeMigrateClusterToManagedIdentity
+	CcpJobTypeManualAddNodes                  = cluster.CCPJobTypeManualAddNodes
 )
 
 // CloudClusterProvisionInfo represents the cloud cluster provision info.
-type CloudClusterProvisionInfo struct {
-	Progress  int          `json:"progress"`
-	JobStatus CcpJobStatus `json:"jobStatus"`
-	JobType   CcpJobType   `json:"jobType"`
-	Vendor    string       `json:"vendor"`
-}
+//
+// Deprecated: use cluster.ProvisionInfo instead.
+type CloudClusterProvisionInfo = cluster.ProvisionInfo
 
-type CloudClusterStorageConfig struct {
-	LocationName           string `json:"locationName"`
-	LocationID             string `json:"locationId"`
-	IsImmutable            bool   `json:"isImmutable"`
-	IsUsingManagedIdentity bool   `json:"isUsingManagedIdentity"`
-}
+// CloudClusterStorageConfig represents the cluster's cloud storage
+// configuration.
+//
+// Deprecated: use cluster.StorageConfig instead.
+type CloudClusterStorageConfig = cluster.StorageConfig
 
-type CloudClusterCloudInfo struct {
-	Name                   string                    `json:"name"`
-	Region                 string                    `json:"region"`
-	RegionID               string                    `json:"regionId"`
-	NetworkName            string                    `json:"networkName"`
-	NativeCloudAccountName string                    `json:"nativeCloudAccountName"`
-	Vendor                 string                    `json:"vendor"`
-	NativeCloudAccountID   string                    `json:"nativeCloudAccountId"`
-	CloudAccount           string                    `json:"cloudAccount"`
-	StorageConfig          CloudClusterStorageConfig `json:"storageConfig"`
-}
+// CloudClusterCloudInfo represents the cloud placement of a cluster.
+//
+// Deprecated: use cluster.CloudInfo instead.
+type CloudClusterCloudInfo = cluster.CloudInfo
 
-type CloudClusterNode struct {
-	BrikID          string `json:"brikId"`
-	IpAddress       string `json:"ipAddress"`
-	NeedsInspection bool   `json:"needsInspection"`
-	CpuCores        int    `json:"cpuCores,omitempty"`
-	Ram             int64  `json:"ram,omitempty"`
-	ClusterID       string `json:"clusterId"`
-	NetworkSpeed    string `json:"networkSpeed,omitempty"`
-	Hostname        string `json:"hostname,omitempty"`
-	ID              string `json:"id"`
-}
+// CloudClusterNode represents a single node within a cluster.
+//
+// Deprecated: use cluster.Node instead.
+type CloudClusterNode = cluster.Node
 
-type CloudClusterNodeConnection struct {
-	Edges []struct {
-		Node CloudClusterNode `json:"node"`
-	} `json:"edges"`
-}
+// CloudClusterNodeConnection is the paginated list of nodes within a cluster.
+//
+// Deprecated: use cluster.NodeConnection instead.
+type CloudClusterNodeConnection = cluster.NodeConnection
 
-// CloudCluster represents the cloud cluster.
-type CloudCluster struct {
-	ID            uuid.UUID                  `json:"id"`
-	Name          string                     `json:"name"`
-	ProvisionInfo CloudClusterProvisionInfo  `json:"ccprovisionInfo"`
-	CloudInfo     CloudClusterCloudInfo      `json:"cloudInfo,omitempty"`
-	ClusterNodes  CloudClusterNodeConnection `json:"clusterNodeConnection"`
-	ProductType   cluster.Product            `json:"productType"`
-	Timezone      cluster.Timezone           `json:"timezone"`
-	Version       string                     `json:"version"`
-}
+// CloudCluster represents a cluster registered with the cluster management
+// service, including in-flight cloud clusters being provisioned.
+//
+// Deprecated: use cluster.Cluster instead.
+type CloudCluster = cluster.Cluster
 
-// AllCloudClusters returns all cloud clusters.
+// AllCloudClusters returns all cloud clusters. It is a thin wrapper around
+// cluster.AllClusters that returns the clusters of a single page.
+//
+// Deprecated: use cluster.API.ListClusters or cluster.AllClusters instead.
 func (a API) AllCloudClusters(ctx context.Context, first int, after string, filter cluster.SearchFilter, sortBy cluster.SortBy, sortOrder core.SortOrder) ([]CloudCluster, error) {
 	a.log.Print(log.Trace)
 
-	query := allClustersConnectionQuery
-	buf, err := a.GQL.Request(ctx, query, struct {
-		First     int                  `json:"first"`
-		After     string               `json:"after,omitempty"`
-		Filter    cluster.SearchFilter `json:"filter"`
-		SortBy    cluster.SortBy       `json:"sortBy"`
-		SortOrder core.SortOrder       `json:"sortOrder"`
-	}{First: first, After: after, Filter: filter, SortBy: sortBy, SortOrder: sortOrder})
+	page, err := cluster.AllClusters(ctx, a.GQL, first, after, filter, sortBy, sortOrder)
 	if err != nil {
-		return nil, graphql.RequestError(query, err)
+		return nil, err
 	}
-
-	var payload struct {
-		Data struct {
-			Result struct {
-				Edges []struct {
-					Node CloudCluster `json:"node"`
-				} `json:"edges"`
-			} `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, graphql.UnmarshalError(query, err)
-	}
-
-	var clusters []CloudCluster
-	for _, edge := range payload.Data.Result.Edges {
-		clusters = append(clusters, edge.Node)
-	}
-
-	return clusters, nil
+	return page.Clusters, nil
 }
 
 // CloudClusterInstanceProperties represents the cloud cluster instance properties.
