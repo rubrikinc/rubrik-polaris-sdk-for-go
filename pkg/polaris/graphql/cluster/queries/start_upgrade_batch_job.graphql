@@ -1,0 +1,20 @@
+mutation RubrikPolarisSDKRequest(
+  $listClusterUuid: [UUID!]!
+  $mode: String!
+  $action: ActionType!
+  $version: String!
+  $contextTag: String
+) {
+  result: startUpgradeBatchJob(
+    listClusterUuid: $listClusterUuid
+    mode: $mode
+    action: $action
+    version: $version
+    context_tag: $contextTag
+  ) {
+    upgradeJobReply {
+      message
+      success
+    }
+  }
+}

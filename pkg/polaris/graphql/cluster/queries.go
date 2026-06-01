@@ -466,6 +466,28 @@ var startDownloadPackageBatchJobQuery = `mutation SdkGolangStartDownloadPackageB
   }
 }`
 
+// startUpgradeBatchJob GraphQL query
+var startUpgradeBatchJobQuery = `mutation SdkGolangStartUpgradeBatchJob(
+  $listClusterUuid: [UUID!]!
+  $mode: String!
+  $action: ActionType!
+  $version: String!
+  $contextTag: String
+) {
+  result: startUpgradeBatchJob(
+    listClusterUuid: $listClusterUuid
+    mode: $mode
+    action: $action
+    version: $version
+    context_tag: $contextTag
+  ) {
+    upgradeJobReply {
+      message
+      success
+    }
+  }
+}`
+
 // updateClusterNtpServers GraphQL query
 var updateClusterNtpServersQuery = `mutation SdkGolangUpdateClusterNtpServers($input: UpdateClusterNtpServersInput!) {
   result: updateClusterNtpServers(input: $input) {
