@@ -23,6 +23,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -129,4 +130,134 @@ func (a API) UpgradeStatus(ctx context.Context, clusterID uuid.UUID) (gqlcluster
 		return "", fmt.Errorf("failed to read upgrade status: %s", err)
 	}
 	return state, nil
+}
+
+// upgradePollInitialDelay is the first sleep between WaitForDownload polls.
+var upgradePollInitialDelay = 15 * time.Second
+
+// upgradePollMaxDelay caps the exponential backoff between WaitForDownload
+// polls.
+var upgradePollMaxDelay = 60 * time.Second
+
+// DownloadPackage starts a download of the package at packageURL onto the
+// specified cluster. The server parses the version from the package filename,
+// which must follow the `rubrik-image-<version>.zip` convention. Returns the
+// job ID; poll WaitForDownload to block until the package is staged.
+func (a API) DownloadPackage(ctx context.Context, clusterID uuid.UUID, packageURL, md5checksum string) (string, error) {
+	a.log.Print(log.Trace)
+
+	jobID, err := gqlcluster.StartDownloadPackage(ctx, a.client.GQL, clusterID, packageURL, md5checksum)
+	if err != nil {
+		return "", fmt.Errorf("failed to start download: %s", err)
+	}
+	return jobID, nil
+}
+
+// RetryDownloadPackage retries the previously failed download package job
+// for the specified cluster. Returns the new job ID.
+func (a API) RetryDownloadPackage(ctx context.Context, clusterID uuid.UUID) (string, error) {
+	a.log.Print(log.Trace)
+
+	jobID, err := gqlcluster.RetryDownloadPackageJob(ctx, a.client.GQL, clusterID)
+	if err != nil {
+		return "", fmt.Errorf("failed to retry download package: %s", err)
+	}
+	return jobID, nil
+}
+
+// WaitForDownload polls the cluster's upgrade state until the package is
+// staged (success), a terminal download failure is observed (returned as a
+// wrapped error), or ctx is cancelled. The returned CDMInfo is the most
+// recent observation regardless of outcome. Backoff is exponential, capped at
+// upgradePollMaxDelay. Transient errors from individual poll requests are
+// logged at Warn and tolerated — only ctx cancellation aborts the wait.
+//
+// The server runs prechecks synchronously at the tail of the download flow.
+// Any state past DOWNLOADING (PRECHECKING, READY_FOR_UPGRADE, etc.) means the
+// package is on the cluster, so WaitForDownload returns there rather than
+// blocking on prechecks — that's a downstream concern. PRECHECK_FAILED is
+// also returned early because it leaves the cluster unable to naturally
+// progress to READY_FOR_UPGRADE without operator intervention.
+//
+// The staged-success path is version-checked: READY_FOR_UPGRADE only counts
+// as success (nil error) when its reported target version equals
+// targetVersion (see IsStaged). A cluster sitting in READY_FOR_UPGRADE for a
+// different version does not short-circuit the wait — it keeps polling until
+// the cluster transitions or ctx is cancelled, so callers should always pass
+// a ctx with a deadline. The other post-download states (PRECHECKING,
+// UPGRADING, etc.) are still returned with a nil error without a version
+// check, since reaching them at all implies a package was staged.
+//
+// Calling DownloadPackage immediately followed by WaitForDownload is
+// race-prone: if the cluster was already in READY_FOR_UPGRADE for
+// targetVersion (e.g. from a previous successful download), the first poll
+// will see that stale state and return before the new operation has even
+// registered. Callers wanting trigger-then-wait semantics should capture the
+// pre-trigger state and wait for a transition before applying completion
+// checks.
+func (a API) WaitForDownload(ctx context.Context, clusterID uuid.UUID, targetVersion string) (gqlcluster.CDMInfo, error) {
+	a.log.Print(log.Trace)
+
+	delay := upgradePollInitialDelay
+	var last gqlcluster.CDMInfo
+	for {
+		details, err := a.ClusterUpgrade(ctx, clusterID)
+		if err != nil {
+			a.log.Printf(log.Warn, "WaitForDownload poll for cluster %q failed (will retry): %s", clusterID, err)
+		} else if details.CDMInfo != nil {
+			last = *details.CDMInfo
+			if details.CDMInfo.IsStaged(targetVersion) {
+				return last, nil
+			}
+			if isDownloadTerminalFailure(last) {
+				return last, fmt.Errorf("cluster %q download of %q failed: %s",
+					clusterID, targetVersion, downloadFailureReason(last))
+			}
+			// Any state past DOWNLOADING means the package is staged. The
+			// version-checked READY_FOR_UPGRADE (handled above) and the
+			// pre-progress WAITING_FOR_OPERATION_TO_START are deliberately
+			// excluded.
+			if v2 := last.UpgradeStatusV2; v2 != nil {
+				switch v2.RSCClusterUpgradeStatus {
+				case gqlcluster.RSCUpgradeStatusPrechecking,
+					gqlcluster.RSCUpgradeStatusPrecheckFailed,
+					gqlcluster.RSCUpgradeStatusUpgrading,
+					gqlcluster.RSCUpgradeStatusUpgradeFailed,
+					gqlcluster.RSCUpgradeStatusRollingBack,
+					gqlcluster.RSCUpgradeStatusRollingBackFailed:
+					return last, nil
+				}
+			}
+		}
+
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return last, fmt.Errorf("wait for cluster %q download of %q: %w",
+				clusterID, targetVersion, ctx.Err())
+		case <-timer.C:
+		}
+
+		if delay < upgradePollMaxDelay {
+			delay *= 2
+			if delay > upgradePollMaxDelay {
+				delay = upgradePollMaxDelay
+			}
+		}
+	}
+}
+
+func isDownloadTerminalFailure(info gqlcluster.CDMInfo) bool {
+	if info.UpgradeStatusV2 != nil {
+		return info.UpgradeStatusV2.RSCClusterUpgradeStatus == gqlcluster.RSCUpgradeStatusDownloadFailed
+	}
+	return info.ClusterJobStatus == gqlcluster.ClusterJobStatusDownloadPackageFailed
+}
+
+func downloadFailureReason(info gqlcluster.CDMInfo) string {
+	if info.UpgradeStatusV2 != nil {
+		return string(info.UpgradeStatusV2.RSCClusterUpgradeStatus)
+	}
+	return string(info.ClusterJobStatus)
 }

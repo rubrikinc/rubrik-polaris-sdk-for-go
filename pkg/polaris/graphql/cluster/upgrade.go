@@ -404,6 +404,70 @@ func UpgradeStatus(ctx context.Context, gql *graphql.Client, clusterID uuid.UUID
 	return payload.Data.Result.CurrentStateName, nil
 }
 
+// StartDownloadPackage initiates a download of the package at packageURL onto
+// the specified cluster. The server parses the version from the package
+// filename, which must follow the `rubrik-image-<version>.zip` convention.
+// Returns the per-cluster job ID; poll the cluster's upgrade status to track
+// progress.
+func StartDownloadPackage(ctx context.Context, gql *graphql.Client, clusterID uuid.UUID, packageURL, md5checksum string) (string, error) {
+	gql.Log().Print(log.Trace)
+
+	query := startDownloadPackageBatchJobQuery
+	buf, err := gql.Request(ctx, query, struct {
+		ListClusterUUID []uuid.UUID `json:"listClusterUuid"`
+		PackageURL      string      `json:"packageUrl"`
+		Md5Checksum     string      `json:"md5checksum"`
+	}{
+		ListClusterUUID: []uuid.UUID{clusterID},
+		PackageURL:      packageURL,
+		Md5Checksum:     md5checksum,
+	})
+	if err != nil {
+		return "", graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result []struct {
+				JobID string `json:"jobId"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return "", graphql.UnmarshalError(query, err)
+	}
+	if len(payload.Data.Result) != 1 {
+		return "", graphql.ResponseError(query, fmt.Errorf("expected 1 reply, got %d", len(payload.Data.Result)))
+	}
+	return payload.Data.Result[0].JobID, nil
+}
+
+// RetryDownloadPackageJob retries the previously failed download package job
+// for the specified cluster. Returns the new job ID.
+func RetryDownloadPackageJob(ctx context.Context, gql *graphql.Client, clusterID uuid.UUID) (string, error) {
+	gql.Log().Print(log.Trace)
+
+	query := retryDownloadPackageJobQuery
+	buf, err := gql.Request(ctx, query, struct {
+		ClusterUUID uuid.UUID `json:"clusterUuid"`
+	}{ClusterUUID: clusterID})
+	if err != nil {
+		return "", graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				JobID string `json:"jobId"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return "", graphql.UnmarshalError(query, err)
+	}
+	return payload.Data.Result.JobID, nil
+}
+
 // UpgradeInfoSortBy represents the sort field for cluster upgrade info queries.
 type UpgradeInfoSortBy string
 
@@ -586,6 +650,21 @@ type CDMInfo struct {
 	UpgradeStatusV2           *UpgradeStatusV2           `json:"upgradeStatusV2,omitzero"`
 	UpgradeRecommendationInfo *UpgradeRecommendationInfo `json:"upgradeRecommendationInfo,omitzero"`
 	LastUpgradeDuration       *UpgradeDuration           `json:"lastUpgradeDuration,omitzero"`
+}
+
+// IsStaged reports whether the cluster has stagedVersion downloaded and is in
+// the ReadyForUpgrade state. Prefers the V2 upgradeStatusV2 payload over the
+// legacy V1 fields, falling back to V1 when V2 is absent.
+func (info *CDMInfo) IsStaged(stagedVersion string) bool {
+	if info == nil {
+		return false
+	}
+	if info.UpgradeStatusV2 != nil {
+		return info.UpgradeStatusV2.RSCClusterUpgradeStatus == RSCUpgradeStatusReadyForUpgrade &&
+			info.UpgradeStatusV2.UIStatusAttributes.TargetVersion == stagedVersion
+	}
+	return info.DownloadedVersion == stagedVersion &&
+		info.ClusterJobStatus == ClusterJobStatusReadyForUpgrade
 }
 
 // UpgradeDetails bundles the cluster identity with its upgrade info, as

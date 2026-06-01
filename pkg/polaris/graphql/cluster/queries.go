@@ -365,6 +365,13 @@ var removeCdmClusterQuery = `mutation SdkGolangRemoveCdmCluster($clusterUuid: UU
   )
 }`
 
+// retryDownloadPackageJob GraphQL query
+var retryDownloadPackageJobQuery = `mutation SdkGolangRetryDownloadPackageJob($clusterUuid: UUID!) {
+  result: retryDownloadPackageJob(clusterUuid: $clusterUuid) {
+    jobId
+  }
+}`
+
 // selfServeRollingUpgrade GraphQL query
 var selfServeRollingUpgradeQuery = `query SdkGolangSelfServeRollingUpgrade {
   result: selfServeRollingUpgrade {
@@ -441,6 +448,21 @@ var slaSourceClustersQuery = `query SdkGolangSlaSourceClusters(
       hasNextPage
     }
     count
+  }
+}`
+
+// startDownloadPackageBatchJob GraphQL query
+var startDownloadPackageBatchJobQuery = `mutation SdkGolangStartDownloadPackageBatchJob(
+  $listClusterUuid: [UUID!]!
+  $packageUrl: String!
+  $md5checksum: String!
+) {
+  result: startDownloadPackageBatchJob(
+    listClusterUuid: $listClusterUuid
+    packageUrl: $packageUrl
+    md5checksum: $md5checksum
+  ) {
+    jobId
   }
 }`
 
