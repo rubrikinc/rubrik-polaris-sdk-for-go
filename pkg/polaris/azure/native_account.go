@@ -72,3 +72,27 @@ func (a API) NativeSubscriptionByCloudAccountID(ctx context.Context, cloudAccoun
 func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]azure.NativeSubscription, error) {
 	return azure.Wrap(a.client).NativeSubscriptions(ctx, filter)
 }
+
+// NativeResourceGroups returns Azure resource groups visible to RSC,
+// optionally filtered to the given subscription IDs and to those whose name
+// contains nameSubstring. A nil/empty subscription slice returns resource
+// groups across all managed subscriptions; the RSC API requires a non-empty
+// subscription filter, so in that case the list of managed subscriptions is
+// fetched and used as the filter. Passing an empty nameSubstring disables the
+// name filter.
+func (a API) NativeResourceGroups(ctx context.Context, subscriptionIDs []uuid.UUID, nameSubstring string) ([]azure.NativeResourceGroup, error) {
+	if len(subscriptionIDs) == 0 {
+		subs, err := a.NativeSubscriptions(ctx, "")
+		if err != nil {
+			return nil, fmt.Errorf("failed to list native subscriptions: %s", err)
+		}
+		if len(subs) == 0 {
+			return nil, nil
+		}
+		subscriptionIDs = make([]uuid.UUID, 0, len(subs))
+		for _, s := range subs {
+			subscriptionIDs = append(subscriptionIDs, s.ID)
+		}
+	}
+	return azure.Wrap(a.client).NativeResourceGroups(ctx, subscriptionIDs, nameSubstring)
+}
