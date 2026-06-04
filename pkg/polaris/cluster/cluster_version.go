@@ -26,24 +26,25 @@ import (
 )
 
 // CDMVersion represents a parsed CDM version (e.g., "9.4.0-p2-30507").
-// Only the major.minor.patch portion is used for comparisons.
+// Comparisons use the major.minor.patch portion and, as a final tiebreaker,
+// the trailing build number, so releases sharing the same major.minor.patch
+// (e.g. "9.5.0-p1-35914" and "9.5.0-p2-36035") order by build.
 type CDMVersion struct {
 	major int
 	minor int
 	patch int
+	build int
 }
 
 // ParseCDMVersion parses a version string and creates a CDMVersion.
-// It handles formats like "9.4.0", "9.4", "9.4.0-p2-30507".
+// It handles formats like "9.4.0", "9.4", "9.4.0-30189", "9.4.0-p2-30507".
 func ParseCDMVersion(version string) (CDMVersion, error) {
-	// Remove any suffix after the first hyphen (e.g., "-p2-30507")
-	if idx := strings.Index(version, "-"); idx != -1 {
-		version = version[:idx]
-	}
+	// Split the major.minor.patch core from any "-pN-build" suffix.
+	core, _, _ := strings.Cut(version, "-")
 
 	var major, minor, patch int
 	var err error
-	parts := strings.Split(version, ".")
+	parts := strings.Split(core, ".")
 	if len(parts) >= 1 {
 		major, err = strconv.Atoi(parts[0])
 		if err != nil {
@@ -63,7 +64,15 @@ func ParseCDMVersion(version string) (CDMVersion, error) {
 		}
 	}
 
-	return CDMVersion{major: major, minor: minor, patch: patch}, nil
+	// The build number is the final hyphen-separated segment, when numeric
+	// (e.g. "9.4.0-p2-30507" -> 30507, "9.4.0-30189" -> 30189). A version with
+	// no build, such as "9.4.0" or a bare patch level "9.3.3-p9", leaves it at 0.
+	var build int
+	if i := strings.LastIndex(version, "-"); i != -1 {
+		build, _ = strconv.Atoi(version[i+1:])
+	}
+
+	return CDMVersion{major: major, minor: minor, patch: patch, build: build}, nil
 }
 
 // Compare compares the CDM version with another version string.
@@ -73,7 +82,9 @@ func ParseCDMVersion(version string) (CDMVersion, error) {
 //	 0 if v == other
 //	 1 if v > other
 //
-// Only the major.minor.patch portion is compared; suffixes are ignored.
+// The major.minor.patch portion is compared first; the trailing build number
+// breaks ties between versions sharing the same major.minor.patch. Other
+// suffix tokens (such as the "pN" patch level) are not compared.
 func (v CDMVersion) Compare(other string) int {
 	o, err := ParseCDMVersion(other)
 	if err != nil {
@@ -94,6 +105,12 @@ func (v CDMVersion) Compare(other string) int {
 	}
 	if v.patch != o.patch {
 		if v.patch < o.patch {
+			return -1
+		}
+		return 1
+	}
+	if v.build != o.build {
+		if v.build < o.build {
 			return -1
 		}
 		return 1
