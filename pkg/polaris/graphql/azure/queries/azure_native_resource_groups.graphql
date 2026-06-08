@@ -1,0 +1,54 @@
+query RubrikPolarisSDKRequest($after: String, $subscriptionIds: [String!]!, $nameSubstring: String!) {
+    result: azureNativeResourceGroups(
+        after: $after
+        protectedObjectTypes: [
+            AzureNativeVirtualMachine,
+            AzureNativeManagedDisk,
+            AzureSqlDatabaseDb,
+            AzureSqlManagedInstanceDb,
+            AZURE_STORAGE_ACCOUNT,
+            AZURE_POSTGRES_FLEXIBLE_SERVER
+        ]
+        azureNativeProtectionFeatures: [
+            VM,
+            SQL_MI,
+            SQL_DB,
+            BLOB,
+            POSTGRES_FLEXIBLE_SERVER
+        ]
+        commonResourceGroupFilters: {
+            subscriptionFilter: {
+                subscriptionIds: $subscriptionIds
+            }
+            nameSubstringFilter: {
+                nameSubstring: $nameSubstring
+            }
+        }
+    ) {
+        edges {
+            node {
+                id
+                name
+                azureSubscriptionDetails {
+                    id
+                    name
+                }
+                slaAssignment
+                logicalPath {
+                    fid
+                    name
+                    objectType
+                }
+                physicalPath {
+                    fid
+                    name
+                    objectType
+                }
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}

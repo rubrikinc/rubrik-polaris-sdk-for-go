@@ -120,6 +120,62 @@ var azureCloudAccountPermissionConfigQuery = `query SdkGolangAzureCloudAccountPe
     }
 }`
 
+// azureNativeResourceGroups GraphQL query
+var azureNativeResourceGroupsQuery = `query SdkGolangAzureNativeResourceGroups($after: String, $subscriptionIds: [String!]!, $nameSubstring: String!) {
+    result: azureNativeResourceGroups(
+        after: $after
+        protectedObjectTypes: [
+            AzureNativeVirtualMachine,
+            AzureNativeManagedDisk,
+            AzureSqlDatabaseDb,
+            AzureSqlManagedInstanceDb,
+            AZURE_STORAGE_ACCOUNT,
+            AZURE_POSTGRES_FLEXIBLE_SERVER
+        ]
+        azureNativeProtectionFeatures: [
+            VM,
+            SQL_MI,
+            SQL_DB,
+            BLOB,
+            POSTGRES_FLEXIBLE_SERVER
+        ]
+        commonResourceGroupFilters: {
+            subscriptionFilter: {
+                subscriptionIds: $subscriptionIds
+            }
+            nameSubstringFilter: {
+                nameSubstring: $nameSubstring
+            }
+        }
+    ) {
+        edges {
+            node {
+                id
+                name
+                azureSubscriptionDetails {
+                    id
+                    name
+                }
+                slaAssignment
+                logicalPath {
+                    fid
+                    name
+                    objectType
+                }
+                physicalPath {
+                    fid
+                    name
+                    objectType
+                }
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
 // azureNativeSubscriptions GraphQL query
 var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($after: String, $filter: String!) {
   result: azureNativeSubscriptions(

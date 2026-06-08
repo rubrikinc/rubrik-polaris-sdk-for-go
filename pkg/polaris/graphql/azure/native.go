@@ -92,6 +92,81 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]NativeSu
 	return subscriptions, nil
 }
 
+// PathNode is one step in the logical/physical hierarchy path for an RSC
+// inventory object.
+type PathNode struct {
+	FID        string `json:"fid"`
+	Name       string `json:"name"`
+	ObjectType string `json:"objectType"`
+}
+
+// NativeResourceGroup represents an Azure resource group surfaced by RSC.
+type NativeResourceGroup struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Subscription struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"azureSubscriptionDetails"`
+	SLAAssignment sla.Assignment `json:"slaAssignment"`
+	LogicalPath   []PathNode     `json:"logicalPath"`
+	PhysicalPath  []PathNode     `json:"physicalPath"`
+}
+
+// NativeResourceGroups returns all Azure resource groups visible to RSC,
+// filtered to the given subscription IDs and (optionally) to those whose name
+// contains nameSubstring. The subscription ID list must be non-empty; RSC
+// rejects an empty filter.
+func (a API) NativeResourceGroups(ctx context.Context, subscriptionIDs []uuid.UUID, nameSubstring string) ([]NativeResourceGroup, error) {
+	a.log.Print(log.Trace)
+
+	ids := make([]string, 0, len(subscriptionIDs))
+	for _, id := range subscriptionIDs {
+		ids = append(ids, id.String())
+	}
+
+	var groups []NativeResourceGroup
+	var cursor string
+	for {
+		query := azureNativeResourceGroupsQuery
+		buf, err := a.GQL.Request(ctx, query, struct {
+			After           string   `json:"after,omitempty"`
+			SubscriptionIDs []string `json:"subscriptionIds"`
+			NameSubstring   string   `json:"nameSubstring"`
+		}{After: cursor, SubscriptionIDs: ids, NameSubstring: nameSubstring})
+		if err != nil {
+			return nil, graphql.RequestError(query, err)
+		}
+
+		var payload struct {
+			Data struct {
+				Result struct {
+					Edges []struct {
+						Node NativeResourceGroup `json:"node"`
+					} `json:"edges"`
+					PageInfo struct {
+						EndCursor   string `json:"endCursor"`
+						HasNextPage bool   `json:"hasNextPage"`
+					} `json:"pageInfo"`
+				} `json:"result"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(buf, &payload); err != nil {
+			return nil, graphql.UnmarshalError(query, err)
+		}
+		for _, edge := range payload.Data.Result.Edges {
+			groups = append(groups, edge.Node)
+		}
+
+		if !payload.Data.Result.PageInfo.HasNextPage {
+			break
+		}
+		cursor = payload.Data.Result.PageInfo.EndCursor
+	}
+
+	return groups, nil
+}
+
 // Deprecated: no replacement.
 type ProtectionFeature string
 
