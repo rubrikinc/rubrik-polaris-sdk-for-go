@@ -132,10 +132,20 @@ var azureNativeResourceGroupsQuery = `query SdkGolangAzureNativeResourceGroups($
             AZURE_STORAGE_ACCOUNT,
             AZURE_POSTGRES_FLEXIBLE_SERVER
         ]
-        azureNativeProtectionFeatures: [VM, SQL_MI, SQL_DB, BLOB, POSTGRES_FLEXIBLE_SERVER]
+        azureNativeProtectionFeatures: [
+            VM,
+            SQL_MI,
+            SQL_DB,
+            BLOB,
+            POSTGRES_FLEXIBLE_SERVER
+        ]
         commonResourceGroupFilters: {
-            subscriptionFilter: { subscriptionIds: $subscriptionIds }
-            nameSubstringFilter: { nameSubstring: $nameSubstring }
+            subscriptionFilter: {
+                subscriptionIds: $subscriptionIds
+            }
+            nameSubstringFilter: {
+                nameSubstring: $nameSubstring
+            }
         }
     ) {
         edges {

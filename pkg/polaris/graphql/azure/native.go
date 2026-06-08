@@ -115,10 +115,8 @@ type NativeResourceGroup struct {
 
 // NativeResourceGroups returns all Azure resource groups visible to RSC,
 // filtered to the given subscription IDs and (optionally) to those whose name
-// contains nameSubstring. The subscription ID list must be non-empty: the
-// server rejects an empty filter; the high-level wrapper in
-// pkg/polaris/azure/native_account.go expands a nil/empty list to all managed
-// subscriptions before calling this method.
+// contains nameSubstring. The subscription ID list must be non-empty; RSC
+// rejects an empty filter.
 func (a API) NativeResourceGroups(ctx context.Context, subscriptionIDs []uuid.UUID, nameSubstring string) ([]NativeResourceGroup, error) {
 	a.log.Print(log.Trace)
 
