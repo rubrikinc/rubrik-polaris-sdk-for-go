@@ -196,10 +196,36 @@ func TestUpdateInputMarshalJSON(t *testing.T) {
 	}
 
 	// Unset fields should be omitted.
-	for _, key := range []string{"description", "policyCategory", "policySeverity", "filter", "thresholdFilter"} {
+	for _, key := range []string{"description", "policyCategory", "policySeverity", "filter", "thresholdFilter", "forceUpdateThresholdFilter"} {
 		if _, ok := raw[key]; ok {
 			t.Errorf("field %q should be omitted when nil", key)
 		}
+	}
+}
+
+func TestUpdateInputForceUpdateThresholdFilterMarshalJSON(t *testing.T) {
+	input := UpdateInput{
+		ID:                         uuid.MustParse("d4e5f6a7-b8c9-0123-4567-89abcdef0123"),
+		ForceUpdateThresholdFilter: true,
+	}
+
+	data, err := json.Marshal(input)
+	if err != nil {
+		t.Fatalf("failed to marshal UpdateInput: %v", err)
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	// forceUpdateThresholdFilter is sent and thresholdFilter is omitted: the
+	// nil threshold filter is honored as-is, clearing the existing value.
+	if got, ok := raw["forceUpdateThresholdFilter"]; !ok || string(got) != "true" {
+		t.Errorf("forceUpdateThresholdFilter: got %q (present=%t), want true", got, ok)
+	}
+	if _, ok := raw["thresholdFilter"]; ok {
+		t.Error("thresholdFilter should be omitted when nil")
 	}
 }
 

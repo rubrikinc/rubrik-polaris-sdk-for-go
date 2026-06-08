@@ -321,15 +321,27 @@ type CreateInput struct {
 }
 
 // UpdateInput holds the parameters for updating a data security policy.
+//
+// The threshold filter is three-state, disambiguated by
+// ForceUpdateThresholdFilter because the API cannot otherwise distinguish
+// "omitted, leave alone" from "explicitly cleared":
+//
+//   - ThresholdFilter set: overwrites the existing value.
+//   - ThresholdFilter nil, ForceUpdateThresholdFilter false: leaves the
+//     existing value alone.
+//   - ThresholdFilter nil, ForceUpdateThresholdFilter true: explicitly clears
+//     it (thresholdFilter is omitted from the request and the force flag tells
+//     the API to clear the stored value).
 type UpdateInput struct {
-	ID              uuid.UUID    `json:"policyId"`
-	Name            *string      `json:"policyName,omitempty"`
-	Description     *string      `json:"description,omitempty"`
-	Category        *Category    `json:"policyCategory,omitempty"`
-	Severity        *Severity    `json:"policySeverity,omitempty"`
-	Enabled         *bool        `json:"isEnabled,omitempty"`
-	Filter          *GroupConfig `json:"filter,omitempty"`
-	ThresholdFilter *GroupConfig `json:"thresholdFilter,omitempty"`
+	ID                         uuid.UUID    `json:"policyId"`
+	Name                       *string      `json:"policyName,omitempty"`
+	Description                *string      `json:"description,omitempty"`
+	Category                   *Category    `json:"policyCategory,omitempty"`
+	Severity                   *Severity    `json:"policySeverity,omitempty"`
+	Enabled                    *bool        `json:"isEnabled,omitempty"`
+	Filter                     *GroupConfig `json:"filter,omitempty"`
+	ThresholdFilter            *GroupConfig `json:"thresholdFilter,omitempty"`
+	ForceUpdateThresholdFilter bool         `json:"forceUpdateThresholdFilter,omitempty"`
 }
 
 // policyTypeDataGov is the RSC policy type for data governance security
