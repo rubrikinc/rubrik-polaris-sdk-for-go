@@ -93,6 +93,26 @@ var allAzureLatestPermissionsByPermissionsGroupQuery = `query SdkGolangAllAzureL
         permissionsGroupPermissions {
             permissionsGroup
             version
+            subscriptionPermissions {
+                includedActionsWithUseCase {
+                    permission
+                    useCase
+                }
+                includedDataActionsWithUseCase {
+                    permission
+                    useCase
+                }
+            }
+            resourceGroupPermissions {
+                includedActionsWithUseCase {
+                    permission
+                    useCase
+                }
+                includedDataActionsWithUseCase {
+                    permission
+                    useCase
+                }
+            }
         }
     }
 }`
