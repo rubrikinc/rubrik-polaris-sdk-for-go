@@ -308,9 +308,24 @@ func TestPolicyManagement(t *testing.T) {
 		t.Errorf("updated Filter.Filters[0].Config.Type: got %q, want %q",
 			policy.Filter.Filters[0].Config.Type, dspm.FilterTypeDocumentExposure)
 	}
-	// The API clears ThresholdFilter when it is omitted from the update.
-	if policy.ThresholdFilter != nil {
-		t.Error("ThresholdFilter: got non-nil after partial update, want nil")
+	// The API preserves ThresholdFilter when it is omitted from the update.
+	if policy.ThresholdFilter == nil {
+		t.Fatal("ThresholdFilter: got nil after partial update, want preserved")
+	}
+	if policy.ThresholdFilter.Op != dspm.LogicalAnd {
+		t.Errorf("preserved ThresholdFilter.Op: got %q, want %q",
+			policy.ThresholdFilter.Op, dspm.LogicalAnd)
+	}
+	if len(policy.ThresholdFilter.Filters) != 1 {
+		t.Fatalf("preserved ThresholdFilter.Filters length: got %d, want 1",
+			len(policy.ThresholdFilter.Filters))
+	}
+	if policy.ThresholdFilter.Filters[0].Config == nil {
+		t.Fatal("preserved ThresholdFilter.Filters[0].Config is nil")
+	}
+	if policy.ThresholdFilter.Filters[0].Config.Type != dspm.FilterTypeDocumentExposure {
+		t.Errorf("preserved ThresholdFilter.Filters[0].Config.Type: got %q, want %q",
+			policy.ThresholdFilter.Filters[0].Config.Type, dspm.FilterTypeDocumentExposure)
 	}
 
 	// Disable the policy.
@@ -329,6 +344,118 @@ func TestPolicyManagement(t *testing.T) {
 	}
 	if policy.Enabled {
 		t.Error("Enabled after disable: got true, want false")
+	}
+}
+
+// TestPolicyRemoveThresholdFilter verifies that an existing threshold filter
+// can be removed from a policy. Omitting the threshold filter from an update
+// preserves it (see TestPolicyManagement), so removal is requested explicitly
+// by sending an empty threshold filter group.
+func TestPolicyRemoveThresholdFilter(t *testing.T) {
+	ctx := context.Background()
+
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	dspmClient := Wrap(client)
+
+	// Discover valid filter values so the test uses values the API accepts.
+	sensMeta, err := dspmClient.FilterValues(ctx, dspm.FilterTypeDocumentSensitivity, "")
+	if err != nil {
+		t.Fatalf("failed to discover sensitivity filter values: %v", err)
+	}
+	if len(sensMeta.Values) == 0 {
+		t.Fatal("no values returned for sensitivity filter")
+	}
+	sensValue := sensMeta.Values[0].ID
+
+	exposureMeta, err := dspmClient.FilterValues(ctx, dspm.FilterTypeDocumentExposure, "")
+	if err != nil {
+		t.Fatalf("failed to discover exposure filter values: %v", err)
+	}
+	if len(exposureMeta.Values) == 0 {
+		t.Fatal("no values returned for exposure filter")
+	}
+	exposureValue := exposureMeta.Values[0].ID
+
+	// Create a policy with a threshold filter.
+	thresholdFilter := dspm.GroupConfig{
+		Op: dspm.LogicalAnd,
+		Filters: []dspm.Node{
+			{
+				Config: &dspm.Config{
+					Type:         dspm.FilterTypeDocumentExposure,
+					Values:       []string{exposureValue},
+					Relationship: dspm.RelIs,
+				},
+			},
+		},
+	}
+	policyID, err := dspmClient.CreatePolicy(ctx, dspm.CreateInput{
+		Name:        "SDK Integration Test Policy Threshold Removal",
+		Description: "Created by SDK integration test",
+		Category:    dspm.CategoryOverexposed,
+		Severity:    dspm.SeverityHigh,
+		Filter: dspm.GroupConfig{
+			Op: dspm.LogicalAnd,
+			Filters: []dspm.Node{
+				{
+					Config: &dspm.Config{
+						Type:         dspm.FilterTypeDocumentSensitivity,
+						Values:       []string{sensValue},
+						Relationship: dspm.RelIs,
+					},
+				},
+			},
+		},
+		ThresholdFilter: &thresholdFilter,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := dspmClient.DeletePolicy(ctx, policyID); err != nil {
+			t.Errorf("failed to delete policy: %v", err)
+		}
+	})
+
+	// Confirm the threshold filter was set on creation.
+	policy, err := dspmClient.PolicyByID(ctx, policyID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if policy.ThresholdFilter == nil {
+		t.Fatal("ThresholdFilter is nil after create, want set")
+	}
+
+	// Remove the threshold filter via the force-update sentinel. Omitting the
+	// threshold filter leaves it alone; ForceUpdateThresholdFilter with a nil
+	// threshold filter omits the field and tells the API to clear the stored
+	// value.
+	err = dspmClient.UpdatePolicy(ctx, dspm.UpdateInput{
+		ID:                         policyID,
+		ForceUpdateThresholdFilter: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify the threshold filter was removed.
+	policy, err = dspmClient.PolicyByID(ctx, policyID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if policy.ThresholdFilter != nil {
+		t.Error("ThresholdFilter: got non-nil after explicit removal, want nil")
+	}
+
+	// The primary filter must be unaffected by the threshold filter removal.
+	if policy.Filter == nil {
+		t.Fatal("Filter is nil after threshold filter removal")
+	}
+	if len(policy.Filter.Filters) != 1 {
+		t.Errorf("Filter.Filters length: got %d, want 1", len(policy.Filter.Filters))
 	}
 }
 
