@@ -96,10 +96,11 @@ type GcpServiceAccountInput struct {
 	Scopes []string `json:"scopes,omitempty"`
 }
 
-// SubnetAzConfig represents the subnet availability zone configuration for GCP Cloud Cluster.
-type SubnetAzConfig struct {
-	AvailabilityZone string `json:"availabilityZone,omitempty"`
-	Subnet           string `json:"subnet,omitempty"`
+// GcpTestImage represents a test image for the GCP Cloud Cluster. Used for
+// internal testing purposes only.
+type GcpTestImage struct {
+	ImageName string `json:"imageName,omitempty"`
+	Project   string `json:"project,omitempty"`
 }
 
 // GcpVmConfig represents the VM configuration for the GCP Cloud Cluster.
@@ -107,10 +108,14 @@ type GcpVmConfig struct {
 	CDMProduct       string                   `json:"cdmProduct,omitempty"`
 	CDMVersion       string                   `json:"cdmVersion,omitempty"`
 	DeleteProtection bool                     `json:"deleteProtection"`
+	ImageID          string                   `json:"imageId,omitempty"`
 	InstanceType     GcpCCInstanceType        `json:"instanceType"`
+	Labels           string                   `json:"labels,omitempty"`
 	NetworkConfig    []GcpSubnetInput         `json:"networkConfig"`
+	NodeSizeGB       int                      `json:"nodeSizeGb,omitempty"`
 	ServiceAccounts  []GcpServiceAccountInput `json:"serviceAccounts"`
 	SubnetAzConfigs  []SubnetAzConfig         `json:"subnetAzConfigs,omitempty"`
+	TestImage        *GcpTestImage            `json:"testImage,omitempty"`
 	VMType           VmConfigType             `json:"vmType"`
 }
 
