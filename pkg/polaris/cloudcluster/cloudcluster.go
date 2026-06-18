@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -358,6 +359,20 @@ func (a API) CreateAzureCloudCluster(ctx context.Context, input cloudcluster.Cre
 	return cluster, nil
 }
 
+// validateGcpBucketRegion returns an error if the GCS bucket region does not
+// match the cluster region. RSC requires the cluster's object store to be in the
+// same region as the cluster; the RSC UI enforces this by only listing buckets
+// whose region matches the selected cluster region. The comparison is
+// case-insensitive since the GCS bucket location (e.g. US-EAST1) and the cluster
+// region (e.g. us-east1) differ in case. An empty bucket region is allowed, e.g.
+// when creating a new bucket, and is left to the backend to default.
+func validateGcpBucketRegion(bucketRegion, clusterRegion string) error {
+	if bucketRegion != "" && !strings.EqualFold(bucketRegion, clusterRegion) {
+		return fmt.Errorf("GCS bucket region %q does not match cluster region %q: the bucket must be in the same region as the cluster", bucketRegion, clusterRegion)
+	}
+	return nil
+}
+
 // CreateGcpCloudCluster creates a GCP Cloud Cluster with the specified configuration.
 // It validates the cloud account, CDM version, and cluster input before creating the
 // cluster. Returns the created cluster details after monitoring the creation process.
@@ -413,6 +428,13 @@ func (a API) CreateGcpCloudCluster(ctx context.Context, input cloudcluster.Creat
 	validInstanceType := slices.Contains(supportedInstanceTypes, input.VMConfig.InstanceType)
 	if !validInstanceType {
 		return CloudCluster{}, fmt.Errorf("instance type %s is not supported for cdm version %s, supported Instance types are: %v", input.VMConfig.InstanceType, input.VMConfig.CDMVersion, supportedInstanceTypes)
+	}
+
+	// Validate that the GCS bucket is in the same region as the cluster. This
+	// mirrors the RSC UI, which only allows selecting a bucket whose region
+	// matches the cluster region.
+	if err := validateGcpBucketRegion(input.ClusterConfig.GcpEsConfig.Region, input.Region); err != nil {
+		return CloudCluster{}, err
 	}
 
 	// Validate CloudCluster Request
