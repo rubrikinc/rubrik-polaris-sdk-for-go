@@ -46,6 +46,16 @@ func Wrap(gql *graphql.Client) API {
 	return API{GQL: gql, log: gql.Log()}
 }
 
+// Well-known hierarchy root node identifiers. These are used as object IDs when
+// scoping operations to a hierarchy root, for example in role permissions.
+const (
+	// ClusterRoot is the root node of the cluster hierarchy.
+	ClusterRoot = "CLUSTER_ROOT"
+
+	// GlobalResource is the root node of the entire managed hierarchy.
+	GlobalResource = "GlobalResource"
+)
+
 // ObjectType represents the type of a hierarchy object.
 type ObjectType string
 
