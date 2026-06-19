@@ -115,14 +115,14 @@ func (a API) CreateCloudCluster(ctx context.Context, input cloudcluster.CreateAw
 		return CloudCluster{}, fmt.Errorf("cdm version %s is not available for account %s", input.VMConfig.CDMVersion, account.ID)
 	}
 
-	// Validate dynamic scaling is only enabled for CDM version 9.5 or higher
+	// Validate dynamic scaling is only enabled for a supported CDM version.
 	if input.ClusterConfig.DynamicScalingEnabled {
 		cdmVersion, err := polcluster.ParseCDMVersion(input.VMConfig.CDMVersion)
 		if err != nil {
 			return CloudCluster{}, fmt.Errorf("failed to parse CDM version %s: %s", input.VMConfig.CDMVersion, err)
 		}
-		if cdmVersion.LessThan("9.5") {
-			return CloudCluster{}, fmt.Errorf("dynamic scaling requires CDM version 9.5 or higher, got %s", input.VMConfig.CDMVersion)
+		if cdmVersion.LessThan(minCDMVersionDynamicScaling) {
+			return CloudCluster{}, fmt.Errorf("dynamic scaling requires CDM version %s or higher, got %s", minCDMVersionDynamicScaling, input.VMConfig.CDMVersion)
 		}
 	}
 
@@ -454,10 +454,10 @@ func validateGcpZones(input cloudcluster.CreateGcpClusterInput, regionZones []st
 	return nil
 }
 
-// minCDMVersionGcpDynamicScaling is the minimum CDM version that supports
-// dynamic scaling. It matches the RSC UI's MIN_CDM_VERSION_DYNAMIC_SCALING_ENABLED
-// constant.
-const minCDMVersionGcpDynamicScaling = "9.4.3"
+// minCDMVersionDynamicScaling is the minimum CDM version that supports dynamic
+// scaling. It matches the RSC UI's MIN_CDM_VERSION_DYNAMIC_SCALING_ENABLED
+// constant and applies across cloud providers.
+const minCDMVersionDynamicScaling = "9.4.3"
 
 // minMultiAzZones is the minimum number of zones, nodes, and resiliency subnets
 // required for an AZ-resilient GCP cluster. It matches the backend's
@@ -523,8 +523,8 @@ func (a API) CreateGcpCloudCluster(ctx context.Context, input cloudcluster.Creat
 		if err != nil {
 			return CloudCluster{}, fmt.Errorf("failed to parse CDM version %s: %s", input.VMConfig.CDMVersion, err)
 		}
-		if cdmVersion.LessThan(minCDMVersionGcpDynamicScaling) {
-			return CloudCluster{}, fmt.Errorf("dynamic scaling requires CDM version %s or higher, got %s", minCDMVersionGcpDynamicScaling, input.VMConfig.CDMVersion)
+		if cdmVersion.LessThan(minCDMVersionDynamicScaling) {
+			return CloudCluster{}, fmt.Errorf("dynamic scaling requires CDM version %s or higher, got %s", minCDMVersionDynamicScaling, input.VMConfig.CDMVersion)
 		}
 	}
 
