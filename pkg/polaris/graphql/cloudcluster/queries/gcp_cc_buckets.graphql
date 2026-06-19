@@ -1,0 +1,9 @@
+query RubrikPolarisSDKRequest($input: GcpBucketsReq!) {
+  result: gcpBuckets(input: $input) {
+    buckets {
+      bucketName
+      region
+      shouldCreateBucket
+    }
+  }
+}
