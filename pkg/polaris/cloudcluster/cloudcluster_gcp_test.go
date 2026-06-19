@@ -103,6 +103,52 @@ func TestGcpRegionZones(t *testing.T) {
 	})
 }
 
+func TestExpandGcpNetworkConfig(t *testing.T) {
+	subnet := cloudcluster.GcpSubnetInput{Name: "subnet-a", Network: "vpc", HostProject: "p", Region: "us-west1"}
+
+	mk := func(numNodes int, azResilient bool, nc []cloudcluster.GcpSubnetInput) cloudcluster.CreateGcpClusterInput {
+		in := cloudcluster.CreateGcpClusterInput{
+			ClusterConfig: cloudcluster.GcpClusterConfig{NumNodes: numNodes},
+			VMConfig:      cloudcluster.GcpVmConfig{NetworkConfig: nc},
+		}
+		if azResilient {
+			in.IsAzResilient = boolPtr(true)
+		}
+		return in
+	}
+
+	t.Run("SingleSubnetMultiNodeFansOut", func(t *testing.T) {
+		got := expandGcpNetworkConfig(mk(3, false, []cloudcluster.GcpSubnetInput{subnet}))
+		if len(got) != 3 {
+			t.Fatalf("expected 3 entries, got %d", len(got))
+		}
+		for i, s := range got {
+			if s != subnet {
+				t.Errorf("entry %d = %+v, want %+v", i, s, subnet)
+			}
+		}
+	})
+
+	t.Run("SingleNodeUnchanged", func(t *testing.T) {
+		if got := expandGcpNetworkConfig(mk(1, false, []cloudcluster.GcpSubnetInput{subnet})); len(got) != 1 {
+			t.Errorf("expected 1 entry, got %d", len(got))
+		}
+	})
+
+	t.Run("AlreadyPerNodeUnchanged", func(t *testing.T) {
+		nc := []cloudcluster.GcpSubnetInput{subnet, subnet, subnet}
+		if got := expandGcpNetworkConfig(mk(3, false, nc)); len(got) != 3 {
+			t.Errorf("expected 3 entries, got %d", len(got))
+		}
+	})
+
+	t.Run("AzResilientUnchanged", func(t *testing.T) {
+		if got := expandGcpNetworkConfig(mk(3, true, []cloudcluster.GcpSubnetInput{subnet})); len(got) != 1 {
+			t.Errorf("expected AZ-resilient to be left unchanged at 1 entry, got %d", len(got))
+		}
+	})
+}
+
 func TestValidateGcpZones(t *testing.T) {
 	threeZones := []string{"us-west1-a", "us-west1-b", "us-west1-c"}
 	twoZones := []string{"us-east4-a", "us-east4-b"}
@@ -181,6 +227,23 @@ func TestValidateGcpZones(t *testing.T) {
 			expectErr:   true,
 		},
 		{
+			name: "AzResilientTooFewSubnets",
+			input: cloudcluster.CreateGcpClusterInput{
+				Region:        "us-west1",
+				Zone:          "us-west1-a",
+				IsAzResilient: boolPtr(true),
+				ClusterConfig: cloudcluster.GcpClusterConfig{NumNodes: 3},
+				VMConfig: cloudcluster.GcpVmConfig{
+					SubnetAzConfigs: []cloudcluster.SubnetAzConfig{
+						{AvailabilityZone: "us-west1-a", Subnet: "subnet-a"},
+						{AvailabilityZone: "us-west1-b", Subnet: "subnet-b"},
+					},
+				},
+			},
+			regionZones: threeZones,
+			expectErr:   true,
+		},
+		{
 			name: "AzResilientSubnetZoneNotInRegion",
 			input: cloudcluster.CreateGcpClusterInput{
 				Region:        "us-west1",
@@ -189,7 +252,9 @@ func TestValidateGcpZones(t *testing.T) {
 				ClusterConfig: cloudcluster.GcpClusterConfig{NumNodes: 3},
 				VMConfig: cloudcluster.GcpVmConfig{
 					SubnetAzConfigs: []cloudcluster.SubnetAzConfig{
-						{AvailabilityZone: "us-east4-a", Subnet: "subnet-a"},
+						{AvailabilityZone: "us-west1-a", Subnet: "subnet-a"},
+						{AvailabilityZone: "us-west1-b", Subnet: "subnet-b"},
+						{AvailabilityZone: "us-east4-a", Subnet: "subnet-c"},
 					},
 				},
 			},

@@ -24,6 +24,7 @@ package cloudcluster
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -373,6 +374,29 @@ func validateGcpBucketRegion(bucketRegion, clusterRegion string) error {
 	return nil
 }
 
+// isAzResilient reports whether the input requests a Multi-AZ resilient cluster.
+func isAzResilient(input cloudcluster.CreateGcpClusterInput) bool {
+	return input.IsAzResilient != nil && *input.IsAzResilient
+}
+
+// expandGcpNetworkConfig returns the network config fanned out to one entry per
+// node when a single subnet is provided for a multi-node, non-AZ-resilient
+// cluster. The backend requires len(NetworkConfig) == NumNodes and assigns
+// NetworkConfig[i] to node i; the RSC UI does the same fan-out. AZ-resilient
+// clusters are left unchanged, as their per-node subnets come from
+// SubnetAzConfigs. Any other cardinality is left to the caller and the backend.
+func expandGcpNetworkConfig(input cloudcluster.CreateGcpClusterInput) []cloudcluster.GcpSubnetInput {
+	networkConfig := input.VMConfig.NetworkConfig
+	if isAzResilient(input) || len(networkConfig) != 1 || input.ClusterConfig.NumNodes <= 1 {
+		return networkConfig
+	}
+	expanded := make([]cloudcluster.GcpSubnetInput, input.ClusterConfig.NumNodes)
+	for i := range expanded {
+		expanded[i] = networkConfig[0]
+	}
+	return expanded
+}
+
 // gcpRegionZones returns the zones for the named region from the regions
 // returned by gcpRegions. It returns an error if the region is not available for
 // the cloud account, mirroring the RSC UI which only offers available regions.
@@ -408,13 +432,17 @@ func validateGcpZones(input cloudcluster.CreateGcpClusterInput, regionZones []st
 	}
 
 	// Multi-AZ resiliency requires a region with at least three zones, at least
-	// three nodes, and each resiliency subnet's zone to belong to the region.
-	if input.IsAzResilient != nil && *input.IsAzResilient {
-		if len(regionZones) < 3 {
-			return fmt.Errorf("AZ-resilient cluster requires a region with at least 3 zones, but region %q has %d", input.Region, len(regionZones))
+	// three nodes, at least three resiliency subnets (one per zone), and each
+	// resiliency subnet's zone to belong to the region.
+	if isAzResilient(input) {
+		if len(regionZones) < minMultiAzZones {
+			return fmt.Errorf("AZ-resilient cluster requires a region with at least %d zones, but region %q has %d", minMultiAzZones, input.Region, len(regionZones))
 		}
-		if input.ClusterConfig.NumNodes < 3 {
-			return fmt.Errorf("AZ-resilient cluster requires at least 3 nodes, got %d", input.ClusterConfig.NumNodes)
+		if input.ClusterConfig.NumNodes < minMultiAzZones {
+			return fmt.Errorf("AZ-resilient cluster requires at least %d nodes, got %d", minMultiAzZones, input.ClusterConfig.NumNodes)
+		}
+		if len(input.VMConfig.SubnetAzConfigs) < minMultiAzZones {
+			return fmt.Errorf("AZ-resilient cluster requires at least %d resiliency subnets (one per zone), got %d", minMultiAzZones, len(input.VMConfig.SubnetAzConfigs))
 		}
 		for _, az := range input.VMConfig.SubnetAzConfigs {
 			if !inRegion(az.AvailabilityZone) {
@@ -426,11 +454,34 @@ func validateGcpZones(input cloudcluster.CreateGcpClusterInput, regionZones []st
 	return nil
 }
 
-// CreateGcpCloudCluster creates a GCP Cloud Cluster with the specified configuration.
-// It validates the cloud account, CDM version, and cluster input before creating the
-// cluster. Returns the created cluster details after monitoring the creation process.
+// minCDMVersionGcpDynamicScaling is the minimum CDM version that supports
+// dynamic scaling. It matches the RSC UI's MIN_CDM_VERSION_DYNAMIC_SCALING_ENABLED
+// constant.
+const minCDMVersionGcpDynamicScaling = "9.4.3"
+
+// minMultiAzZones is the minimum number of zones, nodes, and resiliency subnets
+// required for an AZ-resilient GCP cluster. It matches the backend's
+// MinMultiAzAvailabilityZones constant.
+const minMultiAzZones = 3
+
+// CreateGcpCloudCluster creates an Elastic Storage (ES) GCP Cloud Cluster with
+// the specified configuration. It validates the cloud account, CDM version, and
+// cluster input before creating the cluster, then monitors the creation process.
+//
+// The following fields are defaulted to match the RSC UI and are not required on
+// the input: IsEsType is forced to true (this method only provisions ES
+// clusters) and Validations defaults to ALL_CHECKS when empty. DeleteProtection
+// is left to the caller; the RSC UI defaults it to true.
 func (a API) CreateGcpCloudCluster(ctx context.Context, input cloudcluster.CreateGcpClusterInput, useLatestCdmVersion bool) (cluster CloudCluster, err error) {
 	a.log.Print(log.Trace)
+
+	// This method provisions ES clusters and depends on the Server and Apps
+	// feature, so force the ES type and default the validations to ALL_CHECKS,
+	// matching the RSC UI.
+	input.IsEsType = true
+	if len(input.Validations) == 0 {
+		input.Validations = []cloudcluster.ClusterCreateValidations{cloudcluster.AllChecks}
+	}
 
 	// Validate Cloud Account exists and has Server and Apps feature
 	gcpClient := polgcp.WrapGQL(a.client)
@@ -466,14 +517,14 @@ func (a API) CreateGcpCloudCluster(ctx context.Context, input cloudcluster.Creat
 		return CloudCluster{}, fmt.Errorf("cdm version %s is not available for account %s", input.VMConfig.CDMVersion, account.ID)
 	}
 
-	// Validate dynamic scaling is only enabled for CDM version 9.5 or higher
+	// Validate dynamic scaling is only enabled for a supported CDM version.
 	if input.ClusterConfig.DynamicScalingEnabled {
 		cdmVersion, err := polcluster.ParseCDMVersion(input.VMConfig.CDMVersion)
 		if err != nil {
 			return CloudCluster{}, fmt.Errorf("failed to parse CDM version %s: %s", input.VMConfig.CDMVersion, err)
 		}
-		if cdmVersion.LessThan("9.5") {
-			return CloudCluster{}, fmt.Errorf("dynamic scaling requires CDM version 9.5 or higher, got %s", input.VMConfig.CDMVersion)
+		if cdmVersion.LessThan(minCDMVersionGcpDynamicScaling) {
+			return CloudCluster{}, fmt.Errorf("dynamic scaling requires CDM version %s or higher, got %s", minCDMVersionGcpDynamicScaling, input.VMConfig.CDMVersion)
 		}
 	}
 
@@ -481,6 +532,19 @@ func (a API) CreateGcpCloudCluster(ctx context.Context, input cloudcluster.Creat
 	validInstanceType := slices.Contains(supportedInstanceTypes, input.VMConfig.InstanceType)
 	if !validInstanceType {
 		return CloudCluster{}, fmt.Errorf("instance type %s is not supported for cdm version %s, supported Instance types are: %v", input.VMConfig.InstanceType, input.VMConfig.CDMVersion, supportedInstanceTypes)
+	}
+
+	// The backend requires one network config entry per node and assigns
+	// NetworkConfig[i] to node i. Mirror the RSC UI by fanning out a single
+	// provided subnet across all nodes.
+	input.VMConfig.NetworkConfig = expandGcpNetworkConfig(input)
+
+	// The RSC UI requires at least one network subnet and one service account.
+	if len(input.VMConfig.NetworkConfig) == 0 {
+		return CloudCluster{}, errors.New("at least one network subnet is required")
+	}
+	if len(input.VMConfig.ServiceAccounts) == 0 {
+		return CloudCluster{}, errors.New("at least one service account is required")
 	}
 
 	// Validate that the GCS bucket is in the same region as the cluster. This

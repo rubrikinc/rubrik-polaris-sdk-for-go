@@ -115,7 +115,13 @@ type AzureEsConfigInput struct {
 
 // GcpEsConfigInput represents the input for creating a GCP ES config.
 type GcpEsConfigInput struct {
-	BucketName         string `json:"bucketName"`
+	BucketName string `json:"bucketName"`
+	// Region should be the GCS bucket's actual location. RSC requires the bucket
+	// to be in the same region as the cluster, and the high-level
+	// CreateGcpCloudCluster validates this against the cluster region. Note the
+	// RSC UI instead sets this to the cluster region and filters buckets by
+	// location client-side, so when following UI semantics this is always the
+	// cluster region.
 	Region             string `json:"region"`
 	ShouldCreateBucket bool   `json:"shouldCreateBucket"`
 }

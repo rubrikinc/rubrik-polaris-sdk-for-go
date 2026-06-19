@@ -129,7 +129,7 @@ func TestCreateGcpClusterInputMarshal(t *testing.T) {
 
 	// Optional vmConfig fields must be omitted when empty so the API applies
 	// its own defaults.
-	for _, key := range []string{"imageId", "labels", "nodeSizeGb", "testImage", "subnetAzConfigs"} {
+	for _, key := range []string{"imageId", "labels", "nodeSizeGb", "testImage", "subnetAzConfigs", "vmType"} {
 		if _, ok := vmConfig[key]; ok {
 			t.Errorf("optional vmConfig key %q should be omitted when empty", key)
 		}
@@ -143,6 +143,7 @@ func TestGcpVmConfigOptionalFieldsMarshal(t *testing.T) {
 		ImageID:    "projects/p/global/images/img",
 		Labels:     "key=value",
 		NodeSizeGB: 1024,
+		VMType:     CCVmConfigDense,
 		TestImage: &GcpTestImage{
 			ImageName: "img",
 			Project:   "p",
@@ -174,5 +175,8 @@ func TestGcpVmConfigOptionalFieldsMarshal(t *testing.T) {
 	}
 	if testImage["imageName"] != "img" || testImage["project"] != "p" {
 		t.Errorf("testImage = %v", testImage)
+	}
+	if got["vmType"] != "DENSE" {
+		t.Errorf("vmType = %v, want DENSE", got["vmType"])
 	}
 }

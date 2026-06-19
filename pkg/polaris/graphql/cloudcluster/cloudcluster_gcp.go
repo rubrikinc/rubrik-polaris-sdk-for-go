@@ -105,18 +105,25 @@ type GcpTestImage struct {
 
 // GcpVmConfig represents the VM configuration for the GCP Cloud Cluster.
 type GcpVmConfig struct {
-	CDMProduct       string                   `json:"cdmProduct,omitempty"`
-	CDMVersion       string                   `json:"cdmVersion,omitempty"`
-	DeleteProtection bool                     `json:"deleteProtection"`
-	ImageID          string                   `json:"imageId,omitempty"`
-	InstanceType     GcpCCInstanceType        `json:"instanceType"`
-	Labels           string                   `json:"labels,omitempty"`
-	NetworkConfig    []GcpSubnetInput         `json:"networkConfig"`
-	NodeSizeGB       int                      `json:"nodeSizeGb,omitempty"`
-	ServiceAccounts  []GcpServiceAccountInput `json:"serviceAccounts"`
-	SubnetAzConfigs  []SubnetAzConfig         `json:"subnetAzConfigs,omitempty"`
-	TestImage        *GcpTestImage            `json:"testImage,omitempty"`
-	VMType           VmConfigType             `json:"vmType"`
+	CDMProduct       string            `json:"cdmProduct,omitempty"`
+	CDMVersion       string            `json:"cdmVersion,omitempty"`
+	DeleteProtection bool              `json:"deleteProtection"`
+	ImageID          string            `json:"imageId,omitempty"`
+	InstanceType     GcpCCInstanceType `json:"instanceType"`
+	Labels           string            `json:"labels,omitempty"`
+	// NetworkConfig holds one subnet per node: the backend requires
+	// len(NetworkConfig) == ClusterConfig.NumNodes and assigns NetworkConfig[i]
+	// to node i. For AZ-resilient clusters only NetworkConfig[0] is used as the
+	// base network and per-node subnets come from SubnetAzConfigs instead.
+	NetworkConfig   []GcpSubnetInput         `json:"networkConfig"`
+	NodeSizeGB      int                      `json:"nodeSizeGb,omitempty"`
+	ServiceAccounts []GcpServiceAccountInput `json:"serviceAccounts"`
+	SubnetAzConfigs []SubnetAzConfig         `json:"subnetAzConfigs,omitempty"`
+	TestImage       *GcpTestImage            `json:"testImage,omitempty"`
+	// VMType uses omitempty so that an unset value is dropped from the request
+	// and the backend applies its default (STANDARD). The empty string is not a
+	// valid VmType enum member and would be rejected by GraphQL enum coercion.
+	VMType VmConfigType `json:"vmType,omitempty"`
 }
 
 // GcpClusterConfig represents the cluster configuration for the GCP Cloud Cluster.
@@ -352,14 +359,16 @@ func (a API) CreateGcpCloudCluster(ctx context.Context, input CreateGcpClusterIn
 		return uuid.Nil, graphql.ResponseError(query, errors.New(payload.Data.Result.Message))
 	}
 
-	// Use regex to find the UUID in the message string.
-	match := uuidRegex.FindString(payload.Data.Result.Message)
-	jobID, err := uuid.Parse(match)
-	if err != nil {
-		return uuid.Nil, err
+	// The job's task chain UUID is embedded in the success message. Parse it
+	// best-effort: a successful call must not be reported as an error just
+	// because the message format does not contain a parseable UUID.
+	if match := uuidRegex.FindString(payload.Data.Result.Message); match != "" {
+		if jobID, err := uuid.Parse(match); err == nil {
+			return jobID, nil
+		}
 	}
 
-	return jobID, nil
+	return uuid.Nil, nil
 }
 
 // DeleteGcpCloudCluster deletes a GCP Cloud Cluster in RSC.
@@ -389,12 +398,14 @@ func (a API) DeleteGcpCloudCluster(ctx context.Context, input DeleteGcpClusterIn
 		return uuid.Nil, graphql.ResponseError(query, errors.New(payload.Data.Result.Message))
 	}
 
-	// Use regex to find the UUID in the message string.
-	match := uuidRegex.FindString(payload.Data.Result.Message)
-	jobID, err := uuid.Parse(match)
-	if err != nil {
-		return uuid.Nil, err
+	// The job's task chain UUID is embedded in the success message. Parse it
+	// best-effort: a successful call must not be reported as an error just
+	// because the message format does not contain a parseable UUID.
+	if match := uuidRegex.FindString(payload.Data.Result.Message); match != "" {
+		if jobID, err := uuid.Parse(match); err == nil {
+			return jobID, nil
+		}
 	}
 
-	return jobID, nil
+	return uuid.Nil, nil
 }
