@@ -20,7 +20,13 @@
 
 package cloudcluster
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
+)
+
+func boolPtr(b bool) *bool { return &b }
 
 func TestValidateGcpBucketRegion(t *testing.T) {
 	tests := []struct {
@@ -64,6 +70,148 @@ func TestValidateGcpBucketRegion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateGcpBucketRegion(tt.bucketRegion, tt.clusterRegion)
+			if tt.expectErr && err == nil {
+				t.Errorf("expected error but got none")
+			}
+			if !tt.expectErr && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestGcpRegionZones(t *testing.T) {
+	regions := []cloudcluster.GcpRegionInfo{
+		{Name: "us-west1", Zones: []string{"us-west1-a", "us-west1-b", "us-west1-c"}},
+		{Name: "us-east4", Zones: []string{"us-east4-a", "us-east4-b"}},
+	}
+
+	t.Run("FoundCaseInsensitive", func(t *testing.T) {
+		zones, err := gcpRegionZones(regions, "US-WEST1")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(zones) != 3 {
+			t.Errorf("expected 3 zones, got %d", len(zones))
+		}
+	})
+
+	t.Run("NotAvailable", func(t *testing.T) {
+		if _, err := gcpRegionZones(regions, "europe-west1"); err == nil {
+			t.Error("expected error for unavailable region but got none")
+		}
+	})
+}
+
+func TestValidateGcpZones(t *testing.T) {
+	threeZones := []string{"us-west1-a", "us-west1-b", "us-west1-c"}
+	twoZones := []string{"us-east4-a", "us-east4-b"}
+
+	tests := []struct {
+		name        string
+		input       cloudcluster.CreateGcpClusterInput
+		regionZones []string
+		expectErr   bool
+	}{
+		{
+			name: "ZoneInRegion",
+			input: cloudcluster.CreateGcpClusterInput{
+				Region: "us-west1",
+				Zone:   "us-west1-a",
+			},
+			regionZones: threeZones,
+			expectErr:   false,
+		},
+		{
+			name: "ZoneInRegionCaseInsensitive",
+			input: cloudcluster.CreateGcpClusterInput{
+				Region: "us-west1",
+				Zone:   "US-WEST1-A",
+			},
+			regionZones: threeZones,
+			expectErr:   false,
+		},
+		{
+			name: "ZoneNotInRegion",
+			input: cloudcluster.CreateGcpClusterInput{
+				Region: "us-west1",
+				Zone:   "us-east4-a",
+			},
+			regionZones: threeZones,
+			expectErr:   true,
+		},
+		{
+			name: "AzResilientValid",
+			input: cloudcluster.CreateGcpClusterInput{
+				Region:        "us-west1",
+				Zone:          "us-west1-a",
+				IsAzResilient: boolPtr(true),
+				ClusterConfig: cloudcluster.GcpClusterConfig{NumNodes: 3},
+				VMConfig: cloudcluster.GcpVmConfig{
+					SubnetAzConfigs: []cloudcluster.SubnetAzConfig{
+						{AvailabilityZone: "us-west1-a", Subnet: "subnet-a"},
+						{AvailabilityZone: "us-west1-b", Subnet: "subnet-b"},
+						{AvailabilityZone: "us-west1-c", Subnet: "subnet-c"},
+					},
+				},
+			},
+			regionZones: threeZones,
+			expectErr:   false,
+		},
+		{
+			name: "AzResilientTooFewRegionZones",
+			input: cloudcluster.CreateGcpClusterInput{
+				Region:        "us-east4",
+				Zone:          "us-east4-a",
+				IsAzResilient: boolPtr(true),
+				ClusterConfig: cloudcluster.GcpClusterConfig{NumNodes: 3},
+			},
+			regionZones: twoZones,
+			expectErr:   true,
+		},
+		{
+			name: "AzResilientTooFewNodes",
+			input: cloudcluster.CreateGcpClusterInput{
+				Region:        "us-west1",
+				Zone:          "us-west1-a",
+				IsAzResilient: boolPtr(true),
+				ClusterConfig: cloudcluster.GcpClusterConfig{NumNodes: 1},
+			},
+			regionZones: threeZones,
+			expectErr:   true,
+		},
+		{
+			name: "AzResilientSubnetZoneNotInRegion",
+			input: cloudcluster.CreateGcpClusterInput{
+				Region:        "us-west1",
+				Zone:          "us-west1-a",
+				IsAzResilient: boolPtr(true),
+				ClusterConfig: cloudcluster.GcpClusterConfig{NumNodes: 3},
+				VMConfig: cloudcluster.GcpVmConfig{
+					SubnetAzConfigs: []cloudcluster.SubnetAzConfig{
+						{AvailabilityZone: "us-east4-a", Subnet: "subnet-a"},
+					},
+				},
+			},
+			regionZones: threeZones,
+			expectErr:   true,
+		},
+		{
+			name: "NonResilientIgnoresNodeAndZoneCount",
+			input: cloudcluster.CreateGcpClusterInput{
+				Region:        "us-east4",
+				Zone:          "us-east4-a",
+				IsAzResilient: boolPtr(false),
+				ClusterConfig: cloudcluster.GcpClusterConfig{NumNodes: 1},
+			},
+			regionZones: twoZones,
+			expectErr:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateGcpZones(tt.input, tt.regionZones)
 			if tt.expectErr && err == nil {
 				t.Errorf("expected error but got none")
 			}

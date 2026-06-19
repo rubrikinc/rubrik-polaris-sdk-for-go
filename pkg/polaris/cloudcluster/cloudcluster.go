@@ -373,6 +373,59 @@ func validateGcpBucketRegion(bucketRegion, clusterRegion string) error {
 	return nil
 }
 
+// gcpRegionZones returns the zones for the named region from the regions
+// returned by gcpRegions. It returns an error if the region is not available for
+// the cloud account, mirroring the RSC UI which only offers available regions.
+// The region name comparison is case-insensitive.
+func gcpRegionZones(regions []cloudcluster.GcpRegionInfo, region string) ([]string, error) {
+	for _, r := range regions {
+		if strings.EqualFold(r.Name, region) {
+			return r.Zones, nil
+		}
+	}
+	return nil, fmt.Errorf("region %q is not available for the cloud account", region)
+}
+
+// validateGcpZones checks that the cluster zone, and any Multi-AZ resiliency
+// zones, belong to the selected region, and that Multi-AZ requirements are met.
+// This mirrors the RSC UI, which only offers zones from the selected region and
+// only allows AZ resiliency when the region has at least three zones and the
+// cluster has at least three nodes. regionZones is the list of zones for
+// input.Region as returned by gcpRegions. Zone comparisons are case-insensitive.
+func validateGcpZones(input cloudcluster.CreateGcpClusterInput, regionZones []string) error {
+	inRegion := func(zone string) bool {
+		for _, z := range regionZones {
+			if strings.EqualFold(z, zone) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// The cluster instance zone must belong to the selected region.
+	if input.Zone != "" && !inRegion(input.Zone) {
+		return fmt.Errorf("zone %q does not belong to region %q (region zones: %v)", input.Zone, input.Region, regionZones)
+	}
+
+	// Multi-AZ resiliency requires a region with at least three zones, at least
+	// three nodes, and each resiliency subnet's zone to belong to the region.
+	if input.IsAzResilient != nil && *input.IsAzResilient {
+		if len(regionZones) < 3 {
+			return fmt.Errorf("AZ-resilient cluster requires a region with at least 3 zones, but region %q has %d", input.Region, len(regionZones))
+		}
+		if input.ClusterConfig.NumNodes < 3 {
+			return fmt.Errorf("AZ-resilient cluster requires at least 3 nodes, got %d", input.ClusterConfig.NumNodes)
+		}
+		for _, az := range input.VMConfig.SubnetAzConfigs {
+			if !inRegion(az.AvailabilityZone) {
+				return fmt.Errorf("AZ-resiliency zone %q does not belong to region %q (region zones: %v)", az.AvailabilityZone, input.Region, regionZones)
+			}
+		}
+	}
+
+	return nil
+}
+
 // CreateGcpCloudCluster creates a GCP Cloud Cluster with the specified configuration.
 // It validates the cloud account, CDM version, and cluster input before creating the
 // cluster. Returns the created cluster details after monitoring the creation process.
@@ -434,6 +487,22 @@ func (a API) CreateGcpCloudCluster(ctx context.Context, input cloudcluster.Creat
 	// mirrors the RSC UI, which only allows selecting a bucket whose region
 	// matches the cluster region.
 	if err := validateGcpBucketRegion(input.ClusterConfig.GcpEsConfig.Region, input.Region); err != nil {
+		return CloudCluster{}, err
+	}
+
+	// Validate that the cluster zone, and any Multi-AZ resiliency zones, belong
+	// to the selected region and that Multi-AZ requirements are met. This mirrors
+	// the RSC UI, which only offers zones from the selected region and only
+	// allows AZ resiliency when the region has at least three zones.
+	regions, err := cloudcluster.Wrap(a.client).GcpRegions(ctx, input.CloudAccountID)
+	if err != nil {
+		return CloudCluster{}, fmt.Errorf("failed to get regions: %s", err)
+	}
+	regionZones, err := gcpRegionZones(regions, input.Region)
+	if err != nil {
+		return CloudCluster{}, err
+	}
+	if err := validateGcpZones(input, regionZones); err != nil {
 		return CloudCluster{}, err
 	}
 
