@@ -238,8 +238,11 @@ type AwsVmConfig struct {
 	SecurityGroups      []string          `json:"securityGroups"`
 	Subnet              string            `json:"subnet,omitempty"`
 	SubnetAzConfigs     []SubnetAzConfig  `json:"subnetAzConfigs,omitempty"`
-	VMType              VmConfigType      `json:"vmType"`
-	VPC                 string            `json:"vpc"`
+	// VMType uses omitempty so that an unset value is dropped from the request
+	// and the backend applies its default (STANDARD). The empty string is not a
+	// valid VmType enum member and would be rejected by GraphQL enum coercion.
+	VMType VmConfigType `json:"vmType,omitempty"`
+	VPC    string       `json:"vpc"`
 }
 
 type AwsClusterConfig struct {
