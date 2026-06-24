@@ -168,6 +168,7 @@ func (a API) removeAccountWithIAM(ctx context.Context, account CloudAccount, fea
 }
 
 const (
+	crossAccountArtifact  = "CROSSACCOUNT"
 	roleArnSuffix         = "_ROLE_ARN"
 	instanceProfileSuffix = "_INSTANCE_PROFILE"
 )
@@ -209,6 +210,16 @@ func (a API) Artifacts(ctx context.Context, cloud string, features []core.Featur
 		return roles[i] < roles[j]
 	})
 
+	// Workaround: RSC currently returns an empty CROSSACCOUNT role artifact
+	// for role-chaining accounts. Drop it so callers don't create a spurious
+	// cross-account role. Remove the workaround once RSC stops returning the
+	// duplicate artifact.
+	if len(features) == 1 && features[0].Equal(core.FeatureRoleChaining) {
+		roles = slices.DeleteFunc(roles, func(role string) bool {
+			return role == crossAccountArtifact
+		})
+	}
+
 	return profiles, roles, nil
 }
 
@@ -244,6 +255,14 @@ func (a API) AccountArtifacts(ctx context.Context, cloudAccountID uuid.UUID) (ma
 		}
 	}
 	a.log.Printf(log.Debug, "Skipped the following artifacts: %v", skipped)
+
+	// Workaround: RSC returns the role-chaining role ARN under both the
+	// CROSSACCOUNT and ROLE_CHAINING artifacts. Drop the CROSSACCOUNT artifact
+	// so it doesn't appear in the registered artifacts. Remove the workaround
+	// once RSC stops returning the duplicate artifact.
+	if len(account.Features) == 1 && account.Features[0].Equal(core.FeatureRoleChaining) {
+		delete(roles, crossAccountArtifact)
+	}
 
 	return instanceProfiles, roles, nil
 }
