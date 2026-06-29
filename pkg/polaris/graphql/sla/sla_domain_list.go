@@ -60,7 +60,10 @@ type Domain struct {
 			TierExistingSnapshots          bool             `json:"shouldTierExistingSnapshots"`
 		} `json:"archivalTieringSpec"`
 	} `json:"archivalSpecs"`
-	Archived            bool `json:"isArchived"`
+	Archived bool `json:"isArchived"`
+	// BackupType distinguishes V1 (Azure-managed / LTR, "NATIVE") from V2
+	// (Rubrik-managed) Azure SQL SLAs. Read-only.
+	BackupType          BackupType `json:"backupType"`
 	BackupLocationSpecs []struct {
 		ArchivalGroup struct {
 			ID string `json:"id"`

@@ -136,10 +136,51 @@ type AWSRDSConfig struct {
 }
 
 // AzureDBConfig represents the configuration specific for an Azure database
-// object.
+// object (Azure SQL Database or Azure SQL Managed Instance).
+//
+// A V1 (Azure-managed, long-term retention) SLA carries a non-nil LTRConfig; a
+// V2 (Rubrik-managed) SLA leaves it nil. Backup locations for V2 SLAs are
+// supplied through the SLA-level BackupLocationSpecs (see CreateDomainParams),
+// matching the multiple-backup-location mechanism used by other object types.
 type AzureDBConfig struct {
-	LogRetentionInDays int `json:"logRetentionInDays"`
+	LogRetentionInDays int                `json:"logRetentionInDays"`
+	LTRConfig          *AzureSQLLTRConfig `json:"ltrConfig,omitempty"`
 }
+
+// AzureSQLLTRRetention represents a single Azure SQL long-term retention value.
+// Valid retentions are 0 or between 7 and 3650 days (Azure LTR limits). The
+// RetentionUnit is one of Days, Weeks, Months or Years.
+type AzureSQLLTRRetention struct {
+	Retention     int           `json:"retention"`
+	RetentionUnit RetentionUnit `json:"retentionUnit"`
+}
+
+// AzureSQLYearlyLTRRetention represents the yearly Azure SQL long-term
+// retention, including which week of the year to keep as the yearly backup.
+type AzureSQLYearlyLTRRetention struct {
+	Retention  AzureSQLLTRRetention `json:"ltrRetention"`
+	WeekOfYear int                  `json:"weekOfYear"`
+}
+
+// AzureSQLLTRConfig holds the long-term retention configuration for a V1
+// (Azure-managed) Azure SQL SLA. Its presence marks an SLA as V1.
+type AzureSQLLTRConfig struct {
+	WeeklyBackupRetention  *AzureSQLLTRRetention       `json:"weeklyBackupRetention,omitempty"`
+	MonthlyBackupRetention *AzureSQLLTRRetention       `json:"monthlyBackupRetention,omitempty"`
+	YearlyBackupRetention  *AzureSQLYearlyLTRRetention `json:"yearlyBackupRetention,omitempty"`
+}
+
+// BackupType identifies which system manages an SLA's Azure SQL backups,
+// distinguishing V1 (Azure-managed / LTR) from V2 (Rubrik-managed) SLAs. It is a
+// read-only value on the global SLA domain reply.
+type BackupType string
+
+const (
+	// BackupTypeNative indicates Azure-managed (V1 / LTR) backups.
+	BackupTypeNative BackupType = "NATIVE"
+	// BackupTypeRubrik indicates Rubrik-managed (V2) backups.
+	BackupTypeRubrik BackupType = "RUBRIK"
+)
 
 // VMwareVMConfig represents the configuration specific for a VMware vSphere VM
 // object.

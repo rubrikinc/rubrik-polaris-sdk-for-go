@@ -161,6 +161,7 @@ var slaDomainQuery = `query SdkGolangSlaDomain($slaDomainId: UUID!) {
     }
 }
 fragment GlobalSlaReplyFields on GlobalSlaReply {
+    backupType
     archivalSpecs {
         frequencies
         threshold
@@ -242,9 +243,43 @@ fragment GlobalSlaReplyFields on GlobalSlaReply {
         }
         azureSqlDatabaseDbConfig {
             logRetentionInDays
+            ltrConfig {
+                weeklyBackupRetention {
+                    retention
+                    retentionUnit
+                }
+                monthlyBackupRetention {
+                    retention
+                    retentionUnit
+                }
+                yearlyBackupRetention {
+                    ltrRetention {
+                        retention
+                        retentionUnit
+                    }
+                    weekOfYear
+                }
+            }
         }
         azureSqlManagedInstanceDbConfig {
             logRetentionInDays
+            ltrConfig {
+                weeklyBackupRetention {
+                    retention
+                    retentionUnit
+                }
+                monthlyBackupRetention {
+                    retention
+                    retentionUnit
+                }
+                yearlyBackupRetention {
+                    ltrRetention {
+                        retention
+                        retentionUnit
+                    }
+                    weekOfYear
+                }
+            }
         }
         vmwareVmConfig {
             logRetentionSeconds
@@ -508,6 +543,7 @@ var slaDomainsQuery = `query SdkGolangSlaDomains($after: String, $filter: [Globa
     }
 }
 fragment GlobalSlaReplyFields on GlobalSlaReply {
+    backupType
     archivalSpecs {
         frequencies
         threshold
@@ -589,9 +625,43 @@ fragment GlobalSlaReplyFields on GlobalSlaReply {
         }
         azureSqlDatabaseDbConfig {
             logRetentionInDays
+            ltrConfig {
+                weeklyBackupRetention {
+                    retention
+                    retentionUnit
+                }
+                monthlyBackupRetention {
+                    retention
+                    retentionUnit
+                }
+                yearlyBackupRetention {
+                    ltrRetention {
+                        retention
+                        retentionUnit
+                    }
+                    weekOfYear
+                }
+            }
         }
         azureSqlManagedInstanceDbConfig {
             logRetentionInDays
+            ltrConfig {
+                weeklyBackupRetention {
+                    retention
+                    retentionUnit
+                }
+                monthlyBackupRetention {
+                    retention
+                    retentionUnit
+                }
+                yearlyBackupRetention {
+                    ltrRetention {
+                        retention
+                        retentionUnit
+                    }
+                    weekOfYear
+                }
+            }
         }
         vmwareVmConfig {
             logRetentionSeconds
