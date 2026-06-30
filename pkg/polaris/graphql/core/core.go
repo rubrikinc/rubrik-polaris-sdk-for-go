@@ -100,6 +100,7 @@ const (
 	PermissionGroupExportPowerOn                 PermissionGroup = "EXPORT_POWER_ON"
 	PermissionGroupFileLevelRecovery             PermissionGroup = "FILE_LEVEL_RECOVERY"
 	PermissionGroupInvalid                       PermissionGroup = "GROUP_UNSPECIFIED"
+	PermissionGroupKMSKeySharing                 PermissionGroup = "KMS_KEY_SHARING"
 	PermissionGroupNATGateway                    PermissionGroup = "NAT_GATEWAY"
 	PermissionGroupPrivateEndpoints              PermissionGroup = "PRIVATE_ENDPOINTS"
 	PermissionGroupRecovery                      PermissionGroup = "RECOVERY"
