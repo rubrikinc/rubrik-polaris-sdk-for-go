@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 )
 
@@ -31,6 +32,17 @@ var (
 	// ErrNotFound signals that the specified entity could not be found.
 	ErrNotFound = errors.New("not found")
 )
+
+// retryableGQLCodes maps a GraphQL operation name, as returned by QueryName, to
+// the RSC error codes that are transient for that operation and safe to retry.
+// Only idempotent read operations belong here, since a retry re-issues the
+// request. Unlike the transient HTTP statuses, these codes, such as a catch-all
+// 500, are not inherently retryable and must be scoped per operation.
+var retryableGQLCodes = map[string][]int{
+	"allVpcsByRegionFromAws": {
+		http.StatusInternalServerError,
+	},
+}
 
 // httpError represents an HTTP-level error with a status code.
 type httpError struct {
@@ -42,11 +54,11 @@ func (e httpError) Error() string {
 	return e.msg
 }
 
-// isTemporary returns true if the HTTP status code indicates a temporary
-// condition that may resolve on retry.
-func (e httpError) isTemporary() bool {
-	return e.statusCode == http.StatusBadGateway || e.statusCode == http.StatusServiceUnavailable ||
-		e.statusCode == http.StatusGatewayTimeout || e.statusCode == http.StatusTooManyRequests
+// isRetryable returns true if the HTTP status code indicates a transient
+// condition that may resolve on retry. The operation is ignored because
+// transport-level status codes are retryable regardless of the query.
+func (e httpError) isRetryable(string) bool {
+	return isTransientHTTPStatus(e.statusCode)
 }
 
 // GQLError is returned by RSC in the body of a response as a JSON document when
@@ -77,15 +89,30 @@ func (e GQLError) isError() bool {
 	return len(e.Errors) > 0
 }
 
-// isTemporary returns true if the error represents a temporary condition.
-func (e GQLError) isTemporary() bool {
+// isRetryable returns true if the error represents a transient condition that
+// may resolve when the given operation is retried.
+func (e GQLError) isRetryable(operation string) bool {
+	// Intrinsically-transient message, independent of the operation. Kept as a
+	// string match because it is a 403 whose message, unlike the code, is not
+	// masked in production and is the only signal that distinguishes it from a
+	// legitimate access denial carrying the same 403 code.
 	for _, err := range e.Errors {
-		switch {
-		case strings.HasPrefix(err.Message, "Error checking account flags to determine access. Please try again."):
-			return true
-		case strings.HasPrefix(err.Message, "UNAVAILABLE: Connection closed while performing TLS negotiation"):
+		if strings.HasPrefix(err.Message, "Error checking account flags to determine access. Please try again.") {
 			return true
 		}
+	}
+
+	// Transient transport codes, such as a gRPC UNAVAILABLE mapped to 503,
+	// reported in the GraphQL response body rather than as an HTTP-level error.
+	// Independent of the operation and preserved in production, unlike the
+	// error message.
+	if isTransientHTTPStatus(e.Code()) {
+		return true
+	}
+
+	// Codes that are transient only for specific idempotent operations.
+	if codes, ok := retryableGQLCodes[operation]; ok && slices.Contains(codes, e.Code()) {
+		return true
 	}
 
 	return false
@@ -111,4 +138,18 @@ func (e GQLError) Error() string {
 	}
 
 	return "Unknown GraphQL error"
+}
+
+// isTransientHTTPStatus returns true if the HTTP status code indicates a
+// transient condition that may resolve on retry, independent of the operation:
+// 502 Bad Gateway, 503 Service Unavailable, 504 Gateway Timeout and 429 Too
+// Many Requests.
+func isTransientHTTPStatus(code int) bool {
+	switch code {
+	case http.StatusBadGateway, http.StatusServiceUnavailable,
+		http.StatusGatewayTimeout, http.StatusTooManyRequests:
+		return true
+	default:
+		return false
+	}
 }

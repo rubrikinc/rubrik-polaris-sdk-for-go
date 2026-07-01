@@ -208,11 +208,11 @@ func (c *Client) RequestWithoutLogging(ctx context.Context, query string, variab
 	for {
 		buf, err := c.RequestWithoutRetry(ctx, query, variables)
 
-		var tempErr interface {
+		var retryErr interface {
 			error
-			isTemporary() bool
+			isRetryable(operation string) bool
 		}
-		if errors.As(err, &tempErr) && tempErr.isTemporary() {
+		if errors.As(err, &retryErr) && retryErr.isRetryable(QueryName(query)) {
 			if retryAttempt++; retryAttempt > requestRetryAttempts {
 				return nil, fmt.Errorf("request failed after %d retries: %w", retryAttempt-1, err)
 			}
