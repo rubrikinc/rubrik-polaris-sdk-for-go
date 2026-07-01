@@ -39,6 +39,7 @@ const (
 	RegionApSouthEast3
 	RegionApSouthEast4
 	RegionApSouthEast5
+	RegionApSouthEast7
 	RegionApSouth1
 	RegionApSouth2
 	RegionCaCentral1
@@ -56,6 +57,7 @@ const (
 	RegionIlCentral1
 	RegionMeCentral1
 	RegionMeSouth1
+	RegionMxCentral1
 	RegionSaEast1
 	RegionUsEast1
 	RegionUsEast2
@@ -348,6 +350,13 @@ var regionInfoMap = map[Region]struct {
 		nativeRegionEnum:         "AP_SOUTHEAST_5",
 		regionForReplicationEnum: "",
 	},
+	RegionApSouthEast7: {
+		name:                     "ap-southeast-7",
+		displayName:              "Asia Pacific (Thailand)",
+		regionEnum:               "AP_SOUTHEAST_7",
+		nativeRegionEnum:         "AP_SOUTHEAST_7",
+		regionForReplicationEnum: "",
+	},
 	RegionApSouth1: {
 		name:                     "ap-south-1",
 		displayName:              "Asia Pacific (Mumbai)",
@@ -467,6 +476,13 @@ var regionInfoMap = map[Region]struct {
 		nativeRegionEnum:         "ME_SOUTH_1",
 		regionForReplicationEnum: "ME_SOUTH_1",
 	},
+	RegionMxCentral1: {
+		name:                     "mx-central-1",
+		displayName:              "Mexico (Central)",
+		regionEnum:               "MX_CENTRAL_1",
+		nativeRegionEnum:         "MX_CENTRAL_1",
+		regionForReplicationEnum: "",
+	},
 	RegionSaEast1: {
 		name:                     "sa-east-1",
 		displayName:              "South America (São Paulo)",
@@ -566,6 +582,7 @@ var validRegions = map[Region]struct{}{
 	RegionApSouthEast3: {},
 	RegionApSouthEast4: {},
 	RegionApSouthEast5: {},
+	RegionApSouthEast7: {},
 	RegionApSouth1:     {},
 	RegionApSouth2:     {},
 	RegionCaCentral1:   {},
@@ -583,6 +600,7 @@ var validRegions = map[Region]struct{}{
 	RegionIlCentral1:   {},
 	RegionMeCentral1:   {},
 	RegionMeSouth1:     {},
+	RegionMxCentral1:   {},
 	RegionSaEast1:      {},
 	RegionUsEast1:      {},
 	RegionUsEast2:      {},
