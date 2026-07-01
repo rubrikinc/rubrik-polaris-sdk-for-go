@@ -1,0 +1,48 @@
+query RubrikPolarisSDKRequest($fid: UUID!) {
+    result: kubernetesProtectionSet(fid: $fid) {
+        cdmId
+        clusterUuid
+        configuredSlaDomain {
+            id
+            name
+        }
+        effectiveRetentionSlaDomain {
+            id
+            name
+        }
+        effectiveSlaDomain {
+            id
+            name
+        }
+        effectiveSlaSourceObject {
+            fid
+            name
+            objectType
+        }
+        id
+        isRelic
+        k8sClusterUuid
+        Name
+        namespace
+        objectType
+        pendingSla {
+            id
+            name
+        }
+        primaryClusterLocation {
+            clusterUuid
+            createDate
+            id
+            isActive
+            isArchived
+            name
+            type
+        }
+        primaryClusterUuid
+        replicatedObjectCount
+        rsName
+        rsType
+        slaAssignment
+        slaPauseStatus
+    }
+}

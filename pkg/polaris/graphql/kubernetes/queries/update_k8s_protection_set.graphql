@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($id: UUID!, $updateConfig: K8sProtectionSetUpdateInput!) {
+    result: updateK8sProtectionSet(input: {id: $id, updateConfig: $updateConfig}) {
+        success
+    }
+}
