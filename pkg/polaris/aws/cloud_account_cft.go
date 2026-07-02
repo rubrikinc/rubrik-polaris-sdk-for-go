@@ -176,12 +176,20 @@ func (a API) RemoveAccountWithCFT(ctx context.Context, account AccountFunc, feat
 func (a API) addAccountWithCFT(ctx context.Context, features []core.Feature, config account, options options) error {
 	a.log.Print(log.Trace)
 
-	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.cloud, config.NativeID, config.name, features, options.roleChainingAccountID)
+	accountInit, err := aws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.cloud, config.NativeID, config.name, features, options.roleChainingAccountID, aws.ServiceTypeNonBaaS)
 	if err != nil {
 		return fmt.Errorf("failed to validate account: %s", err)
 	}
 
-	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, config.NativeID, config.name, features, options.regions, accountInit)
+	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, aws.FinalizeCloudAccountProtectionParams{
+		Cloud:       config.cloud,
+		NativeID:    config.NativeID,
+		Name:        config.name,
+		Features:    features,
+		Regions:     options.regions,
+		ServiceType: aws.ServiceTypeNonBaaS,
+		Initiate:    accountInit,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to add account: %s", err)
 	}

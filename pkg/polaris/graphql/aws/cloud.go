@@ -155,6 +155,7 @@ func (a API) CloudAccountsWithFeatures(ctx context.Context, feature core.Feature
 type CloudAccountInitiate struct {
 	CloudFormationURL string           `json:"cloudFormationUrl"`
 	ExternalID        string           `json:"externalId"` // Deprecated: no replacement.
+	AWSIamPairID      string           `json:"awsIamPairId"`
 	FeatureVersions   []FeatureVersion `json:"featureVersions"`
 	StackName         string           `json:"stackName"`
 	TemplateURL       string           `json:"templateUrl"`
@@ -164,8 +165,14 @@ type CloudAccountInitiate struct {
 // account to RSC. The returned CloudAccountInitiate value must be passed on to
 // FinalizeCloudAccountProtection which is the next step in the process of
 // adding an AWS account to RSC.
-func (a API) ValidateAndCreateCloudAccount(ctx context.Context, cloud Cloud, id, name string, features []core.Feature, roleChainingAccountID string) (CloudAccountInitiate, error) {
+func (a API) ValidateAndCreateCloudAccount(ctx context.Context, cloud Cloud, id, name string, features []core.Feature, roleChainingAccountID string, serviceType CloudAccountServiceType) (CloudAccountInitiate, error) {
 	a.log.Print(log.Trace)
+
+	// The backend does not accept an unspecified service type; default the
+	// standard onboarding flows to non-BaaS.
+	if serviceType == ServiceTypeUnspecified {
+		serviceType = ServiceTypeNonBaaS
+	}
 
 	featuresWithoutPG, featuresWithPG, err := core.FilterFeaturesOnPermissionGroups(features)
 	if err != nil {
@@ -174,13 +181,14 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, cloud Cloud, id,
 
 	query := validateAndCreateAwsCloudAccountQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Cloud                 Cloud          `json:"cloudType"`
-		ID                    string         `json:"nativeId"`
-		Name                  string         `json:"accountName"`
-		Features              []string       `json:"features,omitempty"`
-		FeaturesWithPG        []core.Feature `json:"featuresWithPG,omitempty"`
-		RoleChainingAccountID string         `json:"roleChainingAccountId,omitempty"`
-	}{Cloud: cloud, ID: id, Name: name, Features: featuresWithoutPG, FeaturesWithPG: featuresWithPG, RoleChainingAccountID: roleChainingAccountID})
+		Cloud                 Cloud                   `json:"cloudType"`
+		ID                    string                  `json:"nativeId"`
+		Name                  string                  `json:"accountName"`
+		Features              []string                `json:"features,omitempty"`
+		FeaturesWithPG        []core.Feature          `json:"featuresWithPG,omitempty"`
+		RoleChainingAccountID string                  `json:"roleChainingAccountId,omitempty"`
+		ServiceType           CloudAccountServiceType `json:"serviceType,omitempty"`
+	}{Cloud: cloud, ID: id, Name: name, Features: featuresWithoutPG, FeaturesWithPG: featuresWithPG, RoleChainingAccountID: roleChainingAccountID, ServiceType: serviceType})
 	if err != nil {
 		return CloudAccountInitiate{}, graphql.RequestError(query, err)
 	}
@@ -217,43 +225,71 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, cloud Cloud, id,
 	return payload.Data.Result.InitiateResponse, nil
 }
 
+// FinalizeCloudAccountProtectionParams holds the parameters for
+// FinalizeCloudAccountProtection.
+type FinalizeCloudAccountProtectionParams struct {
+	Cloud       Cloud
+	NativeID    string
+	Name        string
+	Features    []core.Feature
+	Regions     []aws.Region
+	ServiceType CloudAccountServiceType
+
+	// Initiate is the value returned by ValidateAndCreateCloudAccount. It
+	// carries the external ID, AWS IAM pair ID, stack name and feature versions
+	// needed to finalize the account. The AWS IAM pair ID is empty for the
+	// non-BaaS onboarding flows.
+	Initiate CloudAccountInitiate
+}
+
 // FinalizeCloudAccountProtection finalizes the process of the adding the
 // specified AWS account to RSC. The message returned by the GraphQL API is
 // converted into a Go error. After this function a CloudFormation stack must
 // be created using the information returned by ValidateAndCreateCloudAccount.
-func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id, name string, features []core.Feature, regions []aws.Region, init CloudAccountInitiate) error {
+func (a API) FinalizeCloudAccountProtection(ctx context.Context, params FinalizeCloudAccountProtectionParams) error {
 	a.log.Print(log.Trace)
 
-	featuresWithoutPG, featuresWithPG, err := core.FilterFeaturesOnPermissionGroups(features)
+	// The backend does not accept an unspecified service type; default the
+	// standard onboarding flows to non-BaaS.
+	serviceType := params.ServiceType
+	if serviceType == ServiceTypeUnspecified {
+		serviceType = ServiceTypeNonBaaS
+	}
+
+	featuresWithoutPG, featuresWithPG, err := core.FilterFeaturesOnPermissionGroups(params.Features)
 	if err != nil {
 		return err
 	}
 
-	regionEnums := make([]aws.RegionEnum, 0, len(regions))
-	for _, reg := range regions {
+	regionEnums := make([]aws.RegionEnum, 0, len(params.Regions))
+	for _, reg := range params.Regions {
 		regionEnums = append(regionEnums, reg.ToRegionEnum())
 	}
 	query := finalizeAwsCloudAccountProtectionQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Cloud          Cloud            `json:"cloudType"`
-		ID             string           `json:"nativeId"`
-		Name           string           `json:"accountName"`
-		Regions        []aws.RegionEnum `json:"awsRegions,omitempty"`
-		ExternalID     string           `json:"externalId"`
-		FeatureVersion []FeatureVersion `json:"featureVersion"`
-		Features       []string         `json:"features,omitempty"`
-		FeaturesWithPG []core.Feature   `json:"featuresWithPG,omitempty"`
-		StackName      string           `json:"stackName"`
+		Cloud          Cloud                   `json:"cloudType"`
+		ID             string                  `json:"nativeId"`
+		Name           string                  `json:"accountName"`
+		Regions        []aws.RegionEnum        `json:"awsRegions,omitempty"`
+		ExternalID     string                  `json:"externalId"`
+		AWSIamPairID   string                  `json:"awsIamPairId,omitempty"`
+		FeatureVersion []FeatureVersion        `json:"featureVersion"`
+		Features       []string                `json:"features,omitempty"`
+		FeaturesWithPG []core.Feature          `json:"featuresWithPG,omitempty"`
+		StackName      string                  `json:"stackName"`
+		ServiceType    CloudAccountServiceType `json:"serviceType,omitempty"`
 	}{
-		Cloud:          cloud,
-		ID:             id,
-		Name:           name,
+		Cloud:          params.Cloud,
+		ID:             params.NativeID,
+		Name:           params.Name,
 		Regions:        regionEnums,
-		ExternalID:     init.ExternalID,
-		FeatureVersion: init.FeatureVersions,
+		ExternalID:     params.Initiate.ExternalID,
+		AWSIamPairID:   params.Initiate.AWSIamPairID,
+		FeatureVersion: params.Initiate.FeatureVersions,
 		Features:       featuresWithoutPG,
 		FeaturesWithPG: featuresWithPG,
-		StackName:      init.StackName,
+		StackName:      params.Initiate.StackName,
+		ServiceType:    serviceType,
 	})
 	if err != nil {
 		return graphql.RequestError(query, err)
@@ -275,11 +311,25 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 		return graphql.UnmarshalError(query, err)
 	}
 
-	// On success the message starts with "successfully".
-	if !strings.HasPrefix(strings.ToLower(payload.Data.Query.Message), "successfully") {
-		return errors.New(payload.Data.Query.Message)
+	// Newer onboarding flows (e.g. BaaS) return the created child account
+	// without a top-level "successfully" message. Treat a single child account
+	// without an error message as success.
+	q := payload.Data.Query
+	if q.Message == "" {
+		if len(q.AwsChildAccounts) == 1 && q.AwsChildAccounts[0].Message == "" {
+			return nil
+		}
+		if len(q.AwsChildAccounts) == 1 {
+			return errors.New(q.AwsChildAccounts[0].Message)
+		}
+		return errors.New("failed to finalize cloud account protection")
 	}
-	if len(payload.Data.Query.AwsChildAccounts) != 1 {
+
+	// On success the message starts with "successfully".
+	if !strings.HasPrefix(strings.ToLower(q.Message), "successfully") {
+		return errors.New(q.Message)
+	}
+	if len(q.AwsChildAccounts) != 1 {
 		return errors.New("expected a single aws child account")
 	}
 

@@ -43,13 +43,14 @@ type FeaturePermissionGroups struct {
 
 // AllPermissionsGroupsByFeature returns the permission groups for the specified
 // features.
-func (a API) AllPermissionsGroupsByFeature(ctx context.Context, features []core.Feature) ([]FeaturePermissionGroups, error) {
+func (a API) AllPermissionsGroupsByFeature(ctx context.Context, features []core.Feature, serviceType CloudAccountServiceType) ([]FeaturePermissionGroups, error) {
 	a.log.Print(log.Trace)
 
 	query := allAwsLatestPermissionsByPermissionsGroupQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Features []string `json:"features"`
-	}{Features: core.FeatureNames(features)})
+		Features    []string                `json:"features"`
+		ServiceType CloudAccountServiceType `json:"serviceType,omitempty"`
+	}{Features: core.FeatureNames(features), ServiceType: serviceType})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
