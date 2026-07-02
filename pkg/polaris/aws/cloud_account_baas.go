@@ -22,8 +22,12 @@ package aws
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,16 +44,14 @@ import (
 // stack to finish wiring up the features.
 const featureConnectPollInterval = 15 * time.Second
 
-// ManagedAccountArtifacts holds the output of the validate-and-create step
-// (phase 1) of the RSC-managed AWS (BaaS) onboarding flow. It carries the
-// CloudFormation template information needed to deploy the stack, plus the
-// values that the finalize step (phase 2) must pass back to RSC.
+// ManagedAccountArtifacts holds the output of RegisterManagedAccount: the RSC
+// cloud account ID plus the CloudFormation template information needed to
+// deploy the cross-account stack.
 type ManagedAccountArtifacts struct {
+	AccountID         uuid.UUID
 	CloudFormationURL string
 	TemplateURL       string
 	StackName         string
-	ExternalID        string
-	AWSIamPairID      string
 	Name              string
 }
 
@@ -106,13 +108,10 @@ func BaaSSupportedRegions() []awsregions.Region {
 	}
 }
 
-// resolveBaasFeatures expands the given feature names into the full set of
-// permission groups (and their versions) supported by the BaaS service type.
-// It returns the features with all permission groups populated (for the
-// *WithPermissionsGroups inputs) and the matching feature versions (for the
-// finalize step). When featureNames is empty the BaaS default feature set is
-// used.
-func (a API) resolveBaasFeatures(ctx context.Context, featureNames []string) ([]core.Feature, []gqlaws.FeatureVersion, error) {
+// baasFeatures expands the given feature names into features with all of their
+// BaaS permission groups populated, for use in the validate and finalize
+// inputs. When featureNames is empty the BaaS default feature set is used.
+func (a API) baasFeatures(ctx context.Context, featureNames []string) ([]core.Feature, error) {
 	if len(featureNames) == 0 {
 		featureNames = BaaSDefaultFeatureNames()
 	}
@@ -124,35 +123,30 @@ func (a API) resolveBaasFeatures(ctx context.Context, featureNames []string) ([]
 
 	groups, err := gqlaws.Wrap(a.client).AllPermissionsGroupsByFeature(ctx, lookup, gqlaws.ServiceTypeBaaS)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to look up BaaS permission groups: %s", err)
+		return nil, fmt.Errorf("failed to look up BaaS permission groups: %s", err)
 	}
 
 	features := make([]core.Feature, 0, len(groups))
-	versions := make([]gqlaws.FeatureVersion, 0, len(groups))
 	for _, group := range groups {
 		feature := core.Feature{Name: group.Feature}
-		version := gqlaws.FeatureVersion{Name: group.Feature}
 		for _, pg := range group.PermissionGroups {
 			feature = feature.WithPermissionGroups(pg.PermissionGroup)
-			version.PermissionGroupsVersion = append(version.PermissionGroupsVersion, struct {
-				PermissionGroups string `json:"permissionsGroup"`
-				Version          int    `json:"version"`
-			}{PermissionGroups: string(pg.PermissionGroup), Version: pg.Version})
 		}
 		features = append(features, feature)
-		versions = append(versions, version)
 	}
 
-	return features, versions, nil
+	return features, nil
 }
 
-// PrepareManagedAccount runs the validate-and-create step of the RSC-managed
-// AWS (BaaS) onboarding flow and returns the CloudFormation artifacts. It does
-// NOT create the CloudFormation stack - that is the caller's responsibility
-// (e.g. the Terraform AWS provider). The returned artifacts must be passed to
-// OnboardManagedAccount once the stack has been deployed. When featureNames is
-// empty the BaaS default feature set is used.
-func (a API) PrepareManagedAccount(ctx context.Context, account AccountFunc, featureNames []string, opts ...OptionFunc) (ManagedAccountArtifacts, error) {
+// RegisterManagedAccount runs the first phase of the RSC-managed AWS (BaaS)
+// onboarding flow: it validates the account, registers it with RSC (finalize)
+// and returns the RSC cloud account ID together with the CloudFormation
+// template information. The caller must then deploy the CloudFormation stack
+// (e.g. with the Terraform AWS provider) and call CompleteManagedAccountOnboarding.
+//
+// When featureNames is empty the BaaS default feature set is used and when
+// regions is empty the BaaS-supported region set is used.
+func (a API) RegisterManagedAccount(ctx context.Context, account AccountFunc, featureNames []string, regions []awsregions.Region, opts ...OptionFunc) (ManagedAccountArtifacts, error) {
 	a.log.Print(log.Trace)
 
 	if account == nil {
@@ -173,111 +167,216 @@ func (a API) PrepareManagedAccount(ctx context.Context, account AccountFunc, fea
 		config.name = options.name
 	}
 
-	// If there already is an RSC cloud account for the given AWS account we use
-	// the same account name. RSC does not allow the name to change between
-	// features.
+	// Reconcile the account name. RSC does not allow the name to change between
+	// features, so an existing account keeps its name. A caller-supplied name is
+	// honored (never silently overwritten); a conflict with an existing account
+	// is reported as an error rather than a name change.
 	cloudAccount, err := a.AccountByNativeID(ctx, config.NativeID)
-	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
+	switch {
+	case err == nil:
+		if config.name != "" && config.name != cloudAccount.Name {
+			return ManagedAccountArtifacts{}, fmt.Errorf(
+				"AWS account %s is already registered in RSC as %q; use that name or omit it",
+				config.NativeID, cloudAccount.Name)
+		}
+		config.name = cloudAccount.Name
+	case errors.Is(err, graphql.ErrNotFound):
+		if config.name == "" {
+			config.name = config.NativeID
+		}
+	default:
 		return ManagedAccountArtifacts{}, fmt.Errorf("failed to get account: %s", err)
 	}
-	if err == nil {
-		config.name = cloudAccount.Name
+
+	if len(regions) == 0 {
+		regions = BaaSSupportedRegions()
 	}
 
-	features, _, err := a.resolveBaasFeatures(ctx, featureNames)
+	features, err := a.baasFeatures(ctx, featureNames)
 	if err != nil {
 		return ManagedAccountArtifacts{}, err
 	}
 
+	// 1. Validate and create - generates the CloudFormation template and returns
+	// the feature versions.
 	init, err := gqlaws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.cloud, config.NativeID, config.name, features, "", gqlaws.ServiceTypeBaaS)
 	if err != nil {
 		return ManagedAccountArtifacts{}, fmt.Errorf("failed to validate and create account: %s", err)
 	}
 
+	// 2. Finalize - registers the account so RSC can process the stack's
+	// notifier callback. This must happen before the CloudFormation stack is
+	// deployed.
+	if err := gqlaws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, gqlaws.FinalizeCloudAccountProtectionParams{
+		Cloud:       config.cloud,
+		NativeID:    config.NativeID,
+		Name:        config.name,
+		Features:    features,
+		Regions:     regions,
+		ServiceType: gqlaws.ServiceTypeBaaS,
+		Initiate:    init,
+	}); err != nil {
+		return ManagedAccountArtifacts{}, fmt.Errorf("failed to finalize account protection: %s", err)
+	}
+
+	// 3. Resolve the RSC cloud account ID created by the finalize step.
+	registered, err := a.AccountByNativeID(ctx, config.NativeID)
+	if err != nil {
+		return ManagedAccountArtifacts{}, fmt.Errorf("failed to get account after finalize: %s", err)
+	}
+
 	return ManagedAccountArtifacts{
+		AccountID:         registered.ID,
 		CloudFormationURL: init.CloudFormationURL,
 		TemplateURL:       init.TemplateURL,
 		StackName:         init.StackName,
-		ExternalID:        init.ExternalID,
-		AWSIamPairID:      init.AWSIamPairID,
 		Name:              config.name,
 	}, nil
 }
 
-// OnboardManagedAccount runs the post-CloudFormation steps of the RSC-managed
-// AWS (BaaS) onboarding flow: it finalizes the account protection, triggers
+// CompleteManagedAccountOnboarding runs the final phase of the RSC-managed AWS
+// (BaaS) onboarding flow for the account with the specified RSC cloud account
+// ID. It must be called after the CloudFormation stack has been deployed. The
+// account's features and regions are read from RSC (they were set by
+// RegisterManagedAccount), so they are not passed in again. It triggers
 // CloudFormation status polling, waits for all features to connect and then
-// completes the BaaS onboarding. It returns the RSC cloud account ID. When
-// regions is empty the BaaS-supported region set is used, and when featureNames
-// is empty the BaaS default feature set is used.
-func (a API) OnboardManagedAccount(ctx context.Context, account AccountFunc, featureNames []string, regions []awsregions.Region, artifacts ManagedAccountArtifacts, opts ...OptionFunc) (uuid.UUID, error) {
+// completes the BaaS onboarding.
+func (a API) CompleteManagedAccountOnboarding(ctx context.Context, accountID uuid.UUID) error {
 	a.log.Print(log.Trace)
 
-	if account == nil {
-		return uuid.Nil, errors.New("account is not allowed to be nil")
+	account, err := a.AccountByID(ctx, accountID)
+	if err != nil {
+		return fmt.Errorf("failed to get account: %s", err)
 	}
 
-	config, err := account(ctx)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to lookup account: %s", err)
-	}
-	var options options
-	for _, option := range opts {
-		if err := option(ctx, &options); err != nil {
-			return uuid.Nil, fmt.Errorf("failed to lookup option: %s", err)
+	features := make([]core.Feature, 0, len(account.Features))
+	regionSet := make(map[awsregions.Region]struct{})
+	for _, feature := range account.Features {
+		features = append(features, core.Feature{Name: feature.Name})
+		for _, name := range feature.Regions {
+			if region := awsregions.RegionFromAny(name); region != awsregions.RegionUnknown {
+				regionSet[region] = struct{}{}
+			}
 		}
 	}
-	if options.name != "" {
-		config.name = options.name
-	}
-	if config.name == "" {
-		config.name = artifacts.Name
+	regions := make([]awsregions.Region, 0, len(regionSet))
+	for region := range regionSet {
+		regions = append(regions, region)
 	}
 	if len(regions) == 0 {
 		regions = BaaSSupportedRegions()
 	}
 
-	features, versions, err := a.resolveBaasFeatures(ctx, featureNames)
-	if err != nil {
-		return uuid.Nil, err
-	}
-
-	// 1. Finalize the account protection. This creates the RSC cloud account.
-	init := gqlaws.CloudAccountInitiate{
-		ExternalID:      artifacts.ExternalID,
-		AWSIamPairID:    artifacts.AWSIamPairID,
-		StackName:       artifacts.StackName,
-		FeatureVersions: versions,
-	}
-	if err := gqlaws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, config.NativeID, config.name, features, regions, artifacts.AWSIamPairID, gqlaws.ServiceTypeBaaS, init); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to finalize account protection: %s", err)
-	}
-
-	// 2. Resolve the RSC cloud account ID created by the finalize step.
-	cloudAccount, err := a.AccountByNativeID(ctx, config.NativeID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to get account after finalize: %s", err)
-	}
-	accountID := cloudAccount.ID
-
-	// 3. Trigger CloudFormation status polling. This is best-effort - RSC will
-	// also reconcile the status on its own, so a failure here is logged and the
-	// onboarding continues.
-	if err := gqlaws.Wrap(a.client).TriggerCftStatusPolling(ctx, config.NativeID, features); err != nil {
+	// 1. Trigger CloudFormation status polling. Best-effort - RSC also reconciles
+	// the status on its own, so a failure here is logged and onboarding continues.
+	if err := gqlaws.Wrap(a.client).TriggerCftStatusPolling(ctx, account.NativeID, features); err != nil {
 		a.log.Printf(log.Warn, "failed to trigger CloudFormation status polling, continuing: %s", err)
 	}
 
-	// 4. Wait for all features to connect.
+	// 2. Wait for all features to connect.
 	if err := a.waitForFeaturesConnected(ctx, accountID, features); err != nil {
-		return uuid.Nil, err
+		return err
 	}
 
-	// 5. Complete the BaaS onboarding.
-	if err := gqlaws.Wrap(a.client).CompleteBaasOnboarding(ctx, accountID, config.NativeID, config.name, features, regions); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to complete BaaS onboarding: %s", err)
+	// 3. Complete the BaaS onboarding.
+	if err := gqlaws.Wrap(a.client).CompleteBaasOnboarding(ctx, accountID, account.NativeID, account.Name, features, regions); err != nil {
+		return fmt.Errorf("failed to complete BaaS onboarding: %s", err)
 	}
 
-	return accountID, nil
+	return nil
+}
+
+// PrepareManagedAccountUpdate reports whether the account's deployed permissions
+// are out of date - i.e. a feature has the MISSING_PERMISSIONS status, which
+// happens when RSC raises a permission version. When an update is needed it
+// returns the CloudFormation template URL to redeploy the stack with the updated
+// permissions; otherwise it returns an empty string. Because it returns an empty
+// string when nothing changed, callers can use it to detect permission drift
+// without churning on the signed (ever-changing) template URL.
+func (a API) PrepareManagedAccountUpdate(ctx context.Context, accountID uuid.UUID) (string, error) {
+	a.log.Print(log.Trace)
+
+	account, err := a.AccountByID(ctx, accountID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get account: %s", err)
+	}
+
+	var missing []core.Feature
+	for _, feature := range account.Features {
+		if feature.Status == core.StatusMissingPermissions {
+			missing = append(missing, core.Feature{Name: feature.Name})
+		}
+	}
+	if len(missing) == 0 {
+		return "", nil
+	}
+
+	_, templateURL, err := gqlaws.Wrap(a.client).PrepareFeatureUpdateForAwsCloudAccount(ctx, accountID, missing)
+	if err != nil {
+		return "", fmt.Errorf("failed to prepare feature update: %s", err)
+	}
+
+	return templateURL, nil
+}
+
+// ManagedAccountPermissionsVersion returns a deterministic identifier for the
+// latest permission-group versions of the account's features. It changes only
+// when RSC raises a permission version, so it can be used to detect a required
+// permissions upgrade at plan time without churning on the signed (ever-
+// changing) CloudFormation template URL.
+func (a API) ManagedAccountPermissionsVersion(ctx context.Context, accountID uuid.UUID) (string, error) {
+	a.log.Print(log.Trace)
+
+	account, err := a.AccountByID(ctx, accountID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get account: %s", err)
+	}
+
+	lookup := make([]core.Feature, 0, len(account.Features))
+	for _, feature := range account.Features {
+		lookup = append(lookup, core.Feature{Name: feature.Name})
+	}
+
+	groups, err := gqlaws.Wrap(a.client).AllPermissionsGroupsByFeature(ctx, lookup, gqlaws.ServiceTypeBaaS)
+	if err != nil {
+		return "", fmt.Errorf("failed to look up permission versions: %s", err)
+	}
+
+	lines := make([]string, 0)
+	for _, group := range groups {
+		for _, pg := range group.PermissionGroups {
+			lines = append(lines, fmt.Sprintf("%s/%s/%d", group.Feature, pg.PermissionGroup, pg.Version))
+		}
+	}
+	sort.Strings(lines)
+
+	sum := sha256.Sum256([]byte(strings.Join(lines, ";")))
+	return hex.EncodeToString(sum[:]), nil
+}
+
+// CompleteManagedAccountUpdate notifies RSC that the CloudFormation stack has
+// been redeployed with updated permissions for the account's features that were
+// missing permissions, then waits for those features to reconnect. It is the
+// permission-update counterpart of CompleteManagedAccountOnboarding and is run
+// after the CloudFormation stack has been updated.
+func (a API) CompleteManagedAccountUpdate(ctx context.Context, accountID uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	// Notify RSC about every feature that is missing permissions (nil = all).
+	if err := a.PermissionsUpdated(ctx, accountID, nil); err != nil {
+		return fmt.Errorf("failed to notify RSC of updated permissions: %s", err)
+	}
+
+	account, err := a.AccountByID(ctx, accountID)
+	if err != nil {
+		return fmt.Errorf("failed to get account: %s", err)
+	}
+	features := make([]core.Feature, 0, len(account.Features))
+	for _, feature := range account.Features {
+		features = append(features, core.Feature{Name: feature.Name})
+	}
+
+	return a.waitForFeaturesConnected(ctx, accountID, features)
 }
 
 // waitForFeaturesConnected polls RSC until every specified feature of the

@@ -81,7 +81,15 @@ func (a API) AddAccountWithIAM(ctx context.Context, account AccountFunc, feature
 	accountInit := aws.CloudAccountInitiate{
 		FeatureVersions: []aws.FeatureVersion{},
 	}
-	if err := aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, config.NativeID, config.name, features, options.regions, accountInit.AWSIamPairID, aws.ServiceTypeNonBaaS, accountInit); err != nil {
+	if err := aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, aws.FinalizeCloudAccountProtectionParams{
+		Cloud:       config.cloud,
+		NativeID:    config.NativeID,
+		Name:        config.name,
+		Features:    features,
+		Regions:     options.regions,
+		ServiceType: aws.ServiceTypeNonBaaS,
+		Initiate:    accountInit,
+	}); err != nil {
 		return uuid.Nil, fmt.Errorf("failed to add account: %s", err)
 	}
 

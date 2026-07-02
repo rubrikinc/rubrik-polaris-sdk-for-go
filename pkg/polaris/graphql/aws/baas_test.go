@@ -115,8 +115,13 @@ func TestFinalizeCloudAccountProtectionServiceType(t *testing.T) {
 			srv := captureServiceType(t, cancel, &gotWire, response)
 			defer srv.Close()
 
-			err := Wrap(graphql.NewTestClient(srv)).FinalizeCloudAccountProtection(ctx, CloudStandard,
-				"123456789012", "test-account", []core.Feature{core.FeatureCloudNativeProtection}, nil, "", tt.input, CloudAccountInitiate{})
+			err := Wrap(graphql.NewTestClient(srv)).FinalizeCloudAccountProtection(ctx, FinalizeCloudAccountProtectionParams{
+				Cloud:       CloudStandard,
+				NativeID:    "123456789012",
+				Name:        "test-account",
+				Features:    []core.Feature{core.FeatureCloudNativeProtection},
+				ServiceType: tt.input,
+			})
 			if err != nil {
 				t.Fatalf("FinalizeCloudAccountProtection returned error: %v", err)
 			}

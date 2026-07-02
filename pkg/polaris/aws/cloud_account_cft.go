@@ -181,7 +181,15 @@ func (a API) addAccountWithCFT(ctx context.Context, features []core.Feature, con
 		return fmt.Errorf("failed to validate account: %s", err)
 	}
 
-	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, config.cloud, config.NativeID, config.name, features, options.regions, accountInit.AWSIamPairID, aws.ServiceTypeNonBaaS, accountInit)
+	err = aws.Wrap(a.client).FinalizeCloudAccountProtection(ctx, aws.FinalizeCloudAccountProtectionParams{
+		Cloud:       config.cloud,
+		NativeID:    config.NativeID,
+		Name:        config.name,
+		Features:    features,
+		Regions:     options.regions,
+		ServiceType: aws.ServiceTypeNonBaaS,
+		Initiate:    accountInit,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to add account: %s", err)
 	}

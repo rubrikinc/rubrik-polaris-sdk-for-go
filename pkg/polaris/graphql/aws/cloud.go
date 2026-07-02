@@ -225,26 +225,44 @@ func (a API) ValidateAndCreateCloudAccount(ctx context.Context, cloud Cloud, id,
 	return payload.Data.Result.InitiateResponse, nil
 }
 
+// FinalizeCloudAccountProtectionParams holds the parameters for
+// FinalizeCloudAccountProtection.
+type FinalizeCloudAccountProtectionParams struct {
+	Cloud       Cloud
+	NativeID    string
+	Name        string
+	Features    []core.Feature
+	Regions     []aws.Region
+	ServiceType CloudAccountServiceType
+
+	// Initiate is the value returned by ValidateAndCreateCloudAccount. It
+	// carries the external ID, AWS IAM pair ID, stack name and feature versions
+	// needed to finalize the account. The AWS IAM pair ID is empty for the
+	// non-BaaS onboarding flows.
+	Initiate CloudAccountInitiate
+}
+
 // FinalizeCloudAccountProtection finalizes the process of the adding the
 // specified AWS account to RSC. The message returned by the GraphQL API is
 // converted into a Go error. After this function a CloudFormation stack must
 // be created using the information returned by ValidateAndCreateCloudAccount.
-func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id, name string, features []core.Feature, regions []aws.Region, awsIamPairID string, serviceType CloudAccountServiceType, init CloudAccountInitiate) error {
+func (a API) FinalizeCloudAccountProtection(ctx context.Context, params FinalizeCloudAccountProtectionParams) error {
 	a.log.Print(log.Trace)
 
 	// The backend does not accept an unspecified service type; default the
 	// standard onboarding flows to non-BaaS.
+	serviceType := params.ServiceType
 	if serviceType == ServiceTypeUnspecified {
 		serviceType = ServiceTypeNonBaaS
 	}
 
-	featuresWithoutPG, featuresWithPG, err := core.FilterFeaturesOnPermissionGroups(features)
+	featuresWithoutPG, featuresWithPG, err := core.FilterFeaturesOnPermissionGroups(params.Features)
 	if err != nil {
 		return err
 	}
 
-	regionEnums := make([]aws.RegionEnum, 0, len(regions))
-	for _, reg := range regions {
+	regionEnums := make([]aws.RegionEnum, 0, len(params.Regions))
+	for _, reg := range params.Regions {
 		regionEnums = append(regionEnums, reg.ToRegionEnum())
 	}
 	query := finalizeAwsCloudAccountProtectionQuery
@@ -261,16 +279,16 @@ func (a API) FinalizeCloudAccountProtection(ctx context.Context, cloud Cloud, id
 		StackName      string                  `json:"stackName"`
 		ServiceType    CloudAccountServiceType `json:"serviceType,omitempty"`
 	}{
-		Cloud:          cloud,
-		ID:             id,
-		Name:           name,
+		Cloud:          params.Cloud,
+		ID:             params.NativeID,
+		Name:           params.Name,
 		Regions:        regionEnums,
-		ExternalID:     init.ExternalID,
-		AWSIamPairID:   awsIamPairID,
-		FeatureVersion: init.FeatureVersions,
+		ExternalID:     params.Initiate.ExternalID,
+		AWSIamPairID:   params.Initiate.AWSIamPairID,
+		FeatureVersion: params.Initiate.FeatureVersions,
 		Features:       featuresWithoutPG,
 		FeaturesWithPG: featuresWithPG,
-		StackName:      init.StackName,
+		StackName:      params.Initiate.StackName,
 		ServiceType:    serviceType,
 	})
 	if err != nil {
