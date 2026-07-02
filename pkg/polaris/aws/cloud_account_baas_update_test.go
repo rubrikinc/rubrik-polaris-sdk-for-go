@@ -215,3 +215,29 @@ func TestManagedAccountPermissionsVersion(t *testing.T) {
 		t.Errorf("expected the version to change after a permission bump, still %q", v2)
 	}
 }
+
+// TestFeaturesForRemovalOrdersCloudDiscoveryLast verifies the removal ordering:
+// protection features first, CLOUD_DISCOVERY last (RSC rejects removing Cloud
+// Discovery while protection features remain). This ordering is used by both
+// DisableManagedAccount and FinalizeManagedAccountDeletion.
+func TestFeaturesForRemovalOrdersCloudDiscoveryLast(t *testing.T) {
+	features := []Feature{
+		{Feature: core.FeatureCloudDiscovery},
+		{Feature: core.FeatureCloudNativeProtection},
+		{Feature: core.FeatureRDSProtection},
+		{Feature: core.FeatureCloudNativeS3Protection},
+	}
+
+	ordered := featuresForRemoval(features)
+	if len(ordered) != len(features) {
+		t.Fatalf("got %d features, want %d", len(ordered), len(features))
+	}
+	if !ordered[len(ordered)-1].Equal(core.FeatureCloudDiscovery) {
+		t.Errorf("CLOUD_DISCOVERY must be removed last, got order: %v", ordered)
+	}
+	for _, feature := range ordered[:len(ordered)-1] {
+		if feature.Equal(core.FeatureCloudDiscovery) {
+			t.Errorf("CLOUD_DISCOVERY appears before the last position: %v", ordered)
+		}
+	}
+}

@@ -379,6 +379,79 @@ func (a API) CompleteManagedAccountUpdate(ctx context.Context, accountID uuid.UU
 	return a.waitForFeaturesConnected(ctx, accountID, features)
 }
 
+// featuresForRemoval orders an account's features for removal: protection
+// features first and CLOUD_DISCOVERY last, because RSC rejects removing Cloud
+// Discovery while protection features remain.
+func featuresForRemoval(features []Feature) []core.Feature {
+	protection := make([]core.Feature, 0, len(features))
+	var discovery []core.Feature
+	for _, feature := range features {
+		if feature.Equal(core.FeatureCloudDiscovery) {
+			discovery = append(discovery, feature.Feature)
+		} else {
+			protection = append(protection, feature.Feature)
+		}
+	}
+	return append(protection, discovery...)
+}
+
+// DisableManagedAccount disables all of the account's features - protection
+// features first, Cloud Discovery last - so the account can be removed. When
+// deleteSnapshots is true the features' snapshots are deleted. It waits for the
+// asynchronous disable jobs to finish so the CloudFormation stack can be safely
+// deleted afterwards. It is a no-op if the account no longer exists.
+//
+// This is the first step of removal (before the CloudFormation stack is
+// deleted): disable everything, then let the stack be deleted, then finalize
+// with FinalizeManagedAccountDeletion.
+func (a API) DisableManagedAccount(ctx context.Context, accountID uuid.UUID, deleteSnapshots bool) error {
+	a.log.Print(log.Trace)
+
+	account, err := a.AccountByID(ctx, accountID)
+	if errors.Is(err, graphql.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to get account: %s", err)
+	}
+
+	for _, feature := range featuresForRemoval(account.Features) {
+		if err := a.disableFeature(ctx, account, feature, deleteSnapshots); err != nil {
+			return fmt.Errorf("failed to disable feature %s: %s", feature.Name, err)
+		}
+	}
+
+	return nil
+}
+
+// FinalizeManagedAccountDeletion removes the account from RSC after its
+// CloudFormation stack has been deleted. For each feature (Cloud Discovery
+// last) it prepares and finalizes the deletion. It is a no-op if the account
+// has already been removed - e.g. the deleted stack's notifier already removed
+// it - so it is safe to run unconditionally.
+func (a API) FinalizeManagedAccountDeletion(ctx context.Context, accountID uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	account, err := a.AccountByID(ctx, accountID)
+	if errors.Is(err, graphql.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to get account: %s", err)
+	}
+
+	for _, feature := range featuresForRemoval(account.Features) {
+		if _, err := gqlaws.Wrap(a.client).PrepareCloudAccountDeletion(ctx, accountID, feature); err != nil {
+			return fmt.Errorf("failed to prepare deletion of feature %s: %s", feature.Name, err)
+		}
+		if err := gqlaws.Wrap(a.client).FinalizeCloudAccountDeletion(ctx, accountID, feature); err != nil {
+			return fmt.Errorf("failed to finalize deletion of feature %s: %s", feature.Name, err)
+		}
+	}
+
+	return nil
+}
+
 // waitForFeaturesConnected polls RSC until every specified feature of the
 // account reaches the CONNECTED status, or until the context is cancelled.
 func (a API) waitForFeaturesConnected(ctx context.Context, accountID uuid.UUID, features []core.Feature) error {
