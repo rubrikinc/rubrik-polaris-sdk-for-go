@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 )
 
 const (
@@ -259,12 +260,37 @@ func AllRegionNames() []string {
 	return regions
 }
 
+// BaaSSupported returns true if the region is supported by the RSC-managed AWS
+// (BaaS) onboarding flow.
+func (region Region) BaaSSupported() bool {
+	return regionInfoMap[region].baasSupported
+}
+
+// BaaSSupportedRegions returns all the regions supported by the RSC-managed AWS
+// (BaaS) onboarding flow, sorted by name. This is a curated allow-list (RSC
+// exposes no API for it) and is not simply the commercial partition - GovCloud,
+// China, ISO and the Middle East regions are excluded.
+func BaaSSupportedRegions() []Region {
+	regions := make([]Region, 0)
+	for region, info := range regionInfoMap {
+		if info.baasSupported {
+			regions = append(regions, region)
+		}
+	}
+	sort.Slice(regions, func(i, j int) bool {
+		return regions[i].Name() < regions[j].Name()
+	})
+
+	return regions
+}
+
 var regionInfoMap = map[Region]struct {
 	name                     string
 	displayName              string
 	regionEnum               string
 	nativeRegionEnum         string
 	regionForReplicationEnum string
+	baasSupported            bool
 }{
 	RegionSource: {
 		name:                     "n/a",
@@ -286,6 +312,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AF_SOUTH_1",
 		nativeRegionEnum:         "AF_SOUTH_1",
 		regionForReplicationEnum: "AF_SOUTH_1",
+		baasSupported:            true,
 	},
 	RegionApEast1: {
 		name:                     "ap-east-1",
@@ -293,6 +320,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_EAST_1",
 		nativeRegionEnum:         "AP_EAST_1",
 		regionForReplicationEnum: "AP_EAST_1",
+		baasSupported:            true,
 	},
 	RegionApNorthEast1: {
 		name:                     "ap-northeast-1",
@@ -300,6 +328,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_NORTHEAST_1",
 		nativeRegionEnum:         "AP_NORTHEAST_1",
 		regionForReplicationEnum: "AP_NORTHEAST_1",
+		baasSupported:            true,
 	},
 	RegionApNorthEast2: {
 		name:                     "ap-northeast-2",
@@ -307,6 +336,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_NORTHEAST_2",
 		nativeRegionEnum:         "AP_NORTHEAST_2",
 		regionForReplicationEnum: "AP_NORTHEAST_2",
+		baasSupported:            true,
 	},
 	RegionApNorthEast3: {
 		name:                     "ap-northeast-3",
@@ -314,6 +344,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_NORTHEAST_3",
 		nativeRegionEnum:         "AP_NORTHEAST_3",
 		regionForReplicationEnum: "AP_NORTHEAST_3",
+		baasSupported:            true,
 	},
 	RegionApSouthEast1: {
 		name:                     "ap-southeast-1",
@@ -321,6 +352,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTHEAST_1",
 		nativeRegionEnum:         "AP_SOUTHEAST_1",
 		regionForReplicationEnum: "AP_SOUTHEAST_1",
+		baasSupported:            true,
 	},
 	RegionApSouthEast2: {
 		name:                     "ap-southeast-2",
@@ -328,6 +360,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTHEAST_2",
 		nativeRegionEnum:         "AP_SOUTHEAST_2",
 		regionForReplicationEnum: "AP_SOUTHEAST_2",
+		baasSupported:            true,
 	},
 	RegionApSouthEast3: {
 		name:                     "ap-southeast-3",
@@ -335,6 +368,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTHEAST_3",
 		nativeRegionEnum:         "AP_SOUTHEAST_3",
 		regionForReplicationEnum: "AP_SOUTHEAST_3",
+		baasSupported:            true,
 	},
 	RegionApSouthEast4: {
 		name:                     "ap-southeast-4",
@@ -342,6 +376,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTHEAST_4",
 		nativeRegionEnum:         "AP_SOUTHEAST_4",
 		regionForReplicationEnum: "AP_SOUTHEAST_4",
+		baasSupported:            true,
 	},
 	RegionApSouthEast5: {
 		name:                     "ap-southeast-5",
@@ -349,6 +384,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTHEAST_5",
 		nativeRegionEnum:         "AP_SOUTHEAST_5",
 		regionForReplicationEnum: "",
+		baasSupported:            true,
 	},
 	RegionApSouthEast7: {
 		name:                     "ap-southeast-7",
@@ -356,6 +392,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTHEAST_7",
 		nativeRegionEnum:         "AP_SOUTHEAST_7",
 		regionForReplicationEnum: "",
+		baasSupported:            true,
 	},
 	RegionApSouth1: {
 		name:                     "ap-south-1",
@@ -363,6 +400,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTH_1",
 		nativeRegionEnum:         "AP_SOUTH_1",
 		regionForReplicationEnum: "AP_SOUTH_1",
+		baasSupported:            true,
 	},
 	RegionApSouth2: {
 		name:                     "ap-south-2",
@@ -370,6 +408,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTH_2",
 		nativeRegionEnum:         "AP_SOUTH_2",
 		regionForReplicationEnum: "AP_SOUTH_2",
+		baasSupported:            true,
 	},
 	RegionCaCentral1: {
 		name:                     "ca-central-1",
@@ -377,6 +416,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "CA_CENTRAL_1",
 		nativeRegionEnum:         "CA_CENTRAL_1",
 		regionForReplicationEnum: "CA_CENTRAL_1",
+		baasSupported:            true,
 	},
 	RegionCaWest1: {
 		name:                     "ca-west-1",
@@ -384,6 +424,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "CA_WEST_1",
 		nativeRegionEnum:         "CA_WEST_1",
 		regionForReplicationEnum: "CA_WEST_1",
+		baasSupported:            true,
 	},
 	RegionCnNorthWest1: {
 		name:                     "cn-northwest-1",
@@ -405,6 +446,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_CENTRAL_1",
 		nativeRegionEnum:         "EU_CENTRAL_1",
 		regionForReplicationEnum: "EU_CENTRAL_1",
+		baasSupported:            true,
 	},
 	RegionEuCentral2: {
 		name:                     "eu-central-2",
@@ -412,6 +454,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_CENTRAL_2",
 		nativeRegionEnum:         "EU_CENTRAL_2",
 		regionForReplicationEnum: "",
+		baasSupported:            true,
 	},
 	RegionEuNorth1: {
 		name:                     "eu-north-1",
@@ -419,6 +462,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_NORTH_1",
 		nativeRegionEnum:         "EU_NORTH_1",
 		regionForReplicationEnum: "EU_NORTH_1",
+		baasSupported:            true,
 	},
 	RegionEuSouth1: {
 		name:                     "eu-south-1",
@@ -426,6 +470,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_SOUTH_1",
 		nativeRegionEnum:         "EU_SOUTH_1",
 		regionForReplicationEnum: "EU_SOUTH_1",
+		baasSupported:            true,
 	},
 	RegionEuSouth2: {
 		name:                     "eu-south-2",
@@ -433,6 +478,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_SOUTH_2",
 		nativeRegionEnum:         "EU_SOUTH_2",
 		regionForReplicationEnum: "EU_SOUTH_2",
+		baasSupported:            true,
 	},
 	RegionEuWest1: {
 		name:                     "eu-west-1",
@@ -440,6 +486,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_WEST_1",
 		nativeRegionEnum:         "EU_WEST_1",
 		regionForReplicationEnum: "EU_WEST_1",
+		baasSupported:            true,
 	},
 	RegionEuWest2: {
 		name:                     "eu-west-2",
@@ -447,6 +494,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_WEST_2",
 		nativeRegionEnum:         "EU_WEST_2",
 		regionForReplicationEnum: "EU_WEST_2",
+		baasSupported:            true,
 	},
 	RegionEuWest3: {
 		name:                     "eu-west-3",
@@ -454,6 +502,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_WEST_3",
 		nativeRegionEnum:         "EU_WEST_3",
 		regionForReplicationEnum: "EU_WEST_3",
+		baasSupported:            true,
 	},
 	RegionIlCentral1: {
 		name:                     "il-central-1",
@@ -461,6 +510,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "IL_CENTRAL_1",
 		nativeRegionEnum:         "IL_CENTRAL_1",
 		regionForReplicationEnum: "IL_CENTRAL_1",
+		baasSupported:            true,
 	},
 	RegionMeCentral1: {
 		name:                     "me-central-1",
@@ -482,6 +532,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "MX_CENTRAL_1",
 		nativeRegionEnum:         "MX_CENTRAL_1",
 		regionForReplicationEnum: "",
+		baasSupported:            true,
 	},
 	RegionSaEast1: {
 		name:                     "sa-east-1",
@@ -489,6 +540,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "SA_EAST_1",
 		nativeRegionEnum:         "SA_EAST_1",
 		regionForReplicationEnum: "SA_EAST_1",
+		baasSupported:            true,
 	},
 	RegionUsEast1: {
 		name:                     "us-east-1",
@@ -496,6 +548,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "US_EAST_1",
 		regionForReplicationEnum: "US_EAST_1",
 		nativeRegionEnum:         "US_EAST_1",
+		baasSupported:            true,
 	},
 	RegionUsEast2: {
 		name:                     "us-east-2",
@@ -503,6 +556,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "US_EAST_2",
 		nativeRegionEnum:         "US_EAST_2",
 		regionForReplicationEnum: "US_EAST_2",
+		baasSupported:            true,
 	},
 	RegionUsGovEast1: {
 		name:                     "us-gov-east-1",
@@ -524,6 +578,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "US_WEST_1",
 		nativeRegionEnum:         "US_WEST_1",
 		regionForReplicationEnum: "US_WEST_1",
+		baasSupported:            true,
 	},
 	RegionUsWest2: {
 		name:                     "us-west-2",
@@ -531,6 +586,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "US_WEST_2",
 		nativeRegionEnum:         "US_WEST_2",
 		regionForReplicationEnum: "US_WEST_2",
+		baasSupported:            true,
 	},
 	RegionUsISOEast1: {
 		name:                     "us-iso-east-1",

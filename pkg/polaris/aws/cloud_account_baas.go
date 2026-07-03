@@ -68,44 +68,12 @@ func BaaSDefaultFeatureNames() []string {
 	}
 }
 
-// BaaSSupportedRegions returns the AWS commercial regions supported by the
-// RSC-managed AWS (BaaS) onboarding flow. It is used as the default region set
-// when the caller does not specify regions explicitly. This is a curated
-// allow-list (RSC exposes no API for it) and is not simply the commercial
-// partition - GovCloud, China, ISO and the Middle East regions are excluded.
+// BaaSSupportedRegions returns the AWS regions supported by the RSC-managed AWS
+// (BaaS) onboarding flow. It is used as the default region set when the caller
+// does not specify regions explicitly. The allow-list is maintained on the
+// region table itself (see awsregions.BaaSSupportedRegions).
 func BaaSSupportedRegions() []awsregions.Region {
-	return []awsregions.Region{
-		awsregions.RegionAfSouth1,
-		awsregions.RegionApEast1,
-		awsregions.RegionApNorthEast1,
-		awsregions.RegionApNorthEast2,
-		awsregions.RegionApNorthEast3,
-		awsregions.RegionApSouthEast1,
-		awsregions.RegionApSouthEast2,
-		awsregions.RegionApSouthEast3,
-		awsregions.RegionApSouthEast4,
-		awsregions.RegionApSouthEast5,
-		awsregions.RegionApSouthEast7,
-		awsregions.RegionApSouth1,
-		awsregions.RegionApSouth2,
-		awsregions.RegionCaCentral1,
-		awsregions.RegionCaWest1,
-		awsregions.RegionEuCentral1,
-		awsregions.RegionEuCentral2,
-		awsregions.RegionEuNorth1,
-		awsregions.RegionEuSouth1,
-		awsregions.RegionEuSouth2,
-		awsregions.RegionEuWest1,
-		awsregions.RegionEuWest2,
-		awsregions.RegionEuWest3,
-		awsregions.RegionIlCentral1,
-		awsregions.RegionMxCentral1,
-		awsregions.RegionSaEast1,
-		awsregions.RegionUsEast1,
-		awsregions.RegionUsEast2,
-		awsregions.RegionUsWest1,
-		awsregions.RegionUsWest2,
-	}
+	return awsregions.BaaSSupportedRegions()
 }
 
 // baasFeatures expands the given feature names into features with all of their
