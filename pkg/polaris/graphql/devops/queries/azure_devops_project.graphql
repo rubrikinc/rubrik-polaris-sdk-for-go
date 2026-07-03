@@ -1,0 +1,12 @@
+query RubrikPolarisSDKRequest($workloadId: UUID!) {
+  result: azureDevOpsProject(workloadId: $workloadId) {
+    id
+    nativeId
+    name
+    orgId
+    orgName
+    url
+    repoCount
+    objectType
+  }
+}

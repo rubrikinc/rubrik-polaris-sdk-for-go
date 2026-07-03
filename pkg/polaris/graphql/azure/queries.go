@@ -256,6 +256,25 @@ var setAzureCloudAccountCustomerAppCredentialsQuery = `mutation SdkGolangSetAzur
     })
 }`
 
+// setRubrikCustomerAppForAzureDevops GraphQL query
+var setRubrikCustomerAppForAzureDevopsQuery = `mutation SdkGolangSetRubrikCustomerAppForAzureDevops(
+  $tenantDomain:  String!,
+  $cloudType:     AzureCloudType!,
+  $appName:       String,
+  $clientId:      String!,
+  $clientSecret:  String!,
+  $shouldReplace: Boolean,
+) {
+  result: azureSetRubrikCustomerAppForAzureDevops(input: {
+    tenantDomain:  $tenantDomain,
+    cloudType:     $cloudType,
+    appName:       $appName,
+    clientId:      $clientId,
+    clientSecret:  $clientSecret,
+    shouldReplace: $shouldReplace,
+  })
+}`
+
 // startDisableAzureCloudAccountJob GraphQL query
 var startDisableAzureCloudAccountJobQuery = `mutation SdkGolangStartDisableAzureCloudAccountJob($cloudAccountId: UUID!, $feature: CloudAccountFeature!) {
   result: startDisableAzureCloudAccountJob(input: {

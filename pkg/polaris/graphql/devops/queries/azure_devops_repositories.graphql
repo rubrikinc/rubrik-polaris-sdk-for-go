@@ -1,0 +1,32 @@
+query RubrikPolarisSDKRequest(
+  $first:      Int,
+  $after:      String,
+  $queryType:  QueryType!,
+  $ancestorId: String!,
+  $filter:     [Filter!]!,
+) {
+  result: azureDevOpsRepositories(
+    first:      $first,
+    after:      $after,
+    queryType:  $queryType,
+    ancestorId: $ancestorId,
+    filter:     $filter,
+  ) {
+    nodes {
+      id
+      name
+      orgId
+      orgName
+      projectId
+      projectName
+      url
+      size
+      objectType
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+    count
+  }
+}

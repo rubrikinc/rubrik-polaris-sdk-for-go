@@ -1,0 +1,56 @@
+query RubrikPolarisSDKRequest(
+  $first:      Int,
+  $after:      String,
+  $queryType:  QueryType!,
+  $ancestorId: String!,
+  $filter:     [Filter!]!,
+) {
+  result: azureDevOpsOrganizations(
+    first:      $first,
+    after:      $after,
+    queryType:  $queryType,
+    ancestorId: $ancestorId,
+    filter:     $filter,
+  ) {
+    nodes {
+      id
+      nativeId
+      tenantId
+      tenantUuid
+      connectionStatus
+      authenticationMechanism
+      clientId
+      repoHostType
+      devOpsOrgType
+      projectCount
+      repoCount
+      lastRefreshTime
+      name
+      objectType
+      backupLocation {
+        id
+        archivalGroupId
+        name
+        storageType
+      }
+      cloudNativeExocompute {
+        id
+        hostName
+        region {
+          region {
+            azureRegion
+          }
+        }
+      }
+      rubrikHostedExocompute {
+        exocomputeClusterId
+        region
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+    count
+  }
+}
