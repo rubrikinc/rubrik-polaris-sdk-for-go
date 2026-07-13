@@ -1,0 +1,16 @@
+query RubrikPolarisSDKRequest(
+  $tenantId:                      String!,
+  $cloudType:                     AzureCloudType!,
+  $featuresWithPermissionsGroups: [FeatureWithPermissionsGroups!]!,
+  $organizationNativeIds:         [String!],
+) {
+  result: generateAzureDevOpsOnboardingScript(input: {
+    tenantId:                      $tenantId,
+    cloudType:                     $cloudType,
+    featuresWithPermissionsGroups: $featuresWithPermissionsGroups,
+    organizationNativeIds:         $organizationNativeIds,
+  }) {
+    bashScript
+    powershellScript
+  }
+}

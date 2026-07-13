@@ -197,70 +197,76 @@ func (feature Feature) WithPermissionGroups(permissionGroups ...PermissionGroup)
 }
 
 var (
-	FeatureInvalid                                 = Feature{Name: ""}
-	FeatureAll                                     = Feature{Name: "ALL"}
-	FeatureAppFlows                                = Feature{Name: "APP_FLOWS"}
-	FeatureArchival                                = Feature{Name: "ARCHIVAL"}
-	FeatureAzureSQLDBProtection                    = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
-	FeatureAzureSQLMIProtection                    = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
-	FeatureCloudAccounts                           = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
-	FeatureCloudDiscovery                          = Feature{Name: "CLOUD_DISCOVERY"}
-	FeatureCloudNativeArchival                     = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
-	FeatureCloudNativeArchivalEncryption           = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
-	FeatureCloudNativeBlobProtection               = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
-	FeatureCloudNativeDynamoDBProtection           = Feature{Name: "CLOUD_NATIVE_DYNAMODB_PROTECTION"}
-	FeatureCloudNativeProtection                   = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
-	FeatureCloudNativeS3Protection                 = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
-	FeatureCyberRecoveryDataClassificationData     = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_DATA"}
-	FeatureCyberRecoveryDataClassificationMetadata = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_METADATA"}
-	FeatureDSPMData                                = Feature{Name: "DSPM_DATA"}
-	FeatureDSPMMetadata                            = Feature{Name: "DSPM_METADATA"}
-	FeatureExocompute                              = Feature{Name: "EXOCOMPUTE"}
-	FeatureGCPSharedVPCHost                        = Feature{Name: "GCP_SHARED_VPC_HOST"}
-	FeatureKubernetesProtection                    = Feature{Name: "KUBERNETES_PROTECTION"}
-	FeatureLaminarCrossAccount                     = Feature{Name: "LAMINAR_CROSS_ACCOUNT"}
-	FeatureLaminarInternal                         = Feature{Name: "LAMINAR_INTERNAL"}
-	FeatureLaminarOutpostApplication               = Feature{Name: "LAMINAR_OUTPOST_APPLICATION"}
-	FeatureLaminarOutpostManagedIdentity           = Feature{Name: "LAMINAR_OUTPOST_MANAGED_IDENTITY"}
-	FeatureLaminarTargetApplication                = Feature{Name: "LAMINAR_TARGET_APPLICATION"}
-	FeatureLaminarTargetManagedIdentity            = Feature{Name: "LAMINAR_TARGET_MANAGED_IDENTITY"}
-	FeatureOutpost                                 = Feature{Name: "OUTPOST"}
-	FeatureRDSProtection                           = Feature{Name: "RDS_PROTECTION"}
-	FeatureRoleChaining                            = Feature{Name: "ROLE_CHAINING"}
-	FeatureServerAndApps                           = Feature{Name: "SERVERS_AND_APPS"}
+	FeatureInvalid                                     = Feature{Name: ""}
+	FeatureAll                                         = Feature{Name: "ALL"}
+	FeatureAppFlows                                    = Feature{Name: "APP_FLOWS"}
+	FeatureArchival                                    = Feature{Name: "ARCHIVAL"}
+	FeatureAzureDevOpsDeveloperCollaborationProtection = Feature{Name: "AZURE_DEVOPS_DEVELOPER_COLLABORATION_PROTECTION"}
+	FeatureAzureDevOpsProtection                       = Feature{Name: "AZURE_DEVOPS_PROTECTION"}
+	FeatureAzureDevOpsRepositoryProtection             = Feature{Name: "AZURE_DEVOPS_REPOSITORY_PROTECTION"}
+	FeatureAzureSQLDBProtection                        = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
+	FeatureAzureSQLMIProtection                        = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
+	FeatureCloudAccounts                               = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
+	FeatureCloudDiscovery                              = Feature{Name: "CLOUD_DISCOVERY"}
+	FeatureCloudNativeArchival                         = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
+	FeatureCloudNativeArchivalEncryption               = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
+	FeatureCloudNativeBlobProtection                   = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
+	FeatureCloudNativeDynamoDBProtection               = Feature{Name: "CLOUD_NATIVE_DYNAMODB_PROTECTION"}
+	FeatureCloudNativeProtection                       = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
+	FeatureCloudNativeS3Protection                     = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
+	FeatureCyberRecoveryDataClassificationData         = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_DATA"}
+	FeatureCyberRecoveryDataClassificationMetadata     = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_METADATA"}
+	FeatureDSPMData                                    = Feature{Name: "DSPM_DATA"}
+	FeatureDSPMMetadata                                = Feature{Name: "DSPM_METADATA"}
+	FeatureExocompute                                  = Feature{Name: "EXOCOMPUTE"}
+	FeatureGCPSharedVPCHost                            = Feature{Name: "GCP_SHARED_VPC_HOST"}
+	FeatureKubernetesProtection                        = Feature{Name: "KUBERNETES_PROTECTION"}
+	FeatureLaminarCrossAccount                         = Feature{Name: "LAMINAR_CROSS_ACCOUNT"}
+	FeatureLaminarInternal                             = Feature{Name: "LAMINAR_INTERNAL"}
+	FeatureLaminarOutpostApplication                   = Feature{Name: "LAMINAR_OUTPOST_APPLICATION"}
+	FeatureLaminarOutpostManagedIdentity               = Feature{Name: "LAMINAR_OUTPOST_MANAGED_IDENTITY"}
+	FeatureLaminarTargetApplication                    = Feature{Name: "LAMINAR_TARGET_APPLICATION"}
+	FeatureLaminarTargetManagedIdentity                = Feature{Name: "LAMINAR_TARGET_MANAGED_IDENTITY"}
+	FeatureOutpost                                     = Feature{Name: "OUTPOST"}
+	FeatureRDSProtection                               = Feature{Name: "RDS_PROTECTION"}
+	FeatureRoleChaining                                = Feature{Name: "ROLE_CHAINING"}
+	FeatureServerAndApps                               = Feature{Name: "SERVERS_AND_APPS"}
 )
 
 var validFeatures = map[string]struct{}{
-	FeatureAll.Name:                                     {},
-	FeatureAppFlows.Name:                                {},
-	FeatureArchival.Name:                                {},
-	FeatureAzureSQLDBProtection.Name:                    {},
-	FeatureAzureSQLMIProtection.Name:                    {},
-	FeatureCloudAccounts.Name:                           {}, // Deprecated: no replacement.
-	FeatureCloudDiscovery.Name:                          {},
-	FeatureCloudNativeArchival.Name:                     {},
-	FeatureCloudNativeArchivalEncryption.Name:           {},
-	FeatureCloudNativeBlobProtection.Name:               {},
-	FeatureCloudNativeDynamoDBProtection.Name:           {},
-	FeatureCloudNativeProtection.Name:                   {},
-	FeatureCloudNativeS3Protection.Name:                 {},
-	FeatureCyberRecoveryDataClassificationData.Name:     {},
-	FeatureCyberRecoveryDataClassificationMetadata.Name: {},
-	FeatureDSPMData.Name:                                {},
-	FeatureDSPMMetadata.Name:                            {},
-	FeatureExocompute.Name:                              {},
-	FeatureGCPSharedVPCHost.Name:                        {},
-	FeatureKubernetesProtection.Name:                    {},
-	FeatureLaminarCrossAccount.Name:                     {},
-	FeatureLaminarInternal.Name:                         {},
-	FeatureLaminarOutpostApplication.Name:               {},
-	FeatureLaminarOutpostManagedIdentity.Name:           {},
-	FeatureLaminarTargetApplication.Name:                {},
-	FeatureLaminarTargetManagedIdentity.Name:            {},
-	FeatureOutpost.Name:                                 {},
-	FeatureRDSProtection.Name:                           {},
-	FeatureRoleChaining.Name:                            {},
-	FeatureServerAndApps.Name:                           {},
+	FeatureAll.Name:      {},
+	FeatureAppFlows.Name: {},
+	FeatureArchival.Name: {},
+	FeatureAzureDevOpsDeveloperCollaborationProtection.Name: {},
+	FeatureAzureDevOpsProtection.Name:                       {},
+	FeatureAzureDevOpsRepositoryProtection.Name:             {},
+	FeatureAzureSQLDBProtection.Name:                        {},
+	FeatureAzureSQLMIProtection.Name:                        {},
+	FeatureCloudAccounts.Name:                               {}, // Deprecated: no replacement.
+	FeatureCloudDiscovery.Name:                              {},
+	FeatureCloudNativeArchival.Name:                         {},
+	FeatureCloudNativeArchivalEncryption.Name:               {},
+	FeatureCloudNativeBlobProtection.Name:                   {},
+	FeatureCloudNativeDynamoDBProtection.Name:               {},
+	FeatureCloudNativeProtection.Name:                       {},
+	FeatureCloudNativeS3Protection.Name:                     {},
+	FeatureCyberRecoveryDataClassificationData.Name:         {},
+	FeatureCyberRecoveryDataClassificationMetadata.Name:     {},
+	FeatureDSPMData.Name:                                    {},
+	FeatureDSPMMetadata.Name:                                {},
+	FeatureExocompute.Name:                                  {},
+	FeatureGCPSharedVPCHost.Name:                            {},
+	FeatureKubernetesProtection.Name:                        {},
+	FeatureLaminarCrossAccount.Name:                         {},
+	FeatureLaminarInternal.Name:                             {},
+	FeatureLaminarOutpostApplication.Name:                   {},
+	FeatureLaminarOutpostManagedIdentity.Name:               {},
+	FeatureLaminarTargetApplication.Name:                    {},
+	FeatureLaminarTargetManagedIdentity.Name:                {},
+	FeatureOutpost.Name:                                     {},
+	FeatureRDSProtection.Name:                               {},
+	FeatureRoleChaining.Name:                                {},
+	FeatureServerAndApps.Name:                               {},
 }
 
 // AllProtectionFeatures returns the protection features for the specified cloud

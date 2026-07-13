@@ -1,0 +1,9 @@
+mutation RubrikPolarisSDKRequest(
+  $organizationId:  UUID!,
+  $deleteSnapshots: Boolean,
+) {
+  result: deleteAzureDevOpsCloudAccountWithoutOauth(input: {
+    organizationId:  $organizationId,
+    deleteSnapshots: $deleteSnapshots,
+  })
+}

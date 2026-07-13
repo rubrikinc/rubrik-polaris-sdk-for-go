@@ -1,0 +1,17 @@
+mutation RubrikPolarisSDKRequest(
+  $tenantDomain:  String!,
+  $cloudType:     AzureCloudType!,
+  $appName:       String,
+  $clientId:      String!,
+  $clientSecret:  String!,
+  $shouldReplace: Boolean,
+) {
+  result: azureSetRubrikCustomerAppForAzureDevops(input: {
+    tenantDomain:  $tenantDomain,
+    cloudType:     $cloudType,
+    appName:       $appName,
+    clientId:      $clientId,
+    clientSecret:  $clientSecret,
+    shouldReplace: $shouldReplace,
+  })
+}
