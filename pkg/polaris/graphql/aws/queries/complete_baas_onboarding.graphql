@@ -1,0 +1,3 @@
+mutation RubrikPolarisSDKRequest($cloudAccounts: [CloudAccountDetailsInput!]!, $cloudProvider: CloudServiceProvider!, $features: [String!]!, $regions: [CloudRegionInput!]!) {
+    result: completeBaasOnboarding(input: {cloudAccounts: $cloudAccounts, cloudProvider: $cloudProvider, features: $features, regions: $regions})
+}
