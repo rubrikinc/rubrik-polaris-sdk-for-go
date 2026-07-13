@@ -27,12 +27,12 @@ import (
 	awsregions "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
 
-// TestBaaSSupportedRegionsResolve guards against the BaaS region allow-list
-// referencing a region that is not present in the SDK region table (which would
-// silently marshal to an unknown region). Every entry must resolve and
-// round-trip through its name.
-func TestBaaSSupportedRegionsResolve(t *testing.T) {
-	regions := BaaSSupportedRegions()
+// TestManagedAccountSupportedRegionsResolve guards against the BaaS region
+// allow-list referencing a region that is not present in the SDK region table
+// (which would silently marshal to an unknown region). Every entry must
+// resolve and round-trip through its name.
+func TestManagedAccountSupportedRegionsResolve(t *testing.T) {
+	regions := ManagedAccountSupportedRegions()
 	if len(regions) == 0 {
 		t.Fatal("expected a non-empty BaaS supported region set")
 	}
@@ -60,10 +60,10 @@ func TestBaaSSupportedRegionsResolve(t *testing.T) {
 	}
 }
 
-// TestBaaSDefaultFeatureNames pins the default BaaS feature set: EC2, RDS, S3
-// and Cloud Discovery.
-func TestBaaSDefaultFeatureNames(t *testing.T) {
-	got := BaaSDefaultFeatureNames()
+// TestManagedAccountDefaultFeatureNames pins the default BaaS feature set:
+// EC2, RDS, S3 and Cloud Discovery.
+func TestManagedAccountDefaultFeatureNames(t *testing.T) {
+	got := ManagedAccountDefaultFeatureNames()
 	want := []string{
 		"CLOUD_NATIVE_PROTECTION",
 		"RDS_PROTECTION",

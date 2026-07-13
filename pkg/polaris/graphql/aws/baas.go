@@ -52,16 +52,16 @@ const (
 
 // TriggerCftStatusPolling asks RSC to start a background task that polls the
 // CloudFormation stack status in AWS for the specified account and features.
-// The awsNativeID is the AWS account's native ID. This call is best-effort:
+// The accountID is the RSC cloud account ID. This call is best-effort:
 // callers should log and continue on error.
-func (a API) TriggerCftStatusPolling(ctx context.Context, awsNativeID string, features []core.Feature) error {
+func (a API) TriggerCftStatusPolling(ctx context.Context, accountID uuid.UUID, features []core.Feature) error {
 	a.log.Print(log.Trace)
 
 	query := awsTriggerCftStatusPollingQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		AwsCloudAccountID string   `json:"awsCloudAccountId"`
-		Features          []string `json:"features"`
-	}{AwsCloudAccountID: awsNativeID, Features: core.FeatureNames(features)})
+		AwsCloudAccountID uuid.UUID `json:"awsCloudAccountId"`
+		Features          []string  `json:"features"`
+	}{AwsCloudAccountID: accountID, Features: core.FeatureNames(features)})
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}

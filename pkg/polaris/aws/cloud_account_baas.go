@@ -44,22 +44,20 @@ import (
 // stack to finish wiring up the features.
 const featureConnectPollInterval = 15 * time.Second
 
-// ManagedAccountArtifacts holds the output of RegisterManagedAccount: the RSC
-// cloud account ID plus the CloudFormation template information needed to
-// deploy the cross-account stack.
-type ManagedAccountArtifacts struct {
-	AccountID         uuid.UUID
+// ManagedAccountStack holds the CloudFormation template information returned
+// by AddManagedAccount, needed to deploy the RSC-managed AWS (BaaS)
+// cross-account stack.
+type ManagedAccountStack struct {
 	CloudFormationURL string
 	TemplateURL       string
 	StackName         string
-	Name              string
 }
 
-// BaaSDefaultFeatureNames returns the features onboarded by default for the
-// RSC-managed AWS (BaaS) flow: EC2 (CLOUD_NATIVE_PROTECTION), RDS
+// ManagedAccountDefaultFeatureNames returns the features onboarded by default
+// for the RSC-managed AWS (BaaS) flow: EC2 (CLOUD_NATIVE_PROTECTION), RDS
 // (RDS_PROTECTION), S3 (CLOUD_NATIVE_S3_PROTECTION) and Cloud Discovery
 // (CLOUD_DISCOVERY).
-func BaaSDefaultFeatureNames() []string {
+func ManagedAccountDefaultFeatureNames() []string {
 	return []string{
 		core.FeatureCloudNativeProtection.Name,
 		core.FeatureRDSProtection.Name,
@@ -68,20 +66,21 @@ func BaaSDefaultFeatureNames() []string {
 	}
 }
 
-// BaaSSupportedRegions returns the AWS regions supported by the RSC-managed AWS
-// (BaaS) onboarding flow. It is used as the default region set when the caller
-// does not specify regions explicitly. The allow-list is maintained on the
-// region table itself (see awsregions.BaaSSupportedRegions).
-func BaaSSupportedRegions() []awsregions.Region {
+// ManagedAccountSupportedRegions returns the AWS regions supported by the
+// RSC-managed AWS (BaaS) onboarding flow. It is used as the default region set
+// when the caller does not specify regions explicitly. The allow-list is
+// maintained on the region table itself (see awsregions.BaaSSupportedRegions).
+func ManagedAccountSupportedRegions() []awsregions.Region {
 	return awsregions.BaaSSupportedRegions()
 }
 
-// baasFeatures expands the given feature names into features with all of their
-// BaaS permission groups populated, for use in the validate and finalize
-// inputs. When featureNames is empty the BaaS default feature set is used.
-func (a API) baasFeatures(ctx context.Context, featureNames []string) ([]core.Feature, error) {
+// managedAccountFeatures expands the given features into features with all of
+// their BaaS permission groups populated, for use in the validate and finalize
+// inputs. When features is empty the BaaS default feature set is used.
+func (a API) managedAccountFeatures(ctx context.Context, features []core.Feature) ([]core.Feature, error) {
+	featureNames := core.FeatureNames(features)
 	if len(featureNames) == 0 {
-		featureNames = BaaSDefaultFeatureNames()
+		featureNames = ManagedAccountDefaultFeatureNames()
 	}
 
 	lookup := make([]core.Feature, 0, len(featureNames))
@@ -94,41 +93,42 @@ func (a API) baasFeatures(ctx context.Context, featureNames []string) ([]core.Fe
 		return nil, fmt.Errorf("failed to look up BaaS permission groups: %s", err)
 	}
 
-	features := make([]core.Feature, 0, len(groups))
+	expanded := make([]core.Feature, 0, len(groups))
 	for _, group := range groups {
 		feature := core.Feature{Name: group.Feature}
 		for _, pg := range group.PermissionGroups {
 			feature = feature.WithPermissionGroups(pg.PermissionGroup)
 		}
-		features = append(features, feature)
+		expanded = append(expanded, feature)
 	}
 
-	return features, nil
+	return expanded, nil
 }
 
-// RegisterManagedAccount runs the first phase of the RSC-managed AWS (BaaS)
-// onboarding flow: it validates the account, registers it with RSC (finalize)
-// and returns the RSC cloud account ID together with the CloudFormation
-// template information. The caller must then deploy the CloudFormation stack
-// (e.g. with the Terraform AWS provider) and call CompleteManagedAccountOnboarding.
+// AddManagedAccount runs the first (pre-stack) phase of the RSC-managed AWS
+// (BaaS) onboarding flow: it validates the account, registers it with RSC
+// (finalize) and returns the RSC cloud account ID together with the
+// CloudFormation template information. The caller must then deploy the
+// CloudFormation stack (e.g. with the Terraform AWS provider) and call
+// AddManagedAccountFinalize, the post-stack step of this add sequence.
 //
-// When featureNames is empty the BaaS default feature set is used and when
-// regions is empty the BaaS-supported region set is used.
-func (a API) RegisterManagedAccount(ctx context.Context, account AccountFunc, featureNames []string, regions []awsregions.Region, opts ...OptionFunc) (ManagedAccountArtifacts, error) {
+// When features is empty the BaaS default feature set is used and when no
+// Regions option is given the BaaS-supported region set is used.
+func (a API) AddManagedAccount(ctx context.Context, account AccountFunc, features []core.Feature, opts ...OptionFunc) (uuid.UUID, ManagedAccountStack, error) {
 	a.log.Print(log.Trace)
 
 	if account == nil {
-		return ManagedAccountArtifacts{}, errors.New("account is not allowed to be nil")
+		return uuid.Nil, ManagedAccountStack{}, errors.New("account is not allowed to be nil")
 	}
 
 	config, err := account(ctx)
 	if err != nil {
-		return ManagedAccountArtifacts{}, fmt.Errorf("failed to lookup account: %s", err)
+		return uuid.Nil, ManagedAccountStack{}, fmt.Errorf("failed to lookup account: %s", err)
 	}
 	var options options
 	for _, option := range opts {
 		if err := option(ctx, &options); err != nil {
-			return ManagedAccountArtifacts{}, fmt.Errorf("failed to lookup option: %s", err)
+			return uuid.Nil, ManagedAccountStack{}, fmt.Errorf("failed to lookup option: %s", err)
 		}
 	}
 	if options.name != "" {
@@ -143,7 +143,7 @@ func (a API) RegisterManagedAccount(ctx context.Context, account AccountFunc, fe
 	switch {
 	case err == nil:
 		if config.name != "" && config.name != cloudAccount.Name {
-			return ManagedAccountArtifacts{}, fmt.Errorf(
+			return uuid.Nil, ManagedAccountStack{}, fmt.Errorf(
 				"AWS account %s is already registered in RSC as %q; use that name or omit it",
 				config.NativeID, cloudAccount.Name)
 		}
@@ -153,23 +153,24 @@ func (a API) RegisterManagedAccount(ctx context.Context, account AccountFunc, fe
 			config.name = config.NativeID
 		}
 	default:
-		return ManagedAccountArtifacts{}, fmt.Errorf("failed to get account: %s", err)
+		return uuid.Nil, ManagedAccountStack{}, fmt.Errorf("failed to get account: %s", err)
 	}
 
+	regions := options.regions
 	if len(regions) == 0 {
-		regions = BaaSSupportedRegions()
+		regions = ManagedAccountSupportedRegions()
 	}
 
-	features, err := a.baasFeatures(ctx, featureNames)
+	expandedFeatures, err := a.managedAccountFeatures(ctx, features)
 	if err != nil {
-		return ManagedAccountArtifacts{}, err
+		return uuid.Nil, ManagedAccountStack{}, err
 	}
 
 	// 1. Validate and create - generates the CloudFormation template and returns
 	// the feature versions.
-	init, err := gqlaws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.cloud, config.NativeID, config.name, features, "", gqlaws.ServiceTypeBaaS)
+	init, err := gqlaws.Wrap(a.client).ValidateAndCreateCloudAccount(ctx, config.cloud, config.NativeID, config.name, expandedFeatures, "", gqlaws.ServiceTypeBaaS)
 	if err != nil {
-		return ManagedAccountArtifacts{}, fmt.Errorf("failed to validate and create account: %s", err)
+		return uuid.Nil, ManagedAccountStack{}, fmt.Errorf("failed to validate and create account: %s", err)
 	}
 
 	// 2. Finalize - registers the account so RSC can process the stack's
@@ -179,37 +180,39 @@ func (a API) RegisterManagedAccount(ctx context.Context, account AccountFunc, fe
 		Cloud:       config.cloud,
 		NativeID:    config.NativeID,
 		Name:        config.name,
-		Features:    features,
+		Features:    expandedFeatures,
 		Regions:     regions,
 		ServiceType: gqlaws.ServiceTypeBaaS,
 		Initiate:    init,
 	}); err != nil {
-		return ManagedAccountArtifacts{}, fmt.Errorf("failed to finalize account protection: %s", err)
+		return uuid.Nil, ManagedAccountStack{}, fmt.Errorf("failed to finalize account protection: %s", err)
 	}
 
 	// 3. Resolve the RSC cloud account ID created by the finalize step.
 	registered, err := a.AccountByNativeID(ctx, config.NativeID)
 	if err != nil {
-		return ManagedAccountArtifacts{}, fmt.Errorf("failed to get account after finalize: %s", err)
+		return uuid.Nil, ManagedAccountStack{}, fmt.Errorf("failed to get account after finalize: %s", err)
 	}
 
-	return ManagedAccountArtifacts{
-		AccountID:         registered.ID,
+	return registered.ID, ManagedAccountStack{
 		CloudFormationURL: init.CloudFormationURL,
 		TemplateURL:       init.TemplateURL,
 		StackName:         init.StackName,
-		Name:              config.name,
 	}, nil
 }
 
-// CompleteManagedAccountOnboarding runs the final phase of the RSC-managed AWS
-// (BaaS) onboarding flow for the account with the specified RSC cloud account
-// ID. It must be called after the CloudFormation stack has been deployed. The
-// account's features and regions are read from RSC (they were set by
-// RegisterManagedAccount), so they are not passed in again. It triggers
+// AddManagedAccountFinalize runs the final (post-stack) phase of the
+// RSC-managed AWS (BaaS) onboarding flow for the account with the specified
+// RSC cloud account ID. It must be called after the CloudFormation stack has
+// been deployed. The account's features and regions are read from RSC (they
+// were set by AddManagedAccount), so they are not passed in again. It triggers
 // CloudFormation status polling, waits for all features to connect and then
 // completes the BaaS onboarding.
-func (a API) CompleteManagedAccountOnboarding(ctx context.Context, accountID uuid.UUID) error {
+//
+// ctx must carry a deadline: waiting for features to connect has no
+// intrinsic timeout, so without one this blocks forever if a feature never
+// reaches CONNECTED.
+func (a API) AddManagedAccountFinalize(ctx context.Context, accountID uuid.UUID) error {
 	a.log.Print(log.Trace)
 
 	account, err := a.AccountByID(ctx, accountID)
@@ -232,12 +235,12 @@ func (a API) CompleteManagedAccountOnboarding(ctx context.Context, accountID uui
 		regions = append(regions, region)
 	}
 	if len(regions) == 0 {
-		regions = BaaSSupportedRegions()
+		regions = ManagedAccountSupportedRegions()
 	}
 
 	// 1. Trigger CloudFormation status polling. Best-effort - RSC also reconciles
 	// the status on its own, so a failure here is logged and onboarding continues.
-	if err := gqlaws.Wrap(a.client).TriggerCftStatusPolling(ctx, account.NativeID, features); err != nil {
+	if err := gqlaws.Wrap(a.client).TriggerCftStatusPolling(ctx, accountID, features); err != nil {
 		a.log.Printf(log.Warn, "failed to trigger CloudFormation status polling, continuing: %s", err)
 	}
 
@@ -254,14 +257,16 @@ func (a API) CompleteManagedAccountOnboarding(ctx context.Context, accountID uui
 	return nil
 }
 
-// PrepareManagedAccountUpdate reports whether the account's deployed permissions
-// are out of date - i.e. a feature has the MISSING_PERMISSIONS status, which
+// UpdateManagedAccount reports whether the account's deployed permissions are
+// out of date - i.e. a feature has the MISSING_PERMISSIONS status, which
 // happens when RSC raises a permission version. When an update is needed it
-// returns the CloudFormation template URL to redeploy the stack with the updated
-// permissions; otherwise it returns an empty string. Because it returns an empty
-// string when nothing changed, callers can use it to detect permission drift
-// without churning on the signed (ever-changing) template URL.
-func (a API) PrepareManagedAccountUpdate(ctx context.Context, accountID uuid.UUID) (string, error) {
+// returns the CloudFormation template URL to redeploy the stack with the
+// updated permissions (the pre-stack step of the update sequence; call
+// UpdateManagedAccountFinalize after redeploying); otherwise it returns an
+// empty string. Because it returns an empty string when nothing changed,
+// callers can use it to detect permission drift without churning on the
+// signed (ever-changing) template URL.
+func (a API) UpdateManagedAccount(ctx context.Context, accountID uuid.UUID) (string, error) {
 	a.log.Print(log.Trace)
 
 	account, err := a.AccountByID(ctx, accountID)
@@ -322,12 +327,16 @@ func (a API) ManagedAccountPermissionsVersion(ctx context.Context, accountID uui
 	return hex.EncodeToString(sum[:]), nil
 }
 
-// CompleteManagedAccountUpdate notifies RSC that the CloudFormation stack has
-// been redeployed with updated permissions for the account's features that were
-// missing permissions, then waits for those features to reconnect. It is the
-// permission-update counterpart of CompleteManagedAccountOnboarding and is run
-// after the CloudFormation stack has been updated.
-func (a API) CompleteManagedAccountUpdate(ctx context.Context, accountID uuid.UUID) error {
+// UpdateManagedAccountFinalize notifies RSC that the CloudFormation stack has
+// been redeployed with updated permissions for the account's features that
+// were missing permissions, then waits for those features to reconnect. It is
+// the post-stack step of the update sequence (UpdateManagedAccount is the
+// pre-stack step) and is run after the CloudFormation stack has been updated.
+//
+// ctx must carry a deadline: waiting for features to reconnect has no
+// intrinsic timeout, so without one this blocks forever if a feature never
+// reaches CONNECTED.
+func (a API) UpdateManagedAccountFinalize(ctx context.Context, accountID uuid.UUID) error {
 	a.log.Print(log.Trace)
 
 	// Notify RSC about every feature that is missing permissions (nil = all).
@@ -363,16 +372,15 @@ func featuresForRemoval(features []Feature) []core.Feature {
 	return append(protection, discovery...)
 }
 
-// DisableManagedAccount disables all of the account's features - protection
+// RemoveManagedAccount disables all of the account's features - protection
 // features first, Cloud Discovery last - so the account can be removed. When
 // deleteSnapshots is true the features' snapshots are deleted. It waits for the
 // asynchronous disable jobs to finish so the CloudFormation stack can be safely
 // deleted afterwards. It is a no-op if the account no longer exists.
 //
-// This is the first step of removal (before the CloudFormation stack is
-// deleted): disable everything, then let the stack be deleted, then finalize
-// with FinalizeManagedAccountDeletion.
-func (a API) DisableManagedAccount(ctx context.Context, accountID uuid.UUID, deleteSnapshots bool) error {
+// This is the first (pre-stack-deletion) step of removal: disable everything,
+// then let the stack be deleted, then finalize with RemoveManagedAccountFinalize.
+func (a API) RemoveManagedAccount(ctx context.Context, accountID uuid.UUID, deleteSnapshots bool) error {
 	a.log.Print(log.Trace)
 
 	account, err := a.AccountByID(ctx, accountID)
@@ -392,12 +400,13 @@ func (a API) DisableManagedAccount(ctx context.Context, accountID uuid.UUID, del
 	return nil
 }
 
-// FinalizeManagedAccountDeletion removes the account from RSC after its
-// CloudFormation stack has been deleted. For each feature (Cloud Discovery
-// last) it prepares and finalizes the deletion. It is a no-op if the account
-// has already been removed - e.g. the deleted stack's notifier already removed
-// it - so it is safe to run unconditionally.
-func (a API) FinalizeManagedAccountDeletion(ctx context.Context, accountID uuid.UUID) error {
+// RemoveManagedAccountFinalize removes the account from RSC after its
+// CloudFormation stack has been deleted. It is the post-stack-deletion step of
+// removal (RemoveManagedAccount is the pre-stack-deletion step). For each
+// feature (Cloud Discovery last) it prepares and finalizes the deletion. It is
+// a no-op if the account has already been removed - e.g. the deleted stack's
+// notifier already removed it - so it is safe to run unconditionally.
+func (a API) RemoveManagedAccountFinalize(ctx context.Context, accountID uuid.UUID) error {
 	a.log.Print(log.Trace)
 
 	account, err := a.AccountByID(ctx, accountID)
@@ -421,19 +430,22 @@ func (a API) FinalizeManagedAccountDeletion(ctx context.Context, accountID uuid.
 }
 
 // waitForFeaturesConnected polls RSC until every specified feature of the
-// account reaches the CONNECTED status, or until the context is cancelled.
+// account reaches the CONNECTED status, or until the context is cancelled. It
+// has no timeout of its own, so the caller's context must carry a deadline -
+// otherwise this blocks forever if a feature never reaches CONNECTED.
 func (a API) waitForFeaturesConnected(ctx context.Context, accountID uuid.UUID, features []core.Feature) error {
 	ticker := time.NewTicker(featureConnectPollInterval)
 	defer ticker.Stop()
 
 	for {
-		connected, err := a.featuresConnected(ctx, accountID, features)
+		pending, err := a.pendingFeatures(ctx, accountID, features)
 		if err != nil {
 			return err
 		}
-		if connected {
+		if len(pending) == 0 {
 			return nil
 		}
+		a.log.Printf(log.Debug, "waiting for account %q features to connect: %s", accountID, strings.Join(pending, ", "))
 
 		select {
 		case <-ctx.Done():
@@ -443,20 +455,21 @@ func (a API) waitForFeaturesConnected(ctx context.Context, accountID uuid.UUID, 
 	}
 }
 
-// featuresConnected returns true if every specified feature of the account has
-// reached the CONNECTED status.
-func (a API) featuresConnected(ctx context.Context, accountID uuid.UUID, features []core.Feature) (bool, error) {
+// pendingFeatures returns the names of the specified features of the account
+// that have not yet reached the CONNECTED status.
+func (a API) pendingFeatures(ctx context.Context, accountID uuid.UUID, features []core.Feature) ([]string, error) {
 	cloudAccount, err := a.AccountByID(ctx, accountID)
 	if err != nil {
-		return false, fmt.Errorf("failed to get account status: %s", err)
+		return nil, fmt.Errorf("failed to get account status: %s", err)
 	}
 
+	var pending []string
 	for _, feature := range features {
 		f, ok := cloudAccount.Feature(feature)
 		if !ok || f.Status != core.StatusConnected {
-			return false, nil
+			pending = append(pending, feature.Name)
 		}
 	}
 
-	return true, nil
+	return pending, nil
 }

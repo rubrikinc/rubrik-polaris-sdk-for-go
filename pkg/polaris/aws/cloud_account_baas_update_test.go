@@ -42,13 +42,13 @@ import (
 // end against a stateful mock RSC:
 //
 //  1. A feature is MISSING_PERMISSIONS (as when RSC raises a permission
-//     version) -> PrepareManagedAccountUpdate detects it and returns the update
+//     version) -> UpdateManagedAccount detects it and returns the update
 //     CloudFormation template URL (the aws_cloudformation_stack would redeploy
 //     with it).
-//  2. After the stack is redeployed, CompleteManagedAccountUpdate notifies RSC
+//  2. After the stack is redeployed, UpdateManagedAccountFinalize notifies RSC
 //     (upgradeAwsCloudAccountFeaturesWithoutCft) and waits for the feature to
 //     reconnect.
-//  3. Once reconnected, PrepareManagedAccountUpdate reports no further update is
+//  3. Once reconnected, UpdateManagedAccount reports no further update is
 //     needed (empty URL) - i.e. no spurious drift once healed.
 func TestManagedAccountPermissionUpdate(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(context.Background())
@@ -118,9 +118,9 @@ func TestManagedAccountPermissionUpdate(t *testing.T) {
 	api := WrapGQL(graphql.NewTestClient(srv))
 
 	// 1. Drift is detected and the update template URL is returned.
-	templateURL, err := api.PrepareManagedAccountUpdate(ctx, accountID)
+	templateURL, err := api.UpdateManagedAccount(ctx, accountID)
 	if err != nil {
-		t.Fatalf("PrepareManagedAccountUpdate (drift): %v", err)
+		t.Fatalf("UpdateManagedAccount (drift): %v", err)
 	}
 	if templateURL != updateTemplateURL {
 		t.Errorf("update template URL = %q, want %q", templateURL, updateTemplateURL)
@@ -130,17 +130,17 @@ func TestManagedAccountPermissionUpdate(t *testing.T) {
 	}
 
 	// 2. The stack has been redeployed; complete the update (notify + reconnect).
-	if err := api.CompleteManagedAccountUpdate(ctx, accountID); err != nil {
-		t.Fatalf("CompleteManagedAccountUpdate: %v", err)
+	if err := api.UpdateManagedAccountFinalize(ctx, accountID); err != nil {
+		t.Fatalf("UpdateManagedAccountFinalize: %v", err)
 	}
 	if !upgradeCalled {
 		t.Error("expected the permissions-updated notification to be sent")
 	}
 
 	// 3. Once healed, no further update is reported.
-	templateURL, err = api.PrepareManagedAccountUpdate(ctx, accountID)
+	templateURL, err = api.UpdateManagedAccount(ctx, accountID)
 	if err != nil {
-		t.Fatalf("PrepareManagedAccountUpdate (healed): %v", err)
+		t.Fatalf("UpdateManagedAccount (healed): %v", err)
 	}
 	if templateURL != "" {
 		t.Errorf("expected no update after reconnect, got %q", templateURL)
@@ -219,7 +219,7 @@ func TestManagedAccountPermissionsVersion(t *testing.T) {
 // TestFeaturesForRemovalOrdersCloudDiscoveryLast verifies the removal ordering:
 // protection features first, CLOUD_DISCOVERY last (RSC rejects removing Cloud
 // Discovery while protection features remain). This ordering is used by both
-// DisableManagedAccount and FinalizeManagedAccountDeletion.
+// RemoveManagedAccount and RemoveManagedAccountFinalize.
 func TestFeaturesForRemovalOrdersCloudDiscoveryLast(t *testing.T) {
 	features := []Feature{
 		{Feature: core.FeatureCloudDiscovery},
