@@ -148,3 +148,25 @@ func RSCConfig() (testRSCConfig, error) {
 	}
 	return testConfig, nil
 }
+
+// testK8SConfig holds K8s configuration information used in the integration
+// tests.
+type testK8SConfig struct {
+	CDMID              uuid.UUID `json:"cdmID"`
+	SLAID              uuid.UUID `json:"slaID"`
+	KubeconfigFilePath string    `json:"kubeconfigFilePath"`
+}
+
+// K8SConfig loads test configuration information from the file pointed to by
+// the TEST_K8SCONFIG_FILE environment variable.
+func K8SConfig() (testK8SConfig, error) {
+	buf, err := os.ReadFile(os.Getenv("TEST_K8SCONFIG_FILE"))
+	if err != nil {
+		return testK8SConfig{}, fmt.Errorf("failed to read file pointed to by TEST_K8SCONFIG_FILE: %v", err)
+	}
+	testConfig := testK8SConfig{}
+	if err := json.Unmarshal(buf, &testConfig); err != nil {
+		return testK8SConfig{}, err
+	}
+	return testConfig, nil
+}
