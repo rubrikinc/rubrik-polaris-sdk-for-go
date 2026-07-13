@@ -78,6 +78,16 @@ func TestObjectSpecificConfigsOmitZeroRetention(t *testing.T) {
 			mustNotHave: []string{`"hostLogRetention"`, `"unit":""`},
 		},
 		{
+			name: "OracleConfig with retain-archive-logs-indefinitely sentinel (-2)",
+			value: OracleConfig{
+				Frequency:        RetentionDuration{Duration: 15, Unit: Minute},
+				LogRetention:     RetentionDuration{Duration: 14, Unit: Days},
+				HostLogRetention: RetentionDuration{Duration: -2, Unit: Minute},
+			},
+			mustHave:    []string{`"hostLogRetention"`, `"duration":-2`},
+			mustNotHave: []string{`"unit":""`},
+		},
+		{
 			name:        "SapHanaStorageSnapshotConfig empty",
 			value:       SapHanaStorageSnapshotConfig{},
 			mustNotHave: []string{`"frequency"`, `"retention"`, `"unit":""`},
