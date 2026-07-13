@@ -61,7 +61,7 @@ func (a API) GenerateAzureOnboardingScript(ctx context.Context, params gqldevops
 // by its native ID and returned in the same order as params.OrganizationNativeIDs.
 // The RSC hierarchy is eventually consistent, so this blocks until the
 // organizations appear or the context is cancelled.
-func (a API) AddAzureCloudAccount(ctx context.Context, params gqldevops.AddAzureCloudAccountParams) ([]AzureOrganization, error) {
+func (a API) AddAzureCloudAccount(ctx context.Context, params gqldevops.AddAzureCloudAccountParams) ([]gqldevops.AzureOrganization, error) {
 	a.log.Print(log.Trace)
 
 	if params.Cloud == "" {
@@ -76,7 +76,7 @@ func (a API) AddAzureCloudAccount(ctx context.Context, params gqldevops.AddAzure
 		return nil, fmt.Errorf("failed to add Azure DevOps cloud account: %w", err)
 	}
 
-	orgs := make([]AzureOrganization, 0, len(params.OrganizationNativeIDs))
+	orgs := make([]gqldevops.AzureOrganization, 0, len(params.OrganizationNativeIDs))
 	for _, nativeID := range params.OrganizationNativeIDs {
 		org, err := a.azureOrganizationByNativeID(ctx, nativeID)
 		if err != nil {
@@ -94,14 +94,14 @@ func (a API) AddAzureCloudAccount(ctx context.Context, params gqldevops.AddAzure
 // 5 seconds until the organization appears, the caller's context is cancelled,
 // or an internal 60 second deadline elapses. Exceeding the deadline returns a
 // not-found error.
-func (a API) azureOrganizationByNativeID(ctx context.Context, nativeID string) (AzureOrganization, error) {
+func (a API) azureOrganizationByNativeID(ctx context.Context, nativeID string) (gqldevops.AzureOrganization, error) {
 	innerCtx, cancel := context.WithTimeoutCause(ctx, 60*time.Second, fmt.Errorf("organization %q not found in hierarchy", nativeID))
 	defer cancel()
 
 	for {
 		objects, err := hierarchy.ObjectsByName[hierarchy.AzureDevOpsOrganization](innerCtx, hierarchy.Wrap(a.client), nativeID, hierarchy.WorkloadAllSubHierarchyType)
 		if err != nil {
-			return AzureOrganization{}, err
+			return gqldevops.AzureOrganization{}, err
 		}
 		for _, obj := range objects {
 			if obj.Object.Name == nativeID {
@@ -111,7 +111,7 @@ func (a API) azureOrganizationByNativeID(ctx context.Context, nativeID string) (
 
 		select {
 		case <-innerCtx.Done():
-			return AzureOrganization{}, context.Cause(innerCtx)
+			return gqldevops.AzureOrganization{}, context.Cause(innerCtx)
 		case <-time.After(5 * time.Second):
 		}
 	}

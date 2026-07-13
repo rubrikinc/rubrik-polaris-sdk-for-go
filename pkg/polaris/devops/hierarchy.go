@@ -26,25 +26,14 @@ import (
 
 	"github.com/google/uuid"
 
-	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	gqldevops "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/devops"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// AzureOrganization is an onboarded Azure DevOps organization enriched with the Azure
-// cloud type. The organization read itself does not return the cloud type, so it
-// is resolved separately by the organization's Azure AD tenant domain.
-type AzureOrganization struct {
-	gqldevops.AzureOrganization
-	Cloud gqlazure.Cloud
-}
-
 // AzureOrganizations returns all Azure DevOps organizations under the specified
-// ancestor, each enriched with its Azure cloud type. Pass
-// hierarchy.AzureDevOpsRoot as the ancestor ID to enumerate every organization
-// in the account.
-func (a API) AzureOrganizations(ctx context.Context, queryType gqldevops.QueryType, ancestorID string) ([]AzureOrganization, error) {
+// ancestor. Pass hierarchy.AzureDevOpsRoot as the ancestor ID to enumerate
+// every organization in the account.
+func (a API) AzureOrganizations(ctx context.Context, queryType gqldevops.QueryType, ancestorID string) ([]gqldevops.AzureOrganization, error) {
 	a.log.Print(log.Trace)
 
 	orgs, err := gqldevops.AzureOrganizations(ctx, a.client, queryType, ancestorID)
@@ -52,52 +41,20 @@ func (a API) AzureOrganizations(ctx context.Context, queryType gqldevops.QueryTy
 		return nil, fmt.Errorf("failed to get Azure DevOps organizations: %w", err)
 	}
 
-	clouds, err := a.azureCloudsByDomain(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	augmented := make([]AzureOrganization, 0, len(orgs))
-	for _, org := range orgs {
-		augmented = append(augmented, AzureOrganization{AzureOrganization: org, Cloud: clouds[org.TenantDomain]})
-	}
-
-	return augmented, nil
+	return orgs, nil
 }
 
 // AzureOrganizationByID returns the Azure DevOps organization with the specified
-// workload ID, enriched with its Azure cloud type.
-func (a API) AzureOrganizationByID(ctx context.Context, workloadID uuid.UUID) (AzureOrganization, error) {
+// workload ID.
+func (a API) AzureOrganizationByID(ctx context.Context, workloadID uuid.UUID) (gqldevops.AzureOrganization, error) {
 	a.log.Print(log.Trace)
 
 	org, err := gqldevops.AzureOrganizationByID(ctx, a.client, workloadID)
 	if err != nil {
-		return AzureOrganization{}, fmt.Errorf("failed to get Azure DevOps organization: %w", err)
+		return gqldevops.AzureOrganization{}, fmt.Errorf("failed to get Azure DevOps organization: %w", err)
 	}
 
-	clouds, err := a.azureCloudsByDomain(ctx)
-	if err != nil {
-		return AzureOrganization{}, err
-	}
-
-	return AzureOrganization{AzureOrganization: org, Cloud: clouds[org.TenantDomain]}, nil
-}
-
-// azureCloudsByDomain maps each Azure DevOps tenant's Azure AD domain to its Azure
-// cloud type via a single allAzureCloudAccountTenants query. Only the cloud type
-// and domain are reliable for DevOps tenants, so only those are used.
-func (a API) azureCloudsByDomain(ctx context.Context) (map[string]gqlazure.Cloud, error) {
-	tenants, err := gqlazure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAzureDevOpsProtection, false)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Azure DevOps tenant cloud types: %w", err)
-	}
-
-	clouds := make(map[string]gqlazure.Cloud, len(tenants))
-	for _, tenant := range tenants {
-		clouds[tenant.DomainName] = tenant.Cloud
-	}
-
-	return clouds, nil
+	return org, nil
 }
 
 // AzureProjects returns all Azure DevOps projects under the specified ancestor
