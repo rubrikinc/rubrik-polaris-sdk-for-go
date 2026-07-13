@@ -35,6 +35,7 @@ type FeatureFlagName string
 const (
 	FeatureFlagAWSManualRoleChaining           FeatureFlagName = "REL_ENABLE_AWS_MANUAL_ROLE_CHAINING"
 	FeatureFlagAzureSQLDBCopyBackup            FeatureFlagName = "CNP_AZURE_SQL_DB_COPY_BACKUP"
+	FeatureFlagAzureSQLSLARevamp               FeatureFlagName = "CNP_AZURE_SQL_SLA_REVAMP"
 	FeatureFlagMultipleKeyValuePairsInTagRules FeatureFlagName = "CNP_MULTIPLE_KEY_VALUE_PAIRS_IN_TAG_RULES_ENABLED"
 )
 
