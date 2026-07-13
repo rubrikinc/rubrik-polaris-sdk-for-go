@@ -1,0 +1,19 @@
+mutation RubrikPolarisSDKRequest(
+  $organizationId:           UUID!,
+  $backupLocationId:         UUID,
+  $backupRegion:             String,
+  $exocomputeCloudAccountId: UUID,
+  $hostType:                 DevopsHostType,
+  $storageType:              DevOpsStorageType,
+  $exocomputeRegion:         String,
+) {
+  result: updateAzureDevOpsCloudAccount(input: {
+    organizationId:           $organizationId,
+    backupLocationId:         $backupLocationId,
+    backupRegion:             $backupRegion,
+    exocomputeCloudAccountId: $exocomputeCloudAccountId,
+    hostType:                 $hostType,
+    storageType:              $storageType,
+    exocomputeRegion:         $exocomputeRegion,
+  })
+}

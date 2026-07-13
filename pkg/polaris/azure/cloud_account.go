@@ -32,6 +32,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -535,11 +536,25 @@ func (a API) UpdateSubscription(ctx context.Context, cloudAccountID uuid.UUID, f
 	return nil
 }
 
-// AddServicePrincipal adds the service principal for the app. If shouldReplace
-// is true and the app already has a service principal, it will be replaced.
-// Note that it's not possible to remove a service principal once it has been
-// set. Returns the application ID of the service principal set.
-func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipalFunc, shouldReplace bool) (uuid.UUID, error) {
+// AppUseCase selects what a service principal / customer app is registered for.
+// The value determines which credential store the app is registered in.
+type AppUseCase string
+
+const (
+	// AppUseCaseCNP registers the app for cloud native protection.
+	AppUseCaseCNP AppUseCase = "DEFAULT"
+	// AppUseCaseDevOps registers the app for Azure DevOps.
+	AppUseCaseDevOps AppUseCase = "AZURE_DEVOPS"
+)
+
+// AddServicePrincipalForUseCase registers the service principal for the
+// specified use case. The use case selects which credential store the customer
+// app is registered in: cloud native protection and Azure DevOps use separate
+// stores. If shouldReplace is true and the app already has a service principal,
+// it will be replaced. Note that it's not possible to remove a service
+// principal once it has been set. Returns the application ID of the service
+// principal set.
+func (a API) AddServicePrincipalForUseCase(ctx context.Context, principal ServicePrincipalFunc, useCase AppUseCase, shouldReplace bool) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
 	config, err := principal(ctx)
@@ -547,8 +562,16 @@ func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipal
 		return uuid.Nil, fmt.Errorf("failed to lookup principal: %v", err)
 	}
 
-	err = gqlazure.Wrap(a.client).SetCloudAccountCustomerAppCredentials(ctx, gqlazure.PublicCloud, config.appID,
-		config.tenantID, config.appName, config.tenantDomain, config.appSecret, shouldReplace)
+	switch useCase {
+	case AppUseCaseCNP:
+		err = gqlazure.Wrap(a.client).SetCloudAccountCustomerAppCredentials(ctx, gqlazure.PublicCloud, config.appID,
+			config.tenantID, config.appName, config.tenantDomain, config.appSecret, shouldReplace)
+	case AppUseCaseDevOps:
+		err = gqlazure.Wrap(a.client).SetCustomerAppForAzureDevOps(ctx, gqlazure.PublicCloud, config.appID,
+			config.appName, config.tenantDomain, secret.String(config.appSecret), shouldReplace)
+	default:
+		return uuid.Nil, fmt.Errorf("unknown app use case: %q", useCase)
+	}
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to set customer app credentials: %v", err)
 	}
@@ -556,14 +579,35 @@ func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipal
 	return config.appID, nil
 }
 
-// SetServicePrincipal sets the service principal for the app. If the app
-// already has a service principal, it will be replaced. Note that it's not
-// possible to remove a service principal once it has been set. Returns the
-// application ID of the service principal set.
+// AddServicePrincipal adds the service principal for the app for cloud native
+// protection. Equivalent to AddServicePrincipalForUseCase with AppUseCaseCNP.
+// If shouldReplace is true and the app already has a service principal, it will
+// be replaced. Note that it's not possible to remove a service principal once
+// it has been set. Returns the application ID of the service principal set.
+func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipalFunc, shouldReplace bool) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	return a.AddServicePrincipalForUseCase(ctx, principal, AppUseCaseCNP, shouldReplace)
+}
+
+// SetServicePrincipalForUseCase sets the service principal for the specified
+// use case. If the app already has a service principal, it will be replaced.
+// Note that it's not possible to remove a service principal once it has been
+// set. Returns the application ID of the service principal set.
+func (a API) SetServicePrincipalForUseCase(ctx context.Context, principal ServicePrincipalFunc, useCase AppUseCase) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	return a.AddServicePrincipalForUseCase(ctx, principal, useCase, true)
+}
+
+// SetServicePrincipal sets the service principal for the app for cloud native
+// protection. If the app already has a service principal, it will be replaced.
+// Note that it's not possible to remove a service principal once it has been
+// set. Returns the application ID of the service principal set.
 func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipalFunc) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	return a.AddServicePrincipal(ctx, principal, true)
+	return a.AddServicePrincipalForUseCase(ctx, principal, AppUseCaseCNP, true)
 }
 
 // SupportedFeatures returns the features supported by Azure cloud accounts.

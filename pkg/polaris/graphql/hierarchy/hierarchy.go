@@ -54,6 +54,14 @@ const (
 
 	// GlobalResource is the root node of the entire managed hierarchy.
 	GlobalResource = "GlobalResource"
+
+	// AzureDevOpsRoot is the root node of the Azure DevOps hierarchy. Pass it as
+	// the ancestor ID to enumerate the Azure DevOps organizations in the account.
+	AzureDevOpsRoot = "AZURE_DEVOPS_ROOT"
+
+	// GitHubRoot is the root node of the GitHub hierarchy. Pass it as the ancestor
+	// ID to enumerate the GitHub organizations in the account.
+	GitHubRoot = "GITHUB_ROOT"
 )
 
 // ObjectType represents the type of a hierarchy object.
@@ -175,7 +183,7 @@ type Feature struct {
 // InventoryObject is a constraint for types that can be returned from the
 // inventory root query.
 type InventoryObject interface {
-	AWSNativeAccount | AWSNativeEC2Instance | AWSNativeEBSVolume | AWSNativeRDSInstance | AzureNativeSubscription | AzureNativeVirtualMachine
+	AWSNativeAccount | AWSNativeEC2Instance | AWSNativeEBSVolume | AWSNativeRDSInstance | AzureNativeSubscription | AzureNativeVirtualMachine | AzureDevOpsOrganization | AzureDevOpsProject | AzureDevOpsRepository
 	// typeFilter returns the object type filter to use for the inventory root
 	// query. It corresponds to values in the GraphQL Enum HierarchyObjectTypeEnum.
 	typeFilter() ObjectType
@@ -242,6 +250,36 @@ func (AzureNativeSubscription) typeFilter() ObjectType {
 	return "AzureNativeSubscription"
 }
 
+// AzureDevOpsOrganization represents an Azure DevOps organization from the
+// inventory root.
+type AzureDevOpsOrganization struct {
+	Object
+}
+
+func (AzureDevOpsOrganization) typeFilter() ObjectType {
+	return "AZURE_DEVOPS_ORGANIZATION"
+}
+
+// AzureDevOpsProject represents an Azure DevOps project from the inventory
+// root.
+type AzureDevOpsProject struct {
+	Object
+}
+
+func (AzureDevOpsProject) typeFilter() ObjectType {
+	return "AZURE_DEVOPS_PROJECT"
+}
+
+// AzureDevOpsRepository represents an Azure DevOps repository from the
+// inventory root.
+type AzureDevOpsRepository struct {
+	Object
+}
+
+func (AzureDevOpsRepository) typeFilter() ObjectType {
+	return "AZURE_DEVOPS_REPOSITORY"
+}
+
 // AzureNativeVirtualMachine represents an Azure native virtual machine from
 // the inventory root.
 type AzureNativeVirtualMachine struct {
@@ -283,10 +321,27 @@ type Filter struct {
 func ObjectsByName[T InventoryObject](ctx context.Context, a API, name string, workloadHierarchy Workload, filters ...Filter) ([]T, error) {
 	a.log.Print(log.Trace)
 
+	f := append([]Filter{{Field: "NAME_EXACT_MATCH", Texts: []string{name}}}, filters...)
+	return objectsByFilter[T](ctx, a, workloadHierarchy, f)
+}
+
+// ObjectsByType returns all hierarchy objects of type T from the inventory
+// root. Unlike ObjectsByName it applies no name filter, so it enumerates every
+// object of the type, e.g., all onboarded Azure DevOps organizations.
+//
+// The workloadHierarchy parameter behaves as described on ObjectsByName.
+// Additional filters can be passed to further constrain the query results.
+func ObjectsByType[T InventoryObject](ctx context.Context, a API, workloadHierarchy Workload, filters ...Filter) ([]T, error) {
+	a.log.Print(log.Trace)
+
+	return objectsByFilter[T](ctx, a, workloadHierarchy, filters)
+}
+
+// objectsByFilter runs the paged inventory-root query for type T with the given
+// filters and workload hierarchy.
+func objectsByFilter[T InventoryObject](ctx context.Context, a API, workloadHierarchy Workload, filters []Filter) ([]T, error) {
 	var zero T
 	typeFilter := zero.typeFilter()
-
-	f := append([]Filter{{Field: "NAME_EXACT_MATCH", Texts: []string{name}}}, filters...)
 
 	var objects []T
 	var cursor string
@@ -300,7 +355,7 @@ func ObjectsByName[T InventoryObject](ctx context.Context, a API, name string, w
 			WorkloadHierarchy Workload     `json:"workloadHierarchy,omitempty"`
 		}{
 			After:             cursor,
-			Filter:            f,
+			Filter:            filters,
 			First:             100,
 			TypeFilter:        []ObjectType{typeFilter},
 			WorkloadHierarchy: workloadHierarchy,
