@@ -19,6 +19,9 @@ query RubrikPolarisSDKRequest($workloadId: UUID!) {
       archivalGroupId
       name
       storageType
+      cloudSpecificRegion {
+        azureRegion
+      }
     }
     cloudNativeExocompute {
       id

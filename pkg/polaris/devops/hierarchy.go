@@ -26,7 +26,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqldevops "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/devops"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -45,16 +47,25 @@ func (a API) AzureOrganizations(ctx context.Context, queryType gqldevops.QueryTy
 }
 
 // AzureOrganizationByID returns the Azure DevOps organization with the specified
-// workload ID.
+// workload ID. If no organization matches the ID, graphql.ErrNotFound is
+// returned.
+//
+// RSC does not surface a not-found signal for a single-organization lookup, so
+// the organizations are enumerated and matched by ID on the client side.
 func (a API) AzureOrganizationByID(ctx context.Context, workloadID uuid.UUID) (gqldevops.AzureOrganization, error) {
 	a.log.Print(log.Trace)
 
-	org, err := gqldevops.AzureOrganizationByID(ctx, a.client, workloadID)
+	orgs, err := a.AzureOrganizations(ctx, gqldevops.QueryTypeDescendants, hierarchy.AzureDevOpsRoot)
 	if err != nil {
-		return gqldevops.AzureOrganization{}, fmt.Errorf("failed to get Azure DevOps organization: %w", err)
+		return gqldevops.AzureOrganization{}, err
+	}
+	for _, org := range orgs {
+		if org.ID == workloadID {
+			return org, nil
+		}
 	}
 
-	return org, nil
+	return gqldevops.AzureOrganization{}, fmt.Errorf("azure devops organization %s %w", workloadID, graphql.ErrNotFound)
 }
 
 // AzureProjects returns all Azure DevOps projects under the specified ancestor
@@ -70,16 +81,25 @@ func (a API) AzureProjects(ctx context.Context, queryType gqldevops.QueryType, a
 	return projects, nil
 }
 
-// AzureProjectByID returns the Azure DevOps project with the specified workload ID.
+// AzureProjectByID returns the Azure DevOps project with the specified workload
+// ID. If no project matches the ID, graphql.ErrNotFound is returned.
+//
+// RSC does not surface a not-found signal for a single-project lookup, so the
+// projects are enumerated and matched by ID on the client side.
 func (a API) AzureProjectByID(ctx context.Context, workloadID uuid.UUID) (gqldevops.AzureProject, error) {
 	a.log.Print(log.Trace)
 
-	project, err := gqldevops.AzureProjectByID(ctx, a.client, workloadID)
+	projects, err := a.AzureProjects(ctx, gqldevops.QueryTypeDescendants, hierarchy.AzureDevOpsRoot)
 	if err != nil {
-		return gqldevops.AzureProject{}, fmt.Errorf("failed to get Azure DevOps project: %w", err)
+		return gqldevops.AzureProject{}, err
+	}
+	for _, project := range projects {
+		if project.ID == workloadID {
+			return project, nil
+		}
 	}
 
-	return project, nil
+	return gqldevops.AzureProject{}, fmt.Errorf("azure devops project %s %w", workloadID, graphql.ErrNotFound)
 }
 
 // AzureRepositories returns all Azure DevOps repositories under the specified
@@ -95,15 +115,23 @@ func (a API) AzureRepositories(ctx context.Context, queryType gqldevops.QueryTyp
 	return repos, nil
 }
 
-// AzureRepositoryByID returns the Azure DevOps repository with the specified workload
-// ID.
+// AzureRepositoryByID returns the Azure DevOps repository with the specified
+// workload ID. If no repository matches the ID, graphql.ErrNotFound is returned.
+//
+// RSC does not surface a not-found signal for a single-repository lookup, so the
+// repositories are enumerated and matched by ID on the client side.
 func (a API) AzureRepositoryByID(ctx context.Context, workloadID uuid.UUID) (gqldevops.AzureRepository, error) {
 	a.log.Print(log.Trace)
 
-	repo, err := gqldevops.AzureRepositoryByID(ctx, a.client, workloadID)
+	repos, err := a.AzureRepositories(ctx, gqldevops.QueryTypeDescendants, hierarchy.AzureDevOpsRoot)
 	if err != nil {
-		return gqldevops.AzureRepository{}, fmt.Errorf("failed to get Azure DevOps repository: %w", err)
+		return gqldevops.AzureRepository{}, err
+	}
+	for _, repo := range repos {
+		if repo.ID == workloadID {
+			return repo, nil
+		}
 	}
 
-	return repo, nil
+	return gqldevops.AzureRepository{}, fmt.Errorf("azure devops repository %s %w", workloadID, graphql.ErrNotFound)
 }

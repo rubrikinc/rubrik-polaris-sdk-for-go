@@ -27,6 +27,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/archival"
 	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	gqldevops "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/devops"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
@@ -125,6 +126,18 @@ func (a API) UpdateAzureCloudAccount(ctx context.Context, params gqldevops.Updat
 
 	if err := validateHostStorage(params.HostType, params.StorageType, params.BackupLocationID, params.ExocomputeCloudAccountID, params.ExocomputeRegion); err != nil {
 		return err
+	}
+
+	// The RSC backend requires the backup region to be included in the update
+	// request. Callers do not always supply it, so when absent default it to
+	// the archival (backup) location's region.
+	if targetID := params.BackupLocationID; params.BackupRegion == nil && targetID != nil {
+		targetMapping, err := archival.WrapGQL(a.client).AzureTargetMappingByID(ctx, *targetID)
+		if err != nil {
+			return fmt.Errorf("failed to get archival location %q: %s", *targetID, err)
+		}
+
+		params.BackupRegion = &targetMapping.TargetTemplate.CloudNativeCompanion.StorageAccountRegion
 	}
 
 	if err := gqldevops.UpdateAzureCloudAccount(ctx, a.client, params); err != nil {

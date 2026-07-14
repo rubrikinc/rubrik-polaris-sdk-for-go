@@ -42,6 +42,11 @@ func Wrap(client *polaris.Client) API {
 	return API{client: client.GQL, log: client.GQL.Log()}
 }
 
+// WrapGQL wraps the GQL client in the devops API.
+func WrapGQL(client *graphql.Client) API {
+	return API{client: client, log: client.Log()}
+}
+
 // SupportedFeatures returns the features supported by Azure DevOps
 // organizations.
 func SupportedFeatures() []core.Feature {

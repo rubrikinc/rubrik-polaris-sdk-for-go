@@ -50,6 +50,9 @@ type BackupLocation struct {
 	ArchivalGroupID uuid.UUID   `json:"archivalGroupId"`
 	Name            string      `json:"name"`
 	StorageType     StorageType `json:"storageType"`
+	Region          struct {
+		AzureRegion azure.RegionEnum `json:"azureRegion"`
+	} `json:"cloudSpecificRegion"`
 }
 
 // CloudNativeExocompute represents the customer cloud-native exocompute

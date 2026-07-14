@@ -71,6 +71,9 @@ var azureDevopsOrganizationQuery = `query SdkGolangAzureDevopsOrganization($work
       archivalGroupId
       name
       storageType
+      cloudSpecificRegion {
+        azureRegion
+      }
     }
     cloudNativeExocompute {
       id
@@ -123,6 +126,9 @@ var azureDevopsOrganizationsQuery = `query SdkGolangAzureDevopsOrganizations(
         archivalGroupId
         name
         storageType
+        cloudSpecificRegion {
+          azureRegion
+        }
       }
       cloudNativeExocompute {
         id

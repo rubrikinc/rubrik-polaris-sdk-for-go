@@ -45,6 +45,11 @@ func Wrap(client *polaris.Client) API {
 	return API{client: client.GQL, log: client.GQL.Log()}
 }
 
+// WrapGQL wraps the GQL client in the archival API.
+func WrapGQL(client *graphql.Client) API {
+	return API{client: client, log: client.Log()}
+}
+
 // DeleteTarget deletes the target with the specified target ID. Data center
 // archival locations are also referred to as targets.
 func (a API) DeleteTarget(ctx context.Context, targetID uuid.UUID) error {

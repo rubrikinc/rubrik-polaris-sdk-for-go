@@ -32,6 +32,9 @@ query RubrikPolarisSDKRequest(
         archivalGroupId
         name
         storageType
+        cloudSpecificRegion {
+          azureRegion
+        }
       }
       cloudNativeExocompute {
         id

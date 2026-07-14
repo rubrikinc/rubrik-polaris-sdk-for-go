@@ -117,13 +117,13 @@ func AddAzureCloudAccountWithoutOauth(ctx context.Context, gql *graphql.Client, 
 // organization is keyed by OrganizationID. The nullable pointer fields are
 // omitted from the request when nil.
 type UpdateAzureCloudAccountParams struct {
-	OrganizationID           uuid.UUID     `json:"organizationId"`
-	BackupLocationID         *uuid.UUID    `json:"backupLocationId,omitempty"`
-	BackupRegion             *azure.Region `json:"backupRegion,omitempty"`
-	ExocomputeCloudAccountID *uuid.UUID    `json:"exocomputeCloudAccountId,omitempty"`
-	HostType                 HostType      `json:"hostType,omitempty"`
-	StorageType              StorageType   `json:"storageType,omitempty"`
-	ExocomputeRegion         *azure.Region `json:"exocomputeRegion,omitempty"`
+	OrganizationID           uuid.UUID         `json:"organizationId"`
+	BackupLocationID         *uuid.UUID        `json:"backupLocationId,omitempty"`
+	BackupRegion             *azure.RegionEnum `json:"backupRegion,omitempty"`
+	ExocomputeCloudAccountID *uuid.UUID        `json:"exocomputeCloudAccountId,omitempty"`
+	HostType                 HostType          `json:"hostType,omitempty"`
+	StorageType              StorageType       `json:"storageType,omitempty"`
+	ExocomputeRegion         *azure.Region     `json:"exocomputeRegion,omitempty"`
 }
 
 // UpdateAzureCloudAccount updates the backup location/region, exocompute account/
