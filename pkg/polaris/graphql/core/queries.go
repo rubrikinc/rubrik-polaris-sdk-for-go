@@ -36,6 +36,30 @@ var allEnabledFeaturesForAccountQuery = `query SdkGolangAllEnabledFeaturesForAcc
     }
 }`
 
+// assignSlaForSnappableHierarchies GraphQL query
+var assignSlaForSnappableHierarchiesQuery = `mutation SdkGolangAssignSlaForSnappableHierarchies(
+    $globalSlaOptionalFid: UUID,
+    $globalSlaAssignType: SlaAssignTypeEnum!,
+    $objectIds: [UUID!]!,
+    $applicableSnappableTypes: [WorkloadLevelHierarchy!],
+    $shouldApplyToExistingSnapshots: Boolean,
+    $shouldApplyToNonPolicySnapshots: Boolean,
+    $globalExistingSnapshotRetention: GlobalExistingSnapshotRetention,
+    $userNote: String) {
+        assignSlasForSnappableHierarchies(
+            globalSlaOptionalFid: $globalSlaOptionalFid,
+            globalSlaAssignType: $globalSlaAssignType,
+            objectIds: $objectIds,
+            applicableSnappableTypes: $applicableSnappableTypes,
+            shouldApplyToExistingSnapshots: $shouldApplyToExistingSnapshots,
+            shouldApplyToNonPolicySnapshots: $shouldApplyToNonPolicySnapshots,
+            globalExistingSnapshotRetention: $globalExistingSnapshotRetention,
+            userNote: $userNote
+        ) {
+            success
+        }
+}`
+
 // deploymentVersion GraphQL query
 var deploymentVersionQuery = `query SdkGolangDeploymentVersion {
     deploymentVersion

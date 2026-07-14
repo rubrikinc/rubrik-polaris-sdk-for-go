@@ -1,0 +1,5 @@
+mutation UpdateK8sCluster($id: String!, $config: K8sClusterUpdateConfigInput!) {
+  updateK8sCluster(input: {id: $id, config: $config}) {
+    success
+  }
+}
