@@ -85,7 +85,6 @@ var azureDevopsOrganizationQuery = `query SdkGolangAzureDevopsOrganization($work
       }
     }
     rubrikHostedExocompute {
-      exocomputeClusterId
       region
     }
   }
@@ -140,7 +139,6 @@ var azureDevopsOrganizationsQuery = `query SdkGolangAzureDevopsOrganizations(
         }
       }
       rubrikHostedExocompute {
-        exocomputeClusterId
         region
       }
     }

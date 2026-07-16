@@ -46,7 +46,6 @@ query RubrikPolarisSDKRequest(
         }
       }
       rubrikHostedExocompute {
-        exocomputeClusterId
         region
       }
     }
