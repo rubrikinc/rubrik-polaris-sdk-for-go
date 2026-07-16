@@ -40,18 +40,15 @@ func (a API) AzureOrganizations(ctx context.Context, queryType gqldevops.QueryTy
 
 	orgs, err := gqldevops.AzureOrganizations(ctx, a.client, queryType, ancestorID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Azure DevOps organizations: %w", err)
+		return nil, fmt.Errorf("failed to get Azure DevOps organizations: %s", err)
 	}
 
 	return orgs, nil
 }
 
-// AzureOrganizationByID returns the Azure DevOps organization with the specified
-// workload ID. If no organization matches the ID, graphql.ErrNotFound is
-// returned.
-//
-// RSC does not surface a not-found signal for a single-organization lookup, so
-// the organizations are enumerated and matched by ID on the client side.
+// AzureOrganizationByID returns the Azure DevOps organization with the
+// specified workload ID. If no organization matches the ID, graphql.ErrNotFound
+// is returned.
 func (a API) AzureOrganizationByID(ctx context.Context, workloadID uuid.UUID) (gqldevops.AzureOrganization, error) {
 	a.log.Print(log.Trace)
 
@@ -68,14 +65,14 @@ func (a API) AzureOrganizationByID(ctx context.Context, workloadID uuid.UUID) (g
 	return gqldevops.AzureOrganization{}, fmt.Errorf("azure devops organization %s %w", workloadID, graphql.ErrNotFound)
 }
 
-// AzureProjects returns all Azure DevOps projects under the specified ancestor
-// (typically an organization ID).
+// AzureProjects returns all Azure DevOps projects under the specified ancestor,
+// typically an organization ID.
 func (a API) AzureProjects(ctx context.Context, queryType gqldevops.QueryType, ancestorID string) ([]gqldevops.AzureProject, error) {
 	a.log.Print(log.Trace)
 
 	projects, err := gqldevops.AzureProjects(ctx, a.client, queryType, ancestorID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Azure DevOps projects: %w", err)
+		return nil, fmt.Errorf("failed to get Azure DevOps projects: %s", err)
 	}
 
 	return projects, nil
@@ -109,17 +106,15 @@ func (a API) AzureRepositories(ctx context.Context, queryType gqldevops.QueryTyp
 
 	repos, err := gqldevops.AzureRepositories(ctx, a.client, queryType, ancestorID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Azure DevOps repositories: %w", err)
+		return nil, fmt.Errorf("failed to get Azure DevOps repositories: %s", err)
 	}
 
 	return repos, nil
 }
 
 // AzureRepositoryByID returns the Azure DevOps repository with the specified
-// workload ID. If no repository matches the ID, graphql.ErrNotFound is returned.
-//
-// RSC does not surface a not-found signal for a single-repository lookup, so the
-// repositories are enumerated and matched by ID on the client side.
+// workload ID. If no repository matches the ID, graphql.ErrNotFound is
+// returned.
 func (a API) AzureRepositoryByID(ctx context.Context, workloadID uuid.UUID) (gqldevops.AzureRepository, error) {
 	a.log.Print(log.Trace)
 

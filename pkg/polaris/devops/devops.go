@@ -56,3 +56,13 @@ func SupportedFeatures() []core.Feature {
 		core.FeatureAzureDevOpsDeveloperCollaborationProtection,
 	}
 }
+
+// SupportedFeatureNames returns the features supported by Azure DevOps
+// organizations.
+func SupportedFeatureNames() []string {
+	return []string{
+		core.FeatureAzureDevOpsProtection.Name,
+		core.FeatureAzureDevOpsRepositoryProtection.Name,
+		core.FeatureAzureDevOpsDeveloperCollaborationProtection.Name,
+	}
+}

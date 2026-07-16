@@ -47,7 +47,7 @@ func (a API) GenerateAzureOnboardingScript(ctx context.Context, params gqldevops
 
 	script, err := gqldevops.GenerateAzureOnboardingScript(ctx, a.client, params)
 	if err != nil {
-		return gqldevops.AzureOnboardingScript{}, fmt.Errorf("failed to generate Azure DevOps onboarding script: %w", err)
+		return gqldevops.AzureOnboardingScript{}, fmt.Errorf("failed to generate Azure DevOps onboarding script: %s", err)
 	}
 
 	return script, nil
@@ -74,7 +74,7 @@ func (a API) AddAzureCloudAccount(ctx context.Context, params gqldevops.AddAzure
 	}
 
 	if err := gqldevops.AddAzureCloudAccountWithoutOauth(ctx, a.client, params); err != nil {
-		return nil, fmt.Errorf("failed to add Azure DevOps cloud account: %w", err)
+		return nil, fmt.Errorf("failed to add Azure DevOps cloud account: %s", err)
 	}
 
 	orgs := make([]gqldevops.AzureOrganization, 0, len(params.OrganizationNativeIDs))
@@ -93,7 +93,7 @@ func (a API) AddAzureCloudAccount(ctx context.Context, params gqldevops.AddAzure
 // ID, looking it up in the generic hierarchy and returning the full
 // organization. Because the hierarchy is eventually consistent, it polls every
 // 5 seconds until the organization appears, the caller's context is cancelled,
-// or an internal 60 second deadline elapses. Exceeding the deadline returns a
+// or an internal 60-second deadline elapses. Exceeding the deadline returns a
 // not-found error.
 func (a API) azureOrganizationByNativeID(ctx context.Context, nativeID string) (gqldevops.AzureOrganization, error) {
 	innerCtx, cancel := context.WithTimeoutCause(ctx, 60*time.Second, fmt.Errorf("organization %q not found in hierarchy", nativeID))
@@ -141,7 +141,21 @@ func (a API) UpdateAzureCloudAccount(ctx context.Context, params gqldevops.Updat
 	}
 
 	if err := gqldevops.UpdateAzureCloudAccount(ctx, a.client, params); err != nil {
-		return fmt.Errorf("failed to update Azure DevOps cloud account: %w", err)
+		return fmt.Errorf("failed to update Azure DevOps cloud account: %s", err)
+	}
+
+	return nil
+}
+
+// UpgradeAzureCloudAccount informs RSC that the permissions for the given
+// features have been updated and applied in the Azure DevOps organization,
+// advancing RSC to the latest permission version. Run the updated onboarding
+// script in the organization to grant the new permissions before calling this.
+func (a API) UpgradeAzureCloudAccount(ctx context.Context, params gqldevops.UpgradeAzureCloudAccountParams) error {
+	a.log.Print(log.Trace)
+
+	if err := gqldevops.UpgradeAzureCloudAccountWithoutOauth(ctx, a.client, params); err != nil {
+		return fmt.Errorf("failed to upgrade Azure DevOps cloud account: %s", err)
 	}
 
 	return nil
@@ -154,7 +168,7 @@ func (a API) DeleteAzureCloudAccount(ctx context.Context, organizationID uuid.UU
 	a.log.Print(log.Trace)
 
 	if err := gqldevops.DeleteAzureCloudAccountWithoutOauth(ctx, a.client, organizationID, deleteSnapshots); err != nil {
-		return fmt.Errorf("failed to delete Azure DevOps cloud account: %w", err)
+		return fmt.Errorf("failed to delete Azure DevOps cloud account: %s", err)
 	}
 
 	return nil

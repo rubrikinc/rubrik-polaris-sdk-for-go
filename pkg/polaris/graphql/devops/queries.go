@@ -24,8 +24,8 @@
 
 package devops
 
-// addCloudAccountWithoutOauth GraphQL query
-var addCloudAccountWithoutOauthQuery = `mutation SdkGolangAddCloudAccountWithoutOauth(
+// addAzureDevopsCloudAccountWithoutOauth GraphQL query
+var addAzureDevopsCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureDevopsCloudAccountWithoutOauth(
   $organizationNativeIds:         [String!],
   $tenantId:                      String!,
   $cloudType:                     AzureCloudType!,
@@ -246,8 +246,8 @@ var azureDevopsRepositoryQuery = `query SdkGolangAzureDevopsRepository($workload
   }
 }`
 
-// deleteCloudAccountWithoutOauth GraphQL query
-var deleteCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteCloudAccountWithoutOauth(
+// deleteAzureDevopsCloudAccountWithoutOauth GraphQL query
+var deleteAzureDevopsCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteAzureDevopsCloudAccountWithoutOauth(
   $organizationId:  UUID!,
   $deleteSnapshots: Boolean,
 ) {
@@ -257,8 +257,30 @@ var deleteCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteCloudAccountW
   })
 }`
 
-// generateOnboardingScript GraphQL query
-var generateOnboardingScriptQuery = `query SdkGolangGenerateOnboardingScript(
+// devopsCloudAccountListLatestPermissions GraphQL query
+var devopsCloudAccountListLatestPermissionsQuery = `query SdkGolangDevopsCloudAccountListLatestPermissions($featuresWithPermissionsGroups: [FeatureWithPermissionsGroups!]) {
+  result: devOpsCloudAccountListLatestPermissions(input: {
+    featuresWithPermissionsGroups: $featuresWithPermissionsGroups,
+  }) {
+    featurePermissions {
+      feature
+      permissionJson
+      version
+      permissionsGroupVersions {
+        permissionsGroup
+        version
+      }
+    }
+    groupPermissions {
+      group
+      permissions
+      version
+    }
+  }
+}`
+
+// generateAzureDevopsOnboardingScript GraphQL query
+var generateAzureDevopsOnboardingScriptQuery = `query SdkGolangGenerateAzureDevopsOnboardingScript(
   $tenantId:                      String!,
   $cloudType:                     AzureCloudType!,
   $featuresWithPermissionsGroups: [FeatureWithPermissionsGroups!]!,
@@ -275,8 +297,8 @@ var generateOnboardingScriptQuery = `query SdkGolangGenerateOnboardingScript(
   }
 }`
 
-// updateCloudAccount GraphQL query
-var updateCloudAccountQuery = `mutation SdkGolangUpdateCloudAccount(
+// updateAzureDevopsCloudAccount GraphQL query
+var updateAzureDevopsCloudAccountQuery = `mutation SdkGolangUpdateAzureDevopsCloudAccount(
   $organizationId:           UUID!,
   $backupLocationId:         UUID,
   $backupRegion:             String,
@@ -294,4 +316,14 @@ var updateCloudAccountQuery = `mutation SdkGolangUpdateCloudAccount(
     storageType:              $storageType,
     exocomputeRegion:         $exocomputeRegion,
   })
+}`
+
+// upgradeAzureDevopsCloudAccountWithoutOauth GraphQL query
+var upgradeAzureDevopsCloudAccountWithoutOauthQuery = `mutation SdkGolangUpgradeAzureDevopsCloudAccountWithoutOauth($organizationId: UUID!, $featuresToUpgrade: [FeatureWithPermissionsGroups!]!) {
+  result: upgradeAzureDevOpsCloudAccountWithoutOauth(input: {
+    organizationId:    $organizationId,
+    featuresToUpgrade: $featuresToUpgrade,
+  }) {
+    errorMessage
+  }
 }`
