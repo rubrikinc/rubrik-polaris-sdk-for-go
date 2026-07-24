@@ -22,6 +22,13 @@ query RubrikPolarisSDKRequest($after: String, $filter: [Filter!], $first: Int, $
                         status
                     }
                 }
+                ... on AzureDevOpsProject {
+                    orgId
+                }
+                ... on AzureDevOpsRepository {
+                    orgId
+                    projectId
+                }
             }
             count
             pageInfo {

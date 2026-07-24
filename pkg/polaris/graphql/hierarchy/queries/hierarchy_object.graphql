@@ -19,6 +19,13 @@ query RubrikPolarisSDKRequest($fid: UUID!, $workloadHierarchy: WorkloadLevelHier
                 status
             }
         }
+        ... on AzureDevOpsProject {
+            orgId
+        }
+        ... on AzureDevOpsRepository {
+            orgId
+            projectId
+        }
         configuredSlaDomain {
             ... on ClusterSlaDomain {
                 id

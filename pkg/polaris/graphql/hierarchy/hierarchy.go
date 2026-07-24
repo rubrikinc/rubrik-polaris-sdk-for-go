@@ -264,6 +264,7 @@ func (AzureDevOpsOrganization) typeFilter() ObjectType {
 // root.
 type AzureDevOpsProject struct {
 	Object
+	OrgID uuid.UUID `json:"orgId"`
 }
 
 func (AzureDevOpsProject) typeFilter() ObjectType {
@@ -274,6 +275,8 @@ func (AzureDevOpsProject) typeFilter() ObjectType {
 // inventory root.
 type AzureDevOpsRepository struct {
 	Object
+	OrgID     uuid.UUID `json:"orgId"`
+	ProjectID uuid.UUID `json:"projectId"`
 }
 
 func (AzureDevOpsRepository) typeFilter() ObjectType {

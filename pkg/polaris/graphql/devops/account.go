@@ -23,6 +23,7 @@ package devops
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/google/uuid"
 
@@ -56,7 +57,7 @@ type GenerateAzureOnboardingScriptParams struct {
 func GenerateAzureOnboardingScript(ctx context.Context, gql *graphql.Client, params GenerateAzureOnboardingScriptParams) (AzureOnboardingScript, error) {
 	gql.Log().Print(log.Trace)
 
-	query := generateOnboardingScriptQuery
+	query := generateAzureDevopsOnboardingScriptQuery
 	buf, err := gql.Request(ctx, query, params)
 	if err != nil {
 		return AzureOnboardingScript{}, graphql.RequestError(query, err)
@@ -95,7 +96,7 @@ type AddAzureCloudAccountParams struct {
 func AddAzureCloudAccountWithoutOauth(ctx context.Context, gql *graphql.Client, params AddAzureCloudAccountParams) error {
 	gql.Log().Print(log.Trace)
 
-	query := addCloudAccountWithoutOauthQuery
+	query := addAzureDevopsCloudAccountWithoutOauthQuery
 	buf, err := gql.Request(ctx, query, params)
 	if err != nil {
 		return graphql.RequestError(query, err)
@@ -117,13 +118,13 @@ func AddAzureCloudAccountWithoutOauth(ctx context.Context, gql *graphql.Client, 
 // organization is keyed by OrganizationID. The nullable pointer fields are
 // omitted from the request when nil.
 type UpdateAzureCloudAccountParams struct {
-	OrganizationID           uuid.UUID     `json:"organizationId"`
-	BackupLocationID         *uuid.UUID    `json:"backupLocationId,omitempty"`
-	BackupRegion             *azure.Region `json:"backupRegion,omitempty"`
-	ExocomputeCloudAccountID *uuid.UUID    `json:"exocomputeCloudAccountId,omitempty"`
-	HostType                 HostType      `json:"hostType,omitempty"`
-	StorageType              StorageType   `json:"storageType,omitempty"`
-	ExocomputeRegion         *azure.Region `json:"exocomputeRegion,omitempty"`
+	OrganizationID           uuid.UUID         `json:"organizationId"`
+	BackupLocationID         *uuid.UUID        `json:"backupLocationId,omitempty"`
+	BackupRegion             *azure.RegionEnum `json:"backupRegion,omitempty"`
+	ExocomputeCloudAccountID *uuid.UUID        `json:"exocomputeCloudAccountId,omitempty"`
+	HostType                 HostType          `json:"hostType,omitempty"`
+	StorageType              StorageType       `json:"storageType,omitempty"`
+	ExocomputeRegion         *azure.Region     `json:"exocomputeRegion,omitempty"`
 }
 
 // UpdateAzureCloudAccount updates the backup location/region, exocompute account/
@@ -132,7 +133,7 @@ type UpdateAzureCloudAccountParams struct {
 func UpdateAzureCloudAccount(ctx context.Context, gql *graphql.Client, params UpdateAzureCloudAccountParams) error {
 	gql.Log().Print(log.Trace)
 
-	query := updateCloudAccountQuery
+	query := updateAzureDevopsCloudAccountQuery
 	buf, err := gql.Request(ctx, query, params)
 	if err != nil {
 		return graphql.RequestError(query, err)
@@ -150,13 +151,55 @@ func UpdateAzureCloudAccount(ctx context.Context, gql *graphql.Client, params Up
 	return nil
 }
 
+// UpgradeAzureCloudAccountParams holds the parameters for
+// UpgradeAzureCloudAccountWithoutOauth. The organization is keyed by
+// OrganizationID. FeaturesToUpgrade must be the complete desired set of
+// features and permission groups for the organization, not just the newly
+// granted ones: any permission group not included is removed from the
+// organization.
+type UpgradeAzureCloudAccountParams struct {
+	OrganizationID    uuid.UUID      `json:"organizationId"`
+	FeaturesToUpgrade []core.Feature `json:"featuresToUpgrade"`
+}
+
+// UpgradeAzureCloudAccountWithoutOauth informs RSC that the permissions for the
+// given features have been updated and applied in the Azure DevOps
+// organization, advancing RSC to the latest permission version. Run the updated
+// onboarding script in the organization to grant the new permissions before
+// calling this function.
+func UpgradeAzureCloudAccountWithoutOauth(ctx context.Context, gql *graphql.Client, params UpgradeAzureCloudAccountParams) error {
+	gql.Log().Print(log.Trace)
+
+	query := upgradeAzureDevopsCloudAccountWithoutOauthQuery
+	buf, err := gql.Request(ctx, query, params)
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				ErrorMessage string `json:"errorMessage"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	if msg := payload.Data.Result.ErrorMessage; msg != "" {
+		return graphql.ResponseError(query, errors.New(msg))
+	}
+
+	return nil
+}
+
 // DeleteAzureCloudAccountWithoutOauth removes an onboarded Azure DevOps organization,
 // keyed by organizationID. If deleteSnapshots is true, the organization's
 // snapshots are also deleted. The mutation returns Void.
 func DeleteAzureCloudAccountWithoutOauth(ctx context.Context, gql *graphql.Client, organizationID uuid.UUID, deleteSnapshots bool) error {
 	gql.Log().Print(log.Trace)
 
-	query := deleteCloudAccountWithoutOauthQuery
+	query := deleteAzureDevopsCloudAccountWithoutOauthQuery
 	buf, err := gql.Request(ctx, query, struct {
 		OrganizationID  uuid.UUID `json:"organizationId"`
 		DeleteSnapshots bool      `json:"deleteSnapshots"`

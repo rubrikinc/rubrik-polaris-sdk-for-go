@@ -69,7 +69,7 @@ func main() {
 	orgs, err := devops.Wrap(client).AddAzureCloudAccount(ctx, gqldevops.AddAzureCloudAccountParams{
 		OrganizationNativeIDs: []string{organizationID},
 		TenantDomain:          tenantDomain,
-		Features:              devops.SupportedFeatures(),
+		Features:              devops.AzureSupportedFeatures(),
 		HostType:              gqldevops.HostTypeRubrik,
 		StorageType:           gqldevops.StorageTypeRCV,
 		ExocomputeRegion:      &exocomputeRegion,

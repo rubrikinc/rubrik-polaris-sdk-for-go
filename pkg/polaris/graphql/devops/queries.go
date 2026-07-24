@@ -24,8 +24,8 @@
 
 package devops
 
-// addCloudAccountWithoutOauth GraphQL query
-var addCloudAccountWithoutOauthQuery = `mutation SdkGolangAddCloudAccountWithoutOauth(
+// addAzureDevopsCloudAccountWithoutOauth GraphQL query
+var addAzureDevopsCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureDevopsCloudAccountWithoutOauth(
   $organizationNativeIds:         [String!],
   $tenantId:                      String!,
   $cloudType:                     AzureCloudType!,
@@ -47,45 +47,6 @@ var addCloudAccountWithoutOauthQuery = `mutation SdkGolangAddCloudAccountWithout
     exocomputeCloudAccountId:      $exocomputeCloudAccountId,
     exocomputeRegion:              $exocomputeRegion,
   })
-}`
-
-// azureDevopsOrganization GraphQL query
-var azureDevopsOrganizationQuery = `query SdkGolangAzureDevopsOrganization($workloadId: UUID!) {
-  result: azureDevOpsOrganization(workloadId: $workloadId) {
-    id
-    nativeId
-    tenantId
-    tenantUuid
-    connectionStatus
-    authenticationMechanism
-    clientId
-    repoHostType
-    devOpsOrgType
-    projectCount
-    repoCount
-    lastRefreshTime
-    name
-    objectType
-    backupLocation {
-      id
-      archivalGroupId
-      name
-      storageType
-    }
-    cloudNativeExocompute {
-      id
-      hostName
-      region {
-        region {
-          azureRegion
-        }
-      }
-    }
-    rubrikHostedExocompute {
-      exocomputeClusterId
-      region
-    }
-  }
 }`
 
 // azureDevopsOrganizations GraphQL query
@@ -123,6 +84,9 @@ var azureDevopsOrganizationsQuery = `query SdkGolangAzureDevopsOrganizations(
         archivalGroupId
         name
         storageType
+        cloudSpecificRegion {
+          azureRegion
+        }
       }
       cloudNativeExocompute {
         id
@@ -134,7 +98,6 @@ var azureDevopsOrganizationsQuery = `query SdkGolangAzureDevopsOrganizations(
         }
       }
       rubrikHostedExocompute {
-        exocomputeClusterId
         region
       }
     }
@@ -143,20 +106,6 @@ var azureDevopsOrganizationsQuery = `query SdkGolangAzureDevopsOrganizations(
       hasNextPage
     }
     count
-  }
-}`
-
-// azureDevopsProject GraphQL query
-var azureDevopsProjectQuery = `query SdkGolangAzureDevopsProject($workloadId: UUID!) {
-  result: azureDevOpsProject(workloadId: $workloadId) {
-    id
-    nativeId
-    name
-    orgId
-    orgName
-    url
-    repoCount
-    objectType
   }
 }`
 
@@ -227,23 +176,8 @@ var azureDevopsRepositoriesQuery = `query SdkGolangAzureDevopsRepositories(
   }
 }`
 
-// azureDevopsRepository GraphQL query
-var azureDevopsRepositoryQuery = `query SdkGolangAzureDevopsRepository($workloadId: UUID!) {
-  result: azureDevOpsRepository(workloadId: $workloadId) {
-    id
-    name
-    orgId
-    orgName
-    projectId
-    projectName
-    url
-    size
-    objectType
-  }
-}`
-
-// deleteCloudAccountWithoutOauth GraphQL query
-var deleteCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteCloudAccountWithoutOauth(
+// deleteAzureDevopsCloudAccountWithoutOauth GraphQL query
+var deleteAzureDevopsCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteAzureDevopsCloudAccountWithoutOauth(
   $organizationId:  UUID!,
   $deleteSnapshots: Boolean,
 ) {
@@ -253,8 +187,51 @@ var deleteCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteCloudAccountW
   })
 }`
 
-// generateOnboardingScript GraphQL query
-var generateOnboardingScriptQuery = `query SdkGolangGenerateOnboardingScript(
+// devopsCloudAccountListCurrentPermissions GraphQL query
+var devopsCloudAccountListCurrentPermissionsQuery = `query SdkGolangDevopsCloudAccountListCurrentPermissions($organizationId: UUID!, $featuresWithPermissionsGroups: [FeatureWithPermissionsGroups!]) {
+  result: devOpsCloudAccountListCurrentPermissions(input: {
+    organizationId: $organizationId,
+    featuresWithPermissionsGroups: $featuresWithPermissionsGroups,
+  }) {
+    featurePermissions {
+      feature
+      permissionJson
+      permissionsGroupVersions {
+        permissionsGroup
+        version
+      }
+    }
+    groupPermissions {
+      group
+      permissions
+      version
+    }
+  }
+}`
+
+// devopsCloudAccountListLatestPermissions GraphQL query
+var devopsCloudAccountListLatestPermissionsQuery = `query SdkGolangDevopsCloudAccountListLatestPermissions($featuresWithPermissionsGroups: [FeatureWithPermissionsGroups!]) {
+  result: devOpsCloudAccountListLatestPermissions(input: {
+    featuresWithPermissionsGroups: $featuresWithPermissionsGroups,
+  }) {
+    featurePermissions {
+      feature
+      permissionJson
+      permissionsGroupVersions {
+        permissionsGroup
+        version
+      }
+    }
+    groupPermissions {
+      group
+      permissions
+      version
+    }
+  }
+}`
+
+// generateAzureDevopsOnboardingScript GraphQL query
+var generateAzureDevopsOnboardingScriptQuery = `query SdkGolangGenerateAzureDevopsOnboardingScript(
   $tenantId:                      String!,
   $cloudType:                     AzureCloudType!,
   $featuresWithPermissionsGroups: [FeatureWithPermissionsGroups!]!,
@@ -271,8 +248,8 @@ var generateOnboardingScriptQuery = `query SdkGolangGenerateOnboardingScript(
   }
 }`
 
-// updateCloudAccount GraphQL query
-var updateCloudAccountQuery = `mutation SdkGolangUpdateCloudAccount(
+// updateAzureDevopsCloudAccount GraphQL query
+var updateAzureDevopsCloudAccountQuery = `mutation SdkGolangUpdateAzureDevopsCloudAccount(
   $organizationId:           UUID!,
   $backupLocationId:         UUID,
   $backupRegion:             String,
@@ -290,4 +267,14 @@ var updateCloudAccountQuery = `mutation SdkGolangUpdateCloudAccount(
     storageType:              $storageType,
     exocomputeRegion:         $exocomputeRegion,
   })
+}`
+
+// upgradeAzureDevopsCloudAccountWithoutOauth GraphQL query
+var upgradeAzureDevopsCloudAccountWithoutOauthQuery = `mutation SdkGolangUpgradeAzureDevopsCloudAccountWithoutOauth($organizationId: UUID!, $featuresToUpgrade: [FeatureWithPermissionsGroups!]!) {
+  result: upgradeAzureDevOpsCloudAccountWithoutOauth(input: {
+    organizationId:    $organizationId,
+    featuresToUpgrade: $featuresToUpgrade,
+  }) {
+    errorMessage
+  }
 }`
