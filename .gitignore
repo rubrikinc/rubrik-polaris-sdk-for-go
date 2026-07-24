@@ -5,6 +5,7 @@
 /aws_exocompute
 /aws_shared_exocompute
 /aws_storage_setting
+/azure_devops_organization
 /azure_exocompute
 /azure_permissions
 /azure_subscription
@@ -18,6 +19,7 @@
 /examples/aws_exocompute/aws_exocompute
 /examples/aws_shared_exocompute/aws_shared_exocompute
 /examples/aws_storage_setting/aws_storage_setting
+/examples/azure_devops_organization/azure_devops_organization
 /examples/azure_exocompute/azure_exocompute
 /examples/azure_permissions/azure_permissions
 /examples/azure_subscription/azure_subscription
