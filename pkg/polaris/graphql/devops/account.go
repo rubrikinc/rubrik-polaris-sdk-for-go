@@ -153,8 +153,10 @@ func UpdateAzureCloudAccount(ctx context.Context, gql *graphql.Client, params Up
 
 // UpgradeAzureCloudAccountParams holds the parameters for
 // UpgradeAzureCloudAccountWithoutOauth. The organization is keyed by
-// OrganizationID. FeaturesToUpgrade is the set of features whose newly granted
-// permissions are being acknowledged.
+// OrganizationID. FeaturesToUpgrade must be the complete desired set of
+// features and permission groups for the organization, not just the newly
+// granted ones: any permission group not included is removed from the
+// organization.
 type UpgradeAzureCloudAccountParams struct {
 	OrganizationID    uuid.UUID      `json:"organizationId"`
 	FeaturesToUpgrade []core.Feature `json:"featuresToUpgrade"`

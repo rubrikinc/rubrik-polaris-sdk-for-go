@@ -49,47 +49,6 @@ var addAzureDevopsCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureDev
   })
 }`
 
-// azureDevopsOrganization GraphQL query
-var azureDevopsOrganizationQuery = `query SdkGolangAzureDevopsOrganization($workloadId: UUID!) {
-  result: azureDevOpsOrganization(workloadId: $workloadId) {
-    id
-    nativeId
-    tenantId
-    tenantUuid
-    connectionStatus
-    authenticationMechanism
-    clientId
-    repoHostType
-    devOpsOrgType
-    projectCount
-    repoCount
-    lastRefreshTime
-    name
-    objectType
-    backupLocation {
-      id
-      archivalGroupId
-      name
-      storageType
-      cloudSpecificRegion {
-        azureRegion
-      }
-    }
-    cloudNativeExocompute {
-      id
-      hostName
-      region {
-        region {
-          azureRegion
-        }
-      }
-    }
-    rubrikHostedExocompute {
-      region
-    }
-  }
-}`
-
 // azureDevopsOrganizations GraphQL query
 var azureDevopsOrganizationsQuery = `query SdkGolangAzureDevopsOrganizations(
   $first:      Int,
@@ -147,20 +106,6 @@ var azureDevopsOrganizationsQuery = `query SdkGolangAzureDevopsOrganizations(
       hasNextPage
     }
     count
-  }
-}`
-
-// azureDevopsProject GraphQL query
-var azureDevopsProjectQuery = `query SdkGolangAzureDevopsProject($workloadId: UUID!) {
-  result: azureDevOpsProject(workloadId: $workloadId) {
-    id
-    nativeId
-    name
-    orgId
-    orgName
-    url
-    repoCount
-    objectType
   }
 }`
 
@@ -231,21 +176,6 @@ var azureDevopsRepositoriesQuery = `query SdkGolangAzureDevopsRepositories(
   }
 }`
 
-// azureDevopsRepository GraphQL query
-var azureDevopsRepositoryQuery = `query SdkGolangAzureDevopsRepository($workloadId: UUID!) {
-  result: azureDevOpsRepository(workloadId: $workloadId) {
-    id
-    name
-    orgId
-    orgName
-    projectId
-    projectName
-    url
-    size
-    objectType
-  }
-}`
-
 // deleteAzureDevopsCloudAccountWithoutOauth GraphQL query
 var deleteAzureDevopsCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteAzureDevopsCloudAccountWithoutOauth(
   $organizationId:  UUID!,
@@ -257,6 +187,28 @@ var deleteAzureDevopsCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteAz
   })
 }`
 
+// devopsCloudAccountListCurrentPermissions GraphQL query
+var devopsCloudAccountListCurrentPermissionsQuery = `query SdkGolangDevopsCloudAccountListCurrentPermissions($organizationId: UUID!, $featuresWithPermissionsGroups: [FeatureWithPermissionsGroups!]) {
+  result: devOpsCloudAccountListCurrentPermissions(input: {
+    organizationId: $organizationId,
+    featuresWithPermissionsGroups: $featuresWithPermissionsGroups,
+  }) {
+    featurePermissions {
+      feature
+      permissionJson
+      permissionsGroupVersions {
+        permissionsGroup
+        version
+      }
+    }
+    groupPermissions {
+      group
+      permissions
+      version
+    }
+  }
+}`
+
 // devopsCloudAccountListLatestPermissions GraphQL query
 var devopsCloudAccountListLatestPermissionsQuery = `query SdkGolangDevopsCloudAccountListLatestPermissions($featuresWithPermissionsGroups: [FeatureWithPermissionsGroups!]) {
   result: devOpsCloudAccountListLatestPermissions(input: {
@@ -265,7 +217,6 @@ var devopsCloudAccountListLatestPermissionsQuery = `query SdkGolangDevopsCloudAc
     featurePermissions {
       feature
       permissionJson
-      version
       permissionsGroupVersions {
         permissionsGroup
         version

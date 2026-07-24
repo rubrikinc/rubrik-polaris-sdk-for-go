@@ -32,27 +32,13 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// AzureOrganizations returns all Azure DevOps organizations under the specified
-// ancestor. Pass hierarchy.AzureDevOpsRoot as the ancestor ID to enumerate
-// every organization in the account.
-func (a API) AzureOrganizations(ctx context.Context, queryType gqldevops.QueryType, ancestorID string) ([]gqldevops.AzureOrganization, error) {
-	a.log.Print(log.Trace)
-
-	orgs, err := gqldevops.AzureOrganizations(ctx, a.client, queryType, ancestorID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Azure DevOps organizations: %s", err)
-	}
-
-	return orgs, nil
-}
-
 // AzureOrganizationByID returns the Azure DevOps organization with the
 // specified workload ID. If no organization matches the ID, graphql.ErrNotFound
 // is returned.
 func (a API) AzureOrganizationByID(ctx context.Context, workloadID uuid.UUID) (gqldevops.AzureOrganization, error) {
 	a.log.Print(log.Trace)
 
-	orgs, err := a.AzureOrganizations(ctx, gqldevops.QueryTypeDescendants, hierarchy.AzureDevOpsRoot)
+	orgs, err := a.AzureOrganizations(ctx, gqldevops.QueryTypeChildren, hierarchy.AzureDevOpsRoot)
 	if err != nil {
 		return gqldevops.AzureOrganization{}, err
 	}
@@ -65,24 +51,38 @@ func (a API) AzureOrganizationByID(ctx context.Context, workloadID uuid.UUID) (g
 	return gqldevops.AzureOrganization{}, fmt.Errorf("azure devops organization %s %w", workloadID, graphql.ErrNotFound)
 }
 
-// AzureProjects returns all Azure DevOps projects under the specified ancestor,
-// typically an organization ID.
-func (a API) AzureProjects(ctx context.Context, queryType gqldevops.QueryType, ancestorID string) ([]gqldevops.AzureProject, error) {
+// AzureOrganizations returns all Azure DevOps organizations under the specified
+// ancestor. Pass hierarchy.AzureDevOpsRoot as the ancestor ID to enumerate
+// every organization in the account. Pass zero or more filters to narrow the
+// results server-side.
+func (a API) AzureOrganizations(ctx context.Context, queryType gqldevops.QueryType, ancestorID string, filters ...hierarchy.Filter) ([]gqldevops.AzureOrganization, error) {
 	a.log.Print(log.Trace)
 
-	projects, err := gqldevops.AzureProjects(ctx, a.client, queryType, ancestorID)
+	orgs, err := gqldevops.AzureOrganizations(ctx, a.client, queryType, ancestorID, filters...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Azure DevOps projects: %s", err)
+		return nil, fmt.Errorf("failed to get Azure DevOps organizations: %s", err)
 	}
 
-	return projects, nil
+	return orgs, nil
+}
+
+// AzureOrganizationsByName returns all Azure DevOps organizations whose name
+// starts with the specified prefix. Pass zero or more additional filters to
+// narrow the search server-side.
+func (a API) AzureOrganizationsByName(ctx context.Context, namePrefix string, filters ...hierarchy.Filter) ([]gqldevops.AzureOrganization, error) {
+	a.log.Print(log.Trace)
+
+	filters = append([]hierarchy.Filter{{Field: "NAME_PREFIX", Texts: []string{namePrefix}}}, filters...)
+	orgs, err := a.AzureOrganizations(ctx, gqldevops.QueryTypeChildren, hierarchy.AzureDevOpsRoot, filters...)
+	if err != nil {
+		return nil, err
+	}
+
+	return orgs, nil
 }
 
 // AzureProjectByID returns the Azure DevOps project with the specified workload
 // ID. If no project matches the ID, graphql.ErrNotFound is returned.
-//
-// RSC does not surface a not-found signal for a single-project lookup, so the
-// projects are enumerated and matched by ID on the client side.
 func (a API) AzureProjectByID(ctx context.Context, workloadID uuid.UUID) (gqldevops.AzureProject, error) {
 	a.log.Print(log.Trace)
 
@@ -99,17 +99,34 @@ func (a API) AzureProjectByID(ctx context.Context, workloadID uuid.UUID) (gqldev
 	return gqldevops.AzureProject{}, fmt.Errorf("azure devops project %s %w", workloadID, graphql.ErrNotFound)
 }
 
-// AzureRepositories returns all Azure DevOps repositories under the specified
-// ancestor (typically an organization or project ID).
-func (a API) AzureRepositories(ctx context.Context, queryType gqldevops.QueryType, ancestorID string) ([]gqldevops.AzureRepository, error) {
+// AzureProjects returns all Azure DevOps projects under the specified ancestor,
+// typically an organization ID. Pass zero or more filters to narrow the results
+// server-side.
+func (a API) AzureProjects(ctx context.Context, queryType gqldevops.QueryType, ancestorID string, filters ...hierarchy.Filter) ([]gqldevops.AzureProject, error) {
 	a.log.Print(log.Trace)
 
-	repos, err := gqldevops.AzureRepositories(ctx, a.client, queryType, ancestorID)
+	projects, err := gqldevops.AzureProjects(ctx, a.client, queryType, ancestorID, filters...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Azure DevOps repositories: %s", err)
+		return nil, fmt.Errorf("failed to get Azure DevOps projects: %s", err)
 	}
 
-	return repos, nil
+	return projects, nil
+}
+
+// AzureProjectsByName returns all Azure DevOps projects whose name starts with
+// the specified prefix. Project names are only unique within an organization,
+// so the results may span organizations; pass an organization-scoping filter to
+// restrict them.
+func (a API) AzureProjectsByName(ctx context.Context, namePrefix string, filters ...hierarchy.Filter) ([]gqldevops.AzureProject, error) {
+	a.log.Print(log.Trace)
+
+	filters = append([]hierarchy.Filter{{Field: "NAME_PREFIX", Texts: []string{namePrefix}}}, filters...)
+	projects, err := a.AzureProjects(ctx, gqldevops.QueryTypeDescendants, hierarchy.AzureDevOpsRoot, filters...)
+	if err != nil {
+		return nil, err
+	}
+
+	return projects, nil
 }
 
 // AzureRepositoryByID returns the Azure DevOps repository with the specified
@@ -129,4 +146,34 @@ func (a API) AzureRepositoryByID(ctx context.Context, workloadID uuid.UUID) (gql
 	}
 
 	return gqldevops.AzureRepository{}, fmt.Errorf("azure devops repository %s %w", workloadID, graphql.ErrNotFound)
+}
+
+// AzureRepositories returns all Azure DevOps repositories under the specified
+// ancestor (typically an organization or project ID). Pass zero or more filters
+// to narrow the results server-side.
+func (a API) AzureRepositories(ctx context.Context, queryType gqldevops.QueryType, ancestorID string, filters ...hierarchy.Filter) ([]gqldevops.AzureRepository, error) {
+	a.log.Print(log.Trace)
+
+	repos, err := gqldevops.AzureRepositories(ctx, a.client, queryType, ancestorID, filters...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Azure DevOps repositories: %s", err)
+	}
+
+	return repos, nil
+}
+
+// AzureRepositoriesByName returns all Azure DevOps repositories whose name
+// starts with the specified prefix. Repository names are only unique within a
+// project, so the results may span projects; pass a project-scoping filter to
+// restrict them.
+func (a API) AzureRepositoriesByName(ctx context.Context, namePrefix string, filters ...hierarchy.Filter) ([]gqldevops.AzureRepository, error) {
+	a.log.Print(log.Trace)
+
+	filters = append([]hierarchy.Filter{{Field: "NAME_PREFIX", Texts: []string{namePrefix}}}, filters...)
+	repos, err := a.AzureRepositories(ctx, gqldevops.QueryTypeDescendants, hierarchy.AzureDevOpsRoot, filters...)
+	if err != nil {
+		return nil, err
+	}
+
+	return repos, nil
 }

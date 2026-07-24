@@ -28,6 +28,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -68,8 +70,8 @@ type CloudNativeExocompute struct {
 	} `json:"region"`
 }
 
-// RubrikHostedExocompute represents the Rubrik-hosted exocompute associated with
-// a DevOps organization. Nil on the organization when no Rubrik-hosted
+// RubrikHostedExocompute represents the Rubrik-hosted exocompute associated
+// with a DevOps organization. Nil on the organization when no Rubrik-hosted
 // exocompute is configured.
 type RubrikHostedExocompute struct {
 	ExocomputeClusterID uuid.UUID    `json:"exocomputeClusterId"`
@@ -83,6 +85,7 @@ type AzureOrganization struct {
 	NativeID                string                  `json:"nativeId"`
 	TenantDomain            string                  `json:"tenantId"`
 	TenantID                *uuid.UUID              `json:"tenantUuid"`
+	Cloud                   gqlazure.Cloud          `json:"cloudType"`
 	ConnectionStatus        ConnectionStatus        `json:"connectionStatus"`
 	AuthenticationMechanism AuthMechanism           `json:"authenticationMechanism"`
 	ClientID                string                  `json:"clientId"`
@@ -98,8 +101,18 @@ type AzureOrganization struct {
 	RubrikHostedExocompute  *RubrikHostedExocompute `json:"rubrikHostedExocompute"`
 }
 
-// AzureProject represents an Azure DevOps project with the curated fields exposed by
-// the SDK.
+// applyReadWorkaround fills in the fields that RSC does not yet return on
+// read. Each field is only set when absent, so once the API starts returning a
+// value the response takes precedence. Remove this once the API returns all the
+// fields.
+func (o *AzureOrganization) applyReadWorkaround() {
+	if o.Cloud == "" {
+		o.Cloud = gqlazure.PublicCloud
+	}
+}
+
+// AzureProject represents an Azure DevOps project with the curated fields
+// exposed by the SDK.
 type AzureProject struct {
 	ID         uuid.UUID `json:"id"`
 	NativeID   string    `json:"nativeId"`
@@ -128,21 +141,26 @@ type AzureRepository struct {
 // AzureOrganizations returns all Azure DevOps organizations under the specified
 // ancestor. Pass hierarchy.AzureDevOpsRoot as the ancestor ID to enumerate every
 // organization in the account; use queryType to select CHILDREN (one level) or
-// DESCENDANTS (the whole subtree).
-func AzureOrganizations(ctx context.Context, gql *graphql.Client, queryType QueryType, ancestorID string) ([]AzureOrganization, error) {
+// DESCENDANTS (the whole subtree). Pass zero or more filters to narrow the
+// results server-side, e.g. hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts:
+// []string{name}}.
+func AzureOrganizations(ctx context.Context, gql *graphql.Client, queryType QueryType, ancestorID string, filters ...hierarchy.Filter) ([]AzureOrganization, error) {
 	gql.Log().Print(log.Trace)
 
+	if filters == nil {
+		filters = []hierarchy.Filter{}
+	}
 	var cursor string
 	var orgs []AzureOrganization
 	for {
 		query := azureDevopsOrganizationsQuery
 		buf, err := gql.Request(ctx, query, struct {
-			First      int       `json:"first"`
-			After      string    `json:"after,omitempty"`
-			QueryType  QueryType `json:"queryType"`
-			AncestorID string    `json:"ancestorId"`
-			Filter     []any     `json:"filter"`
-		}{First: 100, After: cursor, QueryType: queryType, AncestorID: ancestorID, Filter: []any{}})
+			First      int                `json:"first"`
+			After      string             `json:"after,omitempty"`
+			QueryType  QueryType          `json:"queryType"`
+			AncestorID string             `json:"ancestorId"`
+			Filter     []hierarchy.Filter `json:"filter"`
+		}{First: 100, After: cursor, QueryType: queryType, AncestorID: ancestorID, Filter: filters})
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
 		}
@@ -169,51 +187,35 @@ func AzureOrganizations(ctx context.Context, gql *graphql.Client, queryType Quer
 		cursor = payload.Data.Result.PageInfo.EndCursor
 	}
 
+	// Workaround: fill in the fields RSC does not yet return on read.
+	for i := range orgs {
+		orgs[i].applyReadWorkaround()
+	}
+
 	return orgs, nil
-}
-
-// AzureOrganizationByID returns the Azure DevOps organization with the specified
-// workload ID.
-func AzureOrganizationByID(ctx context.Context, gql *graphql.Client, workloadID uuid.UUID) (AzureOrganization, error) {
-	gql.Log().Print(log.Trace)
-
-	query := azureDevopsOrganizationQuery
-	buf, err := gql.Request(ctx, query, struct {
-		WorkloadID uuid.UUID `json:"workloadId"`
-	}{WorkloadID: workloadID})
-	if err != nil {
-		return AzureOrganization{}, graphql.RequestError(query, err)
-	}
-
-	var payload struct {
-		Data struct {
-			Result AzureOrganization `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return AzureOrganization{}, graphql.UnmarshalError(query, err)
-	}
-
-	return payload.Data.Result, nil
 }
 
 // AzureProjects returns all Azure DevOps projects under the specified ancestor
 // (typically an organization ID). Use queryType to select CHILDREN or
-// DESCENDANTS.
-func AzureProjects(ctx context.Context, gql *graphql.Client, queryType QueryType, ancestorID string) ([]AzureProject, error) {
+// DESCENDANTS. Pass zero or more filters to narrow the results server-side, e.g.
+// hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts: []string{name}}.
+func AzureProjects(ctx context.Context, gql *graphql.Client, queryType QueryType, ancestorID string, filters ...hierarchy.Filter) ([]AzureProject, error) {
 	gql.Log().Print(log.Trace)
 
+	if filters == nil {
+		filters = []hierarchy.Filter{}
+	}
 	var cursor string
 	var projects []AzureProject
 	for {
 		query := azureDevopsProjectsQuery
 		buf, err := gql.Request(ctx, query, struct {
-			First      int       `json:"first"`
-			After      string    `json:"after,omitempty"`
-			QueryType  QueryType `json:"queryType"`
-			AncestorID string    `json:"ancestorId"`
-			Filter     []any     `json:"filter"`
-		}{First: 100, After: cursor, QueryType: queryType, AncestorID: ancestorID, Filter: []any{}})
+			First      int                `json:"first"`
+			After      string             `json:"after,omitempty"`
+			QueryType  QueryType          `json:"queryType"`
+			AncestorID string             `json:"ancestorId"`
+			Filter     []hierarchy.Filter `json:"filter"`
+		}{First: 100, After: cursor, QueryType: queryType, AncestorID: ancestorID, Filter: filters})
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
 		}
@@ -243,47 +245,28 @@ func AzureProjects(ctx context.Context, gql *graphql.Client, queryType QueryType
 	return projects, nil
 }
 
-// AzureProjectByID returns the Azure DevOps project with the specified workload ID.
-func AzureProjectByID(ctx context.Context, gql *graphql.Client, workloadID uuid.UUID) (AzureProject, error) {
-	gql.Log().Print(log.Trace)
-
-	query := azureDevopsProjectQuery
-	buf, err := gql.Request(ctx, query, struct {
-		WorkloadID uuid.UUID `json:"workloadId"`
-	}{WorkloadID: workloadID})
-	if err != nil {
-		return AzureProject{}, graphql.RequestError(query, err)
-	}
-
-	var payload struct {
-		Data struct {
-			Result AzureProject `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return AzureProject{}, graphql.UnmarshalError(query, err)
-	}
-
-	return payload.Data.Result, nil
-}
-
 // AzureRepositories returns all Azure DevOps repositories under the specified
 // ancestor (typically an organization or project ID). Use queryType to select
-// CHILDREN or DESCENDANTS.
-func AzureRepositories(ctx context.Context, gql *graphql.Client, queryType QueryType, ancestorID string) ([]AzureRepository, error) {
+// CHILDREN or DESCENDANTS. Pass zero or more filters to narrow the results
+// server-side, e.g. hierarchy.Filter{Field: "NAME_EXACT_MATCH", Texts:
+// []string{name}}.
+func AzureRepositories(ctx context.Context, gql *graphql.Client, queryType QueryType, ancestorID string, filters ...hierarchy.Filter) ([]AzureRepository, error) {
 	gql.Log().Print(log.Trace)
 
+	if filters == nil {
+		filters = []hierarchy.Filter{}
+	}
 	var cursor string
 	var repos []AzureRepository
 	for {
 		query := azureDevopsRepositoriesQuery
 		buf, err := gql.Request(ctx, query, struct {
-			First      int       `json:"first"`
-			After      string    `json:"after,omitempty"`
-			QueryType  QueryType `json:"queryType"`
-			AncestorID string    `json:"ancestorId"`
-			Filter     []any     `json:"filter"`
-		}{First: 100, After: cursor, QueryType: queryType, AncestorID: ancestorID, Filter: []any{}})
+			First      int                `json:"first"`
+			After      string             `json:"after,omitempty"`
+			QueryType  QueryType          `json:"queryType"`
+			AncestorID string             `json:"ancestorId"`
+			Filter     []hierarchy.Filter `json:"filter"`
+		}{First: 100, After: cursor, QueryType: queryType, AncestorID: ancestorID, Filter: filters})
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
 		}
@@ -311,29 +294,4 @@ func AzureRepositories(ctx context.Context, gql *graphql.Client, queryType Query
 	}
 
 	return repos, nil
-}
-
-// AzureRepositoryByID returns the Azure DevOps repository with the specified workload
-// ID.
-func AzureRepositoryByID(ctx context.Context, gql *graphql.Client, workloadID uuid.UUID) (AzureRepository, error) {
-	gql.Log().Print(log.Trace)
-
-	query := azureDevopsRepositoryQuery
-	buf, err := gql.Request(ctx, query, struct {
-		WorkloadID uuid.UUID `json:"workloadId"`
-	}{WorkloadID: workloadID})
-	if err != nil {
-		return AzureRepository{}, graphql.RequestError(query, err)
-	}
-
-	var payload struct {
-		Data struct {
-			Result AzureRepository `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return AzureRepository{}, graphql.UnmarshalError(query, err)
-	}
-
-	return payload.Data.Result, nil
 }
