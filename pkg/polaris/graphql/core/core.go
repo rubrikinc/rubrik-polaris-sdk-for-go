@@ -202,7 +202,7 @@ var (
 	FeatureAppFlows                                    = Feature{Name: "APP_FLOWS"}
 	FeatureArchival                                    = Feature{Name: "ARCHIVAL"}
 	FeatureAzureDevOpsDeveloperCollaborationProtection = Feature{Name: "AZURE_DEVOPS_DEVELOPER_COLLABORATION_PROTECTION"}
-	FeatureAzureDevOpsProtection                       = Feature{Name: "AZURE_DEVOPS_PROTECTION"}
+	FeatureAzureDevOpsProtection                       = Feature{Name: "AZURE_DEVOPS_PROTECTION"} // Deprecated: use FeatureAzureDevOpsRepositoryProtection
 	FeatureAzureDevOpsRepositoryProtection             = Feature{Name: "AZURE_DEVOPS_REPOSITORY_PROTECTION"}
 	FeatureAzureSQLDBProtection                        = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
 	FeatureAzureSQLMIProtection                        = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
@@ -220,6 +220,7 @@ var (
 	FeatureDSPMMetadata                                = Feature{Name: "DSPM_METADATA"}
 	FeatureExocompute                                  = Feature{Name: "EXOCOMPUTE"}
 	FeatureGCPSharedVPCHost                            = Feature{Name: "GCP_SHARED_VPC_HOST"}
+	FeatureGitHubRepositoryProtection                  = Feature{Name: "GITHUB_REPOSITORY_PROTECTION"}
 	FeatureKubernetesProtection                        = Feature{Name: "KUBERNETES_PROTECTION"}
 	FeatureLaminarCrossAccount                         = Feature{Name: "LAMINAR_CROSS_ACCOUNT"}
 	FeatureLaminarInternal                             = Feature{Name: "LAMINAR_INTERNAL"}
@@ -238,7 +239,7 @@ var validFeatures = map[string]struct{}{
 	FeatureAppFlows.Name: {},
 	FeatureArchival.Name: {},
 	FeatureAzureDevOpsDeveloperCollaborationProtection.Name: {},
-	FeatureAzureDevOpsProtection.Name:                       {},
+	FeatureAzureDevOpsProtection.Name:                       {}, // Deprecated: use FeatureAzureDevOpsRepositoryProtection
 	FeatureAzureDevOpsRepositoryProtection.Name:             {},
 	FeatureAzureSQLDBProtection.Name:                        {},
 	FeatureAzureSQLMIProtection.Name:                        {},
@@ -256,6 +257,7 @@ var validFeatures = map[string]struct{}{
 	FeatureDSPMMetadata.Name:                                {},
 	FeatureExocompute.Name:                                  {},
 	FeatureGCPSharedVPCHost.Name:                            {},
+	FeatureGitHubRepositoryProtection.Name:                  {},
 	FeatureKubernetesProtection.Name:                        {},
 	FeatureLaminarCrossAccount.Name:                         {},
 	FeatureLaminarInternal.Name:                             {},

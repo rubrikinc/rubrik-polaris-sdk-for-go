@@ -248,6 +248,93 @@ var generateAzureDevopsOnboardingScriptQuery = `query SdkGolangGenerateAzureDevo
   }
 }`
 
+// githubOrganizations GraphQL query
+var githubOrganizationsQuery = `query SdkGolangGithubOrganizations(
+  $first:      Int,
+  $after:      String,
+  $queryType:  QueryType!,
+  $ancestorId: String!,
+  $filter:     [Filter!]!,
+) {
+  result: gitHubOrganizations(
+    first:      $first,
+    after:      $after,
+    queryType:  $queryType,
+    ancestorId: $ancestorId,
+    filter:     $filter,
+  ) {
+    nodes {
+      id
+      nativeId
+      connectionStatus
+      repoHostType
+      devOpsOrgType
+      repoCount
+      lastRefreshTime
+      orgUrl
+      name
+      objectType
+      backupLocation {
+        id
+        archivalGroupId
+        name
+        storageType
+        cloudSpecificRegion {
+          azureRegion
+        }
+      }
+      exocompute {
+        id
+        hostName
+        region {
+          region {
+            azureRegion
+          }
+        }
+      }
+      rubrikHostedExocompute {
+        region
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+    count
+  }
+}`
+
+// githubRepositories GraphQL query
+var githubRepositoriesQuery = `query SdkGolangGithubRepositories(
+  $first:      Int,
+  $after:      String,
+  $queryType:  QueryType!,
+  $ancestorId: String!,
+  $filter:     [Filter!]!,
+) {
+  result: gitHubRepositories(
+    first:      $first,
+    after:      $after,
+    queryType:  $queryType,
+    ancestorId: $ancestorId,
+    filter:     $filter,
+  ) {
+    nodes {
+      id
+      name
+      orgId
+      orgName
+      size
+      objectType
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+    count
+  }
+}`
+
 // updateAzureDevopsCloudAccount GraphQL query
 var updateAzureDevopsCloudAccountQuery = `mutation SdkGolangUpdateAzureDevopsCloudAccount(
   $organizationId:           UUID!,

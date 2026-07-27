@@ -153,6 +153,7 @@ const (
 	ObjectFileset                 ObjectType = "FILESET_OBJECT_TYPE"
 	ObjectGCP                     ObjectType = "GCP_OBJECT_TYPE"
 	ObjectGCPCloudSQL             ObjectType = "GCP_CLOUD_SQL_OBJECT_TYPE"
+	ObjectGitHub                  ObjectType = "GITHUB_OBJECT_TYPE"
 	ObjectGoogleWorkspace         ObjectType = "GOOGLE_WORKSPACE_OBJECT_TYPE"
 	ObjectHyperV                  ObjectType = "HYPERV_OBJECT_TYPE"
 	ObjectInformixInstance        ObjectType = "INFORMIX_INSTANCE_OBJECT_TYPE"
@@ -204,6 +205,7 @@ func AllObjectTypesAsStrings() []string {
 		string(ObjectFileset),
 		string(ObjectGCP),
 		string(ObjectGCPCloudSQL),
+		string(ObjectGitHub),
 		string(ObjectGoogleWorkspace),
 		string(ObjectHyperV),
 		string(ObjectInformixInstance),

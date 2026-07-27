@@ -21,8 +21,10 @@
 // DEALINGS IN THE SOFTWARE.
 
 // Package devops provides a low-level interface to the DevOps (Azure DevOps and
-// GitHub) GraphQL queries provided by the Polaris platform. Only the Azure
-// DevOps non-OAuth onboarding and read-back operations are implemented.
+// GitHub) GraphQL queries provided by the Polaris platform. Azure DevOps
+// supports non-OAuth onboarding and read-back operations. GitHub cannot be
+// onboarded through the SDK due to GitHub API limitations, so only its
+// read-back operations are implemented.
 package devops
 
 // HostType represents the type of exocompute host used to protect a DevOps

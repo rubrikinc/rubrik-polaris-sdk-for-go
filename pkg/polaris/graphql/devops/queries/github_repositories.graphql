@@ -1,0 +1,29 @@
+query RubrikPolarisSDKRequest(
+  $first:      Int,
+  $after:      String,
+  $queryType:  QueryType!,
+  $ancestorId: String!,
+  $filter:     [Filter!]!,
+) {
+  result: gitHubRepositories(
+    first:      $first,
+    after:      $after,
+    queryType:  $queryType,
+    ancestorId: $ancestorId,
+    filter:     $filter,
+  ) {
+    nodes {
+      id
+      name
+      orgId
+      orgName
+      size
+      objectType
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+    count
+  }
+}
