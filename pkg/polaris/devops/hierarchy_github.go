@@ -55,6 +55,26 @@ func (a API) GitHubOrganizationByID(ctx context.Context, workloadID uuid.UUID) (
 	return gqldevops.GitHubOrganization{}, fmt.Errorf("github organization %s %w", workloadID, graphql.ErrNotFound)
 }
 
+// GitHubOrganizationByNativeID returns the GitHub organization with the
+// specified native ID. The native ID is GitHub's numeric organization ID, which
+// differs from the organization name. If no organization matches the native ID,
+// graphql.ErrNotFound is returned.
+func (a API) GitHubOrganizationByNativeID(ctx context.Context, nativeID string) (gqldevops.GitHubOrganization, error) {
+	a.log.Print(log.Trace)
+
+	orgs, err := a.GitHubOrganizations(ctx, gqldevops.QueryTypeChildren, hierarchy.GitHubRoot)
+	if err != nil {
+		return gqldevops.GitHubOrganization{}, err
+	}
+	for _, org := range orgs {
+		if org.NativeID == nativeID {
+			return org, nil
+		}
+	}
+
+	return gqldevops.GitHubOrganization{}, fmt.Errorf("github organization %s %w", nativeID, graphql.ErrNotFound)
+}
+
 // GitHubOrganizations returns all GitHub organizations under the specified
 // ancestor. Pass hierarchy.GitHubRoot as the ancestor ID to enumerate every
 // organization in the account. Pass zero or more filters to narrow the results
