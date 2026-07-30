@@ -184,7 +184,21 @@ type Feature struct {
 // InventoryObject is a constraint for types that can be returned from the
 // inventory root query.
 type InventoryObject interface {
-	AWSNativeAccount | AWSNativeEC2Instance | AWSNativeEBSVolume | AWSNativeRDSInstance | AzureNativeSubscription | AzureNativeVirtualMachine | AzureDevOpsOrganization | AzureDevOpsProject | AzureDevOpsRepository | AzureSQLManagedInstanceServer | GitHubOrganization | GitHubRepository
+	AWSNativeAccount |
+	AWSNativeEC2Instance |
+	AWSNativeEBSVolume |
+	AWSNativeRDSInstance |
+	AzureDevOpsOrganization |
+	AzureDevOpsProject |
+	AzureDevOpsRepository |
+	AzureNativeResourceGroup |
+	AzureNativeSubscription |
+	AzureNativeVirtualMachine |
+	AzureSQLManagedInstanceServer |
+	CloudNativeTagRule |
+	GitHubOrganization |
+	GitHubRepository
+
 	// typeFilter returns the object type filter to use for the inventory root
 	// query. It corresponds to values in the GraphQL Enum HierarchyObjectTypeEnum.
 	typeFilter() ObjectType
@@ -195,6 +209,39 @@ type Object struct {
 	ID         uuid.UUID  `json:"id"`
 	Name       string     `json:"name"`
 	ObjectType ObjectType `json:"objectType"`
+}
+
+// AzureDevOpsOrganization represents an Azure DevOps organization from the
+// inventory root.
+type AzureDevOpsOrganization struct {
+	Object
+}
+
+func (AzureDevOpsOrganization) typeFilter() ObjectType {
+	return "AZURE_DEVOPS_ORGANIZATION"
+}
+
+// AzureDevOpsProject represents an Azure DevOps project from the inventory
+// root.
+type AzureDevOpsProject struct {
+	Object
+	OrgID uuid.UUID `json:"orgId"`
+}
+
+func (AzureDevOpsProject) typeFilter() ObjectType {
+	return "AZURE_DEVOPS_PROJECT"
+}
+
+// AzureDevOpsRepository represents an Azure DevOps repository from the
+// inventory root.
+type AzureDevOpsRepository struct {
+	Object
+	OrgID     uuid.UUID `json:"orgId"`
+	ProjectID uuid.UUID `json:"projectId"`
+}
+
+func (AzureDevOpsRepository) typeFilter() ObjectType {
+	return "AZURE_DEVOPS_REPOSITORY"
 }
 
 // AWSNativeAccount represents an AWS native account from the inventory root.
@@ -238,6 +285,16 @@ func (AWSNativeRDSInstance) typeFilter() ObjectType {
 	return "AwsNativeRdsInstance"
 }
 
+// AzureNativeResourceGroup represents an Azure native resource group from the
+// inventory root.
+type AzureNativeResourceGroup struct {
+	Object
+}
+
+func (AzureNativeResourceGroup) typeFilter() ObjectType {
+	return "AzureNativeResourceGroup"
+}
+
 // AzureNativeSubscription represents an Azure native subscription from the
 // inventory root.
 type AzureNativeSubscription struct {
@@ -251,37 +308,27 @@ func (AzureNativeSubscription) typeFilter() ObjectType {
 	return "AzureNativeSubscription"
 }
 
-// AzureDevOpsOrganization represents an Azure DevOps organization from the
-// inventory root.
-type AzureDevOpsOrganization struct {
+// AzureNativeVirtualMachine represents an Azure native virtual machine from
+// the inventory root.
+type AzureNativeVirtualMachine struct {
 	Object
 }
 
-func (AzureDevOpsOrganization) typeFilter() ObjectType {
-	return "AZURE_DEVOPS_ORGANIZATION"
+// typeFilter returns "AzureNativeVm" which is the GraphQL
+// HierarchyObjectTypeEnum value for Azure VMs. Note that the enum name differs
+// from the Go type name (AzureNativeVirtualMachine).
+func (AzureNativeVirtualMachine) typeFilter() ObjectType {
+	return "AzureNativeVm"
 }
 
-// AzureDevOpsProject represents an Azure DevOps project from the inventory
+// CloudNativeTagRule represents a cloud native tag rule from the inventory
 // root.
-type AzureDevOpsProject struct {
+type CloudNativeTagRule struct {
 	Object
-	OrgID uuid.UUID `json:"orgId"`
 }
 
-func (AzureDevOpsProject) typeFilter() ObjectType {
-	return "AZURE_DEVOPS_PROJECT"
-}
-
-// AzureDevOpsRepository represents an Azure DevOps repository from the
-// inventory root.
-type AzureDevOpsRepository struct {
-	Object
-	OrgID     uuid.UUID `json:"orgId"`
-	ProjectID uuid.UUID `json:"projectId"`
-}
-
-func (AzureDevOpsRepository) typeFilter() ObjectType {
-	return "AZURE_DEVOPS_REPOSITORY"
+func (CloudNativeTagRule) typeFilter() ObjectType {
+	return "CloudNativeTagRule"
 }
 
 // GitHubOrganization represents a GitHub organization from the inventory root.
@@ -301,19 +348,6 @@ type GitHubRepository struct {
 
 func (GitHubRepository) typeFilter() ObjectType {
 	return "GITHUB_REPOSITORY"
-}
-
-// AzureNativeVirtualMachine represents an Azure native virtual machine from
-// the inventory root.
-type AzureNativeVirtualMachine struct {
-	Object
-}
-
-// typeFilter returns "AzureNativeVm" which is the GraphQL
-// HierarchyObjectTypeEnum value for Azure VMs. Note that the enum name differs
-// from the Go type name (AzureNativeVirtualMachine).
-func (AzureNativeVirtualMachine) typeFilter() ObjectType {
-	return "AzureNativeVm"
 }
 
 // AzureSubscriptionDetails holds the parent Azure subscription details returned

@@ -1,0 +1,32 @@
+query RubrikPolarisSDKRequest($after: String, $filters: AzureNativeCommonResourceGroupFilters) {
+    result: azureNativeResourceGroups(
+        after:                      $after,
+        commonResourceGroupFilters: $filters,
+    ) {
+        nodes {
+            id
+            name
+            azureSubscriptionDetails {
+                id
+                accountConnectionId
+                name
+                nativeId
+            }
+            slaAssignment
+            logicalPath {
+                fid
+                name
+                objectType
+            }
+            physicalPath {
+                fid
+                name
+                objectType
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}

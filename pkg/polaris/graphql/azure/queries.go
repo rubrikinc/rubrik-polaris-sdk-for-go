@@ -157,7 +157,8 @@ var azureNativeResourceGroupsQuery = `query SdkGolangAzureNativeResourceGroups($
             SQL_MI,
             SQL_DB,
             BLOB,
-            POSTGRES_FLEXIBLE_SERVER
+            POSTGRES_FLEXIBLE_SERVER,
+            AZ_CLOUD_DISCOVERY,
         ]
         commonResourceGroupFilters: {
             subscriptionFilter: {
@@ -174,7 +175,9 @@ var azureNativeResourceGroupsQuery = `query SdkGolangAzureNativeResourceGroups($
                 name
                 azureSubscriptionDetails {
                     id
+                    accountConnectionId
                     name
+                    nativeId
                 }
                 slaAssignment
                 logicalPath {
@@ -196,10 +199,53 @@ var azureNativeResourceGroupsQuery = `query SdkGolangAzureNativeResourceGroups($
     }
 }`
 
+// azureNativeResourceGroupsWithFilter GraphQL query
+var azureNativeResourceGroupsWithFilterQuery = `query SdkGolangAzureNativeResourceGroupsWithFilter($after: String, $filters: AzureNativeCommonResourceGroupFilters) {
+    result: azureNativeResourceGroups(
+        after:                      $after,
+        commonResourceGroupFilters: $filters,
+        sortBy:                     AZURE_RG_SUBSCRIPTION_NAME,
+        sortOrder:                  ASC,
+    ) {
+        nodes {
+            id
+            name
+            azureSubscriptionDetails {
+                id
+                accountConnectionId
+                name
+                nativeId
+            }
+            slaAssignment
+            logicalPath {
+                fid
+                name
+                objectType
+            }
+            physicalPath {
+                fid
+                name
+                objectType
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
 // azureNativeSubscriptions GraphQL query
 var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($after: String, $filter: String!) {
   result: azureNativeSubscriptions(
-    azureNativeProtectionFeatures: [VM, SQL_DB, SQL_MI, BLOB]
+    azureNativeProtectionFeatures: [
+      VM,
+      SQL_MI,
+      SQL_DB,
+      BLOB,
+      POSTGRES_FLEXIBLE_SERVER,
+      AZ_CLOUD_DISCOVERY,
+    ]
     after: $after
     subscriptionFilters: { nameSubstringFilter: { nameSubstring: $filter } }
   ) {
@@ -227,6 +273,45 @@ var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($af
       hasNextPage
     }
   }
+}`
+
+// azureNativeSubscriptionsWithFilter GraphQL query
+var azureNativeSubscriptionsWithFilterQuery = `query SdkGolangAzureNativeSubscriptionsWithFilter($after: String, $filters: AzureNativeSubscriptionFilters) {
+    result: azureNativeSubscriptions(
+        after:               $after,
+        subscriptionFilters: $filters,
+        azureNativeProtectionFeatures: [
+            VM,
+            SQL_MI,
+            SQL_DB,
+            BLOB,
+            POSTGRES_FLEXIBLE_SERVER,
+            AZ_CLOUD_DISCOVERY,
+        ],
+        sortBy:    NAME,
+        sortOrder: ASC,
+    ) {
+        nodes {
+            id
+            accountConnectionId
+            azureSubscriptionNativeId
+            name
+            azureSubscriptionStatus
+            slaAssignment
+            configuredSlaDomain {
+                id
+                name
+            }
+            effectiveSlaDomain {
+                id
+                name
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
 }`
 
 // deleteAzureCloudAccountWithoutOauth GraphQL query

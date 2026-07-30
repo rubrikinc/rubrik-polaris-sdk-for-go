@@ -1,0 +1,35 @@
+query RubrikPolarisSDKRequest($after: String, $filters: AzureNativeSubscriptionFilters) {
+    result: azureNativeSubscriptions(
+        after:               $after,
+        subscriptionFilters: $filters,
+        azureNativeProtectionFeatures: [
+            VM,
+            SQL_MI,
+            SQL_DB,
+            BLOB,
+            POSTGRES_FLEXIBLE_SERVER,
+            AZ_CLOUD_DISCOVERY,
+        ],
+    ) {
+        nodes {
+            id
+            accountConnectionId
+            azureSubscriptionNativeId
+            name
+            azureSubscriptionStatus
+            slaAssignment
+            configuredSlaDomain {
+                id
+                name
+            }
+            effectiveSlaDomain {
+                id
+                name
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}

@@ -1,6 +1,13 @@
 query RubrikPolarisSDKRequest($after: String, $filter: String!) {
   result: azureNativeSubscriptions(
-    azureNativeProtectionFeatures: [VM, SQL_DB, SQL_MI, BLOB]
+    azureNativeProtectionFeatures: [
+      VM,
+      SQL_MI,
+      SQL_DB,
+      BLOB,
+      POSTGRES_FLEXIBLE_SERVER,
+      AZ_CLOUD_DISCOVERY,
+    ]
     after: $after
     subscriptionFilters: { nameSubstringFilter: { nameSubstring: $filter } }
   ) {

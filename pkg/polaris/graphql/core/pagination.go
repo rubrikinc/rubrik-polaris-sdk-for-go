@@ -1,4 +1,4 @@
-// Copyright 2021 Rubrik, Inc.
+// Copyright 2026 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -20,15 +20,28 @@
 
 package core
 
-import (
-	"testing"
-	"time"
+// PageInfo describes the result page metadata returned alongside a Relay-style
+// cursor connection.
+type PageInfo struct {
+	StartCursor     string `json:"startCursor"`
+	EndCursor       string `json:"endCursor"`
+	HasPreviousPage bool   `json:"hasPreviousPage"`
+	HasNextPage     bool   `json:"hasNextPage"`
+}
+
+// SortOrder represents the valid sort order values.
+type SortOrder string
+
+const (
+	SortOrderAsc  SortOrder = "ASC"
+	SortOrderDesc SortOrder = "DESC"
 )
 
-func TestFormatTimestamp(t *testing.T) {
-	now := time.Now()
-	timestamp := FormatTimestamp(now)
-	if timestamp != now.UTC().Format("2006-01-02T15:04:05.000Z") {
-		t.Errorf("invalid timestamp: %v", timestamp)
-	}
+// Pagination represents pagination parameters.
+type Pagination struct {
+	First     *int
+	After     *string
+	Last      *int
+	Before    *string
+	SortOrder *SortOrder
 }

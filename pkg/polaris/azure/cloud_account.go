@@ -50,10 +50,10 @@ type CloudAccountTenant struct {
 
 // CloudAccount for Azure subscriptions.
 type CloudAccount struct {
-	ID           uuid.UUID // Rubrik cloud account ID.
+	ID           uuid.UUID // RSC cloud account ID.
 	NativeID     uuid.UUID // Azure subscription ID.
 	Name         string
-	TenantID     uuid.UUID // Rubrik tenant ID.
+	TenantID     uuid.UUID // RSC tenant ID.
 	TenantDomain string    // Azure tenant domain.
 	// EntraGroupID is the Entra ID group object ID for Exocompute AKS auth.
 	// Inherited from the tenant; all subscriptions within the same tenant
@@ -99,14 +99,6 @@ func (f Feature) SupportResourceGroup() bool {
 	return !f.Equal(core.FeatureAzureSQLMIProtection) &&
 		!f.Equal(core.FeatureCloudNativeBlobProtection) &&
 		!f.Equal(core.FeatureCloudDiscovery)
-}
-
-// IsProtectionFeature returns true if the feature is a protection feature.
-func (f Feature) IsProtectionFeature() bool {
-	return f.Equal(core.FeatureCloudNativeProtection) ||
-		f.Equal(core.FeatureCloudNativeBlobProtection) ||
-		f.Equal(core.FeatureAzureSQLDBProtection) ||
-		f.Equal(core.FeatureAzureSQLMIProtection)
 }
 
 // SupportUserAssignedManagedIdentity returns true if the feature supports
@@ -357,6 +349,21 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		}
 	}
 
+	// Wait for the native subscription to become available in the hierarchy
+	// for protection features. Since the cloud account onboarding has already
+	// been completed successfully, we only log errors encountered.
+	if feature.IsProtectionFeature() {
+		if err := a.WaitForNativeSubscription(ctx, account.ID); err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				a.log.Printf(log.Warn, "Subscription %q was successfully onboarded, but a deadline was "+
+					"exceeded before its native subscription became available", account.Name)
+			} else {
+				a.log.Printf(log.Warn, "Subscription %q was successfully onboarded, but an unexpected error "+
+					"occurred while waiting for the native subscription to become available: %s", account.Name, err)
+			}
+		}
+	}
+
 	return account.ID, nil
 }
 
@@ -373,11 +380,11 @@ func (a API) RemoveSubscription(ctx context.Context, cloudAccountID uuid.UUID, f
 		return fmt.Errorf("failed to retrieve subscription: %w", err)
 	}
 
-	// The Cloud Discovery feature must be removed after all protection
+	// The Cloud Discovery feature must be removed after all other protection
 	// features have been removed.
 	if feature.Equal(core.FeatureCloudDiscovery) {
 		for _, f := range account.Features {
-			if f.IsProtectionFeature() {
+			if !f.Equal(core.FeatureCloudDiscovery) && f.IsProtectionFeature() {
 				return errors.New("cloud discovery must be removed after all other protection features")
 			}
 		}

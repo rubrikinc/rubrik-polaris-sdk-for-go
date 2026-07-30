@@ -14,7 +14,8 @@ query RubrikPolarisSDKRequest($after: String, $subscriptionIds: [String!]!, $nam
             SQL_MI,
             SQL_DB,
             BLOB,
-            POSTGRES_FLEXIBLE_SERVER
+            POSTGRES_FLEXIBLE_SERVER,
+            AZ_CLOUD_DISCOVERY,
         ]
         commonResourceGroupFilters: {
             subscriptionFilter: {
@@ -31,7 +32,9 @@ query RubrikPolarisSDKRequest($after: String, $subscriptionIds: [String!]!, $nam
                 name
                 azureSubscriptionDetails {
                     id
+                    accountConnectionId
                     name
+                    nativeId
                 }
                 slaAssignment
                 logicalPath {
