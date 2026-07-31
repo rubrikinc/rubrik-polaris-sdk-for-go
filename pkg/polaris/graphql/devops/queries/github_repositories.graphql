@@ -5,7 +5,7 @@ query RubrikPolarisSDKRequest(
     $ancestorId: String!,
     $filter:     [Filter!]!,
 ) {
-    result: azureDevOpsProjects(
+    result: gitHubRepositories(
         first:      $first,
         after:      $after,
         queryType:  $queryType,
@@ -14,12 +14,10 @@ query RubrikPolarisSDKRequest(
     ) {
         nodes {
             id
-            nativeId
             name
             orgId
             orgName
-            url
-            repoCount
+            size
             objectType
             configuredSlaDomain {
                 id

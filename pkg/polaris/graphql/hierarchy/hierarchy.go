@@ -183,7 +183,7 @@ type Feature struct {
 // InventoryObject is a constraint for types that can be returned from the
 // inventory root query.
 type InventoryObject interface {
-	AWSNativeAccount | AWSNativeEC2Instance | AWSNativeEBSVolume | AWSNativeRDSInstance | AzureNativeSubscription | AzureNativeVirtualMachine | AzureDevOpsOrganization | AzureDevOpsProject | AzureDevOpsRepository
+	AWSNativeAccount | AWSNativeEC2Instance | AWSNativeEBSVolume | AWSNativeRDSInstance | AzureNativeSubscription | AzureNativeVirtualMachine | AzureDevOpsOrganization | AzureDevOpsProject | AzureDevOpsRepository | GitHubOrganization | GitHubRepository
 	// typeFilter returns the object type filter to use for the inventory root
 	// query. It corresponds to values in the GraphQL Enum HierarchyObjectTypeEnum.
 	typeFilter() ObjectType
@@ -281,6 +281,25 @@ type AzureDevOpsRepository struct {
 
 func (AzureDevOpsRepository) typeFilter() ObjectType {
 	return "AZURE_DEVOPS_REPOSITORY"
+}
+
+// GitHubOrganization represents a GitHub organization from the inventory root.
+type GitHubOrganization struct {
+	Object
+}
+
+func (GitHubOrganization) typeFilter() ObjectType {
+	return "GITHUB_ORGANIZATION"
+}
+
+// GitHubRepository represents a GitHub repository from the inventory root.
+type GitHubRepository struct {
+	Object
+	OrgID uuid.UUID `json:"orgId"`
+}
+
+func (GitHubRepository) typeFilter() ObjectType {
+	return "GITHUB_REPOSITORY"
 }
 
 // AzureNativeVirtualMachine represents an Azure native virtual machine from

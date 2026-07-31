@@ -26,6 +26,9 @@ query RubrikPolarisSDKRequest($fid: UUID!, $workloadHierarchy: WorkloadLevelHier
             orgId
             projectId
         }
+        ... on GithubRepository {
+            orgId
+        }
         configuredSlaDomain {
             ... on ClusterSlaDomain {
                 id

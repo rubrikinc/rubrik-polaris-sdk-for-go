@@ -18,10 +18,12 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package devops provides a high-level interface to the DevOps (Azure DevOps)
-// part of the RSC platform. Onboarding assumes the customer application has
-// already been registered via the azure package using the
-// azure.AppUseCaseDevOps use case.
+// Package devops provides a high-level interface to the DevOps (Azure DevOps
+// and GitHub) part of the RSC platform. Azure DevOps onboarding assumes the
+// customer application has already been registered via the azure package using
+// the azure.AppUseCaseDevOps use case. GitHub cannot be onboarded through the
+// SDK due to GitHub API limitations; its organizations and repositories are
+// read-only.
 package devops
 
 import (
@@ -84,7 +86,6 @@ func AzureSupportedPermissionGroups() []core.PermissionGroup {
 	}
 
 	slices.Sort(groups)
-
 	return slices.Compact(groups)
 }
 
@@ -104,6 +105,68 @@ func AzureSupportedPermissionGroupNames() []string {
 // describing what is not supported.
 func AzureCheckFeature(feature core.Feature) error {
 	f, ok := core.LookupFeature(azureSupportedFeatures, feature)
+	if !ok {
+		return fmt.Errorf("feature %q is not supported", feature.Name)
+	}
+
+	for _, group := range feature.PermissionGroups {
+		if !f.HasPermissionGroup(group) {
+			return fmt.Errorf("feature %q does not support permission group %q", feature.Name, group)
+		}
+	}
+
+	return nil
+}
+
+// githubSupportedFeatures contains all features and permission groups supported
+// by GitHub organizations.
+var githubSupportedFeatures = []core.Feature{
+	core.FeatureGitHubRepositoryProtection.WithPermissionGroups(
+		core.PermissionGroupBasic,
+		core.PermissionGroupRecovery,
+	),
+}
+
+// GitHubSupportedFeatures returns the features and permission groups supported
+// by GitHub organizations.
+func GitHubSupportedFeatures() []core.Feature {
+	return slices.Clone(githubSupportedFeatures)
+}
+
+// GitHubSupportedFeatureNames returns the name of all features supported by
+// GitHub organizations.
+func GitHubSupportedFeatureNames() []string {
+	return core.FeatureNames(githubSupportedFeatures)
+}
+
+// GitHubSupportedPermissionGroups returns the deduplicated set of permission
+// groups across all features supported by GitHub organizations.
+func GitHubSupportedPermissionGroups() []core.PermissionGroup {
+	var groups []core.PermissionGroup
+	for _, feature := range githubSupportedFeatures {
+		groups = append(groups, feature.PermissionGroups...)
+	}
+
+	slices.Sort(groups)
+	return slices.Compact(groups)
+}
+
+// GitHubSupportedPermissionGroupNames returns the name of all permission groups
+// supported by GitHub organizations.
+func GitHubSupportedPermissionGroupNames() []string {
+	var groupNames []string
+	for _, group := range GitHubSupportedPermissionGroups() {
+		groupNames = append(groupNames, string(group))
+	}
+
+	return groupNames
+}
+
+// GitHubCheckFeature returns nil if the feature and all of its permission groups
+// are supported by GitHub organizations, otherwise it returns an error
+// describing what is not supported.
+func GitHubCheckFeature(feature core.Feature) error {
+	f, ok := core.LookupFeature(githubSupportedFeatures, feature)
 	if !ok {
 		return fmt.Errorf("feature %q is not supported", feature.Name)
 	}

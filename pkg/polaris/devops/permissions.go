@@ -74,6 +74,27 @@ func (a API) ListOrgPermissions(ctx context.Context, organizationID uuid.UUID) (
 	return permissions, nil
 }
 
+// GitHubListOrgPermissions returns the features, permission groups and
+// permissions currently configured for the specified GitHub organization.
+func (a API) GitHubListOrgPermissions(ctx context.Context, organizationID uuid.UUID) (gqldevops.Permissions, error) {
+	a.log.Print(log.Trace)
+
+	// Workaround: the endpoint currently requires at least the feature names to
+	// be specified and returns nothing when they are omitted. Until this is
+	// fixed the function defaults to the GITHUB_REPOSITORY_PROTECTION feature.
+	features := []core.Feature{core.FeatureGitHubRepositoryProtection}
+
+	permissions, err := gqldevops.ListCurrentPermissions(ctx, a.client, organizationID, features)
+	if err != nil {
+		return gqldevops.Permissions{}, fmt.Errorf("failed to list current GitHub permissions: %s", err)
+	}
+	if err := sortPermissions(permissions); err != nil {
+		return gqldevops.Permissions{}, fmt.Errorf("failed to list current GitHub permissions: %s", err)
+	}
+
+	return permissions, nil
+}
+
 // sortPermissions orders the permissions so the result is deterministic
 // regardless of the order in which RSC returns the elements. It sorts the
 // feature, permission-group and version slices, and canonicalizes each

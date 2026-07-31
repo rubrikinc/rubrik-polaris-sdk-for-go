@@ -5,7 +5,7 @@ query RubrikPolarisSDKRequest(
     $ancestorId: String!,
     $filter:     [Filter!]!,
 ) {
-    result: azureDevOpsOrganizations(
+    result: gitHubOrganizations(
         first:      $first,
         after:      $after,
         queryType:  $queryType,
@@ -15,16 +15,12 @@ query RubrikPolarisSDKRequest(
         nodes {
             id
             nativeId
-            tenantId
-            tenantUuid
             connectionStatus
-            authenticationMechanism
-            clientId
             repoHostType
             devOpsOrgType
-            projectCount
             repoCount
             lastRefreshTime
+            orgUrl
             name
             objectType
             backupLocation {
@@ -36,7 +32,7 @@ query RubrikPolarisSDKRequest(
                     azureRegion
                 }
             }
-            cloudNativeExocompute {
+            exocompute {
                 id
                 hostName
                 region {

@@ -29,6 +29,9 @@ query RubrikPolarisSDKRequest($after: String, $filter: [Filter!], $first: Int, $
                     orgId
                     projectId
                 }
+                ... on GithubRepository {
+                    orgId
+                }
             }
             count
             pageInfo {
