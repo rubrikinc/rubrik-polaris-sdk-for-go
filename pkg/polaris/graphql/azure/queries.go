@@ -204,8 +204,6 @@ var azureNativeResourceGroupsWithFilterQuery = `query SdkGolangAzureNativeResour
     result: azureNativeResourceGroups(
         after:                      $after,
         commonResourceGroupFilters: $filters,
-        sortBy:                     AZURE_RG_SUBSCRIPTION_NAME,
-        sortOrder:                  ASC,
     ) {
         nodes {
             id
@@ -288,8 +286,6 @@ var azureNativeSubscriptionsWithFilterQuery = `query SdkGolangAzureNativeSubscri
             POSTGRES_FLEXIBLE_SERVER,
             AZ_CLOUD_DISCOVERY,
         ],
-        sortBy:    NAME,
-        sortOrder: ASC,
     ) {
         nodes {
             id
