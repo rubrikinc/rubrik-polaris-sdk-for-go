@@ -1,54 +1,62 @@
 query RubrikPolarisSDKRequest(
-  $first:      Int,
-  $after:      String,
-  $queryType:  QueryType!,
-  $ancestorId: String!,
-  $filter:     [Filter!]!,
+    $first:      Int,
+    $after:      String,
+    $queryType:  QueryType!,
+    $ancestorId: String!,
+    $filter:     [Filter!]!,
 ) {
-  result: gitHubOrganizations(
-    first:      $first,
-    after:      $after,
-    queryType:  $queryType,
-    ancestorId: $ancestorId,
-    filter:     $filter,
-  ) {
-    nodes {
-      id
-      nativeId
-      connectionStatus
-      repoHostType
-      devOpsOrgType
-      repoCount
-      lastRefreshTime
-      orgUrl
-      name
-      objectType
-      backupLocation {
-        id
-        archivalGroupId
-        name
-        storageType
-        cloudSpecificRegion {
-          azureRegion
+    result: gitHubOrganizations(
+        first:      $first,
+        after:      $after,
+        queryType:  $queryType,
+        ancestorId: $ancestorId,
+        filter:     $filter,
+    ) {
+        nodes {
+            id
+            nativeId
+            connectionStatus
+            repoHostType
+            devOpsOrgType
+            repoCount
+            lastRefreshTime
+            orgUrl
+            name
+            objectType
+            backupLocation {
+                id
+                archivalGroupId
+                name
+                storageType
+                cloudSpecificRegion {
+                    azureRegion
+                }
+            }
+            exocompute {
+                id
+                hostName
+                region {
+                    region {
+                        azureRegion
+                    }
+                }
+            }
+            rubrikHostedExocompute {
+                region
+            }
+            configuredSlaDomain {
+                id
+                name
+            }
+            effectiveSlaDomain {
+                id
+                name
+            }
+            slaAssignment
         }
-      }
-      exocompute {
-        id
-        hostName
-        region {
-          region {
-            azureRegion
-          }
+        pageInfo {
+            endCursor
+            hasNextPage
         }
-      }
-      rubrikHostedExocompute {
-        region
-      }
     }
-    pageInfo {
-      endCursor
-      hasNextPage
-    }
-    count
-  }
 }

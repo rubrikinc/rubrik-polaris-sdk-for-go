@@ -1,32 +1,40 @@
 query RubrikPolarisSDKRequest(
-  $first:      Int,
-  $after:      String,
-  $queryType:  QueryType!,
-  $ancestorId: String!,
-  $filter:     [Filter!]!,
+    $first:      Int,
+    $after:      String,
+    $queryType:  QueryType!,
+    $ancestorId: String!,
+    $filter:     [Filter!]!,
 ) {
-  result: azureDevOpsRepositories(
-    first:      $first,
-    after:      $after,
-    queryType:  $queryType,
-    ancestorId: $ancestorId,
-    filter:     $filter,
-  ) {
-    nodes {
-      id
-      name
-      orgId
-      orgName
-      projectId
-      projectName
-      url
-      size
-      objectType
+    result: azureDevOpsRepositories(
+        first:      $first,
+        after:      $after,
+        queryType:  $queryType,
+        ancestorId: $ancestorId,
+        filter:     $filter,
+    ) {
+        nodes {
+            id
+            name
+            orgId
+            orgName
+            projectId
+            projectName
+            url
+            size
+            objectType
+            configuredSlaDomain {
+                id
+                name
+            }
+            effectiveSlaDomain {
+                id
+                name
+            }
+            slaAssignment
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
     }
-    pageInfo {
-      endCursor
-      hasNextPage
-    }
-    count
-  }
 }

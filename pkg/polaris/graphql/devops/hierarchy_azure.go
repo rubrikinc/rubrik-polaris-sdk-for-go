@@ -28,19 +28,20 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // AzureOrganization represents an onboarded Azure DevOps organization with the
 // curated fields exposed by the SDK.
 type AzureOrganization struct {
-	ID                      uuid.UUID               `json:"id"`
+	sla.HierarchyObject
 	NativeID                string                  `json:"nativeId"`
 	TenantDomain            string                  `json:"tenantId"`
 	TenantID                *uuid.UUID              `json:"tenantUuid"`
-	Cloud                   gqlazure.Cloud          `json:"cloudType"`
+	Cloud                   azure.Cloud             `json:"cloudType"`
 	ConnectionStatus        ConnectionStatus        `json:"connectionStatus"`
 	AuthenticationMechanism AuthMechanism           `json:"authenticationMechanism"`
 	ClientID                string                  `json:"clientId"`
@@ -49,8 +50,6 @@ type AzureOrganization struct {
 	ProjectCount            int                     `json:"projectCount"`
 	RepoCount               int                     `json:"repoCount"`
 	LastRefreshTime         *time.Time              `json:"lastRefreshTime"`
-	Name                    string                  `json:"name"`
-	ObjectType              string                  `json:"objectType"`
 	BackupLocation          *BackupLocation         `json:"backupLocation"`
 	CloudNativeExocompute   *CloudNativeExocompute  `json:"cloudNativeExocompute"`
 	RubrikHostedExocompute  *RubrikHostedExocompute `json:"rubrikHostedExocompute"`
@@ -62,35 +61,8 @@ type AzureOrganization struct {
 // fields.
 func (o *AzureOrganization) applyReadWorkaround() {
 	if o.Cloud == "" {
-		o.Cloud = gqlazure.PublicCloud
+		o.Cloud = azure.PublicCloud
 	}
-}
-
-// AzureProject represents an Azure DevOps project with the curated fields
-// exposed by the SDK.
-type AzureProject struct {
-	ID         uuid.UUID `json:"id"`
-	NativeID   string    `json:"nativeId"`
-	Name       string    `json:"name"`
-	OrgID      uuid.UUID `json:"orgId"`
-	OrgName    string    `json:"orgName"`
-	URL        string    `json:"url"`
-	RepoCount  int       `json:"repoCount"`
-	ObjectType string    `json:"objectType"`
-}
-
-// AzureRepository represents an Azure DevOps repository with the curated fields
-// exposed by the SDK. The repository is the snappable object.
-type AzureRepository struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	OrgID       uuid.UUID `json:"orgId"`
-	OrgName     string    `json:"orgName"`
-	ProjectID   uuid.UUID `json:"projectId"`
-	ProjectName string    `json:"projectName"`
-	URL         string    `json:"url"`
-	Size        int64     `json:"size"`
-	ObjectType  string    `json:"objectType"`
 }
 
 // AzureOrganizations returns all Azure DevOps organizations under the specified
@@ -150,6 +122,17 @@ func AzureOrganizations(ctx context.Context, gql *graphql.Client, queryType Quer
 	return orgs, nil
 }
 
+// AzureProject represents an Azure DevOps project with the curated fields
+// exposed by the SDK.
+type AzureProject struct {
+	sla.HierarchyObject
+	NativeID  string    `json:"nativeId"`
+	OrgID     uuid.UUID `json:"orgId"`
+	OrgName   string    `json:"orgName"`
+	URL       string    `json:"url"`
+	RepoCount int       `json:"repoCount"`
+}
+
 // AzureProjects returns all Azure DevOps projects under the specified ancestor
 // (typically an organization ID). Use queryType to select CHILDREN or
 // DESCENDANTS. Pass zero or more filters to narrow the results server-side, e.g.
@@ -198,6 +181,18 @@ func AzureProjects(ctx context.Context, gql *graphql.Client, queryType QueryType
 	}
 
 	return projects, nil
+}
+
+// AzureRepository represents an Azure DevOps repository with the curated fields
+// exposed by the SDK. The repository is the snappable object.
+type AzureRepository struct {
+	sla.HierarchyObject
+	OrgID       uuid.UUID `json:"orgId"`
+	OrgName     string    `json:"orgName"`
+	ProjectID   uuid.UUID `json:"projectId"`
+	ProjectName string    `json:"projectName"`
+	URL         string    `json:"url"`
+	Size        int64     `json:"size"`
 }
 
 // AzureRepositories returns all Azure DevOps repositories under the specified

@@ -29,6 +29,7 @@ import (
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -36,7 +37,7 @@ import (
 // exposed by the SDK. GitHub organizations cannot be onboarded through the SDK;
 // they are read-only.
 type GitHubOrganization struct {
-	ID                     uuid.UUID               `json:"id"`
+	sla.HierarchyObject
 	NativeID               string                  `json:"nativeId"`
 	ConnectionStatus       ConnectionStatus        `json:"connectionStatus"`
 	RepoHostType           HostType                `json:"repoHostType"`
@@ -44,22 +45,9 @@ type GitHubOrganization struct {
 	RepoCount              int                     `json:"repoCount"`
 	LastRefreshTime        *time.Time              `json:"lastRefreshTime"`
 	OrgURL                 string                  `json:"orgUrl"`
-	Name                   string                  `json:"name"`
-	ObjectType             string                  `json:"objectType"`
 	BackupLocation         *BackupLocation         `json:"backupLocation"`
 	Exocompute             *CloudNativeExocompute  `json:"exocompute"`
 	RubrikHostedExocompute *RubrikHostedExocompute `json:"rubrikHostedExocompute"`
-}
-
-// GitHubRepository represents a GitHub repository with the curated fields
-// exposed by the SDK. The repository is the snappable object.
-type GitHubRepository struct {
-	ID         uuid.UUID `json:"id"`
-	Name       string    `json:"name"`
-	OrgID      uuid.UUID `json:"orgId"`
-	OrgName    string    `json:"orgName"`
-	Size       int64     `json:"size"`
-	ObjectType string    `json:"objectType"`
 }
 
 // GitHubOrganizations returns all GitHub organizations under the specified
@@ -112,6 +100,15 @@ func GitHubOrganizations(ctx context.Context, gql *graphql.Client, queryType Que
 	}
 
 	return orgs, nil
+}
+
+// GitHubRepository represents a GitHub repository with the curated fields
+// exposed by the SDK. The repository is the snappable object.
+type GitHubRepository struct {
+	sla.HierarchyObject
+	OrgID   uuid.UUID `json:"orgId"`
+	OrgName string    `json:"orgName"`
+	Size    int64     `json:"size"`
 }
 
 // GitHubRepositories returns all GitHub repositories under the specified

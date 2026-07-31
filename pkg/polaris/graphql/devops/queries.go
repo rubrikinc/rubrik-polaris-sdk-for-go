@@ -51,129 +51,153 @@ var addAzureDevopsCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureDev
 
 // azureDevopsOrganizations GraphQL query
 var azureDevopsOrganizationsQuery = `query SdkGolangAzureDevopsOrganizations(
-  $first:      Int,
-  $after:      String,
-  $queryType:  QueryType!,
-  $ancestorId: String!,
-  $filter:     [Filter!]!,
+    $first:      Int,
+    $after:      String,
+    $queryType:  QueryType!,
+    $ancestorId: String!,
+    $filter:     [Filter!]!,
 ) {
-  result: azureDevOpsOrganizations(
-    first:      $first,
-    after:      $after,
-    queryType:  $queryType,
-    ancestorId: $ancestorId,
-    filter:     $filter,
-  ) {
-    nodes {
-      id
-      nativeId
-      tenantId
-      tenantUuid
-      connectionStatus
-      authenticationMechanism
-      clientId
-      repoHostType
-      devOpsOrgType
-      projectCount
-      repoCount
-      lastRefreshTime
-      name
-      objectType
-      backupLocation {
-        id
-        archivalGroupId
-        name
-        storageType
-        cloudSpecificRegion {
-          azureRegion
+    result: azureDevOpsOrganizations(
+        first:      $first,
+        after:      $after,
+        queryType:  $queryType,
+        ancestorId: $ancestorId,
+        filter:     $filter,
+    ) {
+        nodes {
+            id
+            nativeId
+            tenantId
+            tenantUuid
+            connectionStatus
+            authenticationMechanism
+            clientId
+            repoHostType
+            devOpsOrgType
+            projectCount
+            repoCount
+            lastRefreshTime
+            name
+            objectType
+            backupLocation {
+                id
+                archivalGroupId
+                name
+                storageType
+                cloudSpecificRegion {
+                    azureRegion
+                }
+            }
+            cloudNativeExocompute {
+                id
+                hostName
+                region {
+                    region {
+                        azureRegion
+                    }
+                }
+            }
+            rubrikHostedExocompute {
+                region
+            }
+            configuredSlaDomain {
+                id
+                name
+            }
+            effectiveSlaDomain {
+                id
+                name
+            }
+            slaAssignment
         }
-      }
-      cloudNativeExocompute {
-        id
-        hostName
-        region {
-          region {
-            azureRegion
-          }
+        pageInfo {
+            endCursor
+            hasNextPage
         }
-      }
-      rubrikHostedExocompute {
-        region
-      }
     }
-    pageInfo {
-      endCursor
-      hasNextPage
-    }
-    count
-  }
 }`
 
 // azureDevopsProjects GraphQL query
 var azureDevopsProjectsQuery = `query SdkGolangAzureDevopsProjects(
-  $first:      Int,
-  $after:      String,
-  $queryType:  QueryType!,
-  $ancestorId: String!,
-  $filter:     [Filter!]!,
+    $first:      Int,
+    $after:      String,
+    $queryType:  QueryType!,
+    $ancestorId: String!,
+    $filter:     [Filter!]!,
 ) {
-  result: azureDevOpsProjects(
-    first:      $first,
-    after:      $after,
-    queryType:  $queryType,
-    ancestorId: $ancestorId,
-    filter:     $filter,
-  ) {
-    nodes {
-      id
-      nativeId
-      name
-      orgId
-      orgName
-      url
-      repoCount
-      objectType
+    result: azureDevOpsProjects(
+        first:      $first,
+        after:      $after,
+        queryType:  $queryType,
+        ancestorId: $ancestorId,
+        filter:     $filter,
+    ) {
+        nodes {
+            id
+            nativeId
+            name
+            orgId
+            orgName
+            url
+            repoCount
+            objectType
+            configuredSlaDomain {
+                id
+                name
+            }
+            effectiveSlaDomain {
+                id
+                name
+            }
+            slaAssignment
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
     }
-    pageInfo {
-      endCursor
-      hasNextPage
-    }
-    count
-  }
 }`
 
 // azureDevopsRepositories GraphQL query
 var azureDevopsRepositoriesQuery = `query SdkGolangAzureDevopsRepositories(
-  $first:      Int,
-  $after:      String,
-  $queryType:  QueryType!,
-  $ancestorId: String!,
-  $filter:     [Filter!]!,
+    $first:      Int,
+    $after:      String,
+    $queryType:  QueryType!,
+    $ancestorId: String!,
+    $filter:     [Filter!]!,
 ) {
-  result: azureDevOpsRepositories(
-    first:      $first,
-    after:      $after,
-    queryType:  $queryType,
-    ancestorId: $ancestorId,
-    filter:     $filter,
-  ) {
-    nodes {
-      id
-      name
-      orgId
-      orgName
-      projectId
-      projectName
-      url
-      size
-      objectType
+    result: azureDevOpsRepositories(
+        first:      $first,
+        after:      $after,
+        queryType:  $queryType,
+        ancestorId: $ancestorId,
+        filter:     $filter,
+    ) {
+        nodes {
+            id
+            name
+            orgId
+            orgName
+            projectId
+            projectName
+            url
+            size
+            objectType
+            configuredSlaDomain {
+                id
+                name
+            }
+            effectiveSlaDomain {
+                id
+                name
+            }
+            slaAssignment
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
     }
-    pageInfo {
-      endCursor
-      hasNextPage
-    }
-    count
-  }
 }`
 
 // deleteAzureDevopsCloudAccountWithoutOauth GraphQL query
@@ -250,89 +274,105 @@ var generateAzureDevopsOnboardingScriptQuery = `query SdkGolangGenerateAzureDevo
 
 // githubOrganizations GraphQL query
 var githubOrganizationsQuery = `query SdkGolangGithubOrganizations(
-  $first:      Int,
-  $after:      String,
-  $queryType:  QueryType!,
-  $ancestorId: String!,
-  $filter:     [Filter!]!,
+    $first:      Int,
+    $after:      String,
+    $queryType:  QueryType!,
+    $ancestorId: String!,
+    $filter:     [Filter!]!,
 ) {
-  result: gitHubOrganizations(
-    first:      $first,
-    after:      $after,
-    queryType:  $queryType,
-    ancestorId: $ancestorId,
-    filter:     $filter,
-  ) {
-    nodes {
-      id
-      nativeId
-      connectionStatus
-      repoHostType
-      devOpsOrgType
-      repoCount
-      lastRefreshTime
-      orgUrl
-      name
-      objectType
-      backupLocation {
-        id
-        archivalGroupId
-        name
-        storageType
-        cloudSpecificRegion {
-          azureRegion
+    result: gitHubOrganizations(
+        first:      $first,
+        after:      $after,
+        queryType:  $queryType,
+        ancestorId: $ancestorId,
+        filter:     $filter,
+    ) {
+        nodes {
+            id
+            nativeId
+            connectionStatus
+            repoHostType
+            devOpsOrgType
+            repoCount
+            lastRefreshTime
+            orgUrl
+            name
+            objectType
+            backupLocation {
+                id
+                archivalGroupId
+                name
+                storageType
+                cloudSpecificRegion {
+                    azureRegion
+                }
+            }
+            exocompute {
+                id
+                hostName
+                region {
+                    region {
+                        azureRegion
+                    }
+                }
+            }
+            rubrikHostedExocompute {
+                region
+            }
+            configuredSlaDomain {
+                id
+                name
+            }
+            effectiveSlaDomain {
+                id
+                name
+            }
+            slaAssignment
         }
-      }
-      exocompute {
-        id
-        hostName
-        region {
-          region {
-            azureRegion
-          }
+        pageInfo {
+            endCursor
+            hasNextPage
         }
-      }
-      rubrikHostedExocompute {
-        region
-      }
     }
-    pageInfo {
-      endCursor
-      hasNextPage
-    }
-    count
-  }
 }`
 
 // githubRepositories GraphQL query
 var githubRepositoriesQuery = `query SdkGolangGithubRepositories(
-  $first:      Int,
-  $after:      String,
-  $queryType:  QueryType!,
-  $ancestorId: String!,
-  $filter:     [Filter!]!,
+    $first:      Int,
+    $after:      String,
+    $queryType:  QueryType!,
+    $ancestorId: String!,
+    $filter:     [Filter!]!,
 ) {
-  result: gitHubRepositories(
-    first:      $first,
-    after:      $after,
-    queryType:  $queryType,
-    ancestorId: $ancestorId,
-    filter:     $filter,
-  ) {
-    nodes {
-      id
-      name
-      orgId
-      orgName
-      size
-      objectType
+    result: gitHubRepositories(
+        first:      $first,
+        after:      $after,
+        queryType:  $queryType,
+        ancestorId: $ancestorId,
+        filter:     $filter,
+    ) {
+        nodes {
+            id
+            name
+            orgId
+            orgName
+            size
+            objectType
+            configuredSlaDomain {
+                id
+                name
+            }
+            effectiveSlaDomain {
+                id
+                name
+            }
+            slaAssignment
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
     }
-    pageInfo {
-      endCursor
-      hasNextPage
-    }
-    count
-  }
 }`
 
 // updateAzureDevopsCloudAccount GraphQL query
