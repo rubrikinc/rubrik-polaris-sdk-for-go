@@ -185,19 +185,19 @@ type Feature struct {
 // inventory root query.
 type InventoryObject interface {
 	AWSNativeAccount |
-	AWSNativeEC2Instance |
-	AWSNativeEBSVolume |
-	AWSNativeRDSInstance |
-	AzureDevOpsOrganization |
-	AzureDevOpsProject |
-	AzureDevOpsRepository |
-	AzureNativeResourceGroup |
-	AzureNativeSubscription |
-	AzureNativeVirtualMachine |
-	AzureSQLManagedInstanceServer |
-	CloudNativeTagRule |
-	GitHubOrganization |
-	GitHubRepository
+		AWSNativeEC2Instance |
+		AWSNativeEBSVolume |
+		AWSNativeRDSInstance |
+		AzureDevOpsOrganization |
+		AzureDevOpsProject |
+		AzureDevOpsRepository |
+		AzureNativeResourceGroup |
+		AzureNativeSubscription |
+		AzureNativeVirtualMachine |
+		AzureSQLManagedInstanceServer |
+		CloudNativeTagRule |
+		GitHubOrganization |
+		GitHubRepository
 
 	// typeFilter returns the object type filter to use for the inventory root
 	// query. It corresponds to values in the GraphQL Enum HierarchyObjectTypeEnum.
