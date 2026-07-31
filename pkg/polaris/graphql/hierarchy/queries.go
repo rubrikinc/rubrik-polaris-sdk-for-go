@@ -77,6 +77,9 @@ var hierarchyObjectQuery = `query SdkGolangHierarchyObject($fid: UUID!, $workloa
             orgId
             projectId
         }
+        ... on GithubRepository {
+            orgId
+        }
         configuredSlaDomain {
             ... on ClusterSlaDomain {
                 id
@@ -131,6 +134,9 @@ var inventoryRootQuery = `query SdkGolangInventoryRoot($after: String, $filter: 
                 ... on AzureDevOpsRepository {
                     orgId
                     projectId
+                }
+                ... on GithubRepository {
+                    orgId
                 }
             }
             count
