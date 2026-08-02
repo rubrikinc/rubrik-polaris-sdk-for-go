@@ -1,0 +1,9 @@
+query RubrikPolarisSDKRequest($k8sJobId :String!, $clusterUuid: UUID!) {
+    k8sJobInstance(k8sJobId: $k8sJobId, clusterUuid: $clusterUuid) {
+        id
+        eventSeriesId
+        startTime
+        endTime
+        jobStatus
+    }
+}

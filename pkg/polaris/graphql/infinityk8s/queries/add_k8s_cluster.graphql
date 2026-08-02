@@ -1,0 +1,18 @@
+mutation AddK8sCluster($clusterUuid: String!, $config: K8sClusterAddInput!) {
+  addK8sCluster(input: {clusterUuid: $clusterUuid, config: $config}) {
+    id
+    name
+    registry
+    distribution
+    kuprServerProxyConfig {
+      cert
+      port
+      ipAddress
+    }
+    transport
+    lastRefreshTime
+    region
+    onboardingType
+    status
+  }
+}
