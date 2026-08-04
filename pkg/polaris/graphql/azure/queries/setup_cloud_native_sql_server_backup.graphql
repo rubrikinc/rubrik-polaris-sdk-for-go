@@ -1,0 +1,17 @@
+mutation RubrikPolarisSDKRequest($serverIds: [UUID!], $databaseIds: [UUID!], $adminCredentials: LoginCredentials, $authMechanism: SqlAuthenticationMechanism) {
+    result: setupCloudNativeSqlServerBackup(input: {
+        serverIds:        $serverIds,
+        databaseIds:      $databaseIds,
+        adminCredentials: $adminCredentials,
+        authMechanism:    $authMechanism
+    }) {
+        jobIds {
+            jobId
+            rubrikObjectId
+        }
+        errors {
+            error
+            rubrikObjectId
+        }
+    }
+}
