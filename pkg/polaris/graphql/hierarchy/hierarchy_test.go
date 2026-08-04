@@ -118,10 +118,10 @@ func TestAzureSQLManagedInstanceServer(t *testing.T) {
 				"id": "22222222-2222-2222-2222-222222222222",
 				"name": "example-subscription",
 				"accountConnectionId": "33333333-3333-3333-3333-333333333333",
-				"tenantId": "44444444-4444-4444-4444-444444444444",
+				"tenantId": "example.onmicrosoft.com",
 				"cloudType": "AZUREPUBLICCLOUD",
 				"status": "REFRESHED",
-				"regionSpecs": [{"region": "EASTUS2"}]
+				"regionSpecs": [{"region": "EAST_US2"}]
 			}
 		}
 	}`
@@ -142,11 +142,17 @@ func TestAzureSQLManagedInstanceServer(t *testing.T) {
 	if sub.CloudAccountID != uuid.MustParse("33333333-3333-3333-3333-333333333333") {
 		t.Errorf("subscription cloud account ID: got %q", sub.CloudAccountID)
 	}
+	// RSC returns the tenant domain, not a UUID, in the tenantId field.
+	if sub.TenantDomain != "example.onmicrosoft.com" {
+		t.Errorf("subscription tenant domain: got %q", sub.TenantDomain)
+	}
 	if sub.Cloud != "AZUREPUBLICCLOUD" {
 		t.Errorf("subscription cloud: got %q, want %q", sub.Cloud, "AZUREPUBLICCLOUD")
 	}
-	if len(sub.RegionSpecs) != 1 ||
-		sub.RegionSpecs[0].Region.Region != azureregions.RegionFromNativeRegionEnum("EASTUS2") {
-		t.Errorf("region specs: got %+v", sub.RegionSpecs)
+	// Compare against the region constant rather than round-tripping the same
+	// string through RegionFromNativeRegionEnum, which would pass vacuously if
+	// both sides resolved to RegionUnknown.
+	if len(sub.RegionSpecs) != 1 || sub.RegionSpecs[0].Region.Region != azureregions.RegionEastUS2 {
+		t.Errorf("region specs: got %+v, want [EAST_US2]", sub.RegionSpecs)
 	}
 }
