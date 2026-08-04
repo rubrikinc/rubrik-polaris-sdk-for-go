@@ -325,7 +325,10 @@ type AzureSubscriptionDetails struct {
 	// CloudAccountID is the RSC cloud account ID of the subscription. This is
 	// the value exposed as subscription_id elsewhere in RSC.
 	CloudAccountID uuid.UUID `json:"accountConnectionId"`
-	TenantID       uuid.UUID `json:"tenantId"`
+	// TenantDomain is the Azure tenant domain, e.g. example.onmicrosoft.com.
+	// RSC returns it in a field named tenantId even though it is a domain and
+	// not a UUID.
+	TenantDomain string `json:"tenantId"`
 	// Cloud is the Azure cloud, e.g. AZUREPUBLICCLOUD. It mirrors the azure.Cloud
 	// values but is typed as a string here because importing the graphql/azure
 	// package would create an import cycle (azure -> core -> hierarchy).
