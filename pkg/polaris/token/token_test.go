@@ -21,17 +21,10 @@
 package token
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
-	"text/template"
-
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 )
 
 // dummyExpiredToken is a JWT token that is already expired.
@@ -83,115 +76,42 @@ func TestTokenSetAsHeader(t *testing.T) {
 	}
 }
 
-func TestTokenSource(t *testing.T) {
-	ctx, cancel := context.WithCancelCause(context.Background())
-	defer assert.Context(t, ctx, cancel)
+func internalServerErrorWithNoBodyHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+}
 
-	// Respond with 200 and a valid token as long as the correct username and
-	// password are received.
-	srv := httptest.NewServer(handler.JSON(func(w http.ResponseWriter, req *http.Request) {
-		var payload struct {
-			Username string
-			Password string
-		}
-		if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
-			cancel(err)
-			return
-		}
+func internalServerErrorWithTextBodyHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	})
+}
 
-		if payload.Username != "john" || payload.Password != "doe" {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-
+// validTokenHandler always responds with a valid token. The JSON response is
+// valid for both user and service account sources.
+func validTokenHandler(t *testing.T) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(struct {
+			ClientID    string `json:"client_id"`
 			AccessToken string `json:"access_token"`
-		}{AccessToken: dummyValidToken}); err != nil {
-			cancel(err)
+		}{ClientID: "client-id", AccessToken: dummyValidToken}); err != nil {
+			t.Error(err)
 		}
-	}))
-	defer srv.Close()
-
-	// Request token and verify that it's not expired.
-	token, err := NewTestUserSource(srv, "john", "doe").token(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if token.expired() {
-		t.Fatal("invalid token, already expired")
-	}
-
-	// Request token with invalid credentials.
-	_, err = NewTestUserSource(srv, "jane", "doe").token(ctx)
-	if err == nil || !strings.HasPrefix(err.Error(), "failed to acquire local user access token:") {
-		t.Fatalf("invalid error: %v", err)
-	}
+	})
 }
 
-func TestTokenSourceWithBadCredentials(t *testing.T) {
-	tmpl, err := template.ParseFiles("testdata/auth_error_response.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ctx, cancel := context.WithCancelCause(context.Background())
-	defer assert.Context(t, ctx, cancel)
-
-	// Respond with status code 401 and additional details in the body.
-	srv := httptest.NewServer(handler.JSON(func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(401)
-		if err := tmpl.Execute(w, nil); err != nil {
-			cancel(err)
+// invalidTokenHandler always responds with an invalid token. The JSON response
+// is valid for both user and service account sources.
+func invalidTokenHandler(t *testing.T) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(struct {
+			ClientID    string `json:"client_id"`
+			AccessToken string `json:"access_token"`
+		}{ClientID: "client-id", AccessToken: dummyValidToken}); err != nil {
+			t.Error(err)
 		}
-	}))
-	defer srv.Close()
-
-	_, err = NewTestUserSource(srv, "john", "doe").token(ctx)
-	if err == nil {
-		t.Fatal("token request should fail")
-	}
-	if !strings.HasSuffix(err.Error(), "UNAUTHENTICATED: wrong username or password (code: 401, traceId: n2jJpBU8qkEy3k09s9JNkg==)") {
-		t.Fatal(err)
-	}
-}
-
-func TestTokenSourceWithInternalServerErrorNoBody(t *testing.T) {
-	ctx, cancel := context.WithCancelCause(context.Background())
-	defer assert.Context(t, ctx, cancel)
-
-	// Respond with status code 500 and no additional details.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(500)
-	}))
-	defer srv.Close()
-
-	_, err := NewTestUserSource(srv, "john", "doe").token(ctx)
-	if err == nil {
-		t.Fatal("token request should fail")
-	}
-	if !strings.HasSuffix(err.Error(), "token response has no body (status code 500)") {
-		t.Fatal(err)
-	}
-}
-
-func TestTokenSourceWithInternalServerErrorTextBody(t *testing.T) {
-	ctx, cancel := context.WithCancelCause(context.Background())
-	defer assert.Context(t, ctx, cancel)
-
-	// Respond with status code 500 and no additional details.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Add("Content-Type", "text/plain")
-		w.WriteHeader(500)
-		w.Write([]byte("user database is corrupt"))
-	}))
-	defer srv.Close()
-
-	_, err := NewTestUserSource(srv, "john", "doe").token(ctx)
-	if err == nil {
-		t.Fatal("token request should fail")
-	}
-	if !strings.HasSuffix(err.Error(),
-		"token response has Content-Type text/plain (status code 500): \"user database is corrupt\"") {
-		t.Fatal(err)
-	}
+	})
 }

@@ -71,7 +71,10 @@ func (t *RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 		t.token, err = t.src.token(req.Context())
 		if err != nil {
 			t.mutex.Unlock()
-			return nil, fmt.Errorf("failed to refresh access token: %v", err)
+
+			// Wrap the token request error, only context and JSON related
+			// errors are accessible.
+			return nil, fmt.Errorf("failed to refresh access token: %w", err)
 		}
 	}
 	t.token.setAsAuthHeader(authReq)

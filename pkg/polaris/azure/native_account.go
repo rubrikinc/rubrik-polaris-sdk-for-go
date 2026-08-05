@@ -41,7 +41,7 @@ func (a API) NativeSubscriptionByID(ctx context.Context, objectID uuid.UUID) (az
 
 	natives, err := a.NativeSubscriptionsByFilter(ctx, azure.NativeSubscriptionFilters{})
 	if err != nil {
-		return azure.NativeSubscription{}, fmt.Errorf("failed to list native subscriptions: %s", err)
+		return azure.NativeSubscription{}, err
 	}
 	for _, native := range natives {
 		if native.ID == objectID {
@@ -59,7 +59,7 @@ func (a API) NativeSubscriptionByCloudAccountID(ctx context.Context, cloudAccoun
 
 	natives, err := a.NativeSubscriptionsByFilter(ctx, azure.NativeSubscriptionFilters{})
 	if err != nil {
-		return azure.NativeSubscription{}, fmt.Errorf("failed to list native subscriptions: %s", err)
+		return azure.NativeSubscription{}, err
 	}
 	for _, native := range natives {
 		if native.CloudAccountID == cloudAccountID {
@@ -72,6 +72,8 @@ func (a API) NativeSubscriptionByCloudAccountID(ctx context.Context, cloudAccoun
 
 // Deprecated: use NativeSubscriptionsByFilter instead.
 func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]azure.NativeSubscription, error) {
+	a.log.Print(log.Trace)
+
 	return azure.Wrap(a.client).NativeSubscriptions(ctx, filter)
 }
 
@@ -80,9 +82,11 @@ func (a API) NativeSubscriptions(ctx context.Context, filter string) ([]azure.Na
 // filter criteria; a zero value returns all native subscriptions. Results are
 // sorted by name in ascending order.
 func (a API) NativeSubscriptionsByFilter(ctx context.Context, filters azure.NativeSubscriptionFilters) ([]azure.NativeSubscription, error) {
+	a.log.Print(log.Trace)
+
 	nativeSubs, err := azure.Wrap(a.client).NativeSubscriptionsByFilter(ctx, filters)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list native subscriptions: %s", err)
+		return nil, fmt.Errorf("failed to list native subscriptions: %w", err)
 	}
 
 	// If an RSC subscription refresh runs at the same time as the subscriptions
@@ -107,6 +111,8 @@ func (a API) NativeSubscriptionsByFilter(ctx context.Context, filters azure.Nati
 // context is cancelled, the timeout is exceeded, or the lookup fails for any
 // reason other than the subscription not yet existing.
 func (a API) WaitForNativeSubscription(ctx context.Context, cloudAccountID uuid.UUID) error {
+	a.log.Print(log.Trace)
+
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
@@ -116,6 +122,9 @@ func (a API) WaitForNativeSubscription(ctx context.Context, cloudAccountID uuid.
 		switch {
 		case err == nil:
 			return nil
+		case errors.Is(err, context.Canceled):
+			return fmt.Errorf("%w while waiting for native subscription with cloud account id %q to become available",
+				context.Canceled, cloudAccountID)
 		case errors.Is(err, context.DeadlineExceeded):
 			return fmt.Errorf("%w while waiting for native subscription with cloud account id %q to become available",
 				context.DeadlineExceeded, cloudAccountID)
@@ -128,7 +137,7 @@ func (a API) WaitForNativeSubscription(ctx context.Context, cloudAccountID uuid.
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("%w while waiting for native subscription with cloud account id %q to become available",
-				context.DeadlineExceeded, cloudAccountID)
+				ctx.Err(), cloudAccountID)
 		case <-time.After(30 * time.Second):
 		}
 	}
@@ -136,6 +145,8 @@ func (a API) WaitForNativeSubscription(ctx context.Context, cloudAccountID uuid.
 
 // Deprecated: use NativeResourceGroupsByFilter instead.
 func (a API) NativeResourceGroups(ctx context.Context, subscriptionIDs []uuid.UUID, nameSubstring string) ([]azure.NativeResourceGroup, error) {
+	a.log.Print(log.Trace)
+
 	if len(subscriptionIDs) == 0 {
 		subs, err := a.NativeSubscriptions(ctx, "")
 		if err != nil {
@@ -157,9 +168,11 @@ func (a API) NativeResourceGroups(ctx context.Context, subscriptionIDs []uuid.UU
 // criteria; a zero value returns all resource groups. Results are sorted by
 // subscription name, then by resource group name.
 func (a API) NativeResourceGroupsByFilter(ctx context.Context, filters azure.ResourceGroupFilters) ([]azure.NativeResourceGroup, error) {
+	a.log.Print(log.Trace)
+
 	groups, err := azure.Wrap(a.client).NativeResourceGroupsByFilter(ctx, filters)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list native resource groups: %w", err)
 	}
 
 	// If an RSC subscription refresh run at the same time as the resource

@@ -36,36 +36,46 @@ import (
 )
 
 const (
-	// Per request timeout
-	requestTimeout = 15 * time.Second
-
-	// Number of attempts before failing timed-out token requests
+	// Number of attempts before failing timed-out token requests.
 	requestAttempts = 3
+
+	// Per request timeout.
+	requestTimeout = 15 * time.Second
 )
 
-var errRequestTimeout = fmt.Errorf("token request timeout after %v", requestTimeout)
+// timeoutKey is the context key used to pass in a custom request timeout to
+// the requestToken function. Intended to be used by unit tests.
+var timeoutKey = struct{}{}
 
 // requestToken tries to acquire a token using provided parameters. It returns
-// errTokenRequestTimeout if the request exceeds tokenRequestTimeout.
+// a context.Canceled if the request was canceled, a context.DeadlineExceeded
+// if the request exceeds the requestTimeout or a JSONError if the response was
+// a JSON error.
 func requestToken(ctx context.Context, client *http.Client, tokenURL string, requestBody []byte) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+	// Allow a context value with the timeoutKey key to override the default
+	// request timeout.
+	timeout := requestTimeout
+	if timeoutValue := ctx.Value(timeoutKey); timeoutValue != nil {
+		timeout = timeoutValue.(time.Duration)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	// Request an access token from the remote token endpoint.
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, bytes.NewReader(requestBody))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create token request: %v", err)
+		return nil, fmt.Errorf("failed to create token request: %s", err)
 	}
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("Accept", "application/json")
 	res, err := client.Do(req)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			return nil, errRequestTimeout
-		}
-		return nil, fmt.Errorf("failed to request token: %v", err)
+		// Wrap context related errors.
+		return nil, fmt.Errorf("failed to request token: %w", err)
 	}
 	defer res.Body.Close()
+
 	// Remote responded without a body. For status code 200, this means we are
 	// missing the token. For an error, we have no additional details.
 	if res.ContentLength == 0 {
@@ -74,10 +84,8 @@ func requestToken(ctx context.Context, client *http.Client, tokenURL string, req
 
 	respBody, err := io.ReadAll(res.Body)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			return nil, errRequestTimeout
-		}
-		return nil, fmt.Errorf("failed to read token response body (status code %d): %v", res.StatusCode, err)
+		// Wrap context related errors.
+		return nil, fmt.Errorf("failed to read token response body (status code %d): %w", res.StatusCode, err)
 	}
 
 	// Verify that the content type of the body is JSON. For status code 200,
@@ -97,10 +105,11 @@ func requestToken(ctx context.Context, client *http.Client, tokenURL string, req
 	// message.
 	var jsonErr internalerrors.JSONError
 	if err := json.Unmarshal(respBody, &jsonErr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal token response body as an error (status code %d): %v",
+		return nil, fmt.Errorf("failed to unmarshal token response body as an error (status code %d): %s",
 			res.StatusCode, err)
 	}
 	if jsonErr.IsError() {
+		// Wrap JSON related errors.
 		return nil, fmt.Errorf("token response body is an error (status code %d): %w", res.StatusCode, jsonErr)
 	}
 	if res.StatusCode != 200 {
@@ -110,7 +119,7 @@ func requestToken(ctx context.Context, client *http.Client, tokenURL string, req
 	return respBody, nil
 }
 
-// Request tries to acquire a token using the provided parameters.
+// Deprecated: use RequestWithContext
 func Request(client *http.Client, tokenURL string, requestBody []byte, logger log.Logger) ([]byte, error) {
 	return RequestWithContext(context.Background(), client, tokenURL, requestBody, logger)
 }
@@ -121,13 +130,31 @@ func RequestWithContext(ctx context.Context, client *http.Client, tokenURL strin
 	for attempt := 0; attempt < requestAttempts; attempt++ {
 		logger.Printf(log.Debug, "Acquire access token (attempt: %d)", attempt+1)
 
+		// Request an access token. Both the request's parent context and the
+		// function's child context can result in context errors, don't treat
+		// those as request errors.
 		var resp []byte
 		resp, err = requestToken(ctx, client, tokenURL, requestBody)
 		if err == nil {
 			return resp, nil
 		}
-		if !errors.Is(err, errRequestTimeout) {
-			return nil, fmt.Errorf("failed to acquire access token: %v", err)
+		if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			var jsonErr internalerrors.JSONError
+			if errors.As(err, &jsonErr) {
+				// Keep the wrapped JSON related errors.
+				return nil, fmt.Errorf("failed to acquire access token: %w", err)
+			}
+
+			// Erase all other error types.
+			return nil, fmt.Errorf("failed to acquire access token: %s", err)
+		}
+
+		// Check if the parent request context has been canceled or timed out,
+		// if so, wrap the related error.
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("failed to acquire access token: %w", ctx.Err())
+		default:
 		}
 	}
 

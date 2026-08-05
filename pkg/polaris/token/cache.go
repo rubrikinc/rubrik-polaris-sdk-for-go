@@ -76,7 +76,7 @@ func (c *cache) token(ctx context.Context) (token, error) {
 	defer cancel()
 	unlock, err := lockFile(lockCtx, c.file)
 	if err != nil {
-		return token{}, fmt.Errorf("failed to lock cache: %s", err)
+		return token{}, fmt.Errorf("failed to lock cache: %w", err)
 	}
 	defer unlock()
 
@@ -90,7 +90,7 @@ func (c *cache) token(ctx context.Context) (token, error) {
 
 	cachedToken, err = c.source.token(ctx)
 	if err != nil {
-		return token{}, fmt.Errorf("failed to fetch new token: %s", err)
+		return token{}, fmt.Errorf("failed to fetch new token: %w", err)
 	}
 
 	if err := writeCache(c.file, cachedToken, c.block); err != nil {
