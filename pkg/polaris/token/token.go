@@ -64,7 +64,7 @@ func fromJWT(text string) (token, error) {
 	p := jwt.Parser{}
 	jwtToken, _, err := p.ParseUnverified(text, jwt.MapClaims{})
 	if err != nil {
-		return token{}, fmt.Errorf("failed to parse JWT token: %v", err)
+		return token{}, fmt.Errorf("failed to parse JWT token: %s", err)
 	}
 
 	return token{jwtToken: jwtToken}, nil

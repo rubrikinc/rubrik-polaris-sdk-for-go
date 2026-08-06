@@ -31,6 +31,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	internalerrors "github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/errors"
 )
 
 var (
@@ -52,7 +54,7 @@ func TestCacheTokenSource(t *testing.T) {
 	}
 
 	// The wrapped token source should return the expired token.
-	testToken, err := cache.token(context.Background())
+	testToken, err := cache.token(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,12 +63,65 @@ func TestCacheTokenSource(t *testing.T) {
 	}
 
 	// The wrapped token source returns the unexpired token.
-	testToken, err = cache.token(context.Background())
+	testToken, err = cache.token(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if tok := testToken.jwtToken.Raw; tok != dummyToken {
 		t.Fatalf("wrong token: %s", tok)
+	}
+}
+
+func TestCacheTokenSourceWithJSONError(t *testing.T) {
+	tempDir := t.TempDir()
+
+	src := &errorSource{
+		err: internalerrors.JSONError{
+			Code:    401,
+			URI:     "/api/client_token",
+			Message: "UNAUTHENTICATED: incorrect client secret",
+		},
+	}
+
+	cache, err := NewCacheWithDir(src, tempDir, "key", "suffix")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = cache.token(t.Context())
+	var jsonErr internalerrors.JSONError
+	if !errors.As(err, &jsonErr) {
+		t.Fatal(err)
+	}
+}
+
+func TestCacheTokenSourceWithCanceledContext(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// We need to use a mocked token source since the lockFile function also
+	// aborts on a canceled context.
+	cache, err := NewCacheWithDir(&errorSource{err: context.Canceled}, tempDir, "key", "suffix")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := cache.token(t.Context()); !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+}
+
+func TestCacheTokenSourceWithDeadlineExceededContext(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// We need to use a mocked token source since the lockFile function also
+	// aborts on a canceled context.
+	cache, err := NewCacheWithDir(&errorSource{err: context.DeadlineExceeded}, tempDir, "key", "suffix")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := cache.token(t.Context()); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal(err)
 	}
 }
 
@@ -135,7 +190,7 @@ func TestLockFile(t *testing.T) {
 	assertFileNotExist(t, testFile+"-lock")
 
 	// Lock file, no contention
-	unlock, err := lockFile(context.Background(), testFile)
+	unlock, err := lockFile(t.Context(), testFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -292,6 +347,14 @@ func assertFileNotExist(t *testing.T, path string) {
 	if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("file %q should not exist", path)
 	}
+}
+
+type errorSource struct {
+	err error
+}
+
+func (s *errorSource) token(ctx context.Context) (token, error) {
+	return token{}, s.err
 }
 
 type mockSource struct {

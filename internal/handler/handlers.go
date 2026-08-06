@@ -30,20 +30,21 @@ var dummyToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3O" +
 	"DkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjQ3NzgzNzUz" +
 	"MDZ9.jAAX5cAp7UVLY6Kj1KS6UVPhxV2wtNNuYIUrXm_vGQ0"
 
-// Token handles the /api/session endpoint. Other paths are forwarded to the
-// specified handler.
+// Token handles the /api/client_token (service account) and the /api/session
+// (user account) endpoints. Other paths are forwarded to the specified handler.
 func Token(handler http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path != "/api/session" {
+		if req.URL.Path != "/api/client_token" && req.URL.Path != "/api/session" {
 			handler(w, req)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(struct {
+			ClientID       string `json:"client_id"`
 			AccessToken    string `json:"access_token"`
 			IsEulaAccepted bool   `json:"is_eula_accepted"`
-		}{AccessToken: dummyToken, IsEulaAccepted: true}); err != nil {
+		}{ClientID: "client-id", AccessToken: dummyToken, IsEulaAccepted: true}); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
@@ -58,15 +59,6 @@ func GraphQL(handler http.HandlerFunc) http.Handler {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		handler(w, req)
-	})
-}
-
-// JSON sets the Content-Type header to application/json before calling the
-// specified handler.
-func JSON(handler http.HandlerFunc) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		handler(w, req)
 	})

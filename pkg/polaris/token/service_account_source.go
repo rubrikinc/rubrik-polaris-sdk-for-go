@@ -67,12 +67,14 @@ func (src *ServiceAccountSource) token(ctx context.Context) (token, error) {
 		ClientSecret string `json:"client_secret"`
 	}{GrantType: "client_credentials", ClientID: src.clientID, ClientSecret: src.clientSecret})
 	if err != nil {
-		return token{}, fmt.Errorf("failed to marshal token request body: %v", err)
+		return token{}, fmt.Errorf("failed to marshal token request body: %s", err)
 	}
 
 	resp, err := RequestWithContext(ctx, src.client, src.tokenURL, body, src.log)
 	if err != nil {
-		return token{}, fmt.Errorf("failed to acquire service account access token: %v", err)
+		// Wrap the request error, only context and JSON related errors are
+		// accessible.
+		return token{}, fmt.Errorf("failed to acquire service account access token: %w", err)
 	}
 
 	// Try to parse the JSON document as an access token. Verify that the
@@ -82,7 +84,7 @@ func (src *ServiceAccountSource) token(ctx context.Context) (token, error) {
 		AccessToken string `json:"access_token"`
 	}
 	if err := json.Unmarshal(resp, &payload); err != nil {
-		return token{}, fmt.Errorf("failed to unmarshal token response body: %v", err)
+		return token{}, fmt.Errorf("failed to unmarshal token response body: %s", err)
 	}
 	if payload.ClientID != src.clientID {
 		return token{}, errors.New("invalid client id")

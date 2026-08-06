@@ -62,9 +62,7 @@ func NewUserSourceWithLogger(client *http.Client, tokenURL, username, password s
 	}
 }
 
-// NewTestUserSource returns a new test token source that uses a client matching
-// the specified test server to obtain tokens. Intended to be used in unit
-// tests.
+// Deprecated: no replacement.
 func NewTestUserSource(testServer *httptest.Server, username, password string) *UserSource {
 	return &UserSource{
 		log:      &log.DiscardLogger{},
@@ -88,12 +86,14 @@ func (src *UserSource) token(ctx context.Context) (token, error) {
 		Password string `json:"password"`
 	}{Username: src.username, Password: src.password})
 	if err != nil {
-		return token{}, fmt.Errorf("failed to marshal token request body: %v", err)
+		return token{}, fmt.Errorf("failed to marshal token request body: %s", err)
 	}
 
 	resp, err := RequestWithContext(ctx, src.client, src.tokenURL, body, src.log)
 	if err != nil {
-		return token{}, fmt.Errorf("failed to acquire local user access token: %v", err)
+		// Wrap the request error, only context and JSON related errors are
+		// accessible.
+		return token{}, fmt.Errorf("failed to acquire local user access token: %w", err)
 	}
 
 	// Try to parse the JSON document as an access token.
@@ -101,7 +101,7 @@ func (src *UserSource) token(ctx context.Context) (token, error) {
 		AccessToken string `json:"access_token"`
 	}
 	if err := json.Unmarshal(resp, &payload); err != nil {
-		return token{}, fmt.Errorf("failed to unmarshal token response body: %v", err)
+		return token{}, fmt.Errorf("failed to unmarshal token response body: %s", err)
 	}
 	if payload.AccessToken == "" {
 		return token{}, errors.New("invalid token")

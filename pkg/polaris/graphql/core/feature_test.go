@@ -1,4 +1,4 @@
-// Copyright 2021 Rubrik, Inc.
+// Copyright 2026 Rubrik, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to
@@ -20,15 +20,18 @@
 
 package core
 
-import (
-	"testing"
-	"time"
-)
+import "testing"
 
-func TestFormatTimestamp(t *testing.T) {
-	now := time.Now()
-	timestamp := FormatTimestamp(now)
-	if timestamp != now.UTC().Format("2006-01-02T15:04:05.000Z") {
-		t.Errorf("invalid timestamp: %v", timestamp)
+func TestParseFeatureNoValidation(t *testing.T) {
+	if feature := ParseFeatureNoValidation("CLOUD_NATIVE_PROTECTION"); !feature.Equal(FeatureCloudNativeProtection) {
+		t.Errorf("invalid feature: %s", feature)
+	}
+
+	if feature := ParseFeatureNoValidation("cloud_native_protection"); !feature.Equal(FeatureCloudNativeProtection) {
+		t.Errorf("invalid feature: %s", feature)
+	}
+
+	if feature := ParseFeatureNoValidation("cloud-native-protection"); !feature.Equal(FeatureCloudNativeProtection) {
+		t.Errorf("invalid feature: %s", feature)
 	}
 }
