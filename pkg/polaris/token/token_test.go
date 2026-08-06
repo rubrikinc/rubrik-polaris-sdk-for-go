@@ -101,17 +101,3 @@ func validTokenHandler(t *testing.T) http.Handler {
 		}
 	})
 }
-
-// invalidTokenHandler always responds with an invalid token. The JSON response
-// is valid for both user and service account sources.
-func invalidTokenHandler(t *testing.T) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(struct {
-			ClientID    string `json:"client_id"`
-			AccessToken string `json:"access_token"`
-		}{ClientID: "client-id", AccessToken: dummyValidToken}); err != nil {
-			t.Error(err)
-		}
-	})
-}

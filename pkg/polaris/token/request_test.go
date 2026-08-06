@@ -50,7 +50,7 @@ func TestRequestWithContextNoResponse(t *testing.T) {
 	defer srv.Close()
 	defer srvCancel()
 
-	ctx := context.WithValue(t.Context(), timeoutKey, 10*time.Millisecond)
+	ctx := context.WithValue(t.Context(), timeoutKey{}, 10*time.Millisecond)
 	_, err := RequestWithContext(ctx, srv.Client(), srv.URL, []byte{}, &log.DiscardLogger{})
 	if err == nil || err.Error() != "failed to acquire access token after 3 attempts" {
 		t.Fatal(err)

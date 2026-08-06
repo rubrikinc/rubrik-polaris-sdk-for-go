@@ -45,7 +45,7 @@ const (
 
 // timeoutKey is the context key used to pass in a custom request timeout to
 // the requestToken function. Intended to be used by unit tests.
-var timeoutKey = struct{}{}
+type timeoutKey struct{}
 
 // requestToken tries to acquire a token using provided parameters. It returns
 // a context.Canceled if the request was canceled, a context.DeadlineExceeded
@@ -55,7 +55,7 @@ func requestToken(ctx context.Context, client *http.Client, tokenURL string, req
 	// Allow a context value with the timeoutKey key to override the default
 	// request timeout.
 	timeout := requestTimeout
-	if timeoutValue := ctx.Value(timeoutKey); timeoutValue != nil {
+	if timeoutValue := ctx.Value(timeoutKey{}); timeoutValue != nil {
 		timeout = timeoutValue.(time.Duration)
 	}
 
