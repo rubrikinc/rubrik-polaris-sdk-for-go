@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"text/template"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
@@ -35,9 +36,6 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 )
 
-// Synthetic IDs whose shape mirrors what RSC returns for this mutation. The
-// shape matters: the job ID is a task chain UUID and RSC returns it as a UUIDv7
-// rather than the v4 form used elsewhere, so keep the version nibble at 7.
 const (
 	testMIServerID = "11111111-1111-4111-8111-111111111111"
 	testMIJobID    = "01900000-0000-7000-8000-000000000001"
@@ -46,22 +44,13 @@ const (
 // TestSetupCloudNativeSQLServerBackup verifies the variables sent for the SQL
 // authentication flow and that a recorded response is unmarshalled correctly.
 func TestSetupCloudNativeSQLServerBackup(t *testing.T) {
+	tmpl, err := template.ParseFiles("testdata/setup_cloud_native_sql_server_backup_response.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ctx, cancel := context.WithCancelCause(context.Background())
 	defer assert.Context(t, ctx, cancel)
-
-	const response = `{
-		"data": {
-			"result": {
-				"jobIds": [
-					{
-						"jobId": "` + testMIJobID + `",
-						"rubrikObjectId": "` + testMIServerID + `"
-					}
-				],
-				"errors": []
-			}
-		}
-	}`
 
 	var gotVars struct {
 		ServerIDs        []string `json:"serverIds"`
@@ -75,18 +64,27 @@ func TestSetupCloudNativeSQLServerBackup(t *testing.T) {
 	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
-			t.Fatalf("read request body: %v", err)
+			cancel(err)
+			return
 		}
 		var decoded struct {
 			Variables json.RawMessage `json:"variables"`
 		}
 		if err := json.Unmarshal(body, &decoded); err != nil {
-			t.Fatalf("unmarshal request body: %v", err)
+			cancel(err)
+			return
 		}
 		if err := json.Unmarshal(decoded.Variables, &gotVars); err != nil {
-			t.Fatalf("unmarshal variables: %v", err)
+			cancel(err)
+			return
 		}
-		io.WriteString(w, response)
+
+		if err := tmpl.Execute(w, struct {
+			JobID    string
+			ServerID string
+		}{JobID: testMIJobID, ServerID: testMIServerID}); err != nil {
+			cancel(err)
+		}
 	}))
 	defer srv.Close()
 
@@ -138,25 +136,21 @@ func TestSetupCloudNativeSQLServerBackup(t *testing.T) {
 // TestSetupCloudNativeSQLServerBackupPreValidationError verifies that an object
 // which fails pre-validation is returned in Errors with no job started.
 func TestSetupCloudNativeSQLServerBackupPreValidationError(t *testing.T) {
+	tmpl, err := template.ParseFiles("testdata/setup_cloud_native_sql_server_backup_pre_validation_error_response.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ctx, cancel := context.WithCancelCause(context.Background())
 	defer assert.Context(t, ctx, cancel)
 
-	const response = `{
-		"data": {
-			"result": {
-				"jobIds": [],
-				"errors": [
-					{
-						"error": "invalid credentials",
-						"rubrikObjectId": "` + testMIServerID + `"
-					}
-				]
-			}
-		}
-	}`
-
 	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
-		io.WriteString(w, response)
+		if err := tmpl.Execute(w, struct {
+			Error    string
+			ServerID string
+		}{Error: "invalid credentials", ServerID: testMIServerID}); err != nil {
+			cancel(err)
+		}
 	}))
 	defer srv.Close()
 
@@ -185,19 +179,15 @@ func TestSetupCloudNativeSQLServerBackupPreValidationError(t *testing.T) {
 // type is sent using its GraphQL enum name and that the reply is split into
 // successful and failed object IDs.
 func TestClearCloudNativeSQLServerBackupCredentials(t *testing.T) {
+	tmpl, err := template.ParseFiles("testdata/clear_cloud_native_sql_server_backup_credentials_response.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ctx, cancel := context.WithCancelCause(context.Background())
 	defer assert.Context(t, ctx, cancel)
 
 	const failedID = "22222222-2222-4222-8222-222222222222"
-
-	const response = `{
-		"data": {
-			"result": {
-				"successObjectIds": ["` + testMIServerID + `"],
-				"failedObjectIds": ["` + failedID + `"]
-			}
-		}
-	}`
 
 	var gotVars struct {
 		ObjectIDs    []string `json:"objectIds"`
@@ -206,18 +196,27 @@ func TestClearCloudNativeSQLServerBackupCredentials(t *testing.T) {
 	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
-			t.Fatalf("read request body: %v", err)
+			cancel(err)
+			return
 		}
 		var decoded struct {
 			Variables json.RawMessage `json:"variables"`
 		}
 		if err := json.Unmarshal(body, &decoded); err != nil {
-			t.Fatalf("unmarshal request body: %v", err)
+			cancel(err)
+			return
 		}
 		if err := json.Unmarshal(decoded.Variables, &gotVars); err != nil {
-			t.Fatalf("unmarshal variables: %v", err)
+			cancel(err)
+			return
 		}
-		io.WriteString(w, response)
+
+		if err := tmpl.Execute(w, struct {
+			SuccessID string
+			FailedID  string
+		}{SuccessID: testMIServerID, FailedID: failedID}); err != nil {
+			cancel(err)
+		}
 	}))
 	defer srv.Close()
 

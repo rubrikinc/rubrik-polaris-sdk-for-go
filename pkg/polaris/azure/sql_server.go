@@ -29,7 +29,6 @@ import (
 	"github.com/google/uuid"
 	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -42,16 +41,19 @@ const defaultSQLServerBackupSetupPollInterval = 10 * time.Second
 // Managed Instance servers using SQL Server authentication, and blocks until
 // every task chain started has finished.
 //
-// The login and password are the credentials of a SQL Server user with
-// permission to create the user RSC uses to perform backups. They are sent to
-// RSC but never stored by the SDK. Microsoft Entra ID authentication is not
-// supported yet.
+// The credentials are those of a SQL Server user with permission to create the
+// user RSC uses to perform backups. They are sent to RSC but never stored by
+// the SDK. Microsoft Entra ID authentication is not supported yet.
 //
 // A pollInterval of zero uses a default interval. Note that the credentials are
 // only validated against the managed instance once the task chain runs, so
 // invalid credentials surface as a failed task chain rather than as an error
 // from the initial request.
-func (a API) SetupSQLManagedInstanceBackup(ctx context.Context, serverIDs []uuid.UUID, login string, password secret.String, pollInterval time.Duration) error {
+//
+// Servers are set up independently of each other, so a failure for one server
+// does not stop the others. All failures are collected and returned together as
+// a joined error.
+func (a API) SetupSQLManagedInstanceBackup(ctx context.Context, serverIDs []uuid.UUID, credentials gqlazure.LoginCredentials, pollInterval time.Duration) error {
 	a.log.Print(log.Trace)
 
 	if len(serverIDs) == 0 {
@@ -61,34 +63,42 @@ func (a API) SetupSQLManagedInstanceBackup(ctx context.Context, serverIDs []uuid
 		pollInterval = defaultSQLServerBackupSetupPollInterval
 	}
 
-	status, err := gqlazure.Wrap(a.client).SetupCloudNativeSQLServerBackup(ctx, serverIDs, nil,
-		gqlazure.LoginCredentials{Login: login, Password: password}, gqlazure.SQLAuthentication)
+	status, err := gqlazure.Wrap(a.client).SetupCloudNativeSQLServerBackup(ctx, serverIDs, nil, credentials,
+		gqlazure.SQLAuthentication)
 	if err != nil {
 		return fmt.Errorf("failed to set up SQL Managed Instance backup: %s", err)
 	}
 
-	// Objects which fail pre-validation never get a task chain, so they must be
-	// reported separately from the task chain results below.
+	// Objects which fail pre-validation never get a task chain, so they are
+	// reported separately from the task chain results below. Note that they are
+	// only collected here, not returned yet: task chains may already be running
+	// for the other servers and those must still be waited for.
+	var errs []error
 	for _, e := range status.Errors {
-		return fmt.Errorf("failed to set up backup for SQL Managed Instance server %s: %s", e.ObjectID, e.Error)
+		errs = append(errs, fmt.Errorf("failed to set up backup for SQL Managed Instance server %s: %s",
+			e.ObjectID, e.Error))
 	}
-	if len(status.JobIDs) == 0 {
+	if len(status.JobIDs) == 0 && len(errs) == 0 {
 		return errors.New("failed to set up SQL Managed Instance backup: no jobs were started")
 	}
 
+	// Wait for every task chain, recording rather than returning failures, so
+	// that a failure for one server does not leave the remaining task chains
+	// running unwaited.
 	coreAPI := core.Wrap(a.client)
 	for _, job := range status.JobIDs {
 		state, err := coreAPI.WaitForTaskChain(ctx, job.JobID, pollInterval)
-		if err != nil {
-			return fmt.Errorf("failed to wait for backup setup of SQL Managed Instance server %s: %s", job.ObjectID, err)
-		}
-		if state != core.TaskChainSucceeded {
-			return fmt.Errorf("backup setup of SQL Managed Instance server %s ended in state %s, verify that the "+
-				"credentials are valid for the managed instance", job.ObjectID, state)
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Errorf("failed to wait for backup setup of SQL Managed Instance server %s: %s",
+				job.ObjectID, err))
+		case state != core.TaskChainSucceeded:
+			errs = append(errs, fmt.Errorf("backup setup of SQL Managed Instance server %s ended in state %s, "+
+				"verify that the credentials are valid for the managed instance", job.ObjectID, state))
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 // ClearSQLManagedInstanceBackupCredentials clears the backup credentials of the
