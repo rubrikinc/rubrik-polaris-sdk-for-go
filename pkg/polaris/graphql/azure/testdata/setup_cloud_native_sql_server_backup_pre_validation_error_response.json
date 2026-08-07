@@ -1,0 +1,13 @@
+{
+    "data": {
+        "result": {
+            "jobIds": [],
+            "errors": [
+                {
+                    "error": "{{ .Error }}",
+                    "rubrikObjectId": "{{ .ServerID }}"
+                }
+            ]
+        }
+    }
+}

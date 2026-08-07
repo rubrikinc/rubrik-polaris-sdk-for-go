@@ -310,6 +310,17 @@ var azureNativeSubscriptionsWithFilterQuery = `query SdkGolangAzureNativeSubscri
     }
 }`
 
+// clearCloudNativeSqlServerBackupCredentials GraphQL query
+var clearCloudNativeSqlServerBackupCredentialsQuery = `mutation SdkGolangClearCloudNativeSqlServerBackupCredentials($objectIds: [UUID!]!, $workloadType: WorkloadLevelHierarchy!) {
+    result: clearCloudNativeSqlServerBackupCredentials(input: {
+        objectIds:    $objectIds,
+        workloadType: $workloadType
+    }) {
+        successObjectIds
+        failedObjectIds
+    }
+}`
+
 // deleteAzureCloudAccountWithoutOauth GraphQL query
 var deleteAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangDeleteAzureCloudAccountWithoutOauth($subscriptionIds: [UUID!]!, $features: [CloudAccountFeature!]!) {
     result: deleteAzureCloudAccountWithoutOauth(input: {
@@ -354,6 +365,25 @@ var setRubrikCustomerAppForAzureDevopsQuery = `mutation SdkGolangSetRubrikCustom
     clientSecret:  $clientSecret,
     shouldReplace: $shouldReplace,
   })
+}`
+
+// setupCloudNativeSqlServerBackup GraphQL query
+var setupCloudNativeSqlServerBackupQuery = `mutation SdkGolangSetupCloudNativeSqlServerBackup($serverIds: [UUID!], $databaseIds: [UUID!], $adminCredentials: LoginCredentials, $authMechanism: SqlAuthenticationMechanism) {
+    result: setupCloudNativeSqlServerBackup(input: {
+        serverIds:        $serverIds,
+        databaseIds:      $databaseIds,
+        adminCredentials: $adminCredentials,
+        authMechanism:    $authMechanism
+    }) {
+        jobIds {
+            jobId
+            rubrikObjectId
+        }
+        errors {
+            error
+            rubrikObjectId
+        }
+    }
 }`
 
 // startDisableAzureCloudAccountJob GraphQL query
