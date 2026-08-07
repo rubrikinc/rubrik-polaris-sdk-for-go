@@ -100,13 +100,22 @@ func (a API) SetupCloudNativeSQLServerBackup(ctx context.Context, serverIDs, dat
 		databaseIDs = []uuid.UUID{}
 	}
 
+	// The credentials are only required for SQLAuthentication, so omit them
+	// entirely when none were given rather than sending an empty login and
+	// password. omitempty only fires for a nil pointer, it does not apply to
+	// struct values.
+	credentials := &adminCredentials
+	if adminCredentials == (LoginCredentials{}) {
+		credentials = nil
+	}
+
 	query := setupCloudNativeSqlServerBackupQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		ServerIDs        []uuid.UUID                `json:"serverIds"`
 		DatabaseIDs      []uuid.UUID                `json:"databaseIds"`
 		AdminCredentials *LoginCredentials          `json:"adminCredentials,omitempty"`
 		AuthMechanism    SQLAuthenticationMechanism `json:"authMechanism,omitempty"`
-	}{ServerIDs: serverIDs, DatabaseIDs: databaseIDs, AdminCredentials: &adminCredentials, AuthMechanism: authMechanism})
+	}{ServerIDs: serverIDs, DatabaseIDs: databaseIDs, AdminCredentials: credentials, AuthMechanism: authMechanism})
 	if err != nil {
 		return BatchAsyncJobStatus{}, graphql.RequestError(query, err)
 	}

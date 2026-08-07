@@ -41,6 +41,32 @@ const (
 	testMIJobID    = "01900000-0000-7000-8000-000000000001"
 )
 
+// decodeVars decodes the GraphQL request variables into vars. It is called from
+// the httptest handler goroutine, so failures cancel the context with the cause
+// instead of failing the test directly. Returns false when the request could
+// not be decoded, in which case the handler must return without responding.
+func decodeVars(cancel context.CancelCauseFunc, req *http.Request, vars any) bool {
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		cancel(err)
+		return false
+	}
+
+	var decoded struct {
+		Variables json.RawMessage `json:"variables"`
+	}
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		cancel(err)
+		return false
+	}
+	if err := json.Unmarshal(decoded.Variables, vars); err != nil {
+		cancel(err)
+		return false
+	}
+
+	return true
+}
+
 // TestSetupCloudNativeSQLServerBackup verifies the variables sent for the SQL
 // authentication flow and that a recorded response is unmarshalled correctly.
 func TestSetupCloudNativeSQLServerBackup(t *testing.T) {
@@ -62,20 +88,7 @@ func TestSetupCloudNativeSQLServerBackup(t *testing.T) {
 		AuthMechanism string `json:"authMechanism"`
 	}
 	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
-		body, err := io.ReadAll(req.Body)
-		if err != nil {
-			cancel(err)
-			return
-		}
-		var decoded struct {
-			Variables json.RawMessage `json:"variables"`
-		}
-		if err := json.Unmarshal(body, &decoded); err != nil {
-			cancel(err)
-			return
-		}
-		if err := json.Unmarshal(decoded.Variables, &gotVars); err != nil {
-			cancel(err)
+		if !decodeVars(cancel, req, &gotVars) {
 			return
 		}
 
@@ -194,20 +207,7 @@ func TestClearCloudNativeSQLServerBackupCredentials(t *testing.T) {
 		WorkloadType string   `json:"workloadType"`
 	}
 	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
-		body, err := io.ReadAll(req.Body)
-		if err != nil {
-			cancel(err)
-			return
-		}
-		var decoded struct {
-			Variables json.RawMessage `json:"variables"`
-		}
-		if err := json.Unmarshal(body, &decoded); err != nil {
-			cancel(err)
-			return
-		}
-		if err := json.Unmarshal(decoded.Variables, &gotVars); err != nil {
-			cancel(err)
+		if !decodeVars(cancel, req, &gotVars) {
 			return
 		}
 

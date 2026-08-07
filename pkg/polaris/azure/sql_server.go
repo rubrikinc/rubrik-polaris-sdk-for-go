@@ -74,12 +74,25 @@ func (a API) SetupSQLManagedInstanceBackup(ctx context.Context, serverIDs []uuid
 	// only collected here, not returned yet: task chains may already be running
 	// for the other servers and those must still be waited for.
 	var errs []error
+	acknowledged := make(map[uuid.UUID]struct{}, len(status.JobIDs)+len(status.Errors))
 	for _, e := range status.Errors {
+		acknowledged[e.ObjectID] = struct{}{}
 		errs = append(errs, fmt.Errorf("failed to set up backup for SQL Managed Instance server %s: %s",
 			e.ObjectID, e.Error))
 	}
-	if len(status.JobIDs) == 0 && len(errs) == 0 {
-		return errors.New("failed to set up SQL Managed Instance backup: no jobs were started")
+	for _, job := range status.JobIDs {
+		acknowledged[job.ObjectID] = struct{}{}
+	}
+
+	// RSC acknowledges each requested server with either a task chain or a
+	// pre-validation error. A server in neither list was silently dropped, so
+	// report it instead of returning success for a server never set up. This
+	// also covers RSC returning nothing at all, in which case every requested
+	// server is reported.
+	for _, serverID := range serverIDs {
+		if _, ok := acknowledged[serverID]; !ok {
+			errs = append(errs, fmt.Errorf("no job was started for SQL Managed Instance server %s", serverID))
+		}
 	}
 
 	// Wait for every task chain, recording rather than returning failures, so
@@ -87,6 +100,15 @@ func (a API) SetupSQLManagedInstanceBackup(ctx context.Context, serverIDs []uuid
 	// running unwaited.
 	coreAPI := core.Wrap(a.client)
 	for _, job := range status.JobIDs {
+		// Once the context is done, waiting for the remaining task chains only
+		// produces one duplicate failure per server, so stop and report the
+		// cause once. Wrapped with %w, unlike the errors below, so that callers
+		// can tell cancellation apart from a genuine setup failure.
+		if err := ctx.Err(); err != nil {
+			errs = append(errs, fmt.Errorf("interrupted while waiting for SQL Managed Instance backup setup: %w", err))
+			break
+		}
+
 		state, err := coreAPI.WaitForTaskChain(ctx, job.JobID, pollInterval)
 		switch {
 		case err != nil:
