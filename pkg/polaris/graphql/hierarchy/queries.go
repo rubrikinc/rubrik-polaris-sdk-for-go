@@ -168,6 +168,21 @@ var inventoryRootQuery = `query SdkGolangInventoryRoot($after: String, $filter: 
                         }
                     }
                 }
+                ... on AzurePostgresFlexibleServer {
+                    azureResourceGroupDetails {
+                        azureSubscriptionDetails {
+                            id
+                            name
+                            accountConnectionId
+                            tenantId
+                            cloudType
+                            status
+                            regionSpecs {
+                                region
+                            }
+                        }
+                    }
+                }
             }
             count
             pageInfo {

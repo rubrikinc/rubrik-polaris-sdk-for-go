@@ -194,6 +194,7 @@ type InventoryObject interface {
 		AzureNativeResourceGroup |
 		AzureNativeSubscription |
 		AzureNativeVirtualMachine |
+		AzurePostgresFlexibleServer |
 		AzureSQLManagedInstanceServer |
 		CloudNativeTagRule |
 		GitHubOrganization |
@@ -371,6 +372,21 @@ type AzureSubscriptionDetails struct {
 	RegionSpecs []struct {
 		Region azureregions.NativeRegionEnum `json:"region"`
 	} `json:"regionSpecs"`
+}
+
+// AzurePostgresFlexibleServer represents an Azure Postgres flexible server from
+// the inventory root. In addition to the common object fields it exposes the
+// parent subscription details, so callers can filter servers by subscription
+// client-side — the inventory query has no subscription filter.
+type AzurePostgresFlexibleServer struct {
+	Object
+	ResourceGroup struct {
+		Subscription AzureSubscriptionDetails `json:"azureSubscriptionDetails"`
+	} `json:"azureResourceGroupDetails"`
+}
+
+func (AzurePostgresFlexibleServer) typeFilter() ObjectType {
+	return "AZURE_POSTGRES_FLEXIBLE_SERVER"
 }
 
 // AzureSQLManagedInstanceServer represents an Azure SQL Managed Instance server

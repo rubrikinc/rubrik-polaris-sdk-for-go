@@ -47,6 +47,21 @@ query RubrikPolarisSDKRequest($after: String, $filter: [Filter!], $first: Int, $
                         }
                     }
                 }
+                ... on AzurePostgresFlexibleServer {
+                    azureResourceGroupDetails {
+                        azureSubscriptionDetails {
+                            id
+                            name
+                            accountConnectionId
+                            tenantId
+                            cloudType
+                            status
+                            regionSpecs {
+                                region
+                            }
+                        }
+                    }
+                }
             }
             count
             pageInfo {
