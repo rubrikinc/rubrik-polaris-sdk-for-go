@@ -980,6 +980,60 @@ func TestToSubscription(t *testing.T) {
 	}
 }
 
+func TestFeatureOnboardingRequirements(t *testing.T) {
+	tt := []struct {
+		feature                core.Feature
+		supportResourceGroup   bool
+		supportManagedIdentity bool
+	}{{
+		feature:                core.FeatureAzurePostgresFlexibleServerProtection,
+		supportResourceGroup:   true,
+		supportManagedIdentity: true,
+	}, {
+		feature:                core.FeatureCloudNativeArchivalEncryption,
+		supportResourceGroup:   true,
+		supportManagedIdentity: true,
+	}, {
+		feature:                core.FeatureAzureSQLMIProtection,
+		supportResourceGroup:   false,
+		supportManagedIdentity: false,
+	}, {
+		feature:                core.FeatureCloudNativeBlobProtection,
+		supportResourceGroup:   false,
+		supportManagedIdentity: false,
+	}, {
+		feature:                core.FeatureCloudDiscovery,
+		supportResourceGroup:   false,
+		supportManagedIdentity: false,
+	}, {
+		feature:                core.FeatureCloudNativeProtection,
+		supportResourceGroup:   true,
+		supportManagedIdentity: false,
+	}}
+
+	for _, tc := range tt {
+		t.Run(tc.feature.Name, func(t *testing.T) {
+			feature := Feature{Feature: tc.feature}
+			if got := feature.SupportResourceGroup(); got != tc.supportResourceGroup {
+				t.Errorf("SupportResourceGroup() = %t, want %t", got, tc.supportResourceGroup)
+			}
+			if got := feature.SupportUserAssignedManagedIdentity(); got != tc.supportManagedIdentity {
+				t.Errorf("SupportUserAssignedManagedIdentity() = %t, want %t", got, tc.supportManagedIdentity)
+			}
+		})
+	}
+}
+
+// TestSupportedFeaturesIncludesPostgresFlexibleServer guards against the
+// Postgres flexible server feature being dropped from SupportedFeatures. The
+// list doubles as a read filter in toSubscriptions, so a missing entry silently
+// omits the feature from the returned cloud account rather than failing loudly.
+func TestSupportedFeaturesIncludesPostgresFlexibleServer(t *testing.T) {
+	if _, ok := core.LookupFeature(SupportedFeatures(), core.FeatureAzurePostgresFlexibleServerProtection); !ok {
+		t.Error("AZURE_POSTGRES_FLEXIBLE_SERVER_PROTECTION missing from SupportedFeatures")
+	}
+}
+
 func TestToTenant(t *testing.T) {
 	rawTenants, err := allAzureCloudAccountTenantsResponse()
 	if err != nil {

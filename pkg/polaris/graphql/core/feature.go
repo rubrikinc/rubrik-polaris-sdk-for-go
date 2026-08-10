@@ -84,6 +84,7 @@ var (
 	FeatureAzureDevOpsDeveloperCollaborationProtection = Feature{Name: "AZURE_DEVOPS_DEVELOPER_COLLABORATION_PROTECTION"}
 	FeatureAzureDevOpsProtection                       = Feature{Name: "AZURE_DEVOPS_PROTECTION"} // Deprecated: use FeatureAzureDevOpsRepositoryProtection
 	FeatureAzureDevOpsRepositoryProtection             = Feature{Name: "AZURE_DEVOPS_REPOSITORY_PROTECTION"}
+	FeatureAzurePostgresFlexibleServerProtection       = Feature{Name: "AZURE_POSTGRES_FLEXIBLE_SERVER_PROTECTION"}
 	FeatureAzureSQLDBProtection                        = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
 	FeatureAzureSQLMIProtection                        = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
 	FeatureCloudAccounts                               = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
@@ -164,6 +165,7 @@ func (f Feature) IsProtectionFeature() bool {
 		FeatureAzureDevOpsDeveloperCollaborationProtection,
 		FeatureAzureDevOpsProtection,
 		FeatureAzureDevOpsRepositoryProtection,
+		FeatureAzurePostgresFlexibleServerProtection,
 		FeatureAzureSQLDBProtection,
 		FeatureAzureSQLMIProtection,
 		FeatureCloudDiscovery,
@@ -219,6 +221,7 @@ func AllProtectionFeatures(cloud CloudVendor) []Feature {
 		}
 	case CloudVendorAzure:
 		return []Feature{
+			FeatureAzurePostgresFlexibleServerProtection,
 			FeatureAzureSQLDBProtection,
 			FeatureAzureSQLMIProtection,
 			FeatureCloudNativeBlobProtection,
@@ -300,6 +303,7 @@ var validFeatures = map[string]struct{}{
 	FeatureAzureDevOpsDeveloperCollaborationProtection.Name: {},
 	FeatureAzureDevOpsProtection.Name:                       {}, // Deprecated: use FeatureAzureDevOpsRepositoryProtection
 	FeatureAzureDevOpsRepositoryProtection.Name:             {},
+	FeatureAzurePostgresFlexibleServerProtection.Name:       {},
 	FeatureAzureSQLDBProtection.Name:                        {},
 	FeatureAzureSQLMIProtection.Name:                        {},
 	FeatureCloudAccounts.Name:                               {}, // Deprecated: no replacement.
