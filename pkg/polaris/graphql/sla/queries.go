@@ -241,6 +241,9 @@ fragment GlobalSlaReplyFields on GlobalSlaReply {
             backupLocationName
             continuousBackupRetentionInDays
         }
+        azurePostgresFlexibleServerConfig {
+            backupRetentionInDays
+        }
         azureSqlDatabaseDbConfig {
             logRetentionInDays
             ltrConfig {
@@ -622,6 +625,9 @@ fragment GlobalSlaReplyFields on GlobalSlaReply {
             backupLocationId
             backupLocationName
             continuousBackupRetentionInDays
+        }
+        azurePostgresFlexibleServerConfig {
+            backupRetentionInDays
         }
         azureSqlDatabaseDbConfig {
             logRetentionInDays
