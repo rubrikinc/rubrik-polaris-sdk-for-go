@@ -91,24 +91,25 @@ type DayOfWeek struct {
 // ObjectSpecificConfigs holds the object-specific configurations for a global
 // RSC SLA domain.
 type ObjectSpecificConfigs struct {
-	AWSDynamoDBConfig               *AWSDynamoDBConfig          `json:"awsNativeDynamoDbSlaConfigInput,omitempty"`
-	AWSS3Config                     *AWSS3Config                `json:"awsNativeS3SlaConfigInput,omitempty"`
-	AWSRDSConfig                    *AWSRDSConfig               `json:"awsRdsConfigInput,omitempty"`
-	AzureBlobConfig                 *AzureBlobConfig            `json:"azureBlobConfigInput,omitempty"`
-	AzureSQLDatabaseDBConfig        *AzureDBConfig              `json:"azureSqlDatabaseDbConfigInput,omitempty"`
-	AzureSQLManagedInstanceDBConfig *AzureDBConfig              `json:"azureSqlManagedInstanceDbConfigInput,omitempty"`
-	VMwareVMConfig                  *VMwareVMConfig             `json:"vmwareVmConfigInput,omitempty"`
-	SapHanaConfig                   *SapHanaConfig              `json:"sapHanaConfigInput,omitempty"`
-	DB2Config                       *DB2Config                  `json:"db2ConfigInput,omitempty"`
-	MssqlConfig                     *MssqlConfig                `json:"mssqlConfigInput,omitempty"`
-	OracleConfig                    *OracleConfig               `json:"oracleConfigInput,omitempty"`
-	MongoConfig                     *MongoConfig                `json:"mongoConfigInput,omitempty"`
-	ManagedVolumeSlaConfig          *ManagedVolumeSlaConfig     `json:"managedVolumeSlaConfigInput,omitempty"`
-	PostgresDbClusterSlaConfig      *PostgresDbClusterSlaConfig `json:"postgresDbClusterSlaConfigInput,omitempty"`
-	MysqldbSlaConfig                *MysqldbSlaConfig           `json:"mysqldbConfigInput,omitempty"`
-	NcdSlaConfig                    *NcdSlaConfig               `json:"ncdConfigInput,omitempty"`
-	InformixSlaConfig               *InformixSlaConfig          `json:"informixConfigInput,omitempty"`
-	GcpCloudSqlConfig               *GcpCloudSqlConfig          `json:"gcpCloudSqlConfigInput,omitempty"`
+	AWSDynamoDBConfig                 *AWSDynamoDBConfig                 `json:"awsNativeDynamoDbSlaConfigInput,omitempty"`
+	AWSS3Config                       *AWSS3Config                       `json:"awsNativeS3SlaConfigInput,omitempty"`
+	AWSRDSConfig                      *AWSRDSConfig                      `json:"awsRdsConfigInput,omitempty"`
+	AzureBlobConfig                   *AzureBlobConfig                   `json:"azureBlobConfigInput,omitempty"`
+	AzurePostgresFlexibleServerConfig *AzurePostgresFlexibleServerConfig `json:"azurePostgresFlexibleServerConfigInput,omitempty"`
+	AzureSQLDatabaseDBConfig          *AzureDBConfig                     `json:"azureSqlDatabaseDbConfigInput,omitempty"`
+	AzureSQLManagedInstanceDBConfig   *AzureDBConfig                     `json:"azureSqlManagedInstanceDbConfigInput,omitempty"`
+	VMwareVMConfig                    *VMwareVMConfig                    `json:"vmwareVmConfigInput,omitempty"`
+	SapHanaConfig                     *SapHanaConfig                     `json:"sapHanaConfigInput,omitempty"`
+	DB2Config                         *DB2Config                         `json:"db2ConfigInput,omitempty"`
+	MssqlConfig                       *MssqlConfig                       `json:"mssqlConfigInput,omitempty"`
+	OracleConfig                      *OracleConfig                      `json:"oracleConfigInput,omitempty"`
+	MongoConfig                       *MongoConfig                       `json:"mongoConfigInput,omitempty"`
+	ManagedVolumeSlaConfig            *ManagedVolumeSlaConfig            `json:"managedVolumeSlaConfigInput,omitempty"`
+	PostgresDbClusterSlaConfig        *PostgresDbClusterSlaConfig        `json:"postgresDbClusterSlaConfigInput,omitempty"`
+	MysqldbSlaConfig                  *MysqldbSlaConfig                  `json:"mysqldbConfigInput,omitempty"`
+	NcdSlaConfig                      *NcdSlaConfig                      `json:"ncdConfigInput,omitempty"`
+	InformixSlaConfig                 *InformixSlaConfig                 `json:"informixConfigInput,omitempty"`
+	GcpCloudSqlConfig                 *GcpCloudSqlConfig                 `json:"gcpCloudSqlConfigInput,omitempty"`
 }
 
 // AWSDynamoDBConfig represents the configuration specific for an AWS DynamoDB
@@ -254,6 +255,17 @@ type ManagedVolumeSlaConfig struct {
 // Postgres DB Cluster object.
 type PostgresDbClusterSlaConfig struct {
 	LogRetention RetentionDuration `json:"logRetention,omitzero"`
+}
+
+// AzurePostgresFlexibleServerConfig represents the configuration specific for
+// an Azure Postgres flexible server object.
+//
+// BackupRetentionInDays is the point-in-time restore retention RSC enforces on
+// the source server, between 7 and 35 days. Zero means RSC leaves the server's
+// existing Azure-side retention untouched, which is also the effect of omitting
+// the configuration altogether.
+type AzurePostgresFlexibleServerConfig struct {
+	BackupRetentionInDays int `json:"backupRetentionInDays"`
 }
 
 // MysqldbSlaConfig represents the configuration specific for a MySQL object.
