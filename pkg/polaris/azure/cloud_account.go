@@ -102,9 +102,12 @@ func (f Feature) SupportResourceGroup() bool {
 }
 
 // SupportUserAssignedManagedIdentity returns true if the feature supports
-// being onboarded with user-assigned managed identity.
+// being onboarded with user-assigned managed identity. Note, RSC requires an
+// identity for AZURE_POSTGRES_FLEXIBLE_SERVER_PROTECTION and it must belong to
+// the same resource group as the feature.
 func (f Feature) SupportUserAssignedManagedIdentity() bool {
-	return f.Equal(core.FeatureCloudNativeArchivalEncryption)
+	return f.Equal(core.FeatureAzurePostgresFlexibleServerProtection) ||
+		f.Equal(core.FeatureCloudNativeArchivalEncryption)
 }
 
 type FeatureResourceGroup struct {
@@ -620,6 +623,7 @@ func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipal
 // SupportedFeatures returns the features supported by Azure cloud accounts.
 func SupportedFeatures() []core.Feature {
 	return []core.Feature{
+		core.FeatureAzurePostgresFlexibleServerProtection,
 		core.FeatureAzureSQLDBProtection,
 		core.FeatureAzureSQLMIProtection,
 		core.FeatureCloudDiscovery,
