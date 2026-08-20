@@ -4,6 +4,7 @@ query RubrikPolarisSDKRequest($cloudVendor: CloudVendor!, $cloudAccountId: UUID)
             key
             value
         }
+        excludedTags
         shouldOverrideResourceTags
     }
 }

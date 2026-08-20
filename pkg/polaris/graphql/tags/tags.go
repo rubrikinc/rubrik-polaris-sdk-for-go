@@ -35,6 +35,7 @@ import (
 type CustomerTags struct {
 	CloudVendor          core.CloudVendor `json:"cloudVendor"`
 	Tags                 []core.Tag       `json:"customerTags"`
+	ExcludedTags         []string         `json:"excludedTags"`
 	OverrideResourceTags bool             `json:"shouldOverrideResourceTags"`
 }
 
