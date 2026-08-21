@@ -60,13 +60,25 @@ func TestPolicyManagement(t *testing.T) {
 	}
 	exposureValue := exposureMeta.Values[0].ID
 
-	// Create a data security policy with a complex nested filter and a
-	// threshold filter:
+	identityMeta, err := dspmClient.FilterValues(ctx, dspm.FilterTypeIdentityType, "")
+	if err != nil {
+		t.Fatalf("failed to discover identity type filter values: %v", err)
+	}
+	if len(identityMeta.Values) == 0 {
+		t.Fatal("no values returned for identity type filter")
+	}
+	identityValue := identityMeta.Values[0].ID
+
+	// Create a data security policy exercising the full filter shape RSC
+	// accepts: one object condition group and one identity condition group,
+	// plus a threshold filter:
 	//   filter: AND(
-	//     sensitivity IS <value>,
 	//     OR(
+	//       sensitivity IS <value>,
 	//       exposure IS <value>,
-	//       sensitivity IS_NOT <value>,
+	//     ),
+	//     AND(
+	//       identity type IS <value>,
 	//     ),
 	//   )
 	//   thresholdFilter: AND(exposure IS <value>)
@@ -91,16 +103,16 @@ func TestPolicyManagement(t *testing.T) {
 			Op: dspm.LogicalAnd,
 			Filters: []dspm.Node{
 				{
-					Config: &dspm.Config{
-						Type:         dspm.FilterTypeDocumentSensitivity,
-						Values:       []string{sensValue},
-						Relationship: dspm.RelIs,
-					},
-				},
-				{
 					GroupConfig: &dspm.GroupConfig{
 						Op: dspm.LogicalOr,
 						Filters: []dspm.Node{
+							{
+								Config: &dspm.Config{
+									Type:         dspm.FilterTypeDocumentSensitivity,
+									Values:       []string{sensValue},
+									Relationship: dspm.RelIs,
+								},
+							},
 							{
 								Config: &dspm.Config{
 									Type:         dspm.FilterTypeDocumentExposure,
@@ -108,11 +120,18 @@ func TestPolicyManagement(t *testing.T) {
 									Relationship: dspm.RelIs,
 								},
 							},
+						},
+					},
+				},
+				{
+					GroupConfig: &dspm.GroupConfig{
+						Op: dspm.LogicalAnd,
+						Filters: []dspm.Node{
 							{
 								Config: &dspm.Config{
-									Type:         dspm.FilterTypeDocumentSensitivity,
-									Values:       []string{sensValue},
-									Relationship: dspm.RelIsNot,
+									Type:         dspm.FilterTypeIdentityType,
+									Values:       []string{identityValue},
+									Relationship: dspm.RelIs,
 								},
 							},
 						},
@@ -170,19 +189,46 @@ func TestPolicyManagement(t *testing.T) {
 	if len(policy.Filter.Filters) != 2 {
 		t.Fatalf("Filter.Filters length: got %d, want 2", len(policy.Filter.Filters))
 	}
-	if policy.Filter.Filters[0].Config == nil {
-		t.Fatal("Filter.Filters[0].Config is nil")
+	objectGroup := policy.Filter.Filters[0].GroupConfig
+	if objectGroup == nil {
+		t.Fatal("Filter.Filters[0].GroupConfig is nil")
 	}
-	if policy.Filter.Filters[0].Config.Type != dspm.FilterTypeDocumentSensitivity {
-		t.Errorf("Filter.Filters[0].Config.Type: got %q, want %q",
-			policy.Filter.Filters[0].Config.Type, dspm.FilterTypeDocumentSensitivity)
+	if objectGroup.Op != dspm.LogicalOr {
+		t.Errorf("Filter.Filters[0].GroupConfig.Op: got %q, want %q", objectGroup.Op, dspm.LogicalOr)
 	}
-	if policy.Filter.Filters[1].GroupConfig == nil {
+	if len(objectGroup.Filters) != 2 {
+		t.Fatalf("Filter.Filters[0].GroupConfig.Filters length: got %d, want 2", len(objectGroup.Filters))
+	}
+	if objectGroup.Filters[0].Config == nil {
+		t.Fatal("Filter.Filters[0].GroupConfig.Filters[0].Config is nil")
+	}
+	if objectGroup.Filters[0].Config.Type != dspm.FilterTypeDocumentSensitivity {
+		t.Errorf("Filter.Filters[0].GroupConfig.Filters[0].Config.Type: got %q, want %q",
+			objectGroup.Filters[0].Config.Type, dspm.FilterTypeDocumentSensitivity)
+	}
+	if objectGroup.Filters[1].Config == nil {
+		t.Fatal("Filter.Filters[0].GroupConfig.Filters[1].Config is nil")
+	}
+	if objectGroup.Filters[1].Config.Type != dspm.FilterTypeDocumentExposure {
+		t.Errorf("Filter.Filters[0].GroupConfig.Filters[1].Config.Type: got %q, want %q",
+			objectGroup.Filters[1].Config.Type, dspm.FilterTypeDocumentExposure)
+	}
+	identityGroup := policy.Filter.Filters[1].GroupConfig
+	if identityGroup == nil {
 		t.Fatal("Filter.Filters[1].GroupConfig is nil")
 	}
-	if policy.Filter.Filters[1].GroupConfig.Op != dspm.LogicalOr {
-		t.Errorf("Filter.Filters[1].GroupConfig.Op: got %q, want %q",
-			policy.Filter.Filters[1].GroupConfig.Op, dspm.LogicalOr)
+	if identityGroup.Op != dspm.LogicalAnd {
+		t.Errorf("Filter.Filters[1].GroupConfig.Op: got %q, want %q", identityGroup.Op, dspm.LogicalAnd)
+	}
+	if len(identityGroup.Filters) != 1 {
+		t.Fatalf("Filter.Filters[1].GroupConfig.Filters length: got %d, want 1", len(identityGroup.Filters))
+	}
+	if identityGroup.Filters[0].Config == nil {
+		t.Fatal("Filter.Filters[1].GroupConfig.Filters[0].Config is nil")
+	}
+	if identityGroup.Filters[0].Config.Type != dspm.FilterTypeIdentityType {
+		t.Errorf("Filter.Filters[1].GroupConfig.Filters[0].Config.Type: got %q, want %q",
+			identityGroup.Filters[0].Config.Type, dspm.FilterTypeIdentityType)
 	}
 	// Verify the threshold filter was unmarshaled.
 	if policy.ThresholdFilter == nil {
@@ -250,7 +296,8 @@ func TestPolicyManagement(t *testing.T) {
 		t.Error("created policy not found in list")
 	}
 
-	// Update the policy with a different filter: single condition only.
+	// Update the policy with a different filter: a single condition group
+	// holding a single condition.
 	updatedName := "SDK Integration Test Policy Updated"
 	updatedDesc := "Updated by SDK integration test"
 	updatedSeverity := dspm.SeverityCritical
@@ -258,10 +305,17 @@ func TestPolicyManagement(t *testing.T) {
 		Op: dspm.LogicalAnd,
 		Filters: []dspm.Node{
 			{
-				Config: &dspm.Config{
-					Type:         dspm.FilterTypeDocumentExposure,
-					Values:       []string{exposureValue},
-					Relationship: dspm.RelIs,
+				GroupConfig: &dspm.GroupConfig{
+					Op: dspm.LogicalAnd,
+					Filters: []dspm.Node{
+						{
+							Config: &dspm.Config{
+								Type:         dspm.FilterTypeDocumentExposure,
+								Values:       []string{exposureValue},
+								Relationship: dspm.RelIs,
+							},
+						},
+					},
 				},
 			},
 		},
@@ -301,12 +355,19 @@ func TestPolicyManagement(t *testing.T) {
 	if len(policy.Filter.Filters) != 1 {
 		t.Fatalf("updated Filter.Filters length: got %d, want 1", len(policy.Filter.Filters))
 	}
-	if policy.Filter.Filters[0].Config == nil {
-		t.Fatal("updated Filter.Filters[0].Config is nil")
+	updatedGroup := policy.Filter.Filters[0].GroupConfig
+	if updatedGroup == nil {
+		t.Fatal("updated Filter.Filters[0].GroupConfig is nil")
 	}
-	if policy.Filter.Filters[0].Config.Type != dspm.FilterTypeDocumentExposure {
-		t.Errorf("updated Filter.Filters[0].Config.Type: got %q, want %q",
-			policy.Filter.Filters[0].Config.Type, dspm.FilterTypeDocumentExposure)
+	if len(updatedGroup.Filters) != 1 {
+		t.Fatalf("updated Filter.Filters[0].GroupConfig.Filters length: got %d, want 1", len(updatedGroup.Filters))
+	}
+	if updatedGroup.Filters[0].Config == nil {
+		t.Fatal("updated Filter.Filters[0].GroupConfig.Filters[0].Config is nil")
+	}
+	if updatedGroup.Filters[0].Config.Type != dspm.FilterTypeDocumentExposure {
+		t.Errorf("updated Filter.Filters[0].GroupConfig.Filters[0].Config.Type: got %q, want %q",
+			updatedGroup.Filters[0].Config.Type, dspm.FilterTypeDocumentExposure)
 	}
 	// The API preserves ThresholdFilter when it is omitted from the update.
 	if policy.ThresholdFilter == nil {
@@ -401,10 +462,17 @@ func TestPolicyRemoveThresholdFilter(t *testing.T) {
 			Op: dspm.LogicalAnd,
 			Filters: []dspm.Node{
 				{
-					Config: &dspm.Config{
-						Type:         dspm.FilterTypeDocumentSensitivity,
-						Values:       []string{sensValue},
-						Relationship: dspm.RelIs,
+					GroupConfig: &dspm.GroupConfig{
+						Op: dspm.LogicalAnd,
+						Filters: []dspm.Node{
+							{
+								Config: &dspm.Config{
+									Type:         dspm.FilterTypeDocumentSensitivity,
+									Values:       []string{sensValue},
+									Relationship: dspm.RelIs,
+								},
+							},
+						},
 					},
 				},
 			},
