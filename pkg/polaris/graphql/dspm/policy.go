@@ -168,12 +168,24 @@ type Node struct {
 
 // GroupConfig represents a group of filters joined by a logical operator
 // (input format).
+//
+// As a policy filter, RSC accepts only a group of condition groups, mirroring
+// the fixed object-AND-identity layout of the policy editor: the top-level
+// group joins one or two child groups with AND, and each child group holds
+// bare conditions of a single resource type. The child groups must differ in
+// resource type: at most one object group (the document and snappable filter
+// types) and one identity group.
 type GroupConfig struct {
 	Op      LogicalOp `json:"logicalOp"`
 	Filters []Node    `json:"filterList"`
 }
 
 // Policy represents a data security policy from RSC.
+//
+// A filter read from RSC cannot always be submitted back: policies predating
+// the shape rules, and bare-condition policies normalized into a
+// single-condition group on read, come back as a top-level group of bare
+// conditions. Move them into a child group before submitting.
 type Policy struct {
 	ID              uuid.UUID    `json:"policyId"`
 	Name            string       `json:"name"`
@@ -311,6 +323,9 @@ func parseFilterNode(raw json.RawMessage) (Node, error) {
 }
 
 // CreateInput holds the parameters for creating a data security policy.
+//
+// Filter must use the shape described by GroupConfig. ThresholdFilter is
+// unrestricted.
 type CreateInput struct {
 	Name            string       `json:"policyName"`
 	Description     string       `json:"description"`
@@ -321,6 +336,9 @@ type CreateInput struct {
 }
 
 // UpdateInput holds the parameters for updating a data security policy.
+//
+// Filter, when set, must use the shape described by GroupConfig.
+// ThresholdFilter is unrestricted.
 //
 // The threshold filter is three-state, disambiguated by
 // ForceUpdateThresholdFilter because the API cannot otherwise distinguish
@@ -352,8 +370,13 @@ const policyTypeDataGov = "POLICY_TYPE_DATAGOV"
 // FilterFields GraphQL fragment.
 const maxFilterDepth = 2
 
+// maxConditionGroups is the maximum number of condition groups a policy filter
+// can hold, one per resource type.
+const maxConditionGroups = 2
+
 // validateFilterDepth verifies that the filter group does not exceed the
-// maximum supported nesting depth.
+// maximum supported nesting depth. Policy filters are held to the stricter
+// validateFilterFormat, so this bound is what guards threshold filters.
 func validateFilterDepth(gc GroupConfig, depth int) error {
 	for _, node := range gc.Filters {
 		if node.GroupConfig != nil {
@@ -368,17 +391,61 @@ func validateFilterDepth(gc GroupConfig, depth int) error {
 	return nil
 }
 
+// validateFilterFormat verifies that the policy filter uses the shape RSC
+// accepts, see GroupConfig, failing locally instead of on an opaque API error.
+//
+// The resource type rules are left to the API: mapping filter types to
+// resource types would duplicate a server-side registry this SDK cannot keep
+// in sync.
+func validateFilterFormat(gc GroupConfig) error {
+	if gc.Op != LogicalAnd {
+		return fmt.Errorf("the top-level group must join its condition groups with %s", LogicalAnd)
+	}
+	if len(gc.Filters) == 0 || len(gc.Filters) > maxConditionGroups {
+		return fmt.Errorf("the top-level group must contain 1 to %d condition groups, got %d",
+			maxConditionGroups, len(gc.Filters))
+	}
+
+	for i, node := range gc.Filters {
+		if node.GroupConfig == nil {
+			if node.Config == nil {
+				return fmt.Errorf("child %d of the top-level group is empty, it must be a condition group", i)
+			}
+			return fmt.Errorf("child %d of the top-level group must be a condition group, not a bare condition", i)
+		}
+
+		group := node.GroupConfig
+		if group.Op != LogicalAnd && group.Op != LogicalOr {
+			return fmt.Errorf("condition group %d must join its conditions with %s or %s", i, LogicalAnd, LogicalOr)
+		}
+		if len(group.Filters) == 0 {
+			return fmt.Errorf("condition group %d must contain at least one condition", i)
+		}
+		for j, child := range group.Filters {
+			if child.Config == nil {
+				if child.GroupConfig == nil {
+					return fmt.Errorf("entry %d of condition group %d is empty, it must be a condition", j, i)
+				}
+				return fmt.Errorf("entry %d of condition group %d must be a condition, condition groups cannot be nested", j, i)
+			}
+		}
+	}
+
+	return nil
+}
+
 // CreatePolicy creates a new data security policy. Returns the ID of the
 // created policy.
 func CreatePolicy(ctx context.Context, gql *graphql.Client, input CreateInput) (uuid.UUID, error) {
 	gql.Log().Print(log.Trace)
 
-	if err := validateFilterDepth(input.Filter, 0); err != nil {
-		return uuid.UUID{}, err
+	if err := validateFilterFormat(input.Filter); err != nil {
+		return uuid.UUID{}, fmt.Errorf("filter: %v", err)
 	}
+	// RSC does not restrict the threshold filter format, only its depth.
 	if input.ThresholdFilter != nil {
 		if err := validateFilterDepth(*input.ThresholdFilter, 0); err != nil {
-			return uuid.UUID{}, err
+			return uuid.UUID{}, fmt.Errorf("thresholdFilter: %v", err)
 		}
 	}
 
@@ -494,13 +561,14 @@ func UpdatePolicy(ctx context.Context, gql *graphql.Client, input UpdateInput) e
 	gql.Log().Print(log.Trace)
 
 	if input.Filter != nil {
-		if err := validateFilterDepth(*input.Filter, 0); err != nil {
-			return err
+		if err := validateFilterFormat(*input.Filter); err != nil {
+			return fmt.Errorf("filter: %v", err)
 		}
 	}
+	// RSC does not restrict the threshold filter format, only its depth.
 	if input.ThresholdFilter != nil {
 		if err := validateFilterDepth(*input.ThresholdFilter, 0); err != nil {
-			return err
+			return fmt.Errorf("thresholdFilter: %v", err)
 		}
 	}
 
