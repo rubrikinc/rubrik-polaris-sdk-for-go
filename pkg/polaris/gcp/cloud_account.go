@@ -29,6 +29,8 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"golang.org/x/oauth2/google"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/gcp"
@@ -345,7 +347,17 @@ func (a API) ServiceAccount(ctx context.Context) (string, error) {
 // SetServiceAccount sets the default service account. The service account set
 // will be used for projects added without a service account key. Note that it's
 // not possible to remove a service account once it has been set.
-func (a API) SetServiceAccount(ctx context.Context, project ProjectFunc, opts ...OptionFunc) error {
+//
+// The service account is identified by the client email of the service account
+// key. RSC uses the client email to reference the service account, e.g. in the
+// GCP onboarding Terraform template, and therefore requires it to be a valid
+// GCP service account email.
+//
+// Note that the options are ignored. The Name option used to override the
+// service account name, but RSC no longer accepts a name that differs from the
+// client email of the service account key. The parameter is kept to not break
+// existing callers.
+func (a API) SetServiceAccount(ctx context.Context, project ProjectFunc, _ ...OptionFunc) error {
 	a.log.Print(log.Trace)
 
 	if project == nil {
@@ -359,17 +371,15 @@ func (a API) SetServiceAccount(ctx context.Context, project ProjectFunc, opts ..
 		return errors.New("project is missing credentials")
 	}
 
-	var options options
-	for _, option := range opts {
-		if err := option(ctx, &options); err != nil {
-			return fmt.Errorf("failed to lookup option: %s", err)
-		}
+	jwtConfig, err := google.JWTConfigFromJSON(config.creds.JSON)
+	if err != nil {
+		return fmt.Errorf("failed to read the service account key: %s", err)
 	}
-	if options.name != "" {
-		config.name = options.name
+	if jwtConfig.Email == "" {
+		return errors.New("service account key is missing the client email")
 	}
 
-	err = gcp.Wrap(a.client).SetDefaultServiceAccount(ctx, config.name, string(config.creds.JSON))
+	err = gcp.Wrap(a.client).SetDefaultServiceAccount(ctx, jwtConfig.Email, string(config.creds.JSON))
 	if err != nil {
 		return fmt.Errorf("failed to set default service account: %s", err)
 	}
