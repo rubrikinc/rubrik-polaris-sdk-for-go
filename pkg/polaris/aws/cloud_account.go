@@ -326,6 +326,7 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 func SupportedFeatures() []core.Feature {
 	return []core.Feature{
 		core.FeatureArchival,
+		core.FeatureCloudCostReport,
 		core.FeatureCloudDiscovery,
 		core.FeatureCloudNativeArchival,
 		core.FeatureCloudNativeDynamoDBProtection,

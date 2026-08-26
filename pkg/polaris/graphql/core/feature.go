@@ -88,6 +88,7 @@ var (
 	FeatureAzureSQLDBProtection                        = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
 	FeatureAzureSQLMIProtection                        = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
 	FeatureCloudAccounts                               = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
+	FeatureCloudCostReport                             = Feature{Name: "CLOUD_COST_REPORT"}
 	FeatureCloudDiscovery                              = Feature{Name: "CLOUD_DISCOVERY"}
 	FeatureCloudNativeArchival                         = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
 	FeatureCloudNativeArchivalEncryption               = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
@@ -307,6 +308,7 @@ var validFeatures = map[string]struct{}{
 	FeatureAzureSQLDBProtection.Name:                        {},
 	FeatureAzureSQLMIProtection.Name:                        {},
 	FeatureCloudAccounts.Name:                               {}, // Deprecated: no replacement.
+	FeatureCloudCostReport.Name:                             {},
 	FeatureCloudDiscovery.Name:                              {},
 	FeatureCloudNativeArchival.Name:                         {},
 	FeatureCloudNativeArchivalEncryption.Name:               {},
