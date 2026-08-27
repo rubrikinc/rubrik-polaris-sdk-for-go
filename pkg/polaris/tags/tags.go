@@ -82,6 +82,19 @@ func (a API) AddCustomerTags(ctx context.Context, customerTags tags.CustomerTags
 	}
 	cts.OverrideResourceTags = customerTags.OverrideResourceTags
 
+	// Add new excluded tag patterns, eliminating duplicates.
+	etm := make(map[string]struct{}, len(cts.ExcludedTags)+len(customerTags.ExcludedTags))
+	for _, k := range cts.ExcludedTags {
+		etm[k] = struct{}{}
+	}
+	for _, k := range customerTags.ExcludedTags {
+		etm[k] = struct{}{}
+	}
+	cts.ExcludedTags = make([]string, 0, len(etm))
+	for k := range etm {
+		cts.ExcludedTags = append(cts.ExcludedTags, k)
+	}
+
 	// Replace customer tags.
 	if err := a.ReplaceCustomerTags(ctx, cts); err != nil {
 		return err
