@@ -21,16 +21,18 @@
 package access
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"reflect"
-	"sort"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlaccess "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 )
 
 func TestRoleManagement(t *testing.T) {
@@ -44,10 +46,18 @@ func TestRoleManagement(t *testing.T) {
 
 	// Create role.
 	roleID, err := accessClient.CreateRole(ctx, "Integration Test Role", "Test Role Description", []gqlaccess.Permission{{
-		Operation: "VIEW_CLUSTER",
+		Operation: string(gqlaccess.OperationViewCluster),
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
-			ObjectIDs:     []string{"CLUSTER_ROOT"},
+			ObjectIDs:     []string{hierarchy.ClusterRoot},
+		}},
+	}, {
+		// RSC grants VIEW_CLUSTER_REFERENCE automatically with VIEW_CLUSTER, so
+		// grant it explicitly to keep the role free of drift.
+		Operation: string(gqlaccess.OperationViewClusterReference),
+		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
+			SnappableType: "AllSubHierarchyType",
+			ObjectIDs:     []string{hierarchy.ClusterRoot},
 		}},
 	}})
 	if err != nil {
@@ -71,11 +81,17 @@ func TestRoleManagement(t *testing.T) {
 	if role.IsOrgAdmin {
 		t.Error("is org admin is true")
 	}
-	if !reflect.DeepEqual(role.AssignedPermissions, []gqlaccess.Permission{{
-		Operation: "VIEW_CLUSTER",
+	if !reflect.DeepEqual(sortPermissions(role.AssignedPermissions), []gqlaccess.Permission{{
+		Operation: string(gqlaccess.OperationViewCluster),
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
-			ObjectIDs:     []string{"CLUSTER_ROOT"},
+			ObjectIDs:     []string{hierarchy.ClusterRoot},
+		}},
+	}, {
+		Operation: string(gqlaccess.OperationViewClusterReference),
+		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
+			SnappableType: "AllSubHierarchyType",
+			ObjectIDs:     []string{hierarchy.ClusterRoot},
 		}},
 	}}) {
 		t.Errorf("invalid role permissions: %s", role.AssignedPermissions)
@@ -104,11 +120,17 @@ func TestRoleManagement(t *testing.T) {
 	if role.IsOrgAdmin {
 		t.Error("is org admin is true")
 	}
-	if !reflect.DeepEqual(role.AssignedPermissions, []gqlaccess.Permission{{
-		Operation: "VIEW_CLUSTER",
+	if !reflect.DeepEqual(sortPermissions(role.AssignedPermissions), []gqlaccess.Permission{{
+		Operation: string(gqlaccess.OperationViewCluster),
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
-			ObjectIDs:     []string{"CLUSTER_ROOT"},
+			ObjectIDs:     []string{hierarchy.ClusterRoot},
+		}},
+	}, {
+		Operation: string(gqlaccess.OperationViewClusterReference),
+		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
+			SnappableType: "AllSubHierarchyType",
+			ObjectIDs:     []string{hierarchy.ClusterRoot},
 		}},
 	}}) {
 		t.Errorf("invalid role permissions: %s", role.AssignedPermissions)
@@ -122,16 +144,22 @@ func TestRoleManagement(t *testing.T) {
 
 	// Update role.
 	err = accessClient.UpdateRole(ctx, roleID, "Integration Test Role Updated", "Test Role Description Updated", []gqlaccess.Permission{{
-		Operation: "VIEW_CLUSTER",
+		Operation: string(gqlaccess.OperationViewCluster),
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
-			ObjectIDs:     []string{"CLUSTER_ROOT"},
+			ObjectIDs:     []string{hierarchy.ClusterRoot},
+		}},
+	}, {
+		Operation: string(gqlaccess.OperationViewClusterReference),
+		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
+			SnappableType: "AllSubHierarchyType",
+			ObjectIDs:     []string{hierarchy.ClusterRoot},
 		}},
 	}, {
 		Operation: "REMOVE_CLUSTER",
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
-			ObjectIDs:     []string{"CLUSTER_ROOT"},
+			ObjectIDs:     []string{hierarchy.ClusterRoot},
 		}},
 	}})
 	if err != nil {
@@ -160,24 +188,26 @@ func TestRoleManagement(t *testing.T) {
 	}
 
 	// Sort permissions in ascending order before asserting.
-	permissions := roles[0].AssignedPermissions
-	sort.Slice(permissions, func(i, j int) bool {
-		return permissions[i].Operation < permissions[j].Operation
-	})
-	if !reflect.DeepEqual(permissions, []gqlaccess.Permission{{
+	if !reflect.DeepEqual(sortPermissions(roles[0].AssignedPermissions), []gqlaccess.Permission{{
 		Operation: "REMOVE_CLUSTER",
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
-			ObjectIDs:     []string{"CLUSTER_ROOT"},
+			ObjectIDs:     []string{hierarchy.ClusterRoot},
 		}},
 	}, {
-		Operation: "VIEW_CLUSTER",
+		Operation: string(gqlaccess.OperationViewCluster),
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
-			ObjectIDs:     []string{"CLUSTER_ROOT"},
+			ObjectIDs:     []string{hierarchy.ClusterRoot},
+		}},
+	}, {
+		Operation: string(gqlaccess.OperationViewClusterReference),
+		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
+			SnappableType: "AllSubHierarchyType",
+			ObjectIDs:     []string{hierarchy.ClusterRoot},
 		}},
 	}}) {
-		t.Errorf("invalid role permissions: %#v", permissions)
+		t.Errorf("invalid role permissions: %#v", roles[0].AssignedPermissions)
 	}
 
 	// Remove role.
@@ -189,4 +219,13 @@ func TestRoleManagement(t *testing.T) {
 	if _, err = accessClient.RoleByID(ctx, roleID); err == nil || !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal("role should have been removed")
 	}
+}
+
+// sortPermissions sorts permissions by operation in ascending order.
+func sortPermissions(permissions []gqlaccess.Permission) []gqlaccess.Permission {
+	slices.SortFunc(permissions, func(a, b gqlaccess.Permission) int {
+		return cmp.Compare(a.Operation, b.Operation)
+	})
+
+	return permissions
 }

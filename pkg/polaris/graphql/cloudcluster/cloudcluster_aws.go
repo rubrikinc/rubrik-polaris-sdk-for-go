@@ -236,9 +236,13 @@ type AwsVmConfig struct {
 	InstanceProfileName string            `json:"instanceProfileName"`
 	InstanceType        AwsCCInstanceType `json:"instanceType"`
 	SecurityGroups      []string          `json:"securityGroups"`
-	Subnet              string            `json:"subnet"`
-	VMType              VmConfigType      `json:"vmType"`
-	VPC                 string            `json:"vpc"`
+	Subnet              string            `json:"subnet,omitempty"`
+	SubnetAzConfigs     []SubnetAzConfig  `json:"subnetAzConfigs,omitempty"`
+	// VMType uses omitempty so that an unset value is dropped from the request
+	// and the backend applies its default (STANDARD). The empty string is not a
+	// valid VmType enum member and would be rejected by GraphQL enum coercion.
+	VMType VmConfigType `json:"vmType,omitempty"`
+	VPC    string       `json:"vpc"`
 }
 
 type AwsClusterConfig struct {
@@ -257,6 +261,7 @@ type AwsClusterConfig struct {
 type CreateAwsClusterInput struct {
 	CloudAccountID       uuid.UUID                  `json:"cloudAccountId"`
 	ClusterConfig        AwsClusterConfig           `json:"clusterConfig"`
+	IsAzResilient        bool                       `json:"isAzResilient,omitempty"`
 	IsEsType             bool                       `json:"isEsType"`
 	KeepClusterOnFailure bool                       `json:"keepClusterOnFailure"`
 	Region               string                     `json:"region"`

@@ -108,7 +108,7 @@ func NewClientFromServiceAccount(app, apiURL, accessTokenURI, clientID, clientSe
 
 // NewTestClient returns a new Client intended to be used by unit tests.
 func NewTestClient(testServer *httptest.Server) *Client {
-	tokenSource := token.NewTestUserSource(testServer, "username", "password")
+	tokenSource := token.NewUserSource(testServer.Client(), testServer.URL+"/api/session", "username", "password")
 	return NewTestClientWithTokenSource(testServer, tokenSource)
 }
 
@@ -251,13 +251,13 @@ func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variable
 		Operation string      `json:"operationName,omitempty"`
 	}{Query: query, Variables: variables, Operation: operation})
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal graphql request body: %v", err)
+		return nil, fmt.Errorf("failed to marshal graphql request body: %s", err)
 	}
 
 	// Send the query to the remote API endpoint.
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.gqlURL, bytes.NewReader(buf))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create graphql request: %v", err)
+		return nil, fmt.Errorf("failed to create graphql request: %s", err)
 	}
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Add("Accept", "application/json")
@@ -283,9 +283,13 @@ func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variable
 		// The terraform provider gets special treatment here, since we want
 		// to distinguish it from the SDK without exposing the possibility to
 		// set the version from outside.
-		if buildInfo.Main.Path == "github.com/rubrikinc/terraform-provider-polaris" {
+		switch buildInfo.Main.Path {
+		case "github.com/rubrikinc/terraform-provider-rubrik":
 			sdkHeaders.ver = strings.TrimPrefix(buildInfo.Main.Version, "v")
 			sdkHeaders.lang = "terraform/go"
+		case "github.com/rubrikinc/terraform-provider-polaris":
+			sdkHeaders.ver = strings.TrimPrefix(buildInfo.Main.Version, "v")
+			sdkHeaders.lang = "terraform_legacy/go"
 		}
 	})
 
@@ -296,13 +300,21 @@ func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variable
 
 	res, err := c.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to request graphql field: %v", err)
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("failed to request graphql field: %w", err)
+		}
+
+		return nil, fmt.Errorf("failed to request graphql field: %s", err)
 	}
 	defer res.Body.Close()
 
 	buf, err = io.ReadAll(res.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read graphql response body (status code %d): %v", res.StatusCode, err)
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return nil, fmt.Errorf("failed to request graphql field: %w", err)
+		}
+
+		return nil, fmt.Errorf("failed to read graphql response body (status code %d): %s", res.StatusCode, err)
 	}
 
 	// Remote responded without a body. For status code 200, this means we
@@ -335,7 +347,7 @@ func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variable
 	// error message formats.
 	var jsonErr internalerrors.JSONError
 	if err := json.Unmarshal(buf, &jsonErr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
+		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %s",
 			res.StatusCode, err)
 	}
 	if jsonErr.IsError() {
@@ -344,7 +356,7 @@ func (c *Client) RequestWithoutRetry(ctx context.Context, query string, variable
 
 	var gqlErr GQLError
 	if err := json.Unmarshal(buf, &gqlErr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %v",
+		return nil, fmt.Errorf("failed to unmarshal graphql response body as an error (status code %d): %s",
 			res.StatusCode, err)
 	}
 	if gqlErr.isError() {

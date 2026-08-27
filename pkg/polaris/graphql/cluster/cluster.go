@@ -572,3 +572,154 @@ func (tz Timezone) String() string {
 func (tz Timezone) MarshalJSON() ([]byte, error) {
 	return json.Marshal(tz.String())
 }
+
+// CCPJobStatus represents the valid job statuses.
+type CCPJobStatus string
+
+const (
+	CCPJobStatusInitializing               CCPJobStatus = "INITIALIZING"
+	CCPJobStatusNodeCreate                 CCPJobStatus = "NODE_CREATE"
+	CCPJobStatusNodeConnectionVerification CCPJobStatus = "NODE_CONNECTION_VERIFICATION"
+	CCPJobStatusNodeInfoExtraction         CCPJobStatus = "NODE_INFO_EXTRACTION"
+	CCPJobStatusBootstrapping              CCPJobStatus = "BOOTSTRAPPING"
+	CCPJobStatusRotateToken                CCPJobStatus = "ROTATE_TOKEN"
+	CCPJobStatusFailed                     CCPJobStatus = "FAILED"
+	CCPJobStatusCompleted                  CCPJobStatus = "COMPLETED"
+	CCPJobStatusInvalid                    CCPJobStatus = "INVALID"
+)
+
+// CCPJobType represents the valid job types.
+type CCPJobType string
+
+const (
+	CCPJobTypeClusterCreate                   CCPJobType = "CLUSTER_CREATE"
+	CCPJobTypeClusterDelete                   CCPJobType = "CLUSTER_DELETE"
+	CCPJobTypeAddNode                         CCPJobType = "ADD_NODE"
+	CCPJobTypeRemoveNode                      CCPJobType = "REMOVE_NODE"
+	CCPJobTypeReplaceNode                     CCPJobType = "REPLACE_NODE"
+	CCPJobTypeClusterRecover                  CCPJobType = "CLUSTER_RECOVER"
+	CCPJobTypeClusterOps                      CCPJobType = "CLUSTER_OPS"
+	CCPJobTypeMigrateNodes                    CCPJobType = "MIGRATE_NODES"
+	CCPJobTypeMigrateClusterToManagedIdentity CCPJobType = "MIGRATE_CLUSTER_TO_MANAGED_IDENTITY"
+	CCPJobTypeManualAddNodes                  CCPJobType = "MANUAL_ADD_NODES"
+)
+
+// ProvisionInfo represents the cloud cluster provision info.
+type ProvisionInfo struct {
+	Progress  int          `json:"progress"`
+	JobStatus CCPJobStatus `json:"jobStatus"`
+	JobType   CCPJobType   `json:"jobType"`
+	Vendor    string       `json:"vendor"`
+}
+
+// StorageConfig represents the cluster's cloud storage configuration.
+type StorageConfig struct {
+	LocationName           string `json:"locationName"`
+	LocationID             string `json:"locationId"`
+	IsImmutable            bool   `json:"isImmutable"`
+	IsUsingManagedIdentity bool   `json:"isUsingManagedIdentity"`
+}
+
+// CloudInfo represents the cloud placement of a cluster. The fields are
+// populated only for cloud-deployed clusters (CCES).
+//
+// Region is returned as the cloud-native region name (e.g. "us-east-1"). Parse
+// it via the typed region helpers in pkg/polaris/graphql/regions, gated on
+// Vendor: aws.RegionFromAny, azure.RegionFromAny, or gcp.RegionFromAny.
+type CloudInfo struct {
+	Name                   string        `json:"name"`
+	Region                 string        `json:"region"`
+	RegionID               string        `json:"regionId"`
+	NetworkName            string        `json:"networkName"`
+	NativeCloudAccountName string        `json:"nativeCloudAccountName"`
+	Vendor                 string        `json:"vendor"`
+	NativeCloudAccountID   string        `json:"nativeCloudAccountId"`
+	CloudAccount           string        `json:"cloudAccount"`
+	StorageConfig          StorageConfig `json:"storageConfig"`
+}
+
+// Node represents a single node within a cluster.
+type Node struct {
+	BrikID          string `json:"brikId"`
+	IPAddress       string `json:"ipAddress"`
+	NeedsInspection bool   `json:"needsInspection"`
+	CPUCores        int    `json:"cpuCores,omitempty"`
+	RAM             int64  `json:"ram,omitempty"`
+	ClusterID       string `json:"clusterId"`
+	NetworkSpeed    string `json:"networkSpeed,omitempty"`
+	Hostname        string `json:"hostname,omitempty"`
+	ID              string `json:"id"`
+}
+
+// NodeConnection is the paginated list of nodes within a cluster.
+type NodeConnection struct {
+	Edges []struct {
+		Node Node `json:"node"`
+	} `json:"edges"`
+}
+
+// Cluster represents a cluster registered with the cluster management service,
+// including in-flight cloud clusters being provisioned.
+type Cluster struct {
+	ID            uuid.UUID      `json:"id"`
+	Name          string         `json:"name"`
+	ProvisionInfo ProvisionInfo  `json:"ccprovisionInfo"`
+	CloudInfo     CloudInfo      `json:"cloudInfo,omitzero"`
+	ClusterNodes  NodeConnection `json:"clusterNodeConnection"`
+	ProductType   Product        `json:"productType"`
+	Type          ProductType    `json:"type"`
+	Status        Status         `json:"status"`
+	SystemStatus  SystemStatus   `json:"systemStatus"`
+	Timezone      Timezone       `json:"timezone"`
+	Version       string         `json:"version"`
+}
+
+// ClusterPage is one page of results from AllClusters.
+type ClusterPage struct {
+	Clusters []Cluster
+	PageInfo core.PageInfo
+	Count    int
+}
+
+// AllClusters returns one page of clusters matching filter, including in-flight
+// cloud clusters being provisioned.
+func AllClusters(ctx context.Context, gql *graphql.Client, first int, after string, filter SearchFilter, sortBy SortBy, sortOrder core.SortOrder) (ClusterPage, error) {
+	gql.Log().Print(log.Trace)
+
+	query := allClustersConnectionQuery
+	buf, err := gql.Request(ctx, query, struct {
+		First     int            `json:"first"`
+		After     string         `json:"after,omitempty"`
+		Filter    SearchFilter   `json:"filter"`
+		SortBy    SortBy         `json:"sortBy,omitempty"`
+		SortOrder core.SortOrder `json:"sortOrder,omitempty"`
+	}{First: first, After: after, Filter: filter, SortBy: sortBy, SortOrder: sortOrder})
+	if err != nil {
+		return ClusterPage{}, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Edges []struct {
+					Node Cluster `json:"node"`
+				} `json:"edges"`
+				PageInfo core.PageInfo `json:"pageInfo"`
+				Count    int           `json:"count"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return ClusterPage{}, graphql.UnmarshalError(query, err)
+	}
+
+	clusters := make([]Cluster, 0, len(payload.Data.Result.Edges))
+	for _, edge := range payload.Data.Result.Edges {
+		clusters = append(clusters, edge.Node)
+	}
+	return ClusterPage{
+		Clusters: clusters,
+		PageInfo: payload.Data.Result.PageInfo,
+		Count:    payload.Data.Result.Count,
+	}, nil
+}

@@ -48,6 +48,37 @@ func TestParseRegion(t *testing.T) {
 	}
 }
 
+func TestBaaSSupportedRegions(t *testing.T) {
+	regions := BaaSSupportedRegions()
+	if len(regions) == 0 {
+		t.Fatal("expected a non-empty BaaS supported region set")
+	}
+
+	// The result must be sorted by name and consistent with the per-region flag.
+	for i, region := range regions {
+		if !region.BaaSSupported() {
+			t.Errorf("region %q returned by BaaSSupportedRegions is not flagged as supported", region.Name())
+		}
+		if i > 0 && regions[i-1].Name() >= region.Name() {
+			t.Errorf("regions are not sorted by name: %q before %q", regions[i-1].Name(), region.Name())
+		}
+	}
+
+	// Commercial regions supported by BaaS.
+	for _, region := range []Region{RegionUsEast1, RegionApSouthEast7, RegionMxCentral1} {
+		if !region.BaaSSupported() {
+			t.Errorf("expected %q to be BaaS supported", region.Name())
+		}
+	}
+
+	// GovCloud, China, ISO and Middle East regions are excluded.
+	for _, region := range []Region{RegionUsGovEast1, RegionCnNorth1, RegionUsISOEast1, RegionMeCentral1, RegionMeSouth1} {
+		if region.BaaSSupported() {
+			t.Errorf("expected %q to be excluded from BaaS", region.Name())
+		}
+	}
+}
+
 func TestRegionsForReplication(t *testing.T) {
 	if region := RegionFromRegionForReplicationEnum("US_WEST_2"); region != RegionUsWest2 {
 		t.Errorf("invalid region: %v", region)

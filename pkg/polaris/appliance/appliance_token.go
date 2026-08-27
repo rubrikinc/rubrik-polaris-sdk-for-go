@@ -21,6 +21,7 @@
 package appliance
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -53,7 +54,7 @@ func TokenFromServiceAccount(account *polaris.ServiceAccount, applicanceID uuid.
 		return "", fmt.Errorf("failed to marshal token request body: %v", err)
 	}
 
-	resp, err := token.Request(http.DefaultClient, tokenURL, body, logger)
+	resp, err := token.RequestWithContext(context.Background(), http.DefaultClient, tokenURL, body, logger)
 	if err != nil {
 		return "", fmt.Errorf("failed to acquire appliance access token: %v", err)
 	}

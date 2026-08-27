@@ -22,6 +22,7 @@ package graphql
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -30,6 +31,7 @@ import (
 	"time"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
+	internalerrors "github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/errors"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 )
 
@@ -109,7 +111,7 @@ func TestRequestWithInternalServerErrorTextBody(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	_, err := NewTestClient(srv).Request(context.Background(), "me { name }", nil)
+	_, err := NewTestClient(srv).Request(ctx, "me { name }", nil)
 	if err == nil || !strings.HasSuffix(err.Error(), "graphql response has Content-Type text/plain (status code 500): \"database is corrupt\"") {
 		t.Fatalf("invalid error: %v", err)
 	}
@@ -147,6 +149,86 @@ func TestRequestWithBadGatewayRetry(t *testing.T) {
 	}
 	if attempt != 2 {
 		t.Fatalf("expected 2 attempts, got %d", attempt)
+	}
+}
+
+func TestRequestWithGQLError(t *testing.T) {
+	tmpl, err := template.ParseFiles("testdata/graphql_error_response.json")
+	if err != nil {
+		t.Error(err)
+	}
+
+	srv := httptest.NewServer(handler.Token(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if err := tmpl.Execute(w, nil); err != nil {
+			t.Error(err)
+		}
+	}))
+	defer srv.Close()
+
+	_, err = NewTestClient(srv).Request(t.Context(), "me { name }", nil)
+	var gqlErr GQLError
+	if !errors.As(err, &gqlErr) {
+		t.Fatal(err)
+	}
+}
+
+func TestRequestWithJSONError(t *testing.T) {
+	tmpl, err := template.ParseFiles("testdata/auth_error_response.json")
+	if err != nil {
+		t.Error(err)
+	}
+
+	srv := httptest.NewServer(handler.Token(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if err := tmpl.Execute(w, nil); err != nil {
+			t.Error(err)
+		}
+	}))
+	defer srv.Close()
+
+	_, err = NewTestClient(srv).Request(t.Context(), "me { name }", nil)
+	var jsonErr internalerrors.JSONError
+	if !errors.As(err, &jsonErr) {
+		t.Fatal(err)
+	}
+}
+
+func TestRequestWithCanceledContext(t *testing.T) {
+	srv := httptest.NewServer(handler.Token(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte(`{"data":{"result":"ok"}}`)); err != nil {
+			t.Error(err)
+		}
+	}))
+	defer srv.Close()
+
+	// Canceled context.
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	_, err := NewTestClient(srv).Request(ctx, "me { name }", nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+}
+
+func TestRequestWithDeadlineExceededContext(t *testing.T) {
+	srv := httptest.NewServer(handler.Token(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte(`{"data":{"result":"ok"}}`)); err != nil {
+			t.Error(err)
+		}
+	}))
+	defer srv.Close()
+
+	// Deadline exceeded context.
+	ctx, cancel := context.WithTimeout(t.Context(), 0*time.Second)
+	defer cancel()
+
+	_, err := NewTestClient(srv).Request(ctx, "me { name }", nil)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal(err)
 	}
 }
 

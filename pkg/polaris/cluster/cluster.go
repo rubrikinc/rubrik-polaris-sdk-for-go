@@ -48,6 +48,50 @@ func Wrap(client *polaris.Client) API {
 	}
 }
 
+// listClustersPageSize is the per-request page size used when iterating
+// allClusterConnection.
+const listClustersPageSize = 50
+
+// ListClusters returns every cluster matching filter, paginating through the
+// allClusterConnection result set.
+func (a API) ListClusters(ctx context.Context, filter gqlcluster.SearchFilter, sortBy gqlcluster.SortBy, sortOrder core.SortOrder) ([]gqlcluster.Cluster, error) {
+	a.log.Print(log.Trace)
+
+	var clusters []gqlcluster.Cluster
+	var after string
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		page, err := gqlcluster.AllClusters(ctx, a.client.GQL, listClustersPageSize, after, filter, sortBy, sortOrder)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list clusters: %s", err)
+		}
+		clusters = append(clusters, page.Clusters...)
+		if !page.PageInfo.HasNextPage || page.PageInfo.EndCursor == "" || page.PageInfo.EndCursor == after {
+			return clusters, nil
+		}
+		after = page.PageInfo.EndCursor
+	}
+}
+
+// Cluster returns the cluster registered with the cluster management service
+// for the given UUID. Returns graphql.ErrNotFound when no cluster with that
+// UUID is registered.
+func (a API) Cluster(ctx context.Context, clusterUUID uuid.UUID) (gqlcluster.Cluster, error) {
+	a.log.Print(log.Trace)
+
+	filter := gqlcluster.SearchFilter{ID: []string{clusterUUID.String()}}
+	page, err := gqlcluster.AllClusters(ctx, a.client.GQL, 1, "", filter, "", "")
+	if err != nil {
+		return gqlcluster.Cluster{}, fmt.Errorf("failed to get cluster: %w", err)
+	}
+	if len(page.Clusters) == 0 || page.Clusters[0].ID != clusterUUID {
+		return gqlcluster.Cluster{}, fmt.Errorf("cluster %q %w", clusterUUID, graphql.ErrNotFound)
+	}
+	return page.Clusters[0], nil
+}
+
 // SLASourceClusters returns all SLA source clusters.
 func (a API) SLASourceClusters(ctx context.Context) ([]gqlcluster.SLADataLocationCluster, error) {
 	a.log.Print(log.Trace)

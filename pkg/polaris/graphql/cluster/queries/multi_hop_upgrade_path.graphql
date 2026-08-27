@@ -1,0 +1,15 @@
+query RubrikPolarisSDKRequest(
+  $clusterUuid: UUID!
+  $sourceVersion: String
+  $targetVersion: String!
+  $shouldIncludeFullVersionName: Boolean
+) {
+  result: multiHopUpgradePath(
+    clusterUuid: $clusterUuid
+    sourceVersion: $sourceVersion
+    targetVersion: $targetVersion
+    shouldIncludeFullVersionName: $shouldIncludeFullVersionName
+  ) {
+    versionPath
+  }
+}

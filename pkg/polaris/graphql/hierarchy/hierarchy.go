@@ -32,6 +32,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	azureregions "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -45,6 +46,24 @@ type API struct {
 func Wrap(gql *graphql.Client) API {
 	return API{GQL: gql, log: gql.Log()}
 }
+
+// Well-known hierarchy root node identifiers. These are used as object IDs when
+// scoping operations to a hierarchy root, for example in role permissions.
+const (
+	// ClusterRoot is the root node of the cluster hierarchy.
+	ClusterRoot = "CLUSTER_ROOT"
+
+	// GlobalResource is the root node of the entire managed hierarchy.
+	GlobalResource = "GlobalResource"
+
+	// AzureDevOpsRoot is the root node of the Azure DevOps hierarchy. Pass it as
+	// the ancestor ID to enumerate the Azure DevOps organizations in the account.
+	AzureDevOpsRoot = "AZURE_DEVOPS_ROOT"
+
+	// GitHubRoot is the root node of the GitHub hierarchy. Pass it as the ancestor
+	// ID to enumerate the GitHub organizations in the account.
+	GitHubRoot = "GITHUB_ROOT"
+)
 
 // ObjectType represents the type of a hierarchy object.
 type ObjectType string
@@ -165,7 +184,22 @@ type Feature struct {
 // InventoryObject is a constraint for types that can be returned from the
 // inventory root query.
 type InventoryObject interface {
-	AWSNativeAccount | AWSNativeEC2Instance | AWSNativeEBSVolume | AWSNativeRDSInstance | AzureNativeSubscription | AzureNativeVirtualMachine
+	AWSNativeAccount |
+		AWSNativeEC2Instance |
+		AWSNativeEBSVolume |
+		AWSNativeRDSInstance |
+		AzureDevOpsOrganization |
+		AzureDevOpsProject |
+		AzureDevOpsRepository |
+		AzureNativeResourceGroup |
+		AzureNativeSubscription |
+		AzureNativeVirtualMachine |
+		AzurePostgresFlexibleServer |
+		AzureSQLManagedInstanceServer |
+		CloudNativeTagRule |
+		GitHubOrganization |
+		GitHubRepository
+
 	// typeFilter returns the object type filter to use for the inventory root
 	// query. It corresponds to values in the GraphQL Enum HierarchyObjectTypeEnum.
 	typeFilter() ObjectType
@@ -176,6 +210,39 @@ type Object struct {
 	ID         uuid.UUID  `json:"id"`
 	Name       string     `json:"name"`
 	ObjectType ObjectType `json:"objectType"`
+}
+
+// AzureDevOpsOrganization represents an Azure DevOps organization from the
+// inventory root.
+type AzureDevOpsOrganization struct {
+	Object
+}
+
+func (AzureDevOpsOrganization) typeFilter() ObjectType {
+	return "AZURE_DEVOPS_ORGANIZATION"
+}
+
+// AzureDevOpsProject represents an Azure DevOps project from the inventory
+// root.
+type AzureDevOpsProject struct {
+	Object
+	OrgID uuid.UUID `json:"orgId"`
+}
+
+func (AzureDevOpsProject) typeFilter() ObjectType {
+	return "AZURE_DEVOPS_PROJECT"
+}
+
+// AzureDevOpsRepository represents an Azure DevOps repository from the
+// inventory root.
+type AzureDevOpsRepository struct {
+	Object
+	OrgID     uuid.UUID `json:"orgId"`
+	ProjectID uuid.UUID `json:"projectId"`
+}
+
+func (AzureDevOpsRepository) typeFilter() ObjectType {
+	return "AZURE_DEVOPS_REPOSITORY"
 }
 
 // AWSNativeAccount represents an AWS native account from the inventory root.
@@ -219,6 +286,16 @@ func (AWSNativeRDSInstance) typeFilter() ObjectType {
 	return "AwsNativeRdsInstance"
 }
 
+// AzureNativeResourceGroup represents an Azure native resource group from the
+// inventory root.
+type AzureNativeResourceGroup struct {
+	Object
+}
+
+func (AzureNativeResourceGroup) typeFilter() ObjectType {
+	return "AzureNativeResourceGroup"
+}
+
 // AzureNativeSubscription represents an Azure native subscription from the
 // inventory root.
 type AzureNativeSubscription struct {
@@ -243,6 +320,88 @@ type AzureNativeVirtualMachine struct {
 // from the Go type name (AzureNativeVirtualMachine).
 func (AzureNativeVirtualMachine) typeFilter() ObjectType {
 	return "AzureNativeVm"
+}
+
+// CloudNativeTagRule represents a cloud native tag rule from the inventory
+// root.
+type CloudNativeTagRule struct {
+	Object
+}
+
+func (CloudNativeTagRule) typeFilter() ObjectType {
+	return "CloudNativeTagRule"
+}
+
+// GitHubOrganization represents a GitHub organization from the inventory root.
+type GitHubOrganization struct {
+	Object
+}
+
+func (GitHubOrganization) typeFilter() ObjectType {
+	return "GITHUB_ORGANIZATION"
+}
+
+// GitHubRepository represents a GitHub repository from the inventory root.
+type GitHubRepository struct {
+	Object
+	OrgID uuid.UUID `json:"orgId"`
+}
+
+func (GitHubRepository) typeFilter() ObjectType {
+	return "GITHUB_REPOSITORY"
+}
+
+// AzureSubscriptionDetails holds the parent Azure subscription details returned
+// for inventory objects that expose them, such as SQL Managed Instance servers.
+type AzureSubscriptionDetails struct {
+	// ID is the native subscription FID.
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+	// CloudAccountID is the RSC cloud account ID of the subscription. This is
+	// the value exposed as subscription_id elsewhere in RSC.
+	CloudAccountID uuid.UUID `json:"accountConnectionId"`
+	// TenantDomain is the Azure tenant domain, e.g. example.onmicrosoft.com.
+	// RSC returns it in a field named tenantId even though it is a domain and
+	// not a UUID.
+	TenantDomain string `json:"tenantId"`
+	// Cloud is the Azure cloud, e.g. AZUREPUBLICCLOUD. It mirrors the azure.Cloud
+	// values but is typed as a string here because importing the graphql/azure
+	// package would create an import cycle (azure -> core -> hierarchy).
+	Cloud       string `json:"cloudType"`
+	Status      string `json:"status"`
+	RegionSpecs []struct {
+		Region azureregions.NativeRegionEnum `json:"region"`
+	} `json:"regionSpecs"`
+}
+
+// AzurePostgresFlexibleServer represents an Azure Postgres flexible server from
+// the inventory root. In addition to the common object fields it exposes the
+// parent subscription details, so callers can filter servers by subscription
+// client-side — the inventory query has no subscription filter.
+type AzurePostgresFlexibleServer struct {
+	Object
+	ResourceGroup struct {
+		Subscription AzureSubscriptionDetails `json:"azureSubscriptionDetails"`
+	} `json:"azureResourceGroupDetails"`
+}
+
+func (AzurePostgresFlexibleServer) typeFilter() ObjectType {
+	return "AZURE_POSTGRES_FLEXIBLE_SERVER"
+}
+
+// AzureSQLManagedInstanceServer represents an Azure SQL Managed Instance server
+// from the inventory root. In addition to the common object fields it exposes
+// the parent subscription details, so callers can filter servers by
+// subscription client-side — the inventory query has no subscription filter.
+type AzureSQLManagedInstanceServer struct {
+	Object
+	ResourceGroup struct {
+		Subscription AzureSubscriptionDetails `json:"azureSubscriptionDetails"`
+	} `json:"azureResourceGroupDetails"`
+}
+
+func (AzureSQLManagedInstanceServer) typeFilter() ObjectType {
+	return "AzureSqlManagedInstanceServer"
 }
 
 // Filter represents a GraphQL Filter input for inventory queries.
@@ -273,10 +432,27 @@ type Filter struct {
 func ObjectsByName[T InventoryObject](ctx context.Context, a API, name string, workloadHierarchy Workload, filters ...Filter) ([]T, error) {
 	a.log.Print(log.Trace)
 
+	f := append([]Filter{{Field: "NAME_EXACT_MATCH", Texts: []string{name}}}, filters...)
+	return objectsByFilter[T](ctx, a, workloadHierarchy, f)
+}
+
+// ObjectsByType returns all hierarchy objects of type T from the inventory
+// root. Unlike ObjectsByName it applies no name filter, so it enumerates every
+// object of the type, e.g., all onboarded Azure DevOps organizations.
+//
+// The workloadHierarchy parameter behaves as described on ObjectsByName.
+// Additional filters can be passed to further constrain the query results.
+func ObjectsByType[T InventoryObject](ctx context.Context, a API, workloadHierarchy Workload, filters ...Filter) ([]T, error) {
+	a.log.Print(log.Trace)
+
+	return objectsByFilter[T](ctx, a, workloadHierarchy, filters)
+}
+
+// objectsByFilter runs the paged inventory-root query for type T with the given
+// filters and workload hierarchy.
+func objectsByFilter[T InventoryObject](ctx context.Context, a API, workloadHierarchy Workload, filters []Filter) ([]T, error) {
 	var zero T
 	typeFilter := zero.typeFilter()
-
-	f := append([]Filter{{Field: "NAME_EXACT_MATCH", Texts: []string{name}}}, filters...)
 
 	var objects []T
 	var cursor string
@@ -290,7 +466,7 @@ func ObjectsByName[T InventoryObject](ctx context.Context, a API, name string, w
 			WorkloadHierarchy Workload     `json:"workloadHierarchy,omitempty"`
 		}{
 			After:             cursor,
-			Filter:            f,
+			Filter:            filters,
 			First:             100,
 			TypeFilter:        []ObjectType{typeFilter},
 			WorkloadHierarchy: workloadHierarchy,

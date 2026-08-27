@@ -1,0 +1,7 @@
+mutation RubrikPolarisSDKRequest($input: DeleteGcpClusterInput!) {
+  result: deleteGcpCluster(input: $input) {
+    jobId
+    message
+    success
+  }
+}

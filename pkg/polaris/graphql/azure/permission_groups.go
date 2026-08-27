@@ -29,10 +29,32 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// PermissionGroupInfo holds information about a permission group.
+// AzureActionWithUseCase represents an Azure RBAC permission with the use
+// case that requires it.
+type AzureActionWithUseCase struct {
+	Permission string `json:"permission"`
+	UseCase    string `json:"useCase"`
+}
+
+// ScopePermissions represents the actions and data actions required at one
+// Azure RBAC scope (subscription or resource group) for a permission group.
+// Azure RBAC distinguishes management-plane operations (actions) from
+// data-plane operations (data actions); both are surfaced separately.
+type ScopePermissions struct {
+	IncludedActionsWithUseCase     []AzureActionWithUseCase `json:"includedActionsWithUseCase"`
+	IncludedDataActionsWithUseCase []AzureActionWithUseCase `json:"includedDataActionsWithUseCase"`
+}
+
+// PermissionGroupInfo holds information about a permission group, including
+// the actions and data actions required at the subscription and resource
+// group scopes. SubscriptionPermissions and ResourceGroupPermissions are
+// lists on the wire even though RSC currently returns exactly one element
+// in each — callers must iterate.
 type PermissionGroupInfo struct {
-	PermissionGroup core.PermissionGroup `json:"permissionsGroup"`
-	Version         int                  `json:"version"`
+	PermissionGroup          core.PermissionGroup `json:"permissionsGroup"`
+	Version                  int                  `json:"version"`
+	SubscriptionPermissions  []ScopePermissions   `json:"subscriptionPermissions"`
+	ResourceGroupPermissions []ScopePermissions   `json:"resourceGroupPermissions"`
 }
 
 // FeaturePermissionGroups holds the permission groups for a feature.

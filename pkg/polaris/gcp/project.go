@@ -88,7 +88,7 @@ func Key(key string) ProjectFunc {
 		keyData, textErr := base64.StdEncoding.DecodeString(key)
 		if textErr == nil {
 			var creds *google.Credentials
-			creds, textErr = google.CredentialsFromJSON(ctx, keyData, scopes)
+			creds, textErr = google.CredentialsFromJSONWithType(ctx, keyData, google.ServiceAccount, scopes)
 			if textErr == nil {
 				return project{NativeID: creds.ProjectID, creds: creds}, nil
 			}
@@ -111,7 +111,7 @@ func KeyWithProject(key string, projectID string) ProjectFunc {
 		keyData, textErr := base64.StdEncoding.DecodeString(key)
 		if textErr == nil {
 			var creds *google.Credentials
-			creds, textErr = google.CredentialsFromJSON(ctx, keyData, scopes)
+			creds, textErr = google.CredentialsFromJSONWithType(ctx, keyData, google.ServiceAccount, scopes)
 			if textErr == nil {
 				return project{NativeID: creds.ProjectID, creds: creds}, nil
 			}
@@ -134,7 +134,7 @@ func KeyWithProjectAndNumber(key string, projectID string, projectNumber int64) 
 		keyData, textErr := base64.StdEncoding.DecodeString(key)
 		if textErr == nil {
 			var creds *google.Credentials
-			creds, textErr = google.CredentialsFromJSON(ctx, keyData, scopes)
+			creds, textErr = google.CredentialsFromJSONWithType(ctx, keyData, google.ServiceAccount, scopes)
 			if textErr == nil {
 				return project{NativeID: projectID, creds: creds, number: projectNumber}, nil
 			}
@@ -219,7 +219,7 @@ func readCredentials(ctx context.Context, keyFile string) (*google.Credentials, 
 		return nil, errors.New("failed to read key file")
 	}
 
-	creds, err := google.CredentialsFromJSON(ctx, buf, scopes)
+	creds, err := google.CredentialsFromJSONWithType(ctx, buf, google.ServiceAccount, scopes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to obtain GCP credentials from key file: %s", err)
 	}

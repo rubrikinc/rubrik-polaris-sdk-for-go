@@ -1,0 +1,3 @@
+mutation RubrikPolarisSDKRequest($awsCloudAccountId: String!, $features: [CloudAccountFeature!]!) {
+    result: awsTriggerCftStatusPolling(input: {awsCloudAccountId: $awsCloudAccountId, features: $features})
+}

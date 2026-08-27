@@ -1,0 +1,7 @@
+mutation RubrikPolarisSDKRequest($enabled: Boolean!) {
+  result: setSelfServeRollingUpgrade(input: {
+    enabled: $enabled,
+  }) {
+    enabled
+  }
+}

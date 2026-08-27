@@ -1,0 +1,13 @@
+mutation RubrikPolarisSDKRequest(
+  $listClusterUuid: [UUID!]!
+  $packageUrl: String!
+  $md5checksum: String!
+) {
+  result: startDownloadPackageBatchJob(
+    listClusterUuid: $listClusterUuid
+    packageUrl: $packageUrl
+    md5checksum: $md5checksum
+  ) {
+    jobId
+  }
+}

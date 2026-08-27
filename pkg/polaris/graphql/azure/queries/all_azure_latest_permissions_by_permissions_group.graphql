@@ -4,7 +4,26 @@ query RubrikPolarisSDKRequest($features: [CloudAccountFeature!]!) {
         permissionsGroupPermissions {
             permissionsGroup
             version
+            subscriptionPermissions {
+                includedActionsWithUseCase {
+                    permission
+                    useCase
+                }
+                includedDataActionsWithUseCase {
+                    permission
+                    useCase
+                }
+            }
+            resourceGroupPermissions {
+                includedActionsWithUseCase {
+                    permission
+                    useCase
+                }
+                includedDataActionsWithUseCase {
+                    permission
+                    useCase
+                }
+            }
         }
     }
 }
-

@@ -93,6 +93,12 @@ func TestAwsAccountAddAndRemoveWithCFT(t *testing.T) {
 	if account.Features[0].Status != core.StatusConnected {
 		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
 	}
+	if mode := account.OnboardingMode(); mode != OnboardingModeCFT {
+		t.Fatalf("invalid onboarding mode: %v", mode)
+	}
+	if mode := account.Features[0].OnboardingMode(); mode != OnboardingModeCFT {
+		t.Fatalf("invalid feature onboarding mode: %v", mode)
+	}
 
 	// Update and verify regions for AWS account.
 	err = awsClient.UpdateAccount(ctx, account.ID, core.FeatureCloudNativeProtection, Regions("us-west-2"))
@@ -205,6 +211,15 @@ func TestAwsAccountAddAndRemoveUsingPermissionGroupsWithCFT(t *testing.T) {
 	if groups := account.Features[1].PermissionGroups; !reflect.DeepEqual(groups, []core.PermissionGroup{core.PermissionGroupBasic, core.PermissionGroupRSCManagedCluster}) {
 		t.Fatalf("invalid permission groups: %v", groups)
 	}
+	if mode := account.OnboardingMode(); mode != OnboardingModeCFT {
+		t.Fatalf("invalid onboarding mode: %v", mode)
+	}
+	if mode := account.Features[0].OnboardingMode(); mode != OnboardingModeCFT {
+		t.Fatalf("invalid feature[0] onboarding mode: %v", mode)
+	}
+	if mode := account.Features[1].OnboardingMode(); mode != OnboardingModeCFT {
+		t.Fatalf("invalid feature[1] onboarding mode: %v", mode)
+	}
 	// Remove AWS account from RSC.
 	err = awsClient.RemoveAccountWithCFT(ctx, Profile(testAccount.Profile), features, false)
 	if err != nil {
@@ -276,6 +291,12 @@ func TestAwsCrossAccountAddAndRemoveWithCFT(t *testing.T) {
 	}
 	if account.Features[0].Status != core.StatusConnected {
 		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
+	}
+	if mode := account.OnboardingMode(); mode != OnboardingModeCFT {
+		t.Fatalf("invalid onboarding mode: %v", mode)
+	}
+	if mode := account.Features[0].OnboardingMode(); mode != OnboardingModeCFT {
+		t.Fatalf("invalid feature onboarding mode: %v", mode)
 	}
 
 	// Verify that it's possible to find the account using the account ID

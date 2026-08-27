@@ -29,6 +29,8 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"golang.org/x/oauth2/google"
+
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/gcp"
@@ -301,93 +303,6 @@ func (a API) RemoveProject(ctx context.Context, cloudAccountID uuid.UUID, featur
 		}
 	}
 
-	flag, err := core.Wrap(a.client).FeatureFlag(ctx, core.FeatureFlagGCPDisableDeleteCombined)
-	if err != nil {
-		return fmt.Errorf("failed to get feature flag: %s", err)
-	}
-
-	if !flag.Enabled {
-		return a.removeProjectV1(ctx, account, features, deleteSnapshots)
-	}
-
-	return a.removeProjectV2(ctx, cloudAccountID, features, deleteSnapshots)
-}
-
-func (a API) removeProjectV1(ctx context.Context, account CloudAccount, features []core.Feature, deleteSnapshots bool) error {
-	a.log.Print(log.Trace)
-
-	// Disable protection features.
-	for _, feature := range features {
-		// If the feature has not been onboarded or the feature is in the disabled
-		// or connecting state, there is no need to disable the feature.
-		if feature, ok := account.Feature(feature); ok {
-			if feature.Status == core.StatusDisabled || feature.Status == core.StatusConnecting {
-				continue
-			}
-		} else {
-			continue
-		}
-
-		// Only the Cloud Native Protection feature can be disabled.
-		if !feature.Equal(core.FeatureCloudNativeProtection) {
-			continue
-		}
-
-		// Lookup the RSC native project ID from the GCP project number.
-		// The RSC native project ID is needed to disable the native project.
-		// Note the native project ID in this case is the project ID of the RSC
-		// inventory.
-		nativeProjects, err := gcp.Wrap(a.client).NativeProjects(ctx, strconv.FormatInt(account.ProjectNumber, 10))
-		if err != nil {
-			return fmt.Errorf("failed to get native projects: %s", err)
-		}
-		var nativeProjectID uuid.UUID
-		for _, nativeProject := range nativeProjects {
-			if nativeProject.NativeID == account.NativeID {
-				nativeProjectID = nativeProject.ID
-				break
-			}
-		}
-		if nativeProjectID == uuid.Nil {
-			return fmt.Errorf("native project %w", graphql.ErrNotFound)
-		}
-
-		jobID, err := gcp.Wrap(a.client).NativeDisableProject(ctx, nativeProjectID, deleteSnapshots)
-		if err != nil {
-			return fmt.Errorf("failed to disable native project: %v", err)
-		}
-
-		if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, jobID, func(ctx context.Context) (bool, error) {
-			account, err := a.ProjectByID(ctx, account.ID)
-			if err != nil {
-				if errors.Is(err, graphql.ErrNotFound) {
-					return true, nil
-				}
-				return false, fmt.Errorf("failed to retrieve status for feature %s: %s", feature, err)
-			}
-
-			// Note, if the feature is missing, it has already been removed
-			// If it's not missing, we check if it has been disabled.
-			accountFeature, ok := account.Feature(feature)
-			if !ok {
-				return true, nil
-			}
-			return accountFeature.Status == core.StatusDisabled, nil
-		}); err != nil {
-			return fmt.Errorf("failed to wait for task chain %s: %s", jobID, err)
-		}
-	}
-
-	if err := gcp.Wrap(a.client).CloudAccountDeleteProjectV1(ctx, account.ID, features); err != nil {
-		return fmt.Errorf("failed to delete project: %s", err)
-	}
-
-	return nil
-}
-
-func (a API) removeProjectV2(ctx context.Context, cloudAccountID uuid.UUID, features []core.Feature, deleteSnapshots bool) error {
-	a.log.Print(log.Trace)
-
 	jobs, err := gcp.Wrap(a.client).CloudAccountDeleteProjectV2(ctx, cloudAccountID, features, deleteSnapshots)
 	if err != nil {
 		return fmt.Errorf("failed to delete project: %s", err)
@@ -432,7 +347,17 @@ func (a API) ServiceAccount(ctx context.Context) (string, error) {
 // SetServiceAccount sets the default service account. The service account set
 // will be used for projects added without a service account key. Note that it's
 // not possible to remove a service account once it has been set.
-func (a API) SetServiceAccount(ctx context.Context, project ProjectFunc, opts ...OptionFunc) error {
+//
+// The service account is identified by the client email of the service account
+// key. RSC uses the client email to reference the service account, e.g. in the
+// GCP onboarding Terraform template, and therefore requires it to be a valid
+// GCP service account email.
+//
+// Note that the options are ignored. The Name option used to override the
+// service account name, but RSC no longer accepts a name that differs from the
+// client email of the service account key. The parameter is kept to not break
+// existing callers.
+func (a API) SetServiceAccount(ctx context.Context, project ProjectFunc, _ ...OptionFunc) error {
 	a.log.Print(log.Trace)
 
 	if project == nil {
@@ -446,17 +371,15 @@ func (a API) SetServiceAccount(ctx context.Context, project ProjectFunc, opts ..
 		return errors.New("project is missing credentials")
 	}
 
-	var options options
-	for _, option := range opts {
-		if err := option(ctx, &options); err != nil {
-			return fmt.Errorf("failed to lookup option: %s", err)
-		}
+	jwtConfig, err := google.JWTConfigFromJSON(config.creds.JSON)
+	if err != nil {
+		return fmt.Errorf("failed to read the service account key: %s", err)
 	}
-	if options.name != "" {
-		config.name = options.name
+	if jwtConfig.Email == "" {
+		return errors.New("service account key is missing the client email")
 	}
 
-	err = gcp.Wrap(a.client).SetDefaultServiceAccount(ctx, config.name, string(config.creds.JSON))
+	err = gcp.Wrap(a.client).SetDefaultServiceAccount(ctx, jwtConfig.Email, string(config.creds.JSON))
 	if err != nil {
 		return fmt.Errorf("failed to set default service account: %s", err)
 	}

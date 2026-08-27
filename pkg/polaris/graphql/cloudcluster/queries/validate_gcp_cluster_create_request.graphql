@@ -1,0 +1,6 @@
+query RubrikPolarisSDKRequest($input: CreateGcpClusterInput!) {
+  result: validateCreateGcpClusterInput(input: $input) {
+    message
+    isSuccessful
+  }
+}

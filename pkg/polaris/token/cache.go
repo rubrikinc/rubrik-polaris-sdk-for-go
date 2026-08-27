@@ -69,32 +69,6 @@ func NewCacheWithDir(source Source, dir, keyMaterial, suffixMaterial string) (*c
 	}, nil
 }
 
-// Deprecated: Use NewCacheWithDir instead.
-func NewCache(source Source, keyMaterial, suffixMaterial string, allowEnvOverride bool) (*cache, error) {
-	suffix := fmt.Sprintf("%x", sha256.Sum256([]byte(suffixMaterial)))
-	if allowEnvOverride {
-		if tcSecret := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE_SECRET"); tcSecret != "" {
-			keyMaterial = tcSecret
-			suffix += "-env"
-		}
-	}
-	key := sha256.Sum256([]byte(keyMaterial))
-	block, err := aes.NewCipher(key[:])
-	if err != nil {
-		return nil, err
-	}
-
-	path := os.TempDir()
-	if allowEnvOverride {
-		if tcDir := os.Getenv("RUBRIK_POLARIS_TOKEN_CACHE_DIR"); tcDir != "" {
-			path = tcDir
-		}
-	}
-	path = filepath.Join(path, fmt.Sprintf("token-%s", suffix))
-
-	return &cache{source: source, block: block, file: path}, nil
-}
-
 // token returns the cached token. If the cache is empty or the cached token has
 // expired, a new token is fetched from the underlying token source.
 func (c *cache) token(ctx context.Context) (token, error) {
@@ -102,7 +76,7 @@ func (c *cache) token(ctx context.Context) (token, error) {
 	defer cancel()
 	unlock, err := lockFile(lockCtx, c.file)
 	if err != nil {
-		return token{}, fmt.Errorf("failed to lock cache: %s", err)
+		return token{}, fmt.Errorf("failed to lock cache: %w", err)
 	}
 	defer unlock()
 
@@ -116,7 +90,7 @@ func (c *cache) token(ctx context.Context) (token, error) {
 
 	cachedToken, err = c.source.token(ctx)
 	if err != nil {
-		return token{}, fmt.Errorf("failed to fetch new token: %s", err)
+		return token{}, fmt.Errorf("failed to fetch new token: %w", err)
 	}
 
 	if err := writeCache(c.file, cachedToken, c.block); err != nil {

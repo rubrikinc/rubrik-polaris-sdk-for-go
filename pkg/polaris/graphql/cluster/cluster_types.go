@@ -7,10 +7,11 @@ type Timezone string
 type Product string
 
 const (
-	CDM          Product = "CDM"
-	CLOUD_DIRECT Product = "CLOUD_DIRECT"
-	DATOS        Product = "DATOS"
-	POLARIS      Product = "POLARIS"
+	CDM            Product = "CDM"
+	CLOUD_DIRECT   Product = "CLOUD_DIRECT"
+	DATOS          Product = "DATOS"
+	POLARIS        Product = "POLARIS"
+	RSCP_APPLIANCE Product = "RSCP_APPLIANCE"
 )
 
 // ProductType represents the valid cluster product types.

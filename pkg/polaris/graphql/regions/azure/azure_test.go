@@ -154,3 +154,44 @@ func TestRegionMarshalUnmarshalRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+// TestCommonRegionEnumRoundTrip covers the AzureCommonRegion enum wiring,
+// including the regions that were added for it. New Zealand North and Taiwan
+// North exist only in AzureCommonRegion, not AzureCloudAccountRegion, so they
+// must resolve via the common enum but not the cloud-account enum.
+func TestCommonRegionEnumRoundTrip(t *testing.T) {
+	regions := []Region{
+		RegionAustriaEast,
+		RegionBelgiumCentral,
+		RegionChileCentral,
+		RegionIndonesiaCentral,
+		RegionMalaysiaWest,
+		RegionNewZealandNorth,
+		RegionTaiwanNorth,
+		RegionEastUS,
+	}
+
+	for _, original := range regions {
+		data, err := json.Marshal(original.ToCommonRegionEnum())
+		if err != nil {
+			t.Errorf("failed to marshal region %s: %s", original, err)
+			continue
+		}
+
+		var got CommonRegionEnum
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Errorf("failed to unmarshal JSON %s: %s", string(data), err)
+			continue
+		}
+		if got.Region != original {
+			t.Errorf("round trip failed for region %s: got %s (data %s)", original, got.Region, string(data))
+		}
+	}
+
+	if RegionFromCommonRegionEnum("NEWZEALANDNORTH") != RegionNewZealandNorth {
+		t.Error("NEWZEALANDNORTH should resolve via the common region enum")
+	}
+	if RegionFromCloudAccountRegionEnum("NEWZEALANDNORTH") != RegionUnknown {
+		t.Error("NEWZEALANDNORTH must not resolve via the cloud account region enum")
+	}
+}

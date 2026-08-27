@@ -71,8 +71,8 @@ var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWi
 }`
 
 // allAwsLatestPermissionsByPermissionsGroup GraphQL query
-var allAwsLatestPermissionsByPermissionsGroupQuery = `query SdkGolangAllAwsLatestPermissionsByPermissionsGroup($features: [CloudAccountFeature!]!) {
-    result: allAWSLatestPermissionsByPermissionsGroup(features: $features) {
+var allAwsLatestPermissionsByPermissionsGroupQuery = `query SdkGolangAllAwsLatestPermissionsByPermissionsGroup($features: [CloudAccountFeature!]!, $serviceType: AwsCloudAccountServiceType) {
+    result: allAWSLatestPermissionsByPermissionsGroup(features: $features, serviceType: $serviceType) {
         feature
         permissionsGroupPermissions {
             permissionsGroup
@@ -135,6 +135,23 @@ var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatur
         roleChainingAccount {
             awsCloudAccount {
                 id
+            }
+        }
+    }
+}`
+
+// awsLatestPermissionsByPermissionsGroup GraphQL query
+var awsLatestPermissionsByPermissionsGroupQuery = `query SdkGolangAwsLatestPermissionsByPermissionsGroup($features: [CloudAccountFeature!]!) {
+    result: allAWSLatestPermissionsByPermissionsGroup(features: $features) {
+        feature
+        permissionsGroupPermissions {
+            permissionsGroup
+            version
+            permissionStatements {
+                actions {
+                    action
+                    usecase
+                }
             }
         }
     }
@@ -206,9 +223,14 @@ var awsNativeAccountsQuery = `query SdkGolangAwsNativeAccounts(
 	}
 }`
 
+// awsTriggerCftStatusPolling GraphQL query
+var awsTriggerCftStatusPollingQuery = `mutation SdkGolangAwsTriggerCftStatusPolling($awsCloudAccountId: String!, $features: [CloudAccountFeature!]!) {
+    result: awsTriggerCftStatusPolling(input: {awsCloudAccountId: $awsCloudAccountId, features: $features})
+}`
+
 // awsTrustPolicy GraphQL query
-var awsTrustPolicyQuery = `query SdkGolangAwsTrustPolicy($cloudType: AwsCloudType!, $features: [CloudAccountFeature!]!, $awsNativeAccounts: [AwsNativeAccountInput!]!) {
-    result: awsTrustPolicy(input: {cloudType: $cloudType, features: $features, awsNativeAccounts: $awsNativeAccounts}) {
+var awsTrustPolicyQuery = `query SdkGolangAwsTrustPolicy($cloudType: AwsCloudType!, $features: [CloudAccountFeature!]!, $awsNativeAccounts: [AwsNativeAccountInput!]!, $roleChainingAccountId: UUID) {
+    result: awsTrustPolicy(input: {cloudType: $cloudType, features: $features, awsNativeAccounts: $awsNativeAccounts, roleChainingAccountId: $roleChainingAccountId}) {
         result {
             artifacts {
                 externalArtifactKey
@@ -228,6 +250,11 @@ var bulkDeleteAwsCloudAccountWithoutCftQuery = `mutation SdkGolangBulkDeleteAwsC
             success
         }
     }
+}`
+
+// completeBaasOnboarding GraphQL query
+var completeBaasOnboardingQuery = `mutation SdkGolangCompleteBaasOnboarding($cloudAccounts: [CloudAccountDetailsInput!]!, $cloudProvider: CloudServiceProvider!, $features: [String!]!, $regions: [CloudRegionInput!]!) {
+    result: completeBaasOnboarding(input: {cloudAccounts: $cloudAccounts, cloudProvider: $cloudProvider, features: $features, regions: $regions})
 }`
 
 // deleteTargetMapping GraphQL query
@@ -255,6 +282,8 @@ var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloud
     $featuresWithPG: [FeatureWithPermissionsGroups!],
     $stackName:      String!,
     $cloudType:      AwsCloudType,
+    $awsIamPairId:   String,
+    $serviceType:    AwsCloudAccountServiceType,
 ) {
     finalizeAwsCloudAccountProtection(input: {
         action: CREATE,
@@ -269,9 +298,13 @@ var finalizeAwsCloudAccountProtectionQuery = `mutation SdkGolangFinalizeAwsCloud
         features:                      $features,
         featuresWithPermissionsGroups: $featuresWithPG,
         stackName:                     $stackName,
+        awsIamPairId:                  $awsIamPairId,
+        serviceType:                   $serviceType,
     }) {
        awsChildAccounts {
            accountName
+           cloudType
+           id
            nativeId
            message
        }
@@ -306,8 +339,8 @@ var prepareFeatureUpdateForAwsCloudAccountQuery = `mutation SdkGolangPrepareFeat
 }`
 
 // registerAwsFeatureArtifacts GraphQL query
-var registerAwsFeatureArtifactsQuery = `mutation SdkGolangRegisterAwsFeatureArtifacts($cloudType: AwsCloudType, $awsArtifacts: [AwsAccountFeatureArtifact!]!) {
-    result: registerAwsFeatureArtifacts(input: {cloudType: $cloudType, awsArtifacts: $awsArtifacts}) {
+var registerAwsFeatureArtifactsQuery = `mutation SdkGolangRegisterAwsFeatureArtifacts($cloudType: AwsCloudType, $awsArtifacts: [AwsAccountFeatureArtifact!]!, $roleChainingAccountId: UUID) {
+    result: registerAwsFeatureArtifacts(input: {cloudType: $cloudType, awsArtifacts: $awsArtifacts, roleChainingAccountId: $roleChainingAccountId}) {
         allAwsNativeIdtoRscIdMappings {
             awsCloudAccountId
             awsNativeId
@@ -367,7 +400,7 @@ var upgradeAwsCloudAccountFeaturesWithoutCftQuery = `mutation SdkGolangUpgradeAw
 }`
 
 // validateAndCreateAwsCloudAccount GraphQL query
-var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($cloudType: AwsCloudType!, $nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!], $roleChainingAccountId: UUID) {
+var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreateAwsCloudAccount($cloudType: AwsCloudType!, $nativeId: String!, $accountName: String!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!], $roleChainingAccountId: UUID, $serviceType: AwsCloudAccountServiceType) {
     result: validateAndCreateAwsCloudAccount(input: {
         action: CREATE,
         awsChildAccounts: [{
@@ -377,11 +410,13 @@ var validateAndCreateAwsCloudAccountQuery = `mutation SdkGolangValidateAndCreate
         }],
         features: $features,
         featuresWithPermissionsGroups: $featuresWithPG,
-        roleChainingAccountId: $roleChainingAccountId
+        roleChainingAccountId: $roleChainingAccountId,
+        serviceType: $serviceType
     }) {
         initiateResponse {
             cloudFormationUrl
             externalId
+            awsIamPairId
             featureVersions {
                 feature
                 permissionsGroupVersions {

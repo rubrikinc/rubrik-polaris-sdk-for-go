@@ -1,0 +1,8 @@
+query RubrikPolarisSDKRequest($input: GcpRegionsReq!) {
+  result: gcpRegions(input: $input) {
+    gcpRegions {
+      name
+      zones
+    }
+  }
+}

@@ -29,6 +29,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	gqlaccess "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 )
 
 func TestRoleTemplates(t *testing.T) {
@@ -63,13 +64,13 @@ func TestRoleTemplates(t *testing.T) {
 		Operation: "EXPORT_DATA_CLASS_GLOBAL",
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
-			ObjectIDs:     []string{"GlobalResource"},
+			ObjectIDs:     []string{hierarchy.GlobalResource},
 		}},
 	}, {
 		Operation: "VIEW_DATA_CLASS_GLOBAL",
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
-			ObjectIDs:     []string{"GlobalResource"},
+			ObjectIDs:     []string{hierarchy.GlobalResource},
 		}},
 	}}) {
 		t.Errorf("invalid role template permissions: %#v", permissions)
@@ -104,19 +105,19 @@ func TestRoleTemplates(t *testing.T) {
 		Operation: "CONFIGURE_DATA_CLASS_GLOBAL",
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
-			ObjectIDs:     []string{"GlobalResource"},
+			ObjectIDs:     []string{hierarchy.GlobalResource},
 		}},
 	}, {
 		Operation: "EXPORT_DATA_CLASS_GLOBAL",
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
-			ObjectIDs:     []string{"GlobalResource"},
+			ObjectIDs:     []string{hierarchy.GlobalResource},
 		}},
 	}, {
 		Operation: "VIEW_DATA_CLASS_GLOBAL",
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
-			ObjectIDs:     []string{"GlobalResource"},
+			ObjectIDs:     []string{hierarchy.GlobalResource},
 		}},
 	}}) {
 		t.Errorf("invalid role template permissions: %#v", permissions)

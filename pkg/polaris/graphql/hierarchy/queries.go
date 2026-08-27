@@ -70,6 +70,31 @@ var hierarchyObjectQuery = `query SdkGolangHierarchyObject($fid: UUID!, $workloa
                 status
             }
         }
+        ... on AzureDevOpsProject {
+            orgId
+        }
+        ... on AzureDevOpsRepository {
+            orgId
+            projectId
+        }
+        ... on GithubRepository {
+            orgId
+        }
+        ... on AzureSqlManagedInstanceServer {
+            azureResourceGroupDetails {
+                azureSubscriptionDetails {
+                    id
+                    name
+                    accountConnectionId
+                    tenantId
+                    cloudType
+                    status
+                    regionSpecs {
+                        region
+                    }
+                }
+            }
+        }
         configuredSlaDomain {
             ... on ClusterSlaDomain {
                 id
@@ -116,6 +141,46 @@ var inventoryRootQuery = `query SdkGolangInventoryRoot($after: String, $filter: 
                         featureName
                         lastRefreshedAt
                         status
+                    }
+                }
+                ... on AzureDevOpsProject {
+                    orgId
+                }
+                ... on AzureDevOpsRepository {
+                    orgId
+                    projectId
+                }
+                ... on GithubRepository {
+                    orgId
+                }
+                ... on AzureSqlManagedInstanceServer {
+                    azureResourceGroupDetails {
+                        azureSubscriptionDetails {
+                            id
+                            name
+                            accountConnectionId
+                            tenantId
+                            cloudType
+                            status
+                            regionSpecs {
+                                region
+                            }
+                        }
+                    }
+                }
+                ... on AzurePostgresFlexibleServer {
+                    azureResourceGroupDetails {
+                        azureSubscriptionDetails {
+                            id
+                            name
+                            accountConnectionId
+                            tenantId
+                            cloudType
+                            status
+                            regionSpecs {
+                                region
+                            }
+                        }
                     }
                 }
             }

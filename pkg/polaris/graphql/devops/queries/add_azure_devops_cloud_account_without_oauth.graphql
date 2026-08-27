@@ -1,0 +1,23 @@
+mutation RubrikPolarisSDKRequest(
+  $organizationNativeIds:         [String!],
+  $tenantId:                      String!,
+  $cloudType:                     AzureCloudType!,
+  $featuresWithPermissionsGroups: [FeatureWithPermissionsGroups!]!,
+  $hostType:                      DevopsHostType,
+  $storageType:                   DevOpsStorageType,
+  $backupLocationId:              UUID,
+  $exocomputeCloudAccountId:      UUID,
+  $exocomputeRegion:              String,
+) {
+  result: addAzureDevOpsCloudAccountWithoutOauth(input: {
+    organizationNativeIds:         $organizationNativeIds,
+    tenantId:                      $tenantId,
+    cloudType:                     $cloudType,
+    featuresWithPermissionsGroups: $featuresWithPermissionsGroups,
+    hostType:                      $hostType,
+    storageType:                   $storageType,
+    backupLocationId:              $backupLocationId,
+    exocomputeCloudAccountId:      $exocomputeCloudAccountId,
+    exocomputeRegion:              $exocomputeRegion,
+  })
+}

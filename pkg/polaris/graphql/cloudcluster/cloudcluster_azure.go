@@ -285,12 +285,16 @@ type AzureClusterConfig struct {
 
 // AzureVMConfig represents the VM configuration for the Azure Cloud Cluster.
 type AzureVMConfig struct {
-	CDMVersion                   string                         `json:"cdmVersion"`
-	Subnet                       string                         `json:"subnet"`
-	VMType                       VmConfigType                   `json:"vmType"`
+	CDMVersion      string           `json:"cdmVersion"`
+	Subnet          string           `json:"subnet,omitempty"`
+	SubnetAzConfigs []SubnetAzConfig `json:"subnetAzConfigs,omitempty"`
+	// VMType uses omitempty so that an unset value is dropped from the request
+	// and the backend applies its default (STANDARD). The empty string is not a
+	// valid VmType enum member and would be rejected by GraphQL enum coercion.
+	VMType                       VmConfigType                   `json:"vmType,omitempty"`
 	CDMProduct                   string                         `json:"cdmProduct"`
 	Location                     azure.Region                   `json:"location"`
-	AvailabilityZone             string                         `json:"availabilityZone"`
+	AvailabilityZone             string                         `json:"availabilityZone,omitempty"`
 	Vnet                         string                         `json:"vnet"`
 	ResourceGroup                string                         `json:"resourceGroup"`
 	NetworkResourceGroup         string                         `json:"networkResourceGroup"`
@@ -304,6 +308,7 @@ type AzureVMConfig struct {
 type CreateAzureClusterInput struct {
 	CloudAccountID       uuid.UUID                  `json:"cloudAccountId"`
 	ClusterConfig        AzureClusterConfig         `json:"clusterConfig"`
+	IsAzResilient        bool                       `json:"isAzResilient,omitempty"`
 	IsESType             bool                       `json:"isEsType"`
 	KeepClusterOnFailure bool                       `json:"keepClusterOnFailure"`
 	Validations          []ClusterCreateValidations `json:"validations"`

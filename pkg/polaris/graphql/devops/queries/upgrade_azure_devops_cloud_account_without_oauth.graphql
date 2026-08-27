@@ -1,0 +1,8 @@
+mutation RubrikPolarisSDKRequest($organizationId: UUID!, $featuresToUpgrade: [FeatureWithPermissionsGroups!]!) {
+  result: upgradeAzureDevOpsCloudAccountWithoutOauth(input: {
+    organizationId:    $organizationId,
+    featuresToUpgrade: $featuresToUpgrade,
+  }) {
+    errorMessage
+  }
+}

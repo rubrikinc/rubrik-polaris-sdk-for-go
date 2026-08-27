@@ -1,0 +1,7 @@
+mutation RubrikPolarisSDKRequest($input: CreateGcpClusterInput!) {
+  result: createGcpCluster(input: $input) {
+    jobId
+    message
+    success
+  }
+}

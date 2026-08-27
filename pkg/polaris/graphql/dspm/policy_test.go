@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -40,21 +41,35 @@ func TestGroupConfigMarshalJSON(t *testing.T) {
 		Op: LogicalAnd,
 		Filters: []Node{
 			{
-				Config: &Config{
-					Type:         FilterTypeDocumentDataType,
-					Values:       []string{"password", "ssn"},
-					Relationship: RelIs,
-				},
-			},
-			{
 				GroupConfig: &GroupConfig{
 					Op: LogicalOr,
 					Filters: []Node{
 						{
 							Config: &Config{
+								Type:         FilterTypeDocumentDataType,
+								Values:       []string{"password", "ssn"},
+								Relationship: RelIs,
+							},
+						},
+						{
+							Config: &Config{
 								Type:         FilterTypeSnappableName,
 								Values:       []string{"server-1"},
 								Relationship: RelContains,
+							},
+						},
+					},
+				},
+			},
+			{
+				GroupConfig: &GroupConfig{
+					Op: LogicalAnd,
+					Filters: []Node{
+						{
+							Config: &Config{
+								Type:         FilterTypeIdentityType,
+								Values:       []string{"USER"},
+								Relationship: RelIs,
 							},
 						},
 					},
@@ -79,23 +94,49 @@ func TestGroupConfigMarshalJSON(t *testing.T) {
 	if len(got.Filters) != 2 {
 		t.Fatalf("Filters length: got %d, want 2", len(got.Filters))
 	}
-	if got.Filters[0].Config == nil {
-		t.Fatal("Filters[0].Config is nil")
+	if got.Filters[0].GroupConfig == nil {
+		t.Fatal("Filters[0].GroupConfig is nil")
 	}
-	if got.Filters[0].Config.Type != FilterTypeDocumentDataType {
-		t.Errorf("Filters[0].Config.Type: got %q, want %q", got.Filters[0].Config.Type, FilterTypeDocumentDataType)
+	if got.Filters[0].GroupConfig.Op != LogicalOr {
+		t.Errorf("Filters[0].GroupConfig.Op: got %q, want %q", got.Filters[0].GroupConfig.Op, LogicalOr)
 	}
-	if len(got.Filters[0].Config.Values) != 2 {
-		t.Fatalf("Filters[0].Config.Values length: got %d, want 2", len(got.Filters[0].Config.Values))
+	if len(got.Filters[0].GroupConfig.Filters) != 2 {
+		t.Fatalf("Filters[0].GroupConfig.Filters length: got %d, want 2", len(got.Filters[0].GroupConfig.Filters))
+	}
+	first := got.Filters[0].GroupConfig.Filters[0].Config
+	if first == nil {
+		t.Fatal("Filters[0].GroupConfig.Filters[0].Config is nil")
+	}
+	if first.Type != FilterTypeDocumentDataType {
+		t.Errorf("Filters[0].GroupConfig.Filters[0].Config.Type: got %q, want %q", first.Type, FilterTypeDocumentDataType)
+	}
+	if len(first.Values) != 2 {
+		t.Fatalf("Filters[0].GroupConfig.Filters[0].Config.Values length: got %d, want 2", len(first.Values))
 	}
 	if got.Filters[1].GroupConfig == nil {
 		t.Fatal("Filters[1].GroupConfig is nil")
 	}
-	if got.Filters[1].GroupConfig.Op != LogicalOr {
-		t.Errorf("Filters[1].GroupConfig.Op: got %q, want %q", got.Filters[1].GroupConfig.Op, LogicalOr)
+	if got.Filters[1].GroupConfig.Op != LogicalAnd {
+		t.Errorf("Filters[1].GroupConfig.Op: got %q, want %q", got.Filters[1].GroupConfig.Op, LogicalAnd)
+	}
+	if len(got.Filters[1].GroupConfig.Filters) != 1 {
+		t.Fatalf("Filters[1].GroupConfig.Filters length: got %d, want 1", len(got.Filters[1].GroupConfig.Filters))
+	}
+	second := got.Filters[1].GroupConfig.Filters[0].Config
+	if second == nil {
+		t.Fatal("Filters[1].GroupConfig.Filters[0].Config is nil")
+	}
+	if second.Type != FilterTypeIdentityType {
+		t.Errorf("Filters[1].GroupConfig.Filters[0].Config.Type: got %q, want %q", second.Type, FilterTypeIdentityType)
+	}
+	if len(second.Values) != 1 || second.Values[0] != "USER" {
+		t.Errorf("Filters[1].GroupConfig.Filters[0].Config.Values: got %v, want [USER]", second.Values)
 	}
 }
 
+// TestValidateFilterDepth covers the depth bound that guards threshold
+// filters. Policy filters are held to the stricter validateFilterFormat, see
+// TestValidateFilterFormat.
 func TestValidateFilterDepth(t *testing.T) {
 	leaf := func() Node {
 		return Node{Config: &Config{Type: FilterTypeDocumentDataType, Values: []string{"v"}, Relationship: RelIs}}
@@ -120,6 +161,87 @@ func TestValidateFilterDepth(t *testing.T) {
 	}
 }
 
+func TestValidateFilterFormat(t *testing.T) {
+	leaf := func(filterType FilterType) Node {
+		return Node{Config: &Config{Type: filterType, Values: []string{"v"}, Relationship: RelIs}}
+	}
+	group := func(op LogicalOp, children ...Node) Node {
+		return Node{GroupConfig: &GroupConfig{Op: op, Filters: children}}
+	}
+	root := func(op LogicalOp, children ...Node) GroupConfig {
+		return GroupConfig{Op: op, Filters: children}
+	}
+	object := leaf(FilterTypeDocumentDataType)
+	identity := leaf(FilterTypeIdentityType)
+
+	// errContains, when set, must appear in the error message. It is used for
+	// the cases where the message distinguishes between failure modes that
+	// share a nil check.
+	tt := []struct {
+		name        string
+		gc          GroupConfig
+		valid       bool
+		errContains string
+	}{{
+		name:  "one condition group",
+		gc:    root(LogicalAnd, group(LogicalAnd, object)),
+		valid: true,
+	}, {
+		name:  "two condition groups",
+		gc:    root(LogicalAnd, group(LogicalOr, object, object), group(LogicalAnd, identity)),
+		valid: true,
+	}, {
+		name: "top-level group joined with OR",
+		gc:   root(LogicalOr, group(LogicalAnd, object)),
+	}, {
+		name:        "bare condition as top-level child",
+		gc:          root(LogicalAnd, object),
+		errContains: "not a bare condition",
+	}, {
+		name:        "empty node as top-level child",
+		gc:          root(LogicalAnd, Node{}),
+		errContains: "is empty",
+	}, {
+		name: "bare condition beside a condition group",
+		gc:   root(LogicalAnd, object, group(LogicalOr, identity)),
+	}, {
+		name: "no condition groups",
+		gc:   root(LogicalAnd),
+	}, {
+		name: "three condition groups",
+		gc:   root(LogicalAnd, group(LogicalAnd, object), group(LogicalAnd, identity), group(LogicalAnd, object)),
+	}, {
+		name: "empty condition group",
+		gc:   root(LogicalAnd, group(LogicalAnd)),
+	}, {
+		name: "condition group without a logical operator",
+		gc:   root(LogicalAnd, group("", object)),
+	}, {
+		name:        "nested condition group",
+		gc:          root(LogicalAnd, group(LogicalAnd, group(LogicalOr, object))),
+		errContains: "cannot be nested",
+	}, {
+		name:        "empty node in condition group",
+		gc:          root(LogicalAnd, group(LogicalAnd, Node{})),
+		errContains: "is empty",
+	}}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateFilterFormat(tc.gc)
+			if tc.valid && err != nil {
+				t.Errorf("expected filter to be valid: %v", err)
+			}
+			if !tc.valid && err == nil {
+				t.Fatal("expected filter to be invalid")
+			}
+			if tc.errContains != "" && !strings.Contains(err.Error(), tc.errContains) {
+				t.Errorf("error %q should contain %q", err, tc.errContains)
+			}
+		})
+	}
+}
+
 func TestCreateInputMarshalJSON(t *testing.T) {
 	input := CreateInput{
 		Name:        "Test Policy",
@@ -130,10 +252,17 @@ func TestCreateInputMarshalJSON(t *testing.T) {
 			Op: LogicalAnd,
 			Filters: []Node{
 				{
-					Config: &Config{
-						Type:         FilterTypeDocumentDataType,
-						Values:       []string{"password"},
-						Relationship: RelIs,
+					GroupConfig: &GroupConfig{
+						Op: LogicalAnd,
+						Filters: []Node{
+							{
+								Config: &Config{
+									Type:         FilterTypeDocumentDataType,
+									Values:       []string{"password"},
+									Relationship: RelIs,
+								},
+							},
+						},
 					},
 				},
 			},
@@ -196,10 +325,36 @@ func TestUpdateInputMarshalJSON(t *testing.T) {
 	}
 
 	// Unset fields should be omitted.
-	for _, key := range []string{"description", "policyCategory", "policySeverity", "filter", "thresholdFilter"} {
+	for _, key := range []string{"description", "policyCategory", "policySeverity", "filter", "thresholdFilter", "forceUpdateThresholdFilter"} {
 		if _, ok := raw[key]; ok {
 			t.Errorf("field %q should be omitted when nil", key)
 		}
+	}
+}
+
+func TestUpdateInputForceUpdateThresholdFilterMarshalJSON(t *testing.T) {
+	input := UpdateInput{
+		ID:                         uuid.MustParse("d4e5f6a7-b8c9-0123-4567-89abcdef0123"),
+		ForceUpdateThresholdFilter: true,
+	}
+
+	data, err := json.Marshal(input)
+	if err != nil {
+		t.Fatalf("failed to marshal UpdateInput: %v", err)
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	// forceUpdateThresholdFilter is sent and thresholdFilter is omitted: the
+	// nil threshold filter is honored as-is, clearing the existing value.
+	if got, ok := raw["forceUpdateThresholdFilter"]; !ok || string(got) != "true" {
+		t.Errorf("forceUpdateThresholdFilter: got %q (present=%t), want true", got, ok)
+	}
+	if _, ok := raw["thresholdFilter"]; ok {
+		t.Error("thresholdFilter should be omitted when nil")
 	}
 }
 
@@ -221,7 +376,12 @@ func TestCreatePolicy(t *testing.T) {
 		Filter: GroupConfig{
 			Op: LogicalAnd,
 			Filters: []Node{
-				{Config: &Config{Type: FilterTypeDocumentDataType, Values: []string{"password"}, Relationship: RelIs}},
+				{GroupConfig: &GroupConfig{
+					Op: LogicalAnd,
+					Filters: []Node{
+						{Config: &Config{Type: FilterTypeDocumentDataType, Values: []string{"password"}, Relationship: RelIs}},
+					},
+				}},
 			},
 		},
 	})

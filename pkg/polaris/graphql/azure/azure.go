@@ -41,6 +41,7 @@ type Cloud string
 const (
 	ChinaCloud  Cloud = "AZURECHINACLOUD"
 	PublicCloud Cloud = "AZUREPUBLICCLOUD"
+	USGovCloud  Cloud = "AZUREUSGOVERNMENTCLOUD"
 )
 
 // API wraps around GraphQL clients to give them the RSC Azure API.
@@ -86,6 +87,40 @@ func (a API) SetCloudAccountCustomerAppCredentials(ctx context.Context, cloud Cl
 	}
 	if !payload.Data.Result {
 		return graphql.ResponseError(query, errors.New("set app credentials failed"))
+	}
+
+	return nil
+}
+
+// SetCustomerAppForAzureDevOps stores or rotates the customer-supplied Azure AD
+// app used for Azure DevOps onboarding. The credentials are keyed by tenant
+// domain and cloud type, in a separate store from the cloud native protection
+// credentials set by SetCloudAccountCustomerAppCredentials. If shouldReplace is
+// true and an app already exists for the tenant domain and cloud type, the
+// stored credentials are updated in place.
+func (a API) SetCustomerAppForAzureDevOps(ctx context.Context, cloud Cloud, clientID uuid.UUID, appName, tenantDomain string, clientSecret secret.String, shouldReplace bool) error {
+	a.log.Print(log.Trace)
+
+	query := setRubrikCustomerAppForAzureDevopsQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		TenantDomain  string        `json:"tenantDomain"`
+		Cloud         Cloud         `json:"cloudType"`
+		AppName       string        `json:"appName"`
+		ClientID      uuid.UUID     `json:"clientId"`
+		ClientSecret  secret.String `json:"clientSecret"`
+		ShouldReplace bool          `json:"shouldReplace"`
+	}{TenantDomain: tenantDomain, Cloud: cloud, AppName: appName, ClientID: clientID, ClientSecret: clientSecret, ShouldReplace: shouldReplace})
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct{} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
 	}
 
 	return nil

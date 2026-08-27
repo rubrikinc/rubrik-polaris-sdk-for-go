@@ -1,0 +1,10 @@
+mutation RubrikPolarisSDKRequest($clusterUuid: UUID!, $upgradeType: UpgradeType!) {
+  result: setUpgradeType(input: {
+    clusterUuid: $clusterUuid,
+    upgradeType: $upgradeType,
+  }) {
+    code
+    excepshuns
+    message
+  }
+}

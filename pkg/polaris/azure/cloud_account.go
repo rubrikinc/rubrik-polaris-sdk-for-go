@@ -32,6 +32,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -49,10 +50,10 @@ type CloudAccountTenant struct {
 
 // CloudAccount for Azure subscriptions.
 type CloudAccount struct {
-	ID           uuid.UUID // Rubrik cloud account ID.
+	ID           uuid.UUID // RSC cloud account ID.
 	NativeID     uuid.UUID // Azure subscription ID.
 	Name         string
-	TenantID     uuid.UUID // Rubrik tenant ID.
+	TenantID     uuid.UUID // RSC tenant ID.
 	TenantDomain string    // Azure tenant domain.
 	// EntraGroupID is the Entra ID group object ID for Exocompute AKS auth.
 	// Inherited from the tenant; all subscriptions within the same tenant
@@ -100,18 +101,13 @@ func (f Feature) SupportResourceGroup() bool {
 		!f.Equal(core.FeatureCloudDiscovery)
 }
 
-// IsProtectionFeature returns true if the feature is a protection feature.
-func (f Feature) IsProtectionFeature() bool {
-	return f.Equal(core.FeatureCloudNativeProtection) ||
-		f.Equal(core.FeatureCloudNativeBlobProtection) ||
-		f.Equal(core.FeatureAzureSQLDBProtection) ||
-		f.Equal(core.FeatureAzureSQLMIProtection)
-}
-
 // SupportUserAssignedManagedIdentity returns true if the feature supports
-// being onboarded with user-assigned managed identity.
+// being onboarded with user-assigned managed identity. Note, RSC requires an
+// identity for AZURE_POSTGRES_FLEXIBLE_SERVER_PROTECTION and it must belong to
+// the same resource group as the feature.
 func (f Feature) SupportUserAssignedManagedIdentity() bool {
-	return f.Equal(core.FeatureCloudNativeArchivalEncryption)
+	return f.Equal(core.FeatureAzurePostgresFlexibleServerProtection) ||
+		f.Equal(core.FeatureCloudNativeArchivalEncryption)
 }
 
 type FeatureResourceGroup struct {
@@ -356,6 +352,21 @@ func (a API) AddSubscription(ctx context.Context, subscription SubscriptionFunc,
 		}
 	}
 
+	// Wait for the native subscription to become available in the hierarchy
+	// for protection features. Since the cloud account onboarding has already
+	// been completed successfully, we only log errors encountered.
+	if feature.IsProtectionFeature() {
+		if err := a.WaitForNativeSubscription(ctx, account.ID); err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				a.log.Printf(log.Warn, "Subscription %q was successfully onboarded, but a deadline was "+
+					"exceeded before its native subscription became available", account.Name)
+			} else {
+				a.log.Printf(log.Warn, "Subscription %q was successfully onboarded, but an unexpected error "+
+					"occurred while waiting for the native subscription to become available: %s", account.Name, err)
+			}
+		}
+	}
+
 	return account.ID, nil
 }
 
@@ -372,11 +383,11 @@ func (a API) RemoveSubscription(ctx context.Context, cloudAccountID uuid.UUID, f
 		return fmt.Errorf("failed to retrieve subscription: %w", err)
 	}
 
-	// The Cloud Discovery feature must be removed after all protection
+	// The Cloud Discovery feature must be removed after all other protection
 	// features have been removed.
 	if feature.Equal(core.FeatureCloudDiscovery) {
 		for _, f := range account.Features {
-			if f.IsProtectionFeature() {
+			if !f.Equal(core.FeatureCloudDiscovery) && f.IsProtectionFeature() {
 				return errors.New("cloud discovery must be removed after all other protection features")
 			}
 		}
@@ -535,11 +546,25 @@ func (a API) UpdateSubscription(ctx context.Context, cloudAccountID uuid.UUID, f
 	return nil
 }
 
-// AddServicePrincipal adds the service principal for the app. If shouldReplace
-// is true and the app already has a service principal, it will be replaced.
-// Note that it's not possible to remove a service principal once it has been
-// set. Returns the application ID of the service principal set.
-func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipalFunc, shouldReplace bool) (uuid.UUID, error) {
+// AppUseCase selects what a service principal / customer app is registered for.
+// The value determines which credential store the app is registered in.
+type AppUseCase string
+
+const (
+	// AppUseCaseCNP registers the app for cloud native protection.
+	AppUseCaseCNP AppUseCase = "DEFAULT"
+	// AppUseCaseDevOps registers the app for Azure DevOps.
+	AppUseCaseDevOps AppUseCase = "AZURE_DEVOPS"
+)
+
+// AddServicePrincipalForUseCase registers the service principal for the
+// specified use case. The use case selects which credential store the customer
+// app is registered in: cloud native protection and Azure DevOps use separate
+// stores. If shouldReplace is true and the app already has a service principal,
+// it will be replaced. Note that it's not possible to remove a service
+// principal once it has been set. Returns the application ID of the service
+// principal set.
+func (a API) AddServicePrincipalForUseCase(ctx context.Context, principal ServicePrincipalFunc, useCase AppUseCase, shouldReplace bool) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
 	config, err := principal(ctx)
@@ -547,8 +572,16 @@ func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipal
 		return uuid.Nil, fmt.Errorf("failed to lookup principal: %v", err)
 	}
 
-	err = gqlazure.Wrap(a.client).SetCloudAccountCustomerAppCredentials(ctx, gqlazure.PublicCloud, config.appID,
-		config.tenantID, config.appName, config.tenantDomain, config.appSecret, shouldReplace)
+	switch useCase {
+	case AppUseCaseCNP:
+		err = gqlazure.Wrap(a.client).SetCloudAccountCustomerAppCredentials(ctx, gqlazure.PublicCloud, config.appID,
+			config.tenantID, config.appName, config.tenantDomain, config.appSecret, shouldReplace)
+	case AppUseCaseDevOps:
+		err = gqlazure.Wrap(a.client).SetCustomerAppForAzureDevOps(ctx, gqlazure.PublicCloud, config.appID,
+			config.appName, config.tenantDomain, secret.String(config.appSecret), shouldReplace)
+	default:
+		return uuid.Nil, fmt.Errorf("unknown app use case: %q", useCase)
+	}
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to set customer app credentials: %v", err)
 	}
@@ -556,19 +589,41 @@ func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipal
 	return config.appID, nil
 }
 
-// SetServicePrincipal sets the service principal for the app. If the app
-// already has a service principal, it will be replaced. Note that it's not
-// possible to remove a service principal once it has been set. Returns the
-// application ID of the service principal set.
+// AddServicePrincipal adds the service principal for the app for cloud native
+// protection. Equivalent to AddServicePrincipalForUseCase with AppUseCaseCNP.
+// If shouldReplace is true and the app already has a service principal, it will
+// be replaced. Note that it's not possible to remove a service principal once
+// it has been set. Returns the application ID of the service principal set.
+func (a API) AddServicePrincipal(ctx context.Context, principal ServicePrincipalFunc, shouldReplace bool) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	return a.AddServicePrincipalForUseCase(ctx, principal, AppUseCaseCNP, shouldReplace)
+}
+
+// SetServicePrincipalForUseCase sets the service principal for the specified
+// use case. If the app already has a service principal, it will be replaced.
+// Note that it's not possible to remove a service principal once it has been
+// set. Returns the application ID of the service principal set.
+func (a API) SetServicePrincipalForUseCase(ctx context.Context, principal ServicePrincipalFunc, useCase AppUseCase) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	return a.AddServicePrincipalForUseCase(ctx, principal, useCase, true)
+}
+
+// SetServicePrincipal sets the service principal for the app for cloud native
+// protection. If the app already has a service principal, it will be replaced.
+// Note that it's not possible to remove a service principal once it has been
+// set. Returns the application ID of the service principal set.
 func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipalFunc) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	return a.AddServicePrincipal(ctx, principal, true)
+	return a.AddServicePrincipalForUseCase(ctx, principal, AppUseCaseCNP, true)
 }
 
 // SupportedFeatures returns the features supported by Azure cloud accounts.
 func SupportedFeatures() []core.Feature {
 	return []core.Feature{
+		core.FeatureAzurePostgresFlexibleServerProtection,
 		core.FeatureAzureSQLDBProtection,
 		core.FeatureAzureSQLMIProtection,
 		core.FeatureCloudDiscovery,

@@ -30,7 +30,8 @@ func TestCDMVersionCompare(t *testing.T) {
 		expected int
 	}{
 		{"equal versions", "9.4.0", "9.4.0", 0},
-		{"equal with suffix", "9.4.0-p2-30507", "9.4.0", 0},
+		{"equal suffix without build", "9.4.0-p2", "9.4.0", 0},
+		{"build greater than base", "9.4.0-p2-30507", "9.4.0", 1},
 		{"less than major", "8.4.0", "9.4.0", -1},
 		{"greater than major", "10.4.0", "9.4.0", 1},
 		{"less than minor", "9.3.0", "9.4.0", -1},
@@ -38,7 +39,10 @@ func TestCDMVersionCompare(t *testing.T) {
 		{"less than patch", "9.4.0", "9.4.1", -1},
 		{"greater than patch", "9.4.2", "9.4.1", 1},
 		{"compare with suffix", "9.4.0-p2-30507", "9.5", -1},
-		{"partial version comparison", "9.5.0-p1-12345", "9.5", 0},
+		{"build breaks same patch tie", "9.5.0-p2-36035", "9.5.0-p1-35914", 1},
+		{"lower build same patch", "9.5.0-p1-35914", "9.5.0-p2-36035", -1},
+		{"equal full version", "9.4.2-p1-30914", "9.4.2-p1-30914", 0},
+		{"build greater than partial", "9.5.0-p1-12345", "9.5", 1},
 		{"major only comparison", "10.0.0", "9", 1},
 	}
 

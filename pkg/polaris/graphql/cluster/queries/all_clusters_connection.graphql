@@ -55,6 +55,9 @@ query RubrikPolarisSDKRequest(
           }
         }
         productType
+        type
+        status
+        systemStatus
         timezone
         version
       }

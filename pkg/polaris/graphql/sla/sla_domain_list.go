@@ -60,7 +60,10 @@ type Domain struct {
 			TierExistingSnapshots          bool             `json:"shouldTierExistingSnapshots"`
 		} `json:"archivalTieringSpec"`
 	} `json:"archivalSpecs"`
-	Archived            bool `json:"isArchived"`
+	Archived bool `json:"isArchived"`
+	// BackupType distinguishes V1 (Azure-managed / LTR, "NATIVE") from V2
+	// (Rubrik-managed) Azure SQL SLAs. Read-only.
+	BackupType          BackupType `json:"backupType"`
 	BackupLocationSpecs []struct {
 		ArchivalGroup struct {
 			ID string `json:"id"`
@@ -86,20 +89,21 @@ type Domain struct {
 			AzureBlobConfig
 			BackupLocationName string `json:"backupLocationName"`
 		} `json:"azureBlobConfig"`
-		AzureSQLDatabaseDBConfig        *AzureDBConfig              `json:"azureSqlDatabaseDbConfig"`
-		AzureSQLManagedInstanceDBConfig *AzureDBConfig              `json:"azureSqlManagedInstanceDbConfig"`
-		VMwareVMConfig                  *VMwareVMConfig             `json:"vmwareVmConfig"`
-		SapHanaConfig                   *SapHanaConfig              `json:"sapHanaConfig"`
-		DB2Config                       *DB2Config                  `json:"db2Config"`
-		MssqlConfig                     *MssqlConfig                `json:"mssqlConfig"`
-		OracleConfig                    *OracleConfig               `json:"oracleConfig"`
-		MongoConfig                     *MongoConfig                `json:"mongoConfig"`
-		ManagedVolumeSlaConfig          *ManagedVolumeSlaConfig     `json:"managedVolumeSlaConfig"`
-		PostgresDbClusterSlaConfig      *PostgresDbClusterSlaConfig `json:"postgresDbClusterSlaConfig"`
-		MysqldbSlaConfig                *MysqldbSlaConfig           `json:"mysqldbSlaConfig"`
-		NcdSlaConfig                    *NcdSlaConfig               `json:"ncdSlaConfig"`
-		InformixSlaConfig               *InformixSlaConfig          `json:"informixSlaConfig"`
-		GcpCloudSqlConfig               *GcpCloudSqlConfig          `json:"gcpCloudSqlConfig"`
+		AzurePostgresFlexibleServerConfig *AzurePostgresFlexibleServerConfig `json:"azurePostgresFlexibleServerConfig"`
+		AzureSQLDatabaseDBConfig          *AzureDBConfig                     `json:"azureSqlDatabaseDbConfig"`
+		AzureSQLManagedInstanceDBConfig   *AzureDBConfig                     `json:"azureSqlManagedInstanceDbConfig"`
+		VMwareVMConfig                    *VMwareVMConfig                    `json:"vmwareVmConfig"`
+		SapHanaConfig                     *SapHanaConfig                     `json:"sapHanaConfig"`
+		DB2Config                         *DB2Config                         `json:"db2Config"`
+		MssqlConfig                       *MssqlConfig                       `json:"mssqlConfig"`
+		OracleConfig                      *OracleConfig                      `json:"oracleConfig"`
+		MongoConfig                       *MongoConfig                       `json:"mongoConfig"`
+		ManagedVolumeSlaConfig            *ManagedVolumeSlaConfig            `json:"managedVolumeSlaConfig"`
+		PostgresDbClusterSlaConfig        *PostgresDbClusterSlaConfig        `json:"postgresDbClusterSlaConfig"`
+		MysqldbSlaConfig                  *MysqldbSlaConfig                  `json:"mysqldbSlaConfig"`
+		NcdSlaConfig                      *NcdSlaConfig                      `json:"ncdSlaConfig"`
+		InformixSlaConfig                 *InformixSlaConfig                 `json:"informixSlaConfig"`
+		GcpCloudSqlConfig                 *GcpCloudSqlConfig                 `json:"gcpCloudSqlConfig"`
 	} `json:"objectSpecificConfigs"`
 	ObjectTypes      []ObjectType `json:"objectTypes"`
 	ReplicationSpecs []struct {

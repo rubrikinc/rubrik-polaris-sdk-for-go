@@ -8,6 +8,8 @@ mutation RubrikPolarisSDKRequest(
     $featuresWithPG: [FeatureWithPermissionsGroups!],
     $stackName:      String!,
     $cloudType:      AwsCloudType,
+    $awsIamPairId:   String,
+    $serviceType:    AwsCloudAccountServiceType,
 ) {
     finalizeAwsCloudAccountProtection(input: {
         action: CREATE,
@@ -22,9 +24,13 @@ mutation RubrikPolarisSDKRequest(
         features:                      $features,
         featuresWithPermissionsGroups: $featuresWithPG,
         stackName:                     $stackName,
+        awsIamPairId:                  $awsIamPairId,
+        serviceType:                   $serviceType,
     }) {
        awsChildAccounts {
            accountName
+           cloudType
+           id
            nativeId
            message
        }

@@ -1,0 +1,11 @@
+query RubrikPolarisSDKRequest($input: GcpCdmVersionReq!) {
+  result: gcpCdmVersions(input: $input) {
+    cdmVersions {
+      cdmVersion
+      cdmProduct
+      imageId
+      isLatest
+      supportedInstanceTypes
+    }
+  }
+}

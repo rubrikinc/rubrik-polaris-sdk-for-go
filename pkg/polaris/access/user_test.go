@@ -29,6 +29,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlaccess "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/access"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 )
 
 func TestUserManagement(t *testing.T) {
@@ -114,10 +115,10 @@ func TestUserManagement(t *testing.T) {
 
 	// Add new role.
 	roleID, err := accessClient.CreateRole(ctx, "Integration Test Role", "Test Role Description", []gqlaccess.Permission{{
-		Operation: "VIEW_CLUSTER",
+		Operation: string(gqlaccess.OperationViewCluster),
 		ObjectsForHierarchyTypes: []gqlaccess.ObjectsForHierarchyType{{
 			SnappableType: "AllSubHierarchyType",
-			ObjectIDs:     []string{"CLUSTER_ROOT"},
+			ObjectIDs:     []string{hierarchy.ClusterRoot},
 		}},
 	}})
 	if err != nil {

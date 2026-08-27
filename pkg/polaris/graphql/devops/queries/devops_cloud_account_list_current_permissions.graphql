@@ -1,0 +1,20 @@
+query RubrikPolarisSDKRequest($organizationId: UUID!, $featuresWithPermissionsGroups: [FeatureWithPermissionsGroups!]) {
+  result: devOpsCloudAccountListCurrentPermissions(input: {
+    organizationId: $organizationId,
+    featuresWithPermissionsGroups: $featuresWithPermissionsGroups,
+  }) {
+    featurePermissions {
+      feature
+      permissionJson
+      permissionsGroupVersions {
+        permissionsGroup
+        version
+      }
+    }
+    groupPermissions {
+      group
+      permissions
+      version
+    }
+  }
+}

@@ -60,6 +60,10 @@ func (policy ManagedPolicy) lessThan(other ManagedPolicy) bool {
 func (a API) Permissions(ctx context.Context, cloud string, features []core.Feature, ec2RecoveryRolePath string) ([]CustomerManagedPolicy, []ManagedPolicy, error) {
 	a.log.Print(log.Trace)
 
+	if err := core.ValidateRoleChaining(features); err != nil {
+		return nil, nil, err
+	}
+
 	c, err := aws.ParseCloud(cloud)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse cloud: %s", err)

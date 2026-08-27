@@ -1,5 +1,5 @@
-query RubrikPolarisSDKRequest($features: [CloudAccountFeature!]!) {
-    result: allAWSLatestPermissionsByPermissionsGroup(features: $features) {
+query RubrikPolarisSDKRequest($features: [CloudAccountFeature!]!, $serviceType: AwsCloudAccountServiceType) {
+    result: allAWSLatestPermissionsByPermissionsGroup(features: $features, serviceType: $serviceType) {
         feature
         permissionsGroupPermissions {
             permissionsGroup
