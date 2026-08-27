@@ -422,7 +422,12 @@ const (
 	EventSeriesSortFieldLastUpdated EventSeriesSortField = "LAST_UPDATED"
 )
 
-// ActivityStatus represents the status of an activity.
+// ActivityStatus represents the status of an activity, as returned by RSC in
+// an activity or event series.
+//
+// RSC spells activity statuses differently depending on the direction: this is
+// the ActivityStatusEnum spelling, used in responses. To filter on a status,
+// use EventStatus instead.
 type ActivityStatus string
 
 const (
@@ -439,7 +444,34 @@ const (
 	ActivityStatusSuccess        ActivityStatus = "Success"
 )
 
-// ActivityType represents the type of an activity.
+// EventStatus represents the status of an activity when filtering an event
+// series.
+//
+// This is the counterpart of ActivityStatus: same statuses, but the EventStatus
+// spelling RSC requires in filter input. Passing an ActivityStatus value to a
+// filter is rejected by RSC.
+type EventStatus string
+
+const (
+	EventStatusUnknown        EventStatus = "UNKNOWN_EVENT_STATUS"
+	EventStatusCanceled       EventStatus = "CANCELED"
+	EventStatusCanceling      EventStatus = "CANCELING"
+	EventStatusFailure        EventStatus = "FAILURE"
+	EventStatusInfo           EventStatus = "INFO"
+	EventStatusPartialSuccess EventStatus = "PARTIAL_SUCCESS"
+	EventStatusQueued         EventStatus = "QUEUED"
+	EventStatusRunning        EventStatus = "RUNNING"
+	EventStatusSuccess        EventStatus = "SUCCESS"
+	EventStatusTaskFailure    EventStatus = "TASK_FAILURE"
+	EventStatusTaskSuccess    EventStatus = "TASK_SUCCESS"
+	EventStatusWarning        EventStatus = "WARNING"
+)
+
+// ActivityType represents the type of an activity, as returned by RSC in an
+// activity or event series.
+//
+// As with ActivityStatus, this is the response spelling — the ActivityTypeEnum
+// one. To filter on an activity type, use EventType instead.
 type ActivityType string
 
 const (
@@ -511,6 +543,88 @@ const (
 	ActivityTypeIdentityIntelligence          ActivityType = "USER_INTELLIGENCE"
 )
 
+// EventType represents the type of an activity when filtering an event series.
+//
+// This is the counterpart of ActivityType: same activity types, but the
+// EventType spelling RSC requires in filter input. Passing an ActivityType
+// value to a filter is rejected by RSC.
+type EventType string
+
+const (
+	EventTypeUnknown                         EventType = "UNKNOWN_EVENT_TYPE"
+	EventTypeAgentCloudSecurityAlert         EventType = "AGENT_CLOUD_SECURITY_ALERT"
+	EventTypeAnomaly                         EventType = "ANOMALY"
+	EventTypeArchive                         EventType = "ARCHIVE"
+	EventTypeAuthDomain                      EventType = "AUTH_DOMAIN"
+	EventTypeAwsEvent                        EventType = "AWS_EVENT"
+	EventTypeBackup                          EventType = "BACKUP"
+	EventTypeBulkRecovery                    EventType = "BULK_RECOVERY"
+	EventTypeClassification                  EventType = "CLASSIFICATION"
+	EventTypeCloudDirectArchive              EventType = "CLOUD_DIRECT_ARCHIVE"
+	EventTypeCloudNativeSource               EventType = "CLOUD_NATIVE_SOURCE"
+	EventTypeCloudNativeVirtualMachine       EventType = "CLOUD_NATIVE_VIRTUAL_MACHINE"
+	EventTypeCloudNativeVm                   EventType = "CLOUD_NATIVE_VM"
+	EventTypeConfiguration                   EventType = "CONFIGURATION"
+	EventTypeConnection                      EventType = "CONNECTION"
+	EventTypeConversion                      EventType = "CONVERSION"
+	EventTypeCopy                            EventType = "COPY"
+	EventTypeDiagnostic                      EventType = "DIAGNOSTIC"
+	EventTypeDiscover                        EventType = "DISCOVER"
+	EventTypeDiscovery                       EventType = "DISCOVERY"
+	EventTypeDownload                        EventType = "DOWNLOAD"
+	EventTypeEmbeddedEvent                   EventType = "EMBEDDED_EVENT"
+	EventTypeEncryptionManagementOperation   EventType = "ENCRYPTION_MANAGEMENT_OPERATION"
+	EventTypeFailover                        EventType = "FAILOVER"
+	EventTypeFileset                         EventType = "FILESET"
+	EventTypeHardware                        EventType = "HARDWARE"
+	EventTypeHdfs                            EventType = "HDFS"
+	EventTypeHostEvent                       EventType = "HOST_EVENT"
+	EventTypeHypervScvmm                     EventType = "HYPERV_SCVMM"
+	EventTypeHypervServer                    EventType = "HYPERV_SERVER"
+	EventTypeIdentityActivity                EventType = "IDENTITY_ACTIVITY"
+	EventTypeIdentityAlerts                  EventType = "IDENTITY_ALERTS"
+	EventTypeIdentityViolation               EventType = "IDENTITY_VIOLATION"
+	EventTypeIndex                           EventType = "INDEX"
+	EventTypeInstantiate                     EventType = "INSTANTIATE"
+	EventTypeIsolatedRecovery                EventType = "ISOLATED_RECOVERY"
+	EventTypeLegalHold                       EventType = "LEGAL_HOLD"
+	EventTypeLocalRecovery                   EventType = "LOCAL_RECOVERY"
+	EventTypeLockSnapshot                    EventType = "LOCK_SNAPSHOT"
+	EventTypeLogBackup                       EventType = "LOG_BACKUP"
+	EventTypeMaintenance                     EventType = "MAINTENANCE"
+	EventTypeNutanixCluster                  EventType = "NUTANIX_CLUSTER"
+	EventTypeOwnership                       EventType = "OWNERSHIP"
+	EventTypePermissionAssessment            EventType = "PERMISSION_ASSESSMENT"
+	EventTypeProtectedObjectDeletion         EventType = "PROTECTED_OBJECT_DELETION"
+	EventTypeQuarantine                      EventType = "QUARANTINE"
+	EventTypeRansomwareInvestigationAnalysis EventType = "RANSOMWARE_INVESTIGATION_ANALYSIS"
+	EventTypeRecovery                        EventType = "RECOVERY"
+	EventTypeReencryption                    EventType = "REENCRYPTION"
+	EventTypeReplication                     EventType = "REPLICATION"
+	EventTypeResourceOperations              EventType = "RESOURCE_OPERATIONS"
+	EventTypeScheduleRecovery                EventType = "SCHEDULE_RECOVERY"
+	EventTypeSecurityViolation               EventType = "SECURITY_VIOLATION"
+	EventTypeSeeding                         EventType = "SEEDING"
+	EventTypeStorage                         EventType = "STORAGE"
+	EventTypeStorageArray                    EventType = "STORAGE_ARRAY"
+	EventTypeStormResource                   EventType = "STORM_RESOURCE"
+	EventTypeSupport                         EventType = "SUPPORT"
+	EventTypeSync                            EventType = "SYNC"
+	EventTypeSystem                          EventType = "SYSTEM"
+	EventTypeTenantOverlap                   EventType = "TENANT_OVERLAP"
+	EventTypeTenantQuota                     EventType = "TENANT_QUOTA"
+	EventTypeTestFailover                    EventType = "TEST_FAILOVER"
+	EventTypeThreatFeed                      EventType = "THREAT_FEED"
+	EventTypeThreatHunt                      EventType = "THREAT_HUNT"
+	EventTypeThreatMonitoring                EventType = "THREAT_MONITORING"
+	EventTypeTpr                             EventType = "TPR"
+	EventTypeUpgrade                         EventType = "UPGRADE"
+	EventTypeUserIntelligence                EventType = "USER_INTELLIGENCE"
+	EventTypeVcd                             EventType = "VCD"
+	EventTypeVcenter                         EventType = "VCENTER"
+	EventTypeVolumeGroup                     EventType = "VOLUME_GROUP"
+)
+
 // ClusterType represents the type of a cluster.
 type ClusterType string
 
@@ -536,8 +650,8 @@ const (
 type EventSeriesFilter struct {
 	ClusterID          []uuid.UUID       `json:"clusterId,omitempty"`
 	ClusterType        []ClusterType     `json:"clusterType,omitempty"`
-	LastActivityStatus []ActivityStatus  `json:"lastActivityStatus,omitempty"`
-	LastActivityType   []ActivityType    `json:"lastActivityType,omitempty"`
+	LastActivityStatus []EventStatus     `json:"lastActivityStatus,omitempty"`
+	LastActivityType   []EventType       `json:"lastActivityType,omitempty"`
 	LastUpdatedTimeGt  string            `json:"lastUpdatedTimeGt,omitempty"`
 	LastUpdatedTimeLt  string            `json:"lastUpdatedTimeLt,omitempty"`
 	ObjectFID          []uuid.UUID       `json:"objectFid,omitempty"`
