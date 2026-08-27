@@ -84,15 +84,15 @@ func (a API) AddCustomerTags(ctx context.Context, customerTags tags.CustomerTags
 
 	// Add new excluded tag patterns, eliminating duplicates.
 	etm := make(map[string]struct{}, len(cts.ExcludedTags)+len(customerTags.ExcludedTags))
-	for _, p := range cts.ExcludedTags {
-		etm[p] = struct{}{}
+	for _, k := range cts.ExcludedTags {
+		etm[k] = struct{}{}
 	}
-	for _, p := range customerTags.ExcludedTags {
-		etm[p] = struct{}{}
+	for _, k := range customerTags.ExcludedTags {
+		etm[k] = struct{}{}
 	}
 	cts.ExcludedTags = make([]string, 0, len(etm))
-	for p := range etm {
-		cts.ExcludedTags = append(cts.ExcludedTags, p)
+	for k := range etm {
+		cts.ExcludedTags = append(cts.ExcludedTags, k)
 	}
 
 	// Replace customer tags.
