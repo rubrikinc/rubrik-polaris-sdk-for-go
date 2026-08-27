@@ -31,15 +31,22 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// CustomerTags holds the customer tags for a specific cloud vendor.
+// CustomerTags holds the customer tags for a specific cloud vendor. When
+// CloudAccountID is empty, the customer tags are scoped to all cloud accounts
+// of the cloud vendor, otherwise they are scoped to the specified cloud
+// account. The two scopes hold independent sets of customer tags.
 type CustomerTags struct {
 	CloudVendor          core.CloudVendor `json:"cloudVendor"`
+	CloudAccountID       string           `json:"cloudAccountId,omitempty"`
 	Tags                 []core.Tag       `json:"customerTags"`
 	ExcludedTags         []string         `json:"excludedTags"`
 	OverrideResourceTags bool             `json:"shouldOverrideResourceTags"`
 }
 
-// CustomerTagsFilter holds the filter for a customer tags list operation.
+// CustomerTagsFilter holds the filter for a customer tags list operation. When
+// CloudAccountID is empty, the customer tags scoped to all cloud accounts of
+// the cloud vendor are returned, otherwise the customer tags scoped to the
+// specified cloud account are returned.
 type CustomerTagsFilter struct {
 	CloudVendor    core.CloudVendor `json:"cloudVendor"`
 	CloudAccountID string           `json:"cloudAccountId,omitempty"`
@@ -65,6 +72,7 @@ func ListCustomerTags(ctx context.Context, gql *graphql.Client, filter CustomerT
 		return CustomerTags{}, graphql.UnmarshalError(query, err)
 	}
 	payload.Data.Result.CloudVendor = filter.CloudVendor
+	payload.Data.Result.CloudAccountID = filter.CloudAccountID
 
 	return payload.Data.Result, nil
 }
