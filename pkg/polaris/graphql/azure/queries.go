@@ -48,6 +48,19 @@ var addAzureCloudAccountWithoutOauthQuery = `mutation SdkGolangAddAzureCloudAcco
     }
 }`
 
+// addCloudNativeSqlServerBackupCredentials GraphQL query
+var addCloudNativeSqlServerBackupCredentialsQuery = `mutation SdkGolangAddCloudNativeSqlServerBackupCredentials($objectIds: [UUID!]!, $workloadType: WorkloadLevelHierarchy!, $backupCredentials: LoginCredentials, $shouldUseAad: Boolean) {
+    result: addCloudNativeSqlServerBackupCredentials(input: {
+        objectIds:         $objectIds,
+        workloadType:      $workloadType,
+        backupCredentials: $backupCredentials,
+        shouldUseAad:      $shouldUseAad
+    }) {
+        successObjectIds
+        failedObjectIds
+    }
+}`
+
 // allAzureCloudAccountTenants GraphQL query
 var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenants($feature: CloudAccountFeature!, $includeSubscriptionDetails: Boolean!) {
     result: allAzureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $includeSubscriptionDetails) {
@@ -382,6 +395,19 @@ var setupCloudNativeSqlServerBackupQuery = `mutation SdkGolangSetupCloudNativeSq
         errors {
             error
             rubrikObjectId
+        }
+    }
+}`
+
+// sqlServerSetupScriptsBulk GraphQL query
+var sqlServerSetupScriptsBulkQuery = `query SdkGolangSqlServerSetupScriptsBulk($serverIds: [UUID!]) {
+    result: sqlServerSetupScriptsBulk(input: {
+        serverIds: $serverIds
+    }) {
+        scriptDetails {
+            serverId
+            authType
+            script
         }
     }
 }`

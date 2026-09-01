@@ -143,3 +143,102 @@ func (a API) ClearSQLManagedInstanceBackupCredentials(ctx context.Context, serve
 
 	return nil
 }
+
+// AddSQLManagedInstanceBackupCredentials registers the SQL Server credentials
+// RSC uses to back up the specified Azure SQL Managed Instance servers.
+//
+// Use this when the backup user has already been created by running the setup
+// script from SQLManagedInstanceSetupScripts against the server. The
+// credentials must match the ones the script was run with. To have RSC create
+// the user itself from an administrator login instead, use
+// SetupSQLManagedInstanceBackup.
+//
+// A server which only supports Microsoft Entra ID authentication cannot use SQL
+// Server credentials, see AddSQLManagedInstanceBackupCredentialsUsingEntraID.
+//
+// Unlike SetupSQLManagedInstanceBackup this is not asynchronous, so there is no
+// task chain to wait for. Servers are handled independently of each other, and
+// all failures are reported together.
+func (a API) AddSQLManagedInstanceBackupCredentials(ctx context.Context, serverIDs []uuid.UUID, credentials gqlazure.LoginCredentials) error {
+	a.log.Print(log.Trace)
+
+	return a.addSQLManagedInstanceBackupCredentials(ctx, serverIDs, &credentials)
+}
+
+// AddSQLManagedInstanceBackupCredentialsUsingEntraID registers Microsoft Entra
+// ID as the authentication mechanism RSC uses to back up the specified Azure
+// SQL Managed Instance servers, instead of a SQL Server login.
+//
+// As with AddSQLManagedInstanceBackupCredentials, the setup script from
+// SQLManagedInstanceSetupScripts must already have been run against the server.
+// No credentials are sent. The server must support Entra ID authentication,
+// which SQLServerSetupScript.AuthType reports.
+func (a API) AddSQLManagedInstanceBackupCredentialsUsingEntraID(ctx context.Context, serverIDs []uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	return a.addSQLManagedInstanceBackupCredentials(ctx, serverIDs, nil)
+}
+
+// addSQLManagedInstanceBackupCredentials registers backup credentials for the
+// specified servers, authenticating as a SQL Server user when credentials are
+// given and using Microsoft Entra ID when they are nil.
+func (a API) addSQLManagedInstanceBackupCredentials(ctx context.Context, serverIDs []uuid.UUID, credentials *gqlazure.LoginCredentials) error {
+	if len(serverIDs) == 0 {
+		return errors.New("at least one server ID is required")
+	}
+
+	successIDs, failedIDs, err := gqlazure.Wrap(a.client).AddCloudNativeSQLServerBackupCredentials(ctx, serverIDs,
+		hierarchy.WorkloadAzureSQLMIDB, credentials)
+	if err != nil {
+		return fmt.Errorf("failed to add SQL Managed Instance backup credentials: %s", err)
+	}
+	if len(failedIDs) > 0 {
+		return fmt.Errorf("failed to add backup credentials for SQL Managed Instance servers: %v", failedIDs)
+	}
+
+	// RSC acknowledges each requested server in one of the two lists. A server
+	// in neither was silently dropped, so report it rather than returning
+	// success for a server whose credentials were never registered. This also
+	// covers RSC returning nothing at all.
+	acknowledged := make(map[uuid.UUID]struct{}, len(successIDs))
+	for _, serverID := range successIDs {
+		acknowledged[serverID] = struct{}{}
+	}
+	var missing []uuid.UUID
+	for _, serverID := range serverIDs {
+		if _, ok := acknowledged[serverID]; !ok {
+			missing = append(missing, serverID)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("no backup credentials were added for SQL Managed Instance servers: %v", missing)
+	}
+
+	return nil
+}
+
+// SQLManagedInstanceSetupScripts returns the setup script for each of the
+// specified Azure SQL Managed Instance servers.
+//
+// The script must be run against the managed instance before its backup
+// credentials are registered with AddSQLManagedInstanceBackupCredentials or
+// AddSQLManagedInstanceBackupCredentialsUsingEntraID. Running it is out of
+// scope for the SDK: it is a T-SQL script executed against the managed
+// instance, not an RSC operation.
+//
+// Each script comes with the authentication mechanisms its server supports,
+// which determines which of the two functions above can be used.
+func (a API) SQLManagedInstanceSetupScripts(ctx context.Context, serverIDs []uuid.UUID) ([]gqlazure.SQLServerSetupScript, error) {
+	a.log.Print(log.Trace)
+
+	if len(serverIDs) == 0 {
+		return nil, errors.New("at least one server ID is required")
+	}
+
+	scripts, err := gqlazure.Wrap(a.client).SQLServerSetupScripts(ctx, serverIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get SQL Managed Instance setup scripts: %s", err)
+	}
+
+	return scripts, nil
+}
