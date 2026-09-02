@@ -391,10 +391,17 @@ func (AzurePostgresFlexibleServer) typeFilter() ObjectType {
 
 // AzureSQLManagedInstanceServer represents an Azure SQL Managed Instance server
 // from the inventory root. In addition to the common object fields it exposes
-// the parent subscription details, so callers can filter servers by
-// subscription client-side — the inventory query has no subscription filter.
+// the authentication mechanisms the server supports and the parent subscription
+// details, the latter so callers can filter servers by subscription
+// client-side — the inventory query has no subscription filter.
 type AzureSQLManagedInstanceServer struct {
 	Object
+	// AuthType is the authentication mechanisms the server supports, e.g.
+	// SQL_AUTH_ONLY. It determines how the backup credentials RSC uses for the
+	// server can be configured. It mirrors the azure.AzureSQLAuthenticationType
+	// values but is typed as a string here because importing the graphql/azure
+	// package would create an import cycle (azure -> core -> hierarchy).
+	AuthType      string `json:"authType"`
 	ResourceGroup struct {
 		Subscription AzureSubscriptionDetails `json:"azureSubscriptionDetails"`
 	} `json:"azureResourceGroupDetails"`

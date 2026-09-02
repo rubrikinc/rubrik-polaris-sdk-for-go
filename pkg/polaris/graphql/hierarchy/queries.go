@@ -81,6 +81,7 @@ var hierarchyObjectQuery = `query SdkGolangHierarchyObject($fid: UUID!, $workloa
             orgId
         }
         ... on AzureSqlManagedInstanceServer {
+            authType
             azureResourceGroupDetails {
                 azureSubscriptionDetails {
                     id
@@ -154,6 +155,7 @@ var inventoryRootQuery = `query SdkGolangInventoryRoot($after: String, $filter: 
                     orgId
                 }
                 ... on AzureSqlManagedInstanceServer {
+                    authType
                     azureResourceGroupDetails {
                         azureSubscriptionDetails {
                             id
