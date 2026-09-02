@@ -27,7 +27,9 @@ package hierarchy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -518,6 +520,12 @@ func objectsByFilter[T InventoryObject](ctx context.Context, a API, workloadHier
 // This can be used to query any hierarchy object (VMs, databases, tag rules,
 // etc.) and retrieve its information. The workloadHierarchy parameter
 // determines which workload type to use for resolution.
+//
+// If no object with the specified ID is found, graphql.ErrNotFound is returned.
+// Note that RSC answers with the same response for an object which does not
+// exist and for an object the service account is not authorized to access, so
+// the two cannot be told apart. The underlying error is wrapped as well, so the
+// RSC trace ID remains available for troubleshooting.
 func ObjectByIDAndWorkload[T any](ctx context.Context, gql *graphql.Client, fid uuid.UUID, workloadHierarchy Workload) (T, error) {
 	gql.Log().Print(log.Trace)
 
@@ -528,6 +536,10 @@ func ObjectByIDAndWorkload[T any](ctx context.Context, gql *graphql.Client, fid 
 		WorkloadHierarchy Workload  `json:"workloadHierarchy,omitempty"`
 	}{FID: fid, WorkloadHierarchy: workloadHierarchy})
 	if err != nil {
+		var gqlErr graphql.GQLError
+		if errors.As(err, &gqlErr) && gqlErr.Code() == http.StatusNotFound {
+			return zero, fmt.Errorf("hierarchy object %s %w: %w", fid, graphql.ErrNotFound, err)
+		}
 		return zero, graphql.RequestError(query, err)
 	}
 
