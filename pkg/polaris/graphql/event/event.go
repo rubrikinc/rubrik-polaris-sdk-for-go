@@ -541,6 +541,12 @@ const (
 	ActivityTypeIndex                         ActivityType = "Index"
 	ActivityTypeThreatHunt                    ActivityType = "ThreatHunt"
 	ActivityTypeIdentityIntelligence          ActivityType = "USER_INTELLIGENCE"
+	ActivityTypeAgentCloudSecurityAlert       ActivityType = "AGENT_CLOUD_SECURITY_ALERT"
+	ActivityTypeCloudDirectArchive            ActivityType = "CLOUD_DIRECT_ARCHIVE"
+	ActivityTypeCopy                          ActivityType = "COPY"
+	ActivityTypeDiscover                      ActivityType = "DISCOVER"
+	ActivityTypeIdentityActivity              ActivityType = "IDENTITY_ACTIVITY"
+	ActivityTypeReencryption                  ActivityType = "REENCRYPTION"
 )
 
 // EventType represents the type of an activity when filtering an event series.
