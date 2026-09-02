@@ -174,10 +174,17 @@ func (a API) ClearCloudNativeSQLServerBackupCredentials(ctx context.Context, obj
 // workload type must match the object type, e.g. hierarchy.WorkloadAzureSQLMIDB
 // for Azure SQL Managed Instances.
 //
-// Pass credentials to authenticate as a SQL Server user, which requires that
-// the setup script created that user. Pass nil to authenticate using Microsoft
-// Entra ID instead, which is only possible for a server supporting Entra ID
-// authentication, see SQLServerSetupScripts for how to determine that.
+// Pass credentials to authenticate as a SQL Server user, or nil to authenticate
+// using Microsoft Entra ID instead. Which one is correct is decided by the
+// object rather than by the caller, and follows the authentication mechanisms
+// the server supports, reported by SQLServerSetupScripts as AuthType:
+//
+//	AAD_ONLY and SQL_AUTH_AND_AAD - nil, Microsoft Entra ID
+//	SQL_AUTH_ONLY                 - credentials for the user the script created
+//
+// RSC does not enforce this: it accepts credentials for a server whose setup
+// script never created a SQL Server login, and the resulting configuration only
+// fails when a backup runs. Callers must check AuthType themselves.
 //
 // Unlike SetupCloudNativeSQLServerBackup this is not asynchronous: the
 // credentials are recorded by the request itself, with no task chain to wait
@@ -243,15 +250,27 @@ const (
 type SQLServerSetupScript struct {
 	// ServerID is the RSC ID of the server the script is for.
 	ServerID uuid.UUID `json:"serverId"`
-	// AuthType is the authentication mechanisms the server supports. It
-	// determines whether backup credentials can be registered as a SQL Server
-	// user or must use Microsoft Entra ID.
+	// AuthType is the authentication mechanisms the server supports, and it
+	// decides which script RSC generates below and therefore how the backup
+	// credentials must be registered:
+	//
+	//   AAD_ONLY and SQL_AUTH_AND_AAD - Microsoft Entra ID
+	//   SQL_AUTH_ONLY                 - a SQL Server login
+	//
+	// Note that SQL_AUTH_AND_AAD means Entra ID, even though the server also
+	// supports SQL Server authentication: RSC returns the Entra ID script for
+	// any server which supports Entra ID at all.
 	AuthType AzureSQLAuthenticationType `json:"authType"`
 	// Script is the T-SQL setup script to run against the server. It creates
-	// the objects RSC needs to perform backups. The script is a template: the
-	// user RSC authenticates as is created by a procedure call at the end of
-	// the script, which must be supplied with the intended login and password
-	// before the script is run.
+	// the objects RSC needs to perform backups.
+	//
+	// Which script is returned follows AuthType above. The SQL_AUTH_ONLY script
+	// is a template: the user RSC authenticates as is created by a procedure
+	// call at the end of the script, which must be supplied with the intended
+	// login and password before the script is run. The Entra ID script instead
+	// grants access to the RSC service principal and creates no SQL Server
+	// login at all, which is why registering SQL Server credentials for such a
+	// server would leave a configuration that only fails at backup time.
 	Script string `json:"script"`
 }
 

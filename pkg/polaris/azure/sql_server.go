@@ -153,8 +153,13 @@ func (a API) ClearSQLManagedInstanceBackupCredentials(ctx context.Context, serve
 // the user itself from an administrator login instead, use
 // SetupSQLManagedInstanceBackup.
 //
-// A server which only supports Microsoft Entra ID authentication cannot use SQL
-// Server credentials, see AddSQLManagedInstanceBackupCredentialsUsingEntraID.
+// This is only correct for a server whose AuthType is SQL_AUTH_ONLY. Every
+// other server is set up for Microsoft Entra ID, including SQL_AUTH_AND_AAD
+// despite the name: RSC returns an Entra ID setup script for any server which
+// supports Entra ID at all, and that script creates no SQL Server login. Use
+// AddSQLManagedInstanceBackupCredentialsUsingEntraID for those. RSC accepts
+// credentials either way, so passing them for a server which has no SQL Server
+// login leaves a configuration that only fails when a backup runs.
 //
 // Unlike SetupSQLManagedInstanceBackup this is not asynchronous, so there is no
 // task chain to wait for. Servers are handled independently of each other, and
@@ -171,8 +176,12 @@ func (a API) AddSQLManagedInstanceBackupCredentials(ctx context.Context, serverI
 //
 // As with AddSQLManagedInstanceBackupCredentials, the setup script from
 // SQLManagedInstanceSetupScripts must already have been run against the server.
-// No credentials are sent. The server must support Entra ID authentication,
-// which SQLServerSetupScript.AuthType reports.
+// No credentials are sent.
+//
+// This is the right choice for every server whose AuthType is AAD_ONLY or
+// SQL_AUTH_AND_AAD, which is what RSC generates an Entra ID setup script for.
+// Only a SQL_AUTH_ONLY server needs AddSQLManagedInstanceBackupCredentials
+// instead.
 func (a API) AddSQLManagedInstanceBackupCredentialsUsingEntraID(ctx context.Context, serverIDs []uuid.UUID) error {
 	a.log.Print(log.Trace)
 
@@ -226,8 +235,16 @@ func (a API) addSQLManagedInstanceBackupCredentials(ctx context.Context, serverI
 // scope for the SDK: it is a T-SQL script executed against the managed
 // instance, not an RSC operation.
 //
-// Each script comes with the authentication mechanisms its server supports,
-// which determines which of the two functions above can be used.
+// Each script comes with the authentication mechanisms its server supports, as
+// AuthType, which decides both which script RSC generated and which of the two
+// functions above registers the credentials for it:
+//
+//	AAD_ONLY and SQL_AUTH_AND_AAD - AddSQLManagedInstanceBackupCredentialsUsingEntraID
+//	SQL_AUTH_ONLY                 - AddSQLManagedInstanceBackupCredentials
+//
+// Reading AuthType is not optional. RSC does not check it when the credentials
+// are registered, so the wrong choice is accepted and only fails when a backup
+// runs.
 func (a API) SQLManagedInstanceSetupScripts(ctx context.Context, serverIDs []uuid.UUID) ([]gqlazure.SQLServerSetupScript, error) {
 	a.log.Print(log.Trace)
 
