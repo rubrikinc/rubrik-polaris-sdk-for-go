@@ -163,8 +163,8 @@ func TestAzurePostgresFlexibleServer(t *testing.T) {
 }
 
 // TestAzureSQLManagedInstanceServer verifies the type's inventory type filter
-// and that an API response unmarshals into the type, including the parent
-// subscription details.
+// and that an API response unmarshals into the type, including the supported
+// authentication mechanisms and the parent subscription details.
 func TestAzureSQLManagedInstanceServer(t *testing.T) {
 	// InventoryObject is a constraint interface, so it can't be used as a
 	// variable type; call typeFilter directly on the value instead.
@@ -176,6 +176,7 @@ func TestAzureSQLManagedInstanceServer(t *testing.T) {
 		"id": "11111111-1111-1111-1111-111111111111",
 		"name": "example-sql-mi",
 		"objectType": "AzureSqlManagedInstanceServer",
+		"authType": "SQL_AUTH_AND_AAD",
 		"azureResourceGroupDetails": {
 			"azureSubscriptionDetails": {
 				"id": "22222222-2222-2222-2222-222222222222",
@@ -199,6 +200,9 @@ func TestAzureSQLManagedInstanceServer(t *testing.T) {
 	}
 	if obj.ObjectType != "AzureSqlManagedInstanceServer" {
 		t.Errorf("objectType: got %q", obj.ObjectType)
+	}
+	if obj.AuthType != "SQL_AUTH_AND_AAD" {
+		t.Errorf("authType: got %q, want %q", obj.AuthType, "SQL_AUTH_AND_AAD")
 	}
 
 	sub := obj.ResourceGroup.Subscription

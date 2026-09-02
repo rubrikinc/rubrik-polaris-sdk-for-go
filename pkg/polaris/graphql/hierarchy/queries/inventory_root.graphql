@@ -33,6 +33,7 @@ query RubrikPolarisSDKRequest($after: String, $filter: [Filter!], $first: Int, $
                     orgId
                 }
                 ... on AzureSqlManagedInstanceServer {
+                    authType
                     azureResourceGroupDetails {
                         azureSubscriptionDetails {
                             id
