@@ -1,0 +1,11 @@
+query RubrikPolarisSDKRequest($serverIds: [UUID!]) {
+    result: sqlServerSetupScriptsBulk(input: {
+        serverIds: $serverIds
+    }) {
+        scriptDetails {
+            serverId
+            authType
+            script
+        }
+    }
+}
