@@ -68,8 +68,13 @@ func (a API) CustomerTagsByFilter(ctx context.Context, filter tags.CustomerTagsF
 	return cts, nil
 }
 
-// AddCustomerTags adds the specified customer tags to the existing customer
-// tags of the same scope.
+// AddCustomerTags adds the specified customer tags and excluded tags to the
+// existing customer tags and excluded tags of the same scope, eliminating
+// duplicates.
+//
+// Note, the OverrideResourceTags field is not merged, it replaces the value
+// configured in RSC. Leaving it unset therefore turns the override off for the
+// scope, as the zero value of a bool is false.
 func (a API) AddCustomerTags(ctx context.Context, customerTags tags.CustomerTags) error {
 	a.log.Print(log.Trace)
 
@@ -195,7 +200,18 @@ func (a API) RemoveExcludedTagsByFilter(ctx context.Context, filter tags.Custome
 	return nil
 }
 
-// ReplaceCustomerTags replaces all the customer tags.
+// ReplaceCustomerTags replaces the entire customer tags configuration of the
+// scope specified in the customer tags. This is a destructive full replace of
+// the customer tags, the excluded tags and the override flag, and not a merge,
+// so all fields must be populated.
+//
+// Note, the OverrideResourceTags field is always sent, so leaving it unset
+// turns the override off for the scope rather than preserving the value
+// configured in RSC. Leaving the Tags field unset fails the request, as RSC
+// does not accept a null tag list.
+//
+// To change part of a configuration, read it with CustomerTagsByFilter and
+// modify the result before replacing it.
 func (a API) ReplaceCustomerTags(ctx context.Context, customerTags tags.CustomerTags) error {
 	a.log.Print(log.Trace)
 
