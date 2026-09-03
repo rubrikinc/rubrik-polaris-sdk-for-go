@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($id: UUID!, $preserveSnapshots: Boolean!) {
+    result: deleteK8sProtectionSet(input: {id: $id, preserveSnapshots: $preserveSnapshots}) {
+        success
+    }
+}
