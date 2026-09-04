@@ -128,8 +128,8 @@ func TestAwsExocomputeWithCFT(t *testing.T) {
 	if account.NativeID != testAccount.AccountID {
 		t.Fatalf("invalid native id: %s", account.NativeID)
 	}
-	if n := len(account.Features); n != 2 {
-		t.Fatalf("invalid number of features: %d", n)
+	if _, ok := account.Feature(core.FeatureCloudNativeProtection); !ok {
+		t.Fatal("Cloud Native Protection feature not found")
 	}
 	feature, ok := account.Feature(core.FeatureExocompute)
 	if !ok {
@@ -217,13 +217,20 @@ func TestAwsExocomputeWithCFT(t *testing.T) {
 		t.Fatalf("Exocompute feature still available")
 	}
 
-	// Remove the AWS account from RSC.
-	if err := awsClient.RemoveAccountWithCFT(ctx, aws.Profile(testAccount.Profile), cnpFeature, false); err != nil {
+	// Remove the AWS account from RSC. All the features of the account are
+	// removed and not just the features added by the test, since RSC may add
+	// the cloud cost report feature to the account when it is onboarded.
+	// RemoveAccountWithCFT orders the features for removal.
+	removeFeatures := make([]core.Feature, 0, len(account.Features))
+	for _, feature := range account.Features {
+		removeFeatures = append(removeFeatures, feature.Feature)
+	}
+	if err := awsClient.RemoveAccountWithCFT(ctx, aws.Profile(testAccount.Profile), removeFeatures, false); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
 	if _, err := awsClient.AccountByNativeID(ctx, testAccount.AccountID); !errors.Is(err, graphql.ErrNotFound) {
-		t.Fatal(err)
+		t.Fatalf("expected the account to be removed, got error: %v", err)
 	}
 }
