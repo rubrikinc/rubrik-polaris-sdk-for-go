@@ -95,6 +95,7 @@ var (
 	FeatureCloudNativeDynamoDBProtection               = Feature{Name: "CLOUD_NATIVE_DYNAMODB_PROTECTION"}
 	FeatureCloudNativeProtection                       = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
 	FeatureCloudNativeS3Protection                     = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
+	FeatureCloudSQLProtection                          = Feature{Name: "CLOUD_SQL_PROTECTION"}
 	FeatureCyberRecoveryDataClassificationData         = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_DATA"}
 	FeatureCyberRecoveryDataClassificationMetadata     = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_METADATA"}
 	FeatureDSPMData                                    = Feature{Name: "DSPM_DATA"}
@@ -173,6 +174,7 @@ func (f Feature) IsProtectionFeature() bool {
 		FeatureCloudNativeDynamoDBProtection,
 		FeatureCloudNativeProtection,
 		FeatureCloudNativeS3Protection,
+		FeatureCloudSQLProtection,
 		FeatureGitHubRepositoryProtection,
 		FeatureKubernetesProtection,
 		FeatureRDSProtection,
@@ -231,6 +233,7 @@ func AllProtectionFeatures(cloud CloudVendor) []Feature {
 	case CloudVendorGCP:
 		return []Feature{
 			FeatureCloudNativeProtection,
+			FeatureCloudSQLProtection,
 		}
 	default:
 		return nil
@@ -314,6 +317,7 @@ var validFeatures = map[string]struct{}{
 	FeatureCloudNativeDynamoDBProtection.Name:               {},
 	FeatureCloudNativeProtection.Name:                       {},
 	FeatureCloudNativeS3Protection.Name:                     {},
+	FeatureCloudSQLProtection.Name:                          {},
 	FeatureCyberRecoveryDataClassificationData.Name:         {},
 	FeatureCyberRecoveryDataClassificationMetadata.Name:     {},
 	FeatureDSPMData.Name:                                    {},

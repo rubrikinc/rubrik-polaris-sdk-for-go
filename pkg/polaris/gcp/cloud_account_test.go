@@ -188,3 +188,13 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// TestSupportedFeaturesIncludesCloudSQL guards against the Cloud SQL
+// protection feature being dropped from SupportedFeatures. The list is the
+// SDK's answer to which features a GCP project can be onboarded with, so a
+// missing entry misleads callers that enumerate it rather than failing loudly.
+func TestSupportedFeaturesIncludesCloudSQL(t *testing.T) {
+	if _, ok := core.LookupFeature(SupportedFeatures(), core.FeatureCloudSQLProtection); !ok {
+		t.Error("CLOUD_SQL_PROTECTION missing from SupportedFeatures")
+	}
+}
