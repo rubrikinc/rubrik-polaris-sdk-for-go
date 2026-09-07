@@ -33,6 +33,7 @@ import (
 type FeatureFlagName string
 
 const (
+	FeatureFlagPolicyEngineEnabled             FeatureFlagName = "POLICY_ENGINE_ENABLED"
 	FeatureFlagAWSManualRoleChaining           FeatureFlagName = "REL_ENABLE_AWS_MANUAL_ROLE_CHAINING"
 	FeatureFlagAzureDevOpsProtection           FeatureFlagName = "AZURE_DEVOPS_PROTECTION_ENABLED"
 	FeatureFlagAzurePostgresFlexibleServer     FeatureFlagName = "REL_ENABLE_AZURE_POSTGRES_FLEXIBLE_SERVER"
