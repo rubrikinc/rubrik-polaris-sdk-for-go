@@ -48,6 +48,7 @@ const (
 	PermissionGroupDataCenterKMS                 PermissionGroup = "DATA_CENTER_KMS"
 	PermissionGroupDownloadFile                  PermissionGroup = "DOWNLOAD_FILE"
 	PermissionGroupEncryption                    PermissionGroup = "ENCRYPTION"
+	PermissionGroupExport                        PermissionGroup = "EXPORT"
 	PermissionGroupExportAndRestore              PermissionGroup = "EXPORT_AND_RESTORE"
 	PermissionGroupExportAndRestorePowerOffVM    PermissionGroup = "EXPORT_AND_RESTORE_POWER_OFF_VM"
 	PermissionGroupExportPowerOff                PermissionGroup = "EXPORT_POWER_OFF"
