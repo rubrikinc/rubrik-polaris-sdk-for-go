@@ -155,14 +155,23 @@ func (a API) RemoveAccountWithCFT(ctx context.Context, account AccountFunc, feat
 		}
 	}
 
-	// The Cloud Discovery feature must be removed after all protection
-	// features.
-	if _, ok := core.LookupFeature(features, core.FeatureCloudDiscovery); ok {
-		features = slices.DeleteFunc(features, func(feature core.Feature) bool {
-			return feature.Equal(core.FeatureCloudDiscovery)
-		})
-		features = append(features, core.FeatureCloudDiscovery)
+	// RSC requires that the Cloud Cost Report feature is removed after all
+	// protection features, and the Cloud Discovery feature after everything
+	// else.
+	ordered := make([]core.Feature, 0, len(features))
+	var costReport, discovery []core.Feature
+	for _, feature := range features {
+		switch {
+		case feature.Equal(core.FeatureCloudCostReport):
+			costReport = append(costReport, feature)
+		case feature.Equal(core.FeatureCloudDiscovery):
+			discovery = append(discovery, feature)
+		default:
+			ordered = append(ordered, feature)
+		}
 	}
+	ordered = append(ordered, costReport...)
+	features = append(ordered, discovery...)
 
 	for _, feature := range features {
 		if err := a.removeAccountWithCFT(ctx, config, cloudAccount, feature, deleteSnapshots); err != nil {

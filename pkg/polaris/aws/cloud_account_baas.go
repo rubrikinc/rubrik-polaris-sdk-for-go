@@ -223,6 +223,11 @@ func (a API) AddManagedAccountFinalize(ctx context.Context, accountID uuid.UUID)
 	features := make([]core.Feature, 0, len(account.Features))
 	regionSet := make(map[awsregions.Region]struct{})
 	for _, feature := range account.Features {
+		// The cloud cost report feature is not part of the managed account
+		// feature set and is not expected to connect.
+		if feature.Equal(core.FeatureCloudCostReport) {
+			continue
+		}
 		features = append(features, core.Feature{Name: feature.Name})
 		for _, name := range feature.Regions {
 			if region := awsregions.RegionFromAny(name); region != awsregions.RegionUnknown {
@@ -350,26 +355,35 @@ func (a API) UpdateManagedAccountFinalize(ctx context.Context, accountID uuid.UU
 	}
 	features := make([]core.Feature, 0, len(account.Features))
 	for _, feature := range account.Features {
+		// The cloud cost report feature is not part of the managed account
+		// feature set and is not expected to connect.
+		if feature.Equal(core.FeatureCloudCostReport) {
+			continue
+		}
 		features = append(features, core.Feature{Name: feature.Name})
 	}
 
 	return a.waitForFeaturesConnected(ctx, accountID, features)
 }
 
-// featuresForRemoval orders an account's features for removal: protection
-// features first and CLOUD_DISCOVERY last, because RSC rejects removing Cloud
-// Discovery while protection features remain.
+// featuresForRemoval orders an account's features for removal as required by
+// RSC: protection features first, then CLOUD_COST_REPORT and CLOUD_DISCOVERY
+// last.
 func featuresForRemoval(features []Feature) []core.Feature {
 	protection := make([]core.Feature, 0, len(features))
-	var discovery []core.Feature
+	var costReport, discovery []core.Feature
 	for _, feature := range features {
-		if feature.Equal(core.FeatureCloudDiscovery) {
+		switch {
+		case feature.Equal(core.FeatureCloudCostReport):
+			costReport = append(costReport, feature.Feature)
+		case feature.Equal(core.FeatureCloudDiscovery):
 			discovery = append(discovery, feature.Feature)
-		} else {
+		default:
 			protection = append(protection, feature.Feature)
 		}
 	}
-	return append(protection, discovery...)
+	ordered := append(protection, costReport...)
+	return append(ordered, discovery...)
 }
 
 // RemoveManagedAccount disables all of the account's features - protection
