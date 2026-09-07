@@ -1,0 +1,3 @@
+query RubrikPolarisSDKRequest($fid: UUID!, $clusterUuid: UUID!, $kubernetesObjectType: KubernetesObjectType!) {
+    result: k8sObjectInternalIdByType(fid: $fid, clusterUuid: $clusterUuid, kubernetesObjectType: $kubernetesObjectType)
+}

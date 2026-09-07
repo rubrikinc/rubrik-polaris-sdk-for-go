@@ -1,0 +1,25 @@
+mutation RubrikPolarisSDKRequest(
+    $clusterUuid: String!,
+    $config: K8sClusterCreateInput!) {
+    result: addK8sCluster(
+        input: {
+            clusterUuid: $clusterUuid,
+            config: $config
+        }
+    ) {
+        id
+        name
+        registry
+        distribution
+        kuprServerProxyConfig {
+            cert
+            ipAddress
+            port
+        }
+        transport
+        lastRefreshTime
+        region
+        onboardingType
+        status
+    }
+}

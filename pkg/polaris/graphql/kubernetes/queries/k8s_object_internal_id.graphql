@@ -1,0 +1,3 @@
+query RubrikPolarisSDKRequest($fid: UUID!) {
+    result: k8sObjectInternalId(fid: $fid)
+}

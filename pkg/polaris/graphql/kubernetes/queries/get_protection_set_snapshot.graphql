@@ -1,0 +1,14 @@
+query RubrikPolarisSDKRequest($fid: UUID!) {
+    result: k8sProtectionSetSnapshots(
+        k8sProtectionSetFid: $fid,
+        first: 1,
+        sortOrder: DESC
+    ) {
+        data {
+            baseSnapshotSummary {
+                id
+                slaId
+            }
+        }
+    }
+}
