@@ -22,32 +22,8 @@ package azure
 
 import (
 	"encoding/json"
-	"reflect"
 	"testing"
 )
-
-func TestFormatRegion(t *testing.T) {
-	region := FormatRegion(RegionNorthEurope)
-	if region != "northeurope" {
-		t.Errorf("invalid region: %v", region)
-	}
-
-	regions := FormatRegions([]Region{RegionEastUS, RegionWestUS})
-	if !reflect.DeepEqual(regions, []string{"eastus", "westus"}) {
-		t.Errorf("invalid regions: %v", regions)
-	}
-}
-
-func TestParseRegion(t *testing.T) {
-	if region := ParseRegionNoValidation("northeurope"); region != RegionNorthEurope {
-		t.Errorf("invalid region: %v", region)
-	}
-
-	regions := ParseRegionsNoValidation([]string{"eastus", "westus"})
-	if !reflect.DeepEqual(regions, []Region{RegionEastUS, RegionWestUS}) {
-		t.Errorf("invalid region: %v", regions)
-	}
-}
 
 func TestRegionsForReplication(t *testing.T) {
 	if region := RegionFromRegionForReplicationEnum("AUSTRALIA_CENTRAL"); region != RegionAustraliaCentral {

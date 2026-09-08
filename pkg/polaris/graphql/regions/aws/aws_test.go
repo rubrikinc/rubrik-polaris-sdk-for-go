@@ -21,32 +21,8 @@
 package aws
 
 import (
-	"reflect"
 	"testing"
 )
-
-func TestFormatRegion(t *testing.T) {
-	region := FormatRegion(RegionEuNorth1)
-	if region != "eu-north-1" {
-		t.Errorf("invalid region: %v", region)
-	}
-
-	regions := FormatRegions([]Region{RegionUsEast1, RegionUsWest1})
-	if !reflect.DeepEqual(regions, []string{"us-east-1", "us-west-1"}) {
-		t.Errorf("invalid regions: %v", regions)
-	}
-}
-
-func TestParseRegion(t *testing.T) {
-	if region := ParseRegionNoValidation("eu-north-1"); region != RegionEuNorth1 {
-		t.Errorf("invalid region: %v", region)
-	}
-
-	regions := ParseRegionsNoValidation([]string{"us-east-1", "us-west-1"})
-	if !reflect.DeepEqual(regions, []Region{RegionUsEast1, RegionUsWest1}) {
-		t.Errorf("invalid region: %v", regions)
-	}
-}
 
 func TestBaaSSupportedRegions(t *testing.T) {
 	regions := BaaSSupportedRegions()
