@@ -22,8 +22,350 @@ package azure
 
 import (
 	"encoding/json"
+	"fmt"
+	"slices"
 	"testing"
 )
+
+func TestRegion(t *testing.T) {
+	unsupported := []Region{
+		RegionSource,
+	}
+
+	for region, info := range regionInfoMap {
+		want := region
+		if slices.Contains(unsupported, region) {
+			want = RegionUnknown
+		}
+
+		// Lookup.
+		if r := RegionFromName(info.name); r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// Marshal/unmarshal.
+		var r Region
+		buf, err := json.Marshal(region)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(buf, &r); err != nil {
+			t.Fatal(err)
+		}
+		if r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+	}
+}
+
+func TestRegionEnum(t *testing.T) {
+	unsupported := []Region{
+		RegionSource,
+		RegionTaiwanNorth,
+	}
+
+	for region, info := range regionInfoMap {
+		want := region
+		if slices.Contains(unsupported, region) {
+			want = RegionUnknown
+		}
+
+		// Lookup.
+		if r := RegionFromRegionEnum(info.regionEnum); r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// Marshal/unmarshal.
+		var enum RegionEnum
+		buf, err := json.Marshal(region.ToRegionEnum())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(buf, &enum); err != nil {
+			t.Fatal(err)
+		}
+		if r := enum.Region; r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// ToPtr.
+		if r := region.ToRegionEnumPtr(); (r == nil && region != RegionUnknown) || (r != nil && *r != region.ToRegionEnum()) {
+			got := "<nil>"
+			if r != nil {
+				got = fmt.Sprintf("%q", r.Name())
+			}
+			t.Errorf("got %s want %q", got, want)
+		}
+	}
+}
+
+func TestNativeRegionEnum(t *testing.T) {
+	unsupported := []Region{
+		RegionSource,
+		RegionNewZealandNorth,
+		RegionTaiwanNorth,
+	}
+
+	for region, info := range regionInfoMap {
+		want := region
+		if slices.Contains(unsupported, region) {
+			want = RegionUnknown
+		}
+
+		// Lookup.
+		if r := RegionFromNativeRegionEnum(info.nativeRegionEnum); r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// Marshal/unmarshal.
+		var enum NativeRegionEnum
+		buf, err := json.Marshal(region.ToNativeRegionEnum())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(buf, &enum); err != nil {
+			t.Fatal(err)
+		}
+		if r := enum.Region; r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// ToPtr.
+		if r := region.ToNativeRegionEnumPtr(); (r == nil && region != RegionUnknown) || (r != nil && *r != region.ToNativeRegionEnum()) {
+			got := "<nil>"
+			if r != nil {
+				got = fmt.Sprintf("%q", r.Name())
+			}
+			t.Errorf("got %s want %q", got, want)
+		}
+	}
+}
+
+func TestCloudAccountRegionEnum(t *testing.T) {
+	unsupported := []Region{
+		RegionSource,
+		RegionNewZealandNorth,
+		RegionTaiwanNorth,
+	}
+
+	for region, info := range regionInfoMap {
+		want := region
+		if slices.Contains(unsupported, region) {
+			want = RegionUnknown
+		}
+
+		// Lookup.
+		if r := RegionFromCloudAccountRegionEnum(info.cloudAccountRegionEnum); r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// Marshal/unmarshal.
+		var enum CloudAccountRegionEnum
+		buf, err := json.Marshal(region.ToCloudAccountRegionEnum())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(buf, &enum); err != nil {
+			t.Fatal(err)
+		}
+		if r := enum.Region; r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// ToPtr.
+		if r := region.ToCloudAccountRegionEnumPtr(); (r == nil && region != RegionUnknown) || (r != nil && *r != region.ToCloudAccountRegionEnum()) {
+			got := "<nil>"
+			if r != nil {
+				got = fmt.Sprintf("%q", r.Name())
+			}
+			t.Errorf("got %s want %q", got, want)
+		}
+	}
+}
+
+func TestCommonRegionEnum(t *testing.T) {
+	unsupported := []Region{
+		RegionSource,
+		RegionJioIndiaCentral,
+		RegionJioIndiaWest,
+		RegionUSDoDCentral,
+		RegionUSDoDEast,
+	}
+
+	for region, info := range regionInfoMap {
+		want := region
+		if slices.Contains(unsupported, region) {
+			want = RegionUnknown
+		}
+
+		// Lookup.
+		if r := RegionFromCommonRegionEnum(info.commonRegionEnum); r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// Marshal/unmarshal.
+		var enum CommonRegionEnum
+		buf, err := json.Marshal(region.ToCommonRegionEnum())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(buf, &enum); err != nil {
+			t.Fatal(err)
+		}
+		if r := enum.Region; r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// ToPtr.
+		if r := region.ToCommonRegionEnumPtr(); (r == nil && region != RegionUnknown) || (r != nil && *r != region.ToCommonRegionEnum()) {
+			got := "<nil>"
+			if r != nil {
+				got = fmt.Sprintf("%q", r.Name())
+			}
+			t.Errorf("got %s want %q", got, want)
+		}
+	}
+}
+
+func TestRegionForReplicationEnum(t *testing.T) {
+	unsupported := []Region{
+		RegionAustriaEast,
+		RegionBelgiumCentral,
+		RegionChileCentral,
+		RegionIndonesiaCentral,
+		RegionJioIndiaCentral,
+		RegionJioIndiaWest,
+		RegionMalaysiaWest,
+		RegionNewZealandNorth,
+		RegionTaiwanNorth,
+		RegionUSDoDCentral,
+		RegionUSDoDEast,
+	}
+
+	for region, info := range regionInfoMap {
+		want := region
+		if slices.Contains(unsupported, region) {
+			want = RegionUnknown
+		}
+
+		// Lookup.
+		if r := RegionFromRegionForReplicationEnum(info.regionForReplicationEnum); r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// Marshal/unmarshal.
+		var enum RegionForReplicationEnum
+		buf, err := json.Marshal(region.ToRegionForReplicationEnum())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(buf, &enum); err != nil {
+			t.Fatal(err)
+		}
+		if r := enum.Region; r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// ToPtr.
+		if r := region.ToRegionForReplicationEnumPtr(); (r == nil && region != RegionUnknown) || (r != nil && *r != region.ToRegionForReplicationEnum()) {
+			got := "<nil>"
+			if r != nil {
+				got = fmt.Sprintf("%q", r.Name())
+			}
+			t.Errorf("got %s want %q", got, want)
+		}
+	}
+}
+
+func TestRCSRegionEnum(t *testing.T) {
+	unsupported := []Region{
+		RegionSource,
+		RegionChinaEast,
+		RegionChinaEast2,
+		RegionChinaNorth,
+		RegionChinaNorth2,
+		RegionJioIndiaCentral,
+		RegionJioIndiaWest,
+		RegionTaiwanNorth,
+		RegionUSDoDCentral,
+		RegionUSDoDEast,
+	}
+
+	for region, info := range regionInfoMap {
+		want := region
+		if slices.Contains(unsupported, region) {
+			want = RegionUnknown
+		}
+
+		// Lookup.
+		if r := RegionFromRCSRegionEnum(info.rcsRegionEnum); r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// Marshal/unmarshal.
+		var enum RCSRegionEnum
+		buf, err := json.Marshal(region.ToRCSRegionEnum())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(buf, &enum); err != nil {
+			t.Fatal(err)
+		}
+		if r := enum.Region; r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// ToPtr.
+		if r := region.ToRCSRegionEnumPtr(); (r == nil && region != RegionUnknown) || (r != nil && *r != region.ToRCSRegionEnum()) {
+			got := "<nil>"
+			if r != nil {
+				got = fmt.Sprintf("%q", r.Name())
+			}
+			t.Errorf("got %s want %q", got, want)
+		}
+	}
+}
+
+// TestCommonRegionEnumRoundTrip covers the AzureCommonRegion enum wiring,
+// including the regions that were added for it. New Zealand North and Taiwan
+// North exist only in AzureCommonRegion, not AzureCloudAccountRegion, so they
+// must resolve via the common enum but not the cloud-account enum.
+func TestCommonRegionEnumRoundTrip(t *testing.T) {
+	regions := []Region{
+		RegionAustriaEast,
+		RegionBelgiumCentral,
+		RegionChileCentral,
+		RegionIndonesiaCentral,
+		RegionMalaysiaWest,
+		RegionNewZealandNorth,
+		RegionTaiwanNorth,
+		RegionEastUS,
+	}
+
+	for _, original := range regions {
+		data, err := json.Marshal(original.ToCommonRegionEnum())
+		if err != nil {
+			t.Errorf("failed to marshal region %s: %s", original, err)
+			continue
+		}
+
+		var got CommonRegionEnum
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Errorf("failed to unmarshal JSON %s: %s", string(data), err)
+			continue
+		}
+		if got.Region != original {
+			t.Errorf("round trip failed for region %s: got %s (data %s)", original, got.Region, string(data))
+		}
+	}
+
+	if RegionFromCommonRegionEnum("NEWZEALANDNORTH") != RegionNewZealandNorth {
+		t.Error("NEWZEALANDNORTH should resolve via the common region enum")
+	}
+	if RegionFromCloudAccountRegionEnum("NEWZEALANDNORTH") != RegionUnknown {
+		t.Error("NEWZEALANDNORTH must not resolve via the cloud account region enum")
+	}
+}
 
 func TestRegionsForReplication(t *testing.T) {
 	if region := RegionFromRegionForReplicationEnum("AUSTRALIA_CENTRAL"); region != RegionAustraliaCentral {
@@ -128,46 +470,5 @@ func TestRegionMarshalUnmarshalRoundTrip(t *testing.T) {
 		if original != unmarshaled {
 			t.Errorf("round trip failed for region %s: got %s", original, unmarshaled)
 		}
-	}
-}
-
-// TestCommonRegionEnumRoundTrip covers the AzureCommonRegion enum wiring,
-// including the regions that were added for it. New Zealand North and Taiwan
-// North exist only in AzureCommonRegion, not AzureCloudAccountRegion, so they
-// must resolve via the common enum but not the cloud-account enum.
-func TestCommonRegionEnumRoundTrip(t *testing.T) {
-	regions := []Region{
-		RegionAustriaEast,
-		RegionBelgiumCentral,
-		RegionChileCentral,
-		RegionIndonesiaCentral,
-		RegionMalaysiaWest,
-		RegionNewZealandNorth,
-		RegionTaiwanNorth,
-		RegionEastUS,
-	}
-
-	for _, original := range regions {
-		data, err := json.Marshal(original.ToCommonRegionEnum())
-		if err != nil {
-			t.Errorf("failed to marshal region %s: %s", original, err)
-			continue
-		}
-
-		var got CommonRegionEnum
-		if err := json.Unmarshal(data, &got); err != nil {
-			t.Errorf("failed to unmarshal JSON %s: %s", string(data), err)
-			continue
-		}
-		if got.Region != original {
-			t.Errorf("round trip failed for region %s: got %s (data %s)", original, got.Region, string(data))
-		}
-	}
-
-	if RegionFromCommonRegionEnum("NEWZEALANDNORTH") != RegionNewZealandNorth {
-		t.Error("NEWZEALANDNORTH should resolve via the common region enum")
-	}
-	if RegionFromCloudAccountRegionEnum("NEWZEALANDNORTH") != RegionUnknown {
-		t.Error("NEWZEALANDNORTH must not resolve via the cloud account region enum")
 	}
 }

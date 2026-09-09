@@ -163,7 +163,7 @@ const (
 	FromDisplayName                   // Parse the value as a region display name.
 	FromName                          // Parse the value as a region name.
 	FromRegionEnum                    // Parse the value as a GraphQL GcpRegion enum value.
-	FromRCSRegionEnum                  // Parse the value as a GraphQL RcsRegionEnumType enum value.
+	FromRCSRegionEnum                 // Parse the value as a GraphQL RcsRegionEnumType enum value.
 )
 
 // RegionFrom parses the value as a region identifier in the specified format.
@@ -294,8 +294,8 @@ func (region RCSRegionEnum) String() string {
 // AllRegionNames returns all the recognized region names.
 func AllRegionNames() []string {
 	regions := make([]string, 0, len(regionInfoMap))
-	for _, info := range regionInfoMap {
-		if info.name != "" {
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown {
 			regions = append(regions, info.name)
 		}
 	}
