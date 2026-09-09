@@ -333,8 +333,8 @@ func (region RCSRegionEnum) String() string {
 // AllRegionNames returns all the recognized region names.
 func AllRegionNames() []string {
 	regions := make([]string, 0, len(regionInfoMap))
-	for _, info := range regionInfoMap {
-		if info.name != "" {
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && region != RegionSource {
 			regions = append(regions, info.name)
 		}
 	}
@@ -378,8 +378,6 @@ var regionInfoMap = map[Region]struct {
 	RegionSource: {
 		name:                     "n/a",
 		displayName:              "Same as source",
-		regionEnum:               "n/a",
-		nativeRegionEnum:         "n/a",
 		regionForReplicationEnum: "SOURCE_REGION",
 	},
 	RegionUnknown: {
@@ -472,22 +470,20 @@ var regionInfoMap = map[Region]struct {
 		baasSupported:            true,
 	},
 	RegionApSouthEast5: {
-		name:                     "ap-southeast-5",
-		displayName:              "Asia Pacific (Malaysia)",
-		regionEnum:               "AP_SOUTHEAST_5",
-		nativeRegionEnum:         "AP_SOUTHEAST_5",
-		regionForReplicationEnum: "",
-		rcsRegionEnum:            "MALAYSIA_WEST",
-		baasSupported:            true,
+		name:             "ap-southeast-5",
+		displayName:      "Asia Pacific (Malaysia)",
+		regionEnum:       "AP_SOUTHEAST_5",
+		nativeRegionEnum: "AP_SOUTHEAST_5",
+		rcsRegionEnum:    "MALAYSIA_WEST",
+		baasSupported:    true,
 	},
 	RegionApSouthEast7: {
-		name:                     "ap-southeast-7",
-		displayName:              "Asia Pacific (Thailand)",
-		regionEnum:               "AP_SOUTHEAST_7",
-		nativeRegionEnum:         "AP_SOUTHEAST_7",
-		regionForReplicationEnum: "",
-		rcsRegionEnum:            "ASIA_PACIFIC_THAILAND",
-		baasSupported:            true,
+		name:             "ap-southeast-7",
+		displayName:      "Asia Pacific (Thailand)",
+		regionEnum:       "AP_SOUTHEAST_7",
+		nativeRegionEnum: "AP_SOUTHEAST_7",
+		rcsRegionEnum:    "ASIA_PACIFIC_THAILAND",
+		baasSupported:    true,
 	},
 	RegionApSouth1: {
 		name:                     "ap-south-1",
@@ -549,13 +545,12 @@ var regionInfoMap = map[Region]struct {
 		baasSupported:            true,
 	},
 	RegionEuCentral2: {
-		name:                     "eu-central-2",
-		displayName:              "Europe (Zurich)",
-		regionEnum:               "EU_CENTRAL_2",
-		nativeRegionEnum:         "EU_CENTRAL_2",
-		regionForReplicationEnum: "",
-		rcsRegionEnum:            "SWITZERLAND_NORTH",
-		baasSupported:            true,
+		name:             "eu-central-2",
+		displayName:      "Europe (Zurich)",
+		regionEnum:       "EU_CENTRAL_2",
+		nativeRegionEnum: "EU_CENTRAL_2",
+		rcsRegionEnum:    "SWITZERLAND_NORTH",
+		baasSupported:    true,
 	},
 	RegionEuNorth1: {
 		name:                     "eu-north-1",
@@ -637,13 +632,12 @@ var regionInfoMap = map[Region]struct {
 		rcsRegionEnum:            "MIDDLE_EAST_BAHRAIN",
 	},
 	RegionMxCentral1: {
-		name:                     "mx-central-1",
-		displayName:              "Mexico (Central)",
-		regionEnum:               "MX_CENTRAL_1",
-		nativeRegionEnum:         "MX_CENTRAL_1",
-		regionForReplicationEnum: "",
-		rcsRegionEnum:            "MEXICO_CENTRAL",
-		baasSupported:            true,
+		name:             "mx-central-1",
+		displayName:      "Mexico (Central)",
+		regionEnum:       "MX_CENTRAL_1",
+		nativeRegionEnum: "MX_CENTRAL_1",
+		rcsRegionEnum:    "MEXICO_CENTRAL",
+		baasSupported:    true,
 	},
 	RegionSaEast1: {
 		name:                     "sa-east-1",
@@ -709,22 +703,16 @@ var regionInfoMap = map[Region]struct {
 	RegionUsISOEast1: {
 		name:                     "us-iso-east-1",
 		displayName:              "US ISO East",
-		regionEnum:               "n/a",
-		nativeRegionEnum:         "n/a",
 		regionForReplicationEnum: "US_ISO_EAST_1",
 	},
 	RegionUsISOWest1: {
 		name:                     "us-iso-west-1",
 		displayName:              "US ISO West",
-		regionEnum:               "n/a",
-		nativeRegionEnum:         "n/a",
 		regionForReplicationEnum: "US_ISO_WEST_1",
 	},
 	RegionUsISOBEast1: {
 		name:                     "us-isob-east-1",
 		displayName:              "US ISOB East",
-		regionEnum:               "n/a",
-		nativeRegionEnum:         "n/a",
 		regionForReplicationEnum: "US_ISOB_EAST_1",
 	},
 }
