@@ -122,6 +122,9 @@ func (region Region) RegionalDisplayName() string {
 // ToCloudAccountRegionEnum returns the RSC GraphQL AzureCloudAccountRegion enum
 // value for the region.
 func (region Region) ToCloudAccountRegionEnum() CloudAccountRegionEnum {
+	if regionInfoMap[region].cloudAccountRegionEnum == "" {
+		return CloudAccountRegionEnum{Region: RegionUnknown}
+	}
 	return CloudAccountRegionEnum{Region: region}
 }
 
@@ -129,84 +132,99 @@ func (region Region) ToCloudAccountRegionEnum() CloudAccountRegionEnum {
 // enum value for the region as a pointer. If the region is unknown, nil is
 // returned.
 func (region Region) ToCloudAccountRegionEnumPtr() *CloudAccountRegionEnum {
-	if region == RegionUnknown {
-		return nil
+	if r := region.ToCloudAccountRegionEnum(); r.Region != RegionUnknown {
+		return &r
 	}
-	return &CloudAccountRegionEnum{Region: region}
+	return nil
 }
 
 // ToCommonRegionEnum returns the RSC GraphQL AzureCommonRegion enum value for
 // the region.
 func (region Region) ToCommonRegionEnum() CommonRegionEnum {
+	if regionInfoMap[region].commonRegionEnum == "" {
+		return CommonRegionEnum{Region: RegionUnknown}
+	}
 	return CommonRegionEnum{Region: region}
 }
 
 // ToCommonRegionEnumPtr returns the RSC GraphQL AzureCommonRegion enum value for
 // the region as a pointer. If the region is unknown, nil is returned.
 func (region Region) ToCommonRegionEnumPtr() *CommonRegionEnum {
-	if region == RegionUnknown {
-		return nil
+	if r := region.ToCommonRegionEnum(); r.Region != RegionUnknown {
+		return &r
 	}
-	return &CommonRegionEnum{Region: region}
+	return nil
 }
 
 // ToNativeRegionEnum returns the RSC GraphQL AzureNativeRegion enum value for
 // the region.
 func (region Region) ToNativeRegionEnum() NativeRegionEnum {
+	if regionInfoMap[region].nativeRegionEnum == "" {
+		return NativeRegionEnum{Region: RegionUnknown}
+	}
 	return NativeRegionEnum{Region: region}
 }
 
 // ToNativeRegionEnumPtr returns the RSC GraphQL AzureNativeRegion enum value
 // for the region as a pointer. If the region is unknown, nil is returned.
 func (region Region) ToNativeRegionEnumPtr() *NativeRegionEnum {
-	if region == RegionUnknown {
-		return nil
+	if r := region.ToNativeRegionEnum(); r.Region != RegionUnknown {
+		return &r
 	}
-	return &NativeRegionEnum{Region: region}
+	return nil
 }
 
 // ToRegionEnum returns the RSC GraphQL AzureRegion enum value for the region.
 func (region Region) ToRegionEnum() RegionEnum {
+	if regionInfoMap[region].regionEnum == "" {
+		return RegionEnum{Region: RegionUnknown}
+	}
 	return RegionEnum{Region: region}
 }
 
 // ToRegionEnumPtr returns the RSC GraphQL AzureRegion enum value for the region
 // as a pointer. If the region is unknown, nil is returned.
 func (region Region) ToRegionEnumPtr() *RegionEnum {
-	if region == RegionUnknown {
-		return nil
+	if r := region.ToRegionEnum(); r.Region != RegionUnknown {
+		return &r
 	}
-	return &RegionEnum{Region: region}
+	return nil
 }
 
 // ToRegionForReplicationEnum returns the RSC GraphQL AzureNativeRegionForReplication
 // enum value for the region.
 func (region Region) ToRegionForReplicationEnum() RegionForReplicationEnum {
+	if regionInfoMap[region].regionForReplicationEnum == "" {
+		return RegionForReplicationEnum{Region: RegionUnknown}
+	}
 	return RegionForReplicationEnum{Region: region}
 }
 
 // ToRegionForReplicationEnumPtr returns the RSC GraphQL AzureNativeRegionForReplication
 // enum value for the region as a pointer. If the region is unknown, nil is returned.
 func (region Region) ToRegionForReplicationEnumPtr() *RegionForReplicationEnum {
-	if region == RegionUnknown {
-		return nil
+	if r := region.ToRegionForReplicationEnum(); r.Region != RegionUnknown {
+		return &r
 	}
-	return &RegionForReplicationEnum{Region: region}
+	return nil
 }
 
 // ToRCSRegionEnum returns the RSC GraphQL RcsRegionEnumType enum value for the
 // region.
 func (region Region) ToRCSRegionEnum() RCSRegionEnum {
+	if regionInfoMap[region].rcsRegionEnum == "" {
+		return RCSRegionEnum{Region: RegionUnknown}
+	}
 	return RCSRegionEnum{Region: region}
 }
 
 // ToRCSRegionEnumPtr returns the RSC GraphQL RcsRegionEnumType enum value for the
 // region as a pointer. If the region is unknown, nil is returned.
 func (region Region) ToRCSRegionEnumPtr() *RCSRegionEnum {
-	if region == RegionUnknown {
-		return nil
+	if r := region.ToRCSRegionEnum(); r.Region != RegionUnknown {
+		return &r
 	}
-	return &RCSRegionEnum{Region: region}
+	return nil
 }
 
 // MarshalJSON returns the region as a JSON string using the region name.
@@ -335,7 +353,7 @@ type RegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region RegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].regionEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -350,7 +368,10 @@ func (region *RegionEnum) UnmarshalJSON(b []byte) error {
 
 // String returns the string representation of the RegionEnum.
 func (region RegionEnum) String() string {
-	return regionInfoMap[region.Region].regionEnum
+	if r := regionInfoMap[region.Region].regionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].regionEnum
 }
 
 // CloudAccountRegionEnum represents the GraphQL AzureCloudAccountRegion enum
@@ -359,7 +380,7 @@ type CloudAccountRegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region CloudAccountRegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].cloudAccountRegionEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -374,7 +395,10 @@ func (region *CloudAccountRegionEnum) UnmarshalJSON(b []byte) error {
 
 // String returns the string representation of the CloudAccountRegionEnum.
 func (region CloudAccountRegionEnum) String() string {
-	return regionInfoMap[region.Region].cloudAccountRegionEnum
+	if r := regionInfoMap[region.Region].cloudAccountRegionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].cloudAccountRegionEnum
 }
 
 // CommonRegionEnum represents the GraphQL AzureCommonRegion enum type.
@@ -382,7 +406,7 @@ type CommonRegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region CommonRegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].commonRegionEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -397,7 +421,10 @@ func (region *CommonRegionEnum) UnmarshalJSON(b []byte) error {
 
 // String returns the string representation of the CommonRegionEnum.
 func (region CommonRegionEnum) String() string {
-	return regionInfoMap[region.Region].commonRegionEnum
+	if r := regionInfoMap[region.Region].commonRegionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].commonRegionEnum
 }
 
 // NativeRegionEnum represents the GraphQL AzureNativeRegion enum type.
@@ -405,7 +432,7 @@ type NativeRegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region NativeRegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].nativeRegionEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -420,7 +447,10 @@ func (region *NativeRegionEnum) UnmarshalJSON(b []byte) error {
 
 // String returns the string representation of the NativeRegionEnum.
 func (region NativeRegionEnum) String() string {
-	return regionInfoMap[region.Region].nativeRegionEnum
+	if r := regionInfoMap[region.Region].nativeRegionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].nativeRegionEnum
 }
 
 // RegionForReplicationEnum represents the GraphQL AzureNativeRegionForReplication enum type.
@@ -428,7 +458,7 @@ type RegionForReplicationEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region RegionForReplicationEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].regionForReplicationEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -443,7 +473,10 @@ func (region *RegionForReplicationEnum) UnmarshalJSON(b []byte) error {
 
 // String returns the string representation of the RegionForReplicationEnum.
 func (region RegionForReplicationEnum) String() string {
-	return regionInfoMap[region.Region].regionForReplicationEnum
+	if r := regionInfoMap[region.Region].regionForReplicationEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].regionForReplicationEnum
 }
 
 // RCSRegionEnum represents the GraphQL RcsRegionEnumType enum type. This region
@@ -452,7 +485,7 @@ type RCSRegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region RCSRegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].rcsRegionEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -467,7 +500,10 @@ func (region *RCSRegionEnum) UnmarshalJSON(b []byte) error {
 
 // String returns the string representation of the RCSRegionEnum.
 func (region RCSRegionEnum) String() string {
-	return regionInfoMap[region.Region].rcsRegionEnum
+	if r := regionInfoMap[region.Region].rcsRegionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].rcsRegionEnum
 }
 
 // AllRegionNames returns all the recognized region names.
@@ -759,10 +795,10 @@ var regionInfoMap = map[Region]struct {
 		rcsRegionEnum:            "FRANCE_SOUTH",
 	},
 	RegionGermanyCentral: {
-		name:            "germanycentral",
-		displayName:     "Germany Central",
+		name:                "germanycentral",
+		displayName:         "Germany Central",
 		regionalDisplayName: "(Europe) Germany Central",
-		regionEnum:      "GERMANY_CENTRAL",
+		regionEnum:          "GERMANY_CENTRAL",
 	},
 	RegionGermanyNorth: {
 		name:                     "germanynorth",
@@ -776,10 +812,10 @@ var regionInfoMap = map[Region]struct {
 		rcsRegionEnum:            "GERMANY_NORTH",
 	},
 	RegionGermanyNortheast: {
-		name:            "germanynortheast",
-		displayName:     "Germany Northeast",
+		name:                "germanynortheast",
+		displayName:         "Germany Northeast",
 		regionalDisplayName: "(Europe) Germany Northeast",
-		regionEnum:      "GERMANY_NORTHEAST",
+		regionEnum:          "GERMANY_NORTHEAST",
 	},
 	RegionGermanyWestCentral: {
 		name:                     "germanywestcentral",
