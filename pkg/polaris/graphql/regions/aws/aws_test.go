@@ -224,7 +224,7 @@ func TestRCSRegionEnum(t *testing.T) {
 			if r != nil {
 				got = fmt.Sprintf("%q", r.Name())
 			}
-			t.Errorf("got %s want %q", got, region)
+			t.Errorf("got %s want %q", got, want)
 		}
 	}
 }
