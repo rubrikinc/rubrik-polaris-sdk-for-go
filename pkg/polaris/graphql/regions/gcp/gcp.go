@@ -38,10 +38,14 @@ const (
 	RegionAsiaSouth2
 	RegionAsiaSouthEast1
 	RegionAsiaSouthEast2
+	RegionAsiaSouthEast3
 	RegionAustraliaSouthEast1
 	RegionAustraliaSouthEast2
 	RegionEU
 	RegionEur4
+	RegionEur5
+	RegionEur7
+	RegionEur8
 	RegionEuropeCentral2
 	RegionEuropeNorth1
 	RegionEuropeNorth2
@@ -96,6 +100,9 @@ func (region Region) DisplayName() string {
 // ToCloudAccountRegionEnum returns the RSC GraphQL GcpCloudAccountRegion enum
 // value for the region.
 func (region Region) ToCloudAccountRegionEnum() CloudAccountRegionEnum {
+	if regionInfoMap[region].cloudAccountRegionEnum == "" {
+		return CloudAccountRegionEnum{Region: RegionUnknown}
+	}
 	return CloudAccountRegionEnum{Region: region}
 }
 
@@ -103,24 +110,59 @@ func (region Region) ToCloudAccountRegionEnum() CloudAccountRegionEnum {
 // enum value for the region as a pointer. If the region is unknown, nil is
 // returned.
 func (region Region) ToCloudAccountRegionEnumPtr() *CloudAccountRegionEnum {
-	if region == RegionUnknown {
-		return nil
+	if r := region.ToCloudAccountRegionEnum(); r.Region != RegionUnknown {
+		return &r
 	}
-	return &CloudAccountRegionEnum{Region: region}
+	return nil
 }
 
 // ToRegionEnum returns the RSC GraphQL GcpRegion enum value for the region.
 func (region Region) ToRegionEnum() RegionEnum {
+	if regionInfoMap[region].regionEnum == "" {
+		return RegionEnum{Region: RegionUnknown}
+	}
 	return RegionEnum{Region: region}
 }
 
 // ToRegionEnumPtr returns the RSC GraphQL GcpRegion enum value for the region
 // as a pointer. If the region is unknown, nil is returned.
 func (region Region) ToRegionEnumPtr() *RegionEnum {
-	if region == RegionUnknown {
-		return nil
+	if r := region.ToRegionEnum(); r.Region != RegionUnknown {
+		return &r
 	}
-	return &RegionEnum{Region: region}
+	return nil
+}
+
+// ToRCSRegionEnum returns the RSC GraphQL RcsRegionEnumType enum value for the region.
+func (region Region) ToRCSRegionEnum() RCSRegionEnum {
+	if regionInfoMap[region].rcsRegionEnum == "" {
+		return RCSRegionEnum{Region: RegionUnknown}
+	}
+	return RCSRegionEnum{Region: region}
+}
+
+// ToRCSRegionEnumPtr returns the RSC GraphQL RcsRegionEnumType enum value for the
+// region as a pointer. If the region is unknown, nil is returned.
+func (region Region) ToRCSRegionEnumPtr() *RCSRegionEnum {
+	if r := region.ToRCSRegionEnum(); r.Region != RegionUnknown {
+		return &r
+	}
+	return nil
+}
+
+// MarshalJSON returns the region as a JSON string using the region name.
+func (region Region) MarshalJSON() ([]byte, error) {
+	return json.Marshal(regionInfoMap[region].name)
+}
+
+// UnmarshalJSON parses the region from a JSON string using the region name.
+func (region *Region) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	*region = RegionFromName(s)
+	return nil
 }
 
 // String returns the name of the region.
@@ -134,6 +176,7 @@ const (
 	FromDisplayName                   // Parse the value as a region display name.
 	FromName                          // Parse the value as a region name.
 	FromRegionEnum                    // Parse the value as a GraphQL GcpRegion enum value.
+	FromRCSRegionEnum                 // Parse the value as a GraphQL RcsRegionEnumType enum value.
 )
 
 // RegionFrom parses the value as a region identifier in the specified format.
@@ -151,6 +194,8 @@ func RegionFrom(value string, valueFormat int) Region {
 		case (valueFormat == FromAny || valueFormat == FromRegionEnum) && info.regionEnum == value:
 			return r
 		case (valueFormat == FromAny || valueFormat == FromDisplayName) && info.displayName == value:
+			return r
+		case (valueFormat == FromAny || valueFormat == FromRCSRegionEnum) && info.rcsRegionEnum == value:
 			return r
 		}
 	}
@@ -184,12 +229,17 @@ func RegionFromRegionEnum(value string) Region {
 	return RegionFrom(value, FromRegionEnum)
 }
 
+// RegionFromRCSRegionEnum parses the value as a GraphQL RcsRegionEnumType enum value.
+func RegionFromRCSRegionEnum(value string) Region {
+	return RegionFrom(value, FromRCSRegionEnum)
+}
+
 // RegionEnum represents the GraphQL GcpRegion enum type.
 type RegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region RegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].regionEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -202,13 +252,21 @@ func (region *RegionEnum) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// String returns the string representation of the RegionEnum.
+func (region RegionEnum) String() string {
+	if r := regionInfoMap[region.Region].regionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].regionEnum
+}
+
 // CloudAccountRegionEnum represents the GraphQL GcpCloudAccountRegion enum
 // type.
 type CloudAccountRegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region CloudAccountRegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].cloudAccountRegionEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -221,12 +279,59 @@ func (region *CloudAccountRegionEnum) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// String returns the string representation of the CloudAccountRegionEnum.
+func (region CloudAccountRegionEnum) String() string {
+	if r := regionInfoMap[region.Region].cloudAccountRegionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].cloudAccountRegionEnum
+}
+
+// RCSRegionEnum represents the GraphQL RcsRegionEnumType enum type. This region
+// type is primarily used for RCS/RCV GraphQL queries/mutations.
+type RCSRegionEnum struct{ Region }
+
+// MarshalJSON returns the region as a JSON string.
+func (region RCSRegionEnum) MarshalJSON() ([]byte, error) {
+	return json.Marshal(region.String())
+}
+
+// UnmarshalJSON parses the region from a JSON string.
+func (region *RCSRegionEnum) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	region.Region = RegionFromRCSRegionEnum(s)
+	return nil
+}
+
+// String returns the string representation of the RCSRegionEnum.
+func (region RCSRegionEnum) String() string {
+	if r := regionInfoMap[region.Region].rcsRegionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].rcsRegionEnum
+}
+
 // AllRegionNames returns all the recognized region names.
 func AllRegionNames() []string {
 	regions := make([]string, 0, len(regionInfoMap))
-	for _, info := range regionInfoMap {
-		if info.name != "" {
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown {
 			regions = append(regions, info.name)
+		}
+	}
+
+	return regions
+}
+
+// AllRCSRegionNames returns all the recognized RCS/RCV region names.
+func AllRCSRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for _, info := range regionInfoMap {
+		if info.rcsRegionEnum != "" {
+			regions = append(regions, info.rcsRegionEnum)
 		}
 	}
 
@@ -238,120 +343,153 @@ var regionInfoMap = map[Region]struct {
 	displayName            string
 	regionEnum             string
 	cloudAccountRegionEnum string
+	rcsRegionEnum          string
 }{
 	RegionUnknown: {
 		name:                   "",
 		displayName:            "<Unknown>",
 		regionEnum:             "UNKNOWN_GCP_REGION",
 		cloudAccountRegionEnum: "UNKNOWN_GCP_REGION",
+		rcsRegionEnum:          "UNKNOWN_GCP_REGION",
 	},
 	RegionAfricaSouth1: {
 		name:                   "africa-south1",
 		displayName:            "africa-south1 (Johannesburg, South Africa)",
 		regionEnum:             "AFRICA_SOUTH1",
 		cloudAccountRegionEnum: "AFRICA_SOUTH1",
+		rcsRegionEnum:          "SOUTH_AFRICA_NORTH",
 	},
 	RegionAsia: {
-		name:                   "asia",
-		displayName:            "Data centers in Asia, excluding Hong Kong and Indonesia",
-		regionEnum:             "ASIA",
-		cloudAccountRegionEnum: "ASIA",
+		name:        "asia",
+		displayName: "Data centers in Asia, excluding Hong Kong and Indonesia",
+		regionEnum:  "ASIA",
 	},
 	RegionAsia1: {
-		name:                   "asia1",
-		displayName:            "asia-northeast1 (Tokyo, Japan, APAC) and asia-northeast2 (Osaka, Japan, APAC)",
-		regionEnum:             "ASIA1",
-		cloudAccountRegionEnum: "ASIA1",
+		name:        "asia1",
+		displayName: "asia-northeast1 (Tokyo, Japan, APAC) and asia-northeast2 (Osaka, Japan, APAC)",
+		regionEnum:  "ASIA1",
 	},
 	RegionAsiaEast1: {
 		name:                   "asia-east1",
 		displayName:            "asia-east1 (Changhua County, Taiwan, APAC)",
 		regionEnum:             "ASIA_EAST1",
 		cloudAccountRegionEnum: "ASIA_EAST1",
+		rcsRegionEnum:          "ASIA_EAST_TAIWAN",
 	},
 	RegionAsiaEast2: {
 		name:                   "asia-east2",
 		displayName:            "asia-east2 (Hong Kong, APAC)",
 		regionEnum:             "ASIA_EAST2",
 		cloudAccountRegionEnum: "ASIA_EAST2",
+		rcsRegionEnum:          "ASIA_EAST_2",
 	},
 	RegionAsiaNorthEast1: {
 		name:                   "asia-northeast1",
 		displayName:            "asia-northeast1 (Tokyo, Japan, APAC)",
 		regionEnum:             "ASIA_NORTHEAST1",
 		cloudAccountRegionEnum: "ASIA_NORTHEAST1",
+		rcsRegionEnum:          "JAPAN_EAST",
 	},
 	RegionAsiaNorthEast2: {
 		name:                   "asia-northeast2",
 		displayName:            "asia-northeast2 (Osaka, Japan, APAC)",
 		regionEnum:             "ASIA_NORTHEAST2",
 		cloudAccountRegionEnum: "ASIA_NORTHEAST2",
+		rcsRegionEnum:          "JAPAN_WEST",
 	},
 	RegionAsiaNorthEast3: {
 		name:                   "asia-northeast3",
 		displayName:            "asia-northeast3 (Seoul, South Korea, APAC)",
 		regionEnum:             "ASIA_NORTHEAST3",
 		cloudAccountRegionEnum: "ASIA_NORTHEAST3",
+		rcsRegionEnum:          "KOREA_CENTRAL",
 	},
 	RegionAsiaSouth1: {
 		name:                   "asia-south1",
 		displayName:            "asia-south1 (Mumbai, India, APAC)",
 		regionEnum:             "ASIA_SOUTH1",
 		cloudAccountRegionEnum: "ASIA_SOUTH1",
+		rcsRegionEnum:          "INDIA_WEST",
 	},
 	RegionAsiaSouth2: {
 		name:                   "asia-south2",
 		displayName:            "asia-south2 (Delhi, India, APAC)",
 		regionEnum:             "ASIA_SOUTH2",
 		cloudAccountRegionEnum: "ASIA_SOUTH2",
+		rcsRegionEnum:          "INDIA_SOUTH_2",
 	},
 	RegionAsiaSouthEast1: {
 		name:                   "asia-southeast1",
 		displayName:            "asia-southeast1 (Jurong West, Singapore, APAC)",
 		regionEnum:             "ASIA_SOUTHEAST1",
 		cloudAccountRegionEnum: "ASIA_SOUTHEAST1",
+		rcsRegionEnum:          "ASIA_SOUTHEAST",
 	},
 	RegionAsiaSouthEast2: {
 		name:                   "asia-southeast2",
 		displayName:            "asia-southeast2 (Jakarta, Indonesia, APAC)",
 		regionEnum:             "ASIA_SOUTHEAST2",
 		cloudAccountRegionEnum: "ASIA_SOUTHEAST2",
+		rcsRegionEnum:          "ASIA_PACIFIC_JAKARTA",
+	},
+	RegionAsiaSouthEast3: {
+		name:                   "asia-southeast3",
+		displayName:            "asia-southeast3 (Bangkok, Thailand, APAC)",
+		regionEnum:             "ASIA_SOUTHEAST3",
+		cloudAccountRegionEnum: "ASIA_SOUTHEAST3",
 	},
 	RegionAustraliaSouthEast1: {
 		name:                   "australia-southeast1",
 		displayName:            "australia-southeast1 (Sydney, Australia, APAC)",
 		regionEnum:             "AUSTRALIA_SOUTHEAST1",
 		cloudAccountRegionEnum: "AUSTRALIA_SOUTHEAST1",
+		rcsRegionEnum:          "ASIA_PACIFIC_SYDNEY",
 	},
 	RegionAustraliaSouthEast2: {
 		name:                   "australia-southeast2",
 		displayName:            "australia-southeast2 (Melbourne, Australia, APAC)",
 		regionEnum:             "AUSTRALIA_SOUTHEAST2",
 		cloudAccountRegionEnum: "AUSTRALIA_SOUTHEAST2",
+		rcsRegionEnum:          "ASIA_PACIFIC_MELBOURNE",
 	},
 	RegionEU: {
-		name:                   "eu",
-		displayName:            "Data centers within member states of the European Union",
-		regionEnum:             "EU",
-		cloudAccountRegionEnum: "EU",
+		name:        "eu",
+		displayName: "Data centers within member states of the European Union",
+		regionEnum:  "EU",
 	},
 	RegionEur4: {
-		name:                   "eur4",
-		displayName:            "europe-north1 (Hamina, Finland, Europe) and europe-west4 (Eemshaven, Netherlands, Europe)",
-		regionEnum:             "EUR4",
-		cloudAccountRegionEnum: "EUR4",
+		name:        "eur4",
+		displayName: "europe-north1 (Hamina, Finland, Europe) and europe-west4 (Eemshaven, Netherlands, Europe)",
+		regionEnum:  "EUR4",
+	},
+	RegionEur5: {
+		name:        "eur5",
+		displayName: "Europe 5",
+		regionEnum:  "EUR5",
+	},
+	RegionEur7: {
+		name:        "eur7",
+		displayName: "Europe 7",
+		regionEnum:  "EUR7",
+	},
+	RegionEur8: {
+		name:        "eur8",
+		displayName: "Europe 8",
+		regionEnum:  "EUR8",
 	},
 	RegionEuropeCentral2: {
 		name:                   "europe-central2",
 		displayName:            "europe-central2 (Warsaw, Poland, Europe)",
 		regionEnum:             "EUROPE_CENTRAL2",
 		cloudAccountRegionEnum: "EUROPE_CENTRAL2",
+		rcsRegionEnum:          "POLAND_CENTRAL",
 	},
 	RegionEuropeNorth1: {
 		name:                   "europe-north1",
 		displayName:            "europe-north1 (Hamina, Finland, Europe)",
 		regionEnum:             "EUROPE_NORTH1",
 		cloudAccountRegionEnum: "EUROPE_NORTH1",
+		rcsRegionEnum:          "EUROPE_NORTH_FINLAND",
 	},
 	RegionEuropeNorth2: {
 		name:                   "europe-north2",
@@ -364,185 +502,212 @@ var regionInfoMap = map[Region]struct {
 		displayName:            "europe-southwest1 (Madrid, Spain, Europe)",
 		regionEnum:             "EUROPE_SOUTHWEST1",
 		cloudAccountRegionEnum: "EUROPE_SOUTHWEST1",
+		rcsRegionEnum:          "SPAIN_CENTRAL",
 	},
 	RegionEuropeWest1: {
 		name:                   "europe-west1",
 		displayName:            "europe-west1 (St. Ghislain, Belgium, Europe)",
 		regionEnum:             "EUROPE_WEST1",
 		cloudAccountRegionEnum: "EUROPE_WEST1",
+		rcsRegionEnum:          "EUROPE_WEST_BELGIUM",
 	},
 	RegionEuropeWest2: {
 		name:                   "europe-west2",
 		displayName:            "europe-west2 (London, England, Europe)",
 		regionEnum:             "EUROPE_WEST2",
 		cloudAccountRegionEnum: "EUROPE_WEST2",
+		rcsRegionEnum:          "UK_SOUTH",
 	},
 	RegionEuropeWest3: {
 		name:                   "europe-west3",
 		displayName:            "europe-west3 (Frankfurt, Germany, Europe)",
 		regionEnum:             "EUROPE_WEST3",
 		cloudAccountRegionEnum: "EUROPE_WEST3",
+		rcsRegionEnum:          "GERMANY_WEST_CENTRAL",
 	},
 	RegionEuropeWest4: {
 		name:                   "europe-west4",
 		displayName:            "europe-west4 (Eemshaven, Netherlands, Europe)",
 		regionEnum:             "EUROPE_WEST4",
 		cloudAccountRegionEnum: "EUROPE_WEST4",
+		rcsRegionEnum:          "EUROPE_WEST_4",
 	},
 	RegionEuropeWest6: {
 		name:                   "europe-west6",
 		displayName:            "europe-west6 (Zurich, Switzerland, Europe)",
 		regionEnum:             "EUROPE_WEST6",
 		cloudAccountRegionEnum: "EUROPE_WEST6",
+		rcsRegionEnum:          "SWITZERLAND_NORTH",
 	},
 	RegionEuropeWest8: {
 		name:                   "europe-west8",
 		displayName:            "europe-west8 (Milan, Italy, Europe)",
 		regionEnum:             "EUROPE_WEST8",
 		cloudAccountRegionEnum: "EUROPE_WEST8",
+		rcsRegionEnum:          "ITALY_NORTH",
 	},
 	RegionEuropeWest9: {
 		name:                   "europe-west9",
 		displayName:            "europe-west9 (Paris, France, Europe)",
 		regionEnum:             "EUROPE_WEST9",
 		cloudAccountRegionEnum: "EUROPE_WEST9",
+		rcsRegionEnum:          "FRANCE_CENTRAL",
 	},
 	RegionEuropeWest10: {
 		name:                   "europe-west10",
 		displayName:            "europe-west10 (Berlin, Germany, Europe)",
 		regionEnum:             "EUROPE_WEST10",
 		cloudAccountRegionEnum: "EUROPE_WEST10",
+		rcsRegionEnum:          "GERMANY_NORTH",
 	},
 	RegionEuropeWest12: {
 		name:                   "europe-west12",
 		displayName:            "europe-west12 (Turin, Italy, Europe)",
 		regionEnum:             "EUROPE_WEST12",
 		cloudAccountRegionEnum: "EUROPE_WEST12",
+		rcsRegionEnum:          "EUROPE_WEST_12",
 	},
 	RegionMECentral1: {
 		name:                   "me-central1",
 		displayName:            "me-central1 (Doha, Qatar, Middle East)",
 		regionEnum:             "ME_CENTRAL1",
 		cloudAccountRegionEnum: "ME_CENTRAL1",
+		rcsRegionEnum:          "QATAR_CENTRAL",
 	},
 	RegionMECentral2: {
 		name:                   "me-central2",
 		displayName:            "me-central2 (Dammam, Saudi Arabia, Middle East)",
 		regionEnum:             "ME_CENTRAL2",
 		cloudAccountRegionEnum: "ME_CENTRAL2",
+		rcsRegionEnum:          "ME_CENTRAL_2",
 	},
 	RegionMEWest1: {
 		name:                   "me-west1",
 		displayName:            "me-west1 (Tel Aviv, Israel, Middle East)",
 		regionEnum:             "ME_WEST1",
 		cloudAccountRegionEnum: "ME_WEST1",
+		rcsRegionEnum:          "ISRAEL_CENTRAL",
 	},
 	RegionNAM4: {
-		name:                   "nam4",
-		displayName:            "us-central1 (Council Bluffs, Iowa, North America) and us-east1 (Moncks Corner, South Carolina, North America)",
-		regionEnum:             "NAM4",
-		cloudAccountRegionEnum: "NAM4",
+		name:        "nam4",
+		displayName: "us-central1 (Council Bluffs, Iowa, North America) and us-east1 (Moncks Corner, South Carolina, North America)",
+		regionEnum:  "NAM4",
 	},
 	RegionNorthAmericaNorthEast1: {
 		name:                   "northamerica-northeast1",
 		displayName:            "northamerica-northeast1 (Montréal, Québec, North America)",
 		regionEnum:             "NORTHAMERICA_NORTHEAST1",
 		cloudAccountRegionEnum: "NORTHAMERICA_NORTHEAST1",
+		rcsRegionEnum:          "NORTHAMERICA_NORTHEAST_1",
 	},
 	RegionNorthAmericaNorthEast2: {
 		name:                   "northamerica-northeast2",
 		displayName:            "northamerica-northeast2 (Toronto, Ontario, North America)",
 		regionEnum:             "NORTHAMERICA_NORTHEAST2",
 		cloudAccountRegionEnum: "NORTHAMERICA_NORTHEAST2",
+		rcsRegionEnum:          "CANADA_CENTRAL",
 	},
 	RegionNorthAmericaSouth1: {
 		name:                   "northamerica-south1",
 		displayName:            "northamerica-south1 (Queretaro, Mexico, North America)",
 		regionEnum:             "NORTHAMERICA_SOUTH1",
 		cloudAccountRegionEnum: "NORTHAMERICA_SOUTH1",
+		rcsRegionEnum:          "NORTHAMERICA_SOUTH_1",
 	},
 	RegionSouthAmericaEast1: {
 		name:                   "southamerica-east1",
 		displayName:            "southamerica-east1 (Osasco, São Paulo, Brazil, South America)",
 		regionEnum:             "SOUTHAMERICA_EAST1",
 		cloudAccountRegionEnum: "SOUTHAMERICA_EAST1",
+		rcsRegionEnum:          "BRAZIL_SOUTH",
 	},
 	RegionSouthAmericaWest1: {
 		name:                   "southamerica-west1",
 		displayName:            "southamerica-west1 (Santiago, Chile, South America)",
 		regionEnum:             "SOUTHAMERICA_WEST1",
 		cloudAccountRegionEnum: "SOUTHAMERICA_WEST1",
+		rcsRegionEnum:          "SOUTHAMERICA_WEST_1",
 	},
 	RegionUS: {
-		name:                   "us",
-		displayName:            "Data centers in the United States",
-		regionEnum:             "US",
-		cloudAccountRegionEnum: "US",
+		name:        "us",
+		displayName: "Data centers in the United States",
+		regionEnum:  "US",
 	},
 	RegionUSCentral1: {
 		name:                   "us-central1",
 		displayName:            "us-central1 (Council Bluffs, Iowa, North America)",
 		regionEnum:             "USCENTRAL1",
 		cloudAccountRegionEnum: "US_CENTRAL1",
+		rcsRegionEnum:          "US_CENTRAL",
 	},
 	RegionUSEast1: {
 		name:                   "us-east1",
 		displayName:            "us-east1 (Moncks Corner, South Carolina, North America)",
 		regionEnum:             "USEAST1",
 		cloudAccountRegionEnum: "US_EAST1",
+		rcsRegionEnum:          "US_EAST_1",
 	},
 	RegionUSEast4: {
 		name:                   "us-east4",
 		displayName:            "us-east4 (Ashburn, Virginia, North America)",
 		regionEnum:             "USEAST4",
 		cloudAccountRegionEnum: "US_EAST4",
+		rcsRegionEnum:          "US_EAST",
 	},
 	RegionUSEast5: {
 		name:                   "us-east5",
 		displayName:            "us-east5 (Columbus, Ohio, North America)",
 		regionEnum:             "US_EAST5",
 		cloudAccountRegionEnum: "US_EAST5",
+		rcsRegionEnum:          "US_EAST_5",
 	},
 	RegionUSEast7: {
 		name:                   "us-east7",
 		displayName:            "us-east7 (Bridgeport, Alabama, North America)",
 		regionEnum:             "US_EAST7",
 		cloudAccountRegionEnum: "US_EAST7",
+		rcsRegionEnum:          "US_EAST_7",
 	},
 	RegionUSSouth1: {
 		name:                   "us-south1",
 		displayName:            "us-south1 (Dallas, Texas, North America)",
 		regionEnum:             "US_SOUTH1",
 		cloudAccountRegionEnum: "US_SOUTH1",
+		rcsRegionEnum:          "US_SOUTH_1",
 	},
 	RegionUSWest1: {
 		name:                   "us-west1",
 		displayName:            "us-west1 (The Dalles, Oregon, North America)",
 		regionEnum:             "USWEST1",
 		cloudAccountRegionEnum: "US_WEST1",
+		rcsRegionEnum:          "US_WEST_1",
 	},
 	RegionUSWest2: {
 		name:                   "us-west2",
 		displayName:            "us-west2 (Los Angeles, California, North America)",
 		regionEnum:             "USWEST2",
 		cloudAccountRegionEnum: "US_WEST2",
+		rcsRegionEnum:          "US_WEST_LOS_ANGELES",
 	},
 	RegionUSWest3: {
 		name:                   "us-west3",
 		displayName:            "us-west3 (Salt Lake City, Utah, North America)",
 		regionEnum:             "US_WEST3",
 		cloudAccountRegionEnum: "US_WEST3",
+		rcsRegionEnum:          "US_WEST_3",
 	},
 	RegionUSWest4: {
 		name:                   "us-west4",
 		displayName:            "us-west4 (Las Vegas, Nevada, North America)",
 		regionEnum:             "US_WEST4",
 		cloudAccountRegionEnum: "US_WEST4",
+		rcsRegionEnum:          "US_WEST_4",
 	},
 	RegionUSWest8: {
 		name:                   "us-west8",
 		displayName:            "us-west8 (Mesa, Arizona, North America)",
 		regionEnum:             "US_WEST8",
 		cloudAccountRegionEnum: "US_WEST8",
+		rcsRegionEnum:          "US_WEST_8",
 	},
 }

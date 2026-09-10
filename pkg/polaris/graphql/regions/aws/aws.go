@@ -22,8 +22,6 @@ package aws
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"sort"
 )
 
@@ -89,35 +87,88 @@ func (region Region) DisplayName() string {
 // ToNativeRegionEnum returns the RSC GraphQL AwsNativeRegion enum value for the
 // region.
 func (region Region) ToNativeRegionEnum() NativeRegionEnum {
+	if regionInfoMap[region].nativeRegionEnum == "" {
+		return NativeRegionEnum{Region: RegionUnknown}
+	}
 	return NativeRegionEnum{Region: region}
 }
 
 // ToNativeRegionEnumPtr returns the RSC GraphQL AwsNativeRegion enum value for
 // the region as a pointer. If the region is unknown, nil is returned.
 func (region Region) ToNativeRegionEnumPtr() *NativeRegionEnum {
-	if region == RegionUnknown {
-		return nil
+	if r := region.ToNativeRegionEnum(); r.Region != RegionUnknown {
+		return &r
 	}
-	return &NativeRegionEnum{Region: region}
+	return nil
 }
 
 // ToRegionEnum returns the RSC GraphQL AwsRegion enum value for the region.
 func (region Region) ToRegionEnum() RegionEnum {
+	if regionInfoMap[region].regionEnum == "" {
+		return RegionEnum{Region: RegionUnknown}
+	}
 	return RegionEnum{Region: region}
 }
 
 // ToRegionEnumPtr returns the RSC GraphQL AwsNativeRegion enum value for the
 // region as a pointer. If the region is unknown, nil is returned.
 func (region Region) ToRegionEnumPtr() *RegionEnum {
-	if region == RegionUnknown {
-		return nil
+	if r := region.ToRegionEnum(); r.Region != RegionUnknown {
+		return &r
 	}
-	return &RegionEnum{Region: region}
+	return nil
 }
 
-// ToRegionForReplicationEnum returns the RSC GraphQL AwsRegionForReplication enum value for the region.
+// ToRegionForReplicationEnum returns the RSC GraphQL
+// AwsNativeRegionForReplication enum value for the region.
 func (region Region) ToRegionForReplicationEnum() RegionForReplicationEnum {
+	if regionInfoMap[region].regionForReplicationEnum == "" {
+		return RegionForReplicationEnum{Region: RegionUnknown}
+	}
 	return RegionForReplicationEnum{Region: region}
+}
+
+// ToRegionForReplicationEnumPtr returns the RSC GraphQL
+// AwsNativeRegionForReplication enum value for the region as a pointer. If the
+// region is unknown, nil is returned.
+func (region Region) ToRegionForReplicationEnumPtr() *RegionForReplicationEnum {
+	if r := region.ToRegionForReplicationEnum(); r.Region != RegionUnknown {
+		return &r
+	}
+	return nil
+}
+
+// ToRCSRegionEnum returns the RSC GraphQL RcsRegionEnumType enum value for the
+// region.
+func (region Region) ToRCSRegionEnum() RCSRegionEnum {
+	if regionInfoMap[region].rcsRegionEnum == "" {
+		return RCSRegionEnum{Region: RegionUnknown}
+	}
+	return RCSRegionEnum{Region: region}
+}
+
+// ToRCSRegionEnumPtr returns the RSC GraphQL RcsRegionEnumType enum value for
+// the region as a pointer. If the region is unknown, nil is returned.
+func (region Region) ToRCSRegionEnumPtr() *RCSRegionEnum {
+	if r := region.ToRCSRegionEnum(); r.Region != RegionUnknown {
+		return &r
+	}
+	return nil
+}
+
+// MarshalJSON returns the region as a JSON string using the region name.
+func (region Region) MarshalJSON() ([]byte, error) {
+	return json.Marshal(regionInfoMap[region].name)
+}
+
+// UnmarshalJSON parses the region from a JSON string using the region name.
+func (region *Region) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	*region = RegionFromName(s)
+	return nil
 }
 
 // String returns the name of the region.
@@ -131,7 +182,8 @@ const (
 	FromName                            // Parse the value as a region name.
 	FromNativeRegionEnum                // Parse the value as a GraphQL AwsNativeRegion enum value.
 	FromRegionEnum                      // Parse the value as a GraphQL AwsRegion enum value.
-	FromRegionForReplicationEnum        // Parse the value as a GraphQL AwsRegionForReplication enum value.
+	FromRegionForReplicationEnum        // Parse the value as a GraphQL AwsNativeRegionForReplication enum value.
+	FromRCSRegionEnum                   // Parse the value as a GraphQL RcsRegionEnumType enum value.
 )
 
 // RegionFrom parses the value as a region identifier in the specified format.
@@ -151,6 +203,8 @@ func RegionFrom(value string, valueFormat int) Region {
 		case (valueFormat == FromAny || valueFormat == FromDisplayName) && info.displayName == value:
 			return r
 		case (valueFormat == FromAny || valueFormat == FromRegionForReplicationEnum) && info.regionForReplicationEnum == value:
+			return r
+		case (valueFormat == FromAny || valueFormat == FromRCSRegionEnum) && info.rcsRegionEnum == value:
 			return r
 		}
 	}
@@ -184,9 +238,16 @@ func RegionFromRegionEnum(value string) Region {
 	return RegionFrom(value, FromRegionEnum)
 }
 
-// RegionFromRegionForReplicationEnum parses the value as a GraphQL AwsRegionForReplication enum value.
+// RegionFromRegionForReplicationEnum parses the value as a GraphQL
+// AwsNativeRegionForReplication enum value.
 func RegionFromRegionForReplicationEnum(value string) Region {
 	return RegionFrom(value, FromRegionForReplicationEnum)
+}
+
+// RegionFromRCSRegionEnum parses the value as a GraphQL RcsRegionEnumType enum
+// value.
+func RegionFromRCSRegionEnum(value string) Region {
+	return RegionFrom(value, FromRCSRegionEnum)
 }
 
 // RegionEnum represents the GraphQL AwsRegion enum type.
@@ -194,7 +255,7 @@ type RegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region RegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].regionEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -207,12 +268,20 @@ func (region *RegionEnum) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// String returns the string representation of the RegionEnum.
+func (region RegionEnum) String() string {
+	if r := regionInfoMap[region.Region].regionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].regionEnum
+}
+
 // NativeRegionEnum represents the GraphQL AwsNativeRegion enum type.
 type NativeRegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region NativeRegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].nativeRegionEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -225,12 +294,21 @@ func (region *NativeRegionEnum) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// RegionForReplicationEnum represents the GraphQL AwsRegionForReplication enum type.
+// String returns the string representation of the NativeRegionEnum.
+func (region NativeRegionEnum) String() string {
+	if r := regionInfoMap[region.Region].nativeRegionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].nativeRegionEnum
+}
+
+// RegionForReplicationEnum represents the GraphQL AwsNativeRegionForReplication enum
+// type.
 type RegionForReplicationEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region RegionForReplicationEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].regionForReplicationEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -245,15 +323,57 @@ func (region *RegionForReplicationEnum) UnmarshalJSON(b []byte) error {
 
 // String returns the string representation of the RegionForReplicationEnum.
 func (region RegionForReplicationEnum) String() string {
-	return regionInfoMap[region.Region].regionForReplicationEnum
+	if r := regionInfoMap[region.Region].regionForReplicationEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].regionForReplicationEnum
+}
+
+// RCSRegionEnum represents the GraphQL RcsRegionEnumType enum type. This region
+// type is primarily used for RCS/RCV GraphQL queries/mutations.
+type RCSRegionEnum struct{ Region }
+
+// MarshalJSON returns the region as a JSON string.
+func (region RCSRegionEnum) MarshalJSON() ([]byte, error) {
+	return json.Marshal(region.String())
+}
+
+// UnmarshalJSON parses the region from a JSON string.
+func (region *RCSRegionEnum) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	region.Region = RegionFromRCSRegionEnum(s)
+	return nil
+}
+
+// String returns the string representation of the RCSRegionEnum.
+func (region RCSRegionEnum) String() string {
+	if r := regionInfoMap[region.Region].rcsRegionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].rcsRegionEnum
 }
 
 // AllRegionNames returns all the recognized region names.
 func AllRegionNames() []string {
 	regions := make([]string, 0, len(regionInfoMap))
-	for _, info := range regionInfoMap {
-		if info.name != "" {
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && region != RegionSource {
 			regions = append(regions, info.name)
+		}
+	}
+
+	return regions
+}
+
+// AllRCSRegionNames returns all the recognized RCS/RCV region names.
+func AllRCSRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for _, info := range regionInfoMap {
+		if info.rcsRegionEnum != "" {
+			regions = append(regions, info.rcsRegionEnum)
 		}
 	}
 
@@ -290,13 +410,12 @@ var regionInfoMap = map[Region]struct {
 	regionEnum               string
 	nativeRegionEnum         string
 	regionForReplicationEnum string
+	rcsRegionEnum            string
 	baasSupported            bool
 }{
 	RegionSource: {
 		name:                     "n/a",
 		displayName:              "Same as source",
-		regionEnum:               "n/a",
-		nativeRegionEnum:         "n/a",
 		regionForReplicationEnum: "SOURCE_REGION",
 	},
 	RegionUnknown: {
@@ -305,6 +424,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "UNKNOWN_AWS_REGION",
 		nativeRegionEnum:         "NOT_SPECIFIED",
 		regionForReplicationEnum: "NOT_DEFINED",
+		rcsRegionEnum:            "UNKNOWN_AWS_REGION",
 	},
 	RegionAfSouth1: {
 		name:                     "af-south-1",
@@ -312,6 +432,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AF_SOUTH_1",
 		nativeRegionEnum:         "AF_SOUTH_1",
 		regionForReplicationEnum: "AF_SOUTH_1",
+		rcsRegionEnum:            "SOUTH_AFRICA_NORTH",
 		baasSupported:            true,
 	},
 	RegionApEast1: {
@@ -320,6 +441,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_EAST_1",
 		nativeRegionEnum:         "AP_EAST_1",
 		regionForReplicationEnum: "AP_EAST_1",
+		rcsRegionEnum:            "ASIA_EAST",
 		baasSupported:            true,
 	},
 	RegionApNorthEast1: {
@@ -328,6 +450,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_NORTHEAST_1",
 		nativeRegionEnum:         "AP_NORTHEAST_1",
 		regionForReplicationEnum: "AP_NORTHEAST_1",
+		rcsRegionEnum:            "JAPAN_EAST",
 		baasSupported:            true,
 	},
 	RegionApNorthEast2: {
@@ -336,6 +459,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_NORTHEAST_2",
 		nativeRegionEnum:         "AP_NORTHEAST_2",
 		regionForReplicationEnum: "AP_NORTHEAST_2",
+		rcsRegionEnum:            "KOREA_CENTRAL",
 		baasSupported:            true,
 	},
 	RegionApNorthEast3: {
@@ -344,6 +468,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_NORTHEAST_3",
 		nativeRegionEnum:         "AP_NORTHEAST_3",
 		regionForReplicationEnum: "AP_NORTHEAST_3",
+		rcsRegionEnum:            "JAPAN_WEST",
 		baasSupported:            true,
 	},
 	RegionApSouthEast1: {
@@ -352,6 +477,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTHEAST_1",
 		nativeRegionEnum:         "AP_SOUTHEAST_1",
 		regionForReplicationEnum: "AP_SOUTHEAST_1",
+		rcsRegionEnum:            "ASIA_SOUTHEAST",
 		baasSupported:            true,
 	},
 	RegionApSouthEast2: {
@@ -360,6 +486,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTHEAST_2",
 		nativeRegionEnum:         "AP_SOUTHEAST_2",
 		regionForReplicationEnum: "AP_SOUTHEAST_2",
+		rcsRegionEnum:            "ASIA_PACIFIC_SYDNEY",
 		baasSupported:            true,
 	},
 	RegionApSouthEast3: {
@@ -368,6 +495,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTHEAST_3",
 		nativeRegionEnum:         "AP_SOUTHEAST_3",
 		regionForReplicationEnum: "AP_SOUTHEAST_3",
+		rcsRegionEnum:            "ASIA_PACIFIC_JAKARTA",
 		baasSupported:            true,
 	},
 	RegionApSouthEast4: {
@@ -376,23 +504,24 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTHEAST_4",
 		nativeRegionEnum:         "AP_SOUTHEAST_4",
 		regionForReplicationEnum: "AP_SOUTHEAST_4",
+		rcsRegionEnum:            "ASIA_PACIFIC_MELBOURNE",
 		baasSupported:            true,
 	},
 	RegionApSouthEast5: {
-		name:                     "ap-southeast-5",
-		displayName:              "Asia Pacific (Malaysia)",
-		regionEnum:               "AP_SOUTHEAST_5",
-		nativeRegionEnum:         "AP_SOUTHEAST_5",
-		regionForReplicationEnum: "",
-		baasSupported:            true,
+		name:             "ap-southeast-5",
+		displayName:      "Asia Pacific (Malaysia)",
+		regionEnum:       "AP_SOUTHEAST_5",
+		nativeRegionEnum: "AP_SOUTHEAST_5",
+		rcsRegionEnum:    "MALAYSIA_WEST",
+		baasSupported:    true,
 	},
 	RegionApSouthEast7: {
-		name:                     "ap-southeast-7",
-		displayName:              "Asia Pacific (Thailand)",
-		regionEnum:               "AP_SOUTHEAST_7",
-		nativeRegionEnum:         "AP_SOUTHEAST_7",
-		regionForReplicationEnum: "",
-		baasSupported:            true,
+		name:             "ap-southeast-7",
+		displayName:      "Asia Pacific (Thailand)",
+		regionEnum:       "AP_SOUTHEAST_7",
+		nativeRegionEnum: "AP_SOUTHEAST_7",
+		rcsRegionEnum:    "ASIA_PACIFIC_THAILAND",
+		baasSupported:    true,
 	},
 	RegionApSouth1: {
 		name:                     "ap-south-1",
@@ -400,6 +529,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTH_1",
 		nativeRegionEnum:         "AP_SOUTH_1",
 		regionForReplicationEnum: "AP_SOUTH_1",
+		rcsRegionEnum:            "INDIA_WEST",
 		baasSupported:            true,
 	},
 	RegionApSouth2: {
@@ -408,6 +538,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "AP_SOUTH_2",
 		nativeRegionEnum:         "AP_SOUTH_2",
 		regionForReplicationEnum: "AP_SOUTH_2",
+		rcsRegionEnum:            "ASIA_PACIFIC_HYDERABAD",
 		baasSupported:            true,
 	},
 	RegionCaCentral1: {
@@ -416,6 +547,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "CA_CENTRAL_1",
 		nativeRegionEnum:         "CA_CENTRAL_1",
 		regionForReplicationEnum: "CA_CENTRAL_1",
+		rcsRegionEnum:            "CANADA_CENTRAL",
 		baasSupported:            true,
 	},
 	RegionCaWest1: {
@@ -424,6 +556,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "CA_WEST_1",
 		nativeRegionEnum:         "CA_WEST_1",
 		regionForReplicationEnum: "CA_WEST_1",
+		rcsRegionEnum:            "CANADA_WEST_CALGARY",
 		baasSupported:            true,
 	},
 	RegionCnNorthWest1: {
@@ -446,15 +579,16 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_CENTRAL_1",
 		nativeRegionEnum:         "EU_CENTRAL_1",
 		regionForReplicationEnum: "EU_CENTRAL_1",
+		rcsRegionEnum:            "GERMANY_WEST_CENTRAL",
 		baasSupported:            true,
 	},
 	RegionEuCentral2: {
-		name:                     "eu-central-2",
-		displayName:              "Europe (Zurich)",
-		regionEnum:               "EU_CENTRAL_2",
-		nativeRegionEnum:         "EU_CENTRAL_2",
-		regionForReplicationEnum: "",
-		baasSupported:            true,
+		name:             "eu-central-2",
+		displayName:      "Europe (Zurich)",
+		regionEnum:       "EU_CENTRAL_2",
+		nativeRegionEnum: "EU_CENTRAL_2",
+		rcsRegionEnum:    "SWITZERLAND_NORTH",
+		baasSupported:    true,
 	},
 	RegionEuNorth1: {
 		name:                     "eu-north-1",
@@ -462,6 +596,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_NORTH_1",
 		nativeRegionEnum:         "EU_NORTH_1",
 		regionForReplicationEnum: "EU_NORTH_1",
+		rcsRegionEnum:            "EUROPE_STOCKHOLM",
 		baasSupported:            true,
 	},
 	RegionEuSouth1: {
@@ -470,6 +605,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_SOUTH_1",
 		nativeRegionEnum:         "EU_SOUTH_1",
 		regionForReplicationEnum: "EU_SOUTH_1",
+		rcsRegionEnum:            "ITALY_NORTH",
 		baasSupported:            true,
 	},
 	RegionEuSouth2: {
@@ -478,6 +614,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_SOUTH_2",
 		nativeRegionEnum:         "EU_SOUTH_2",
 		regionForReplicationEnum: "EU_SOUTH_2",
+		rcsRegionEnum:            "SPAIN_NORTH",
 		baasSupported:            true,
 	},
 	RegionEuWest1: {
@@ -486,6 +623,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_WEST_1",
 		nativeRegionEnum:         "EU_WEST_1",
 		regionForReplicationEnum: "EU_WEST_1",
+		rcsRegionEnum:            "EUROPE_NORTH",
 		baasSupported:            true,
 	},
 	RegionEuWest2: {
@@ -494,6 +632,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_WEST_2",
 		nativeRegionEnum:         "EU_WEST_2",
 		regionForReplicationEnum: "EU_WEST_2",
+		rcsRegionEnum:            "UK_SOUTH",
 		baasSupported:            true,
 	},
 	RegionEuWest3: {
@@ -502,6 +641,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "EU_WEST_3",
 		nativeRegionEnum:         "EU_WEST_3",
 		regionForReplicationEnum: "EU_WEST_3",
+		rcsRegionEnum:            "FRANCE_CENTRAL",
 		baasSupported:            true,
 	},
 	RegionIlCentral1: {
@@ -510,6 +650,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "IL_CENTRAL_1",
 		nativeRegionEnum:         "IL_CENTRAL_1",
 		regionForReplicationEnum: "IL_CENTRAL_1",
+		rcsRegionEnum:            "ISRAEL_CENTRAL",
 		baasSupported:            true,
 	},
 	RegionMeCentral1: {
@@ -518,6 +659,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "ME_CENTRAL_1",
 		nativeRegionEnum:         "ME_CENTRAL_1",
 		regionForReplicationEnum: "ME_CENTRAL_1",
+		rcsRegionEnum:            "UAE_NORTH",
 	},
 	RegionMeSouth1: {
 		name:                     "me-south-1",
@@ -525,14 +667,15 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "ME_SOUTH_1",
 		nativeRegionEnum:         "ME_SOUTH_1",
 		regionForReplicationEnum: "ME_SOUTH_1",
+		rcsRegionEnum:            "MIDDLE_EAST_BAHRAIN",
 	},
 	RegionMxCentral1: {
-		name:                     "mx-central-1",
-		displayName:              "Mexico (Central)",
-		regionEnum:               "MX_CENTRAL_1",
-		nativeRegionEnum:         "MX_CENTRAL_1",
-		regionForReplicationEnum: "",
-		baasSupported:            true,
+		name:             "mx-central-1",
+		displayName:      "Mexico (Central)",
+		regionEnum:       "MX_CENTRAL_1",
+		nativeRegionEnum: "MX_CENTRAL_1",
+		rcsRegionEnum:    "MEXICO_CENTRAL",
+		baasSupported:    true,
 	},
 	RegionSaEast1: {
 		name:                     "sa-east-1",
@@ -540,6 +683,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "SA_EAST_1",
 		nativeRegionEnum:         "SA_EAST_1",
 		regionForReplicationEnum: "SA_EAST_1",
+		rcsRegionEnum:            "BRAZIL_SOUTH",
 		baasSupported:            true,
 	},
 	RegionUsEast1: {
@@ -548,6 +692,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "US_EAST_1",
 		regionForReplicationEnum: "US_EAST_1",
 		nativeRegionEnum:         "US_EAST_1",
+		rcsRegionEnum:            "US_EAST",
 		baasSupported:            true,
 	},
 	RegionUsEast2: {
@@ -556,6 +701,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "US_EAST_2",
 		nativeRegionEnum:         "US_EAST_2",
 		regionForReplicationEnum: "US_EAST_2",
+		rcsRegionEnum:            "US_EAST_2",
 		baasSupported:            true,
 	},
 	RegionUsGovEast1: {
@@ -564,6 +710,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "US_GOV_EAST_1",
 		nativeRegionEnum:         "US_GOV_EAST_1",
 		regionForReplicationEnum: "US_GOV_EAST_1",
+		rcsRegionEnum:            "GOV_US_EAST_1",
 	},
 	RegionUsGovWest1: {
 		name:                     "us-gov-west-1",
@@ -571,6 +718,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "US_GOV_WEST_1",
 		nativeRegionEnum:         "US_GOV_WEST_1",
 		regionForReplicationEnum: "US_GOV_WEST_1",
+		rcsRegionEnum:            "GOV_US_WEST_1",
 	},
 	RegionUsWest1: {
 		name:                     "us-west-1",
@@ -578,6 +726,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "US_WEST_1",
 		nativeRegionEnum:         "US_WEST_1",
 		regionForReplicationEnum: "US_WEST_1",
+		rcsRegionEnum:            "US_WEST",
 		baasSupported:            true,
 	},
 	RegionUsWest2: {
@@ -586,130 +735,25 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:               "US_WEST_2",
 		nativeRegionEnum:         "US_WEST_2",
 		regionForReplicationEnum: "US_WEST_2",
+		rcsRegionEnum:            "US_WEST_2",
 		baasSupported:            true,
 	},
 	RegionUsISOEast1: {
 		name:                     "us-iso-east-1",
 		displayName:              "US ISO East",
-		regionEnum:               "n/a",
-		nativeRegionEnum:         "n/a",
+		nativeRegionEnum:         "US_ISO_EAST_1",
 		regionForReplicationEnum: "US_ISO_EAST_1",
 	},
 	RegionUsISOWest1: {
 		name:                     "us-iso-west-1",
 		displayName:              "US ISO West",
-		regionEnum:               "n/a",
-		nativeRegionEnum:         "n/a",
+		nativeRegionEnum:         "US_ISO_WEST_1",
 		regionForReplicationEnum: "US_ISO_WEST_1",
 	},
 	RegionUsISOBEast1: {
 		name:                     "us-isob-east-1",
 		displayName:              "US ISOB East",
-		regionEnum:               "n/a",
-		nativeRegionEnum:         "n/a",
+		nativeRegionEnum:         "US_ISOB_EAST_1",
 		regionForReplicationEnum: "US_ISOB_EAST_1",
 	},
-}
-
-// Deprecated: use Region.Name.
-func FormatRegion(region Region) string {
-	return region.Name()
-}
-
-// Deprecated: no replacement.
-func FormatRegions(regions []Region) []string {
-	regs := make([]string, 0, len(regions))
-	for _, region := range regions {
-		regs = append(regs, region.Name())
-	}
-
-	return regs
-}
-
-// Deprecated: no replacement.
-var validRegions = map[Region]struct{}{
-	RegionAfSouth1:     {},
-	RegionApEast1:      {},
-	RegionApNorthEast1: {},
-	RegionApNorthEast2: {},
-	RegionApNorthEast3: {},
-	RegionApSouthEast1: {},
-	RegionApSouthEast2: {},
-	RegionApSouthEast3: {},
-	RegionApSouthEast4: {},
-	RegionApSouthEast5: {},
-	RegionApSouthEast7: {},
-	RegionApSouth1:     {},
-	RegionApSouth2:     {},
-	RegionCaCentral1:   {},
-	RegionCaWest1:      {},
-	RegionCnNorthWest1: {},
-	RegionCnNorth1:     {},
-	RegionEuCentral1:   {},
-	RegionEuCentral2:   {},
-	RegionEuNorth1:     {},
-	RegionEuSouth1:     {},
-	RegionEuSouth2:     {},
-	RegionEuWest1:      {},
-	RegionEuWest2:      {},
-	RegionEuWest3:      {},
-	RegionIlCentral1:   {},
-	RegionMeCentral1:   {},
-	RegionMeSouth1:     {},
-	RegionMxCentral1:   {},
-	RegionSaEast1:      {},
-	RegionUsEast1:      {},
-	RegionUsEast2:      {},
-	RegionUsGovEast1:   {},
-	RegionUsGovWest1:   {},
-	RegionUsWest1:      {},
-	RegionUsWest2:      {},
-}
-
-// Deprecated: use RegionFromName or RegionFromRegionEnum.
-func ParseRegion(value string) (Region, error) {
-	// Polaris region name.
-	region := RegionFromRegionEnum(value)
-	if _, ok := validRegions[region]; ok {
-		return region, nil
-	}
-
-	// AWS region name.
-	region = RegionFromName(value)
-	if _, ok := validRegions[region]; ok {
-		return region, nil
-	}
-
-	return RegionUnknown, errors.New("invalid aws region")
-}
-
-// Deprecated: no replacement.
-func ParseRegions(values []string) ([]Region, error) {
-	regions := make([]Region, 0, len(values))
-
-	for _, r := range values {
-		region, err := ParseRegion(r)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse region: %v", err)
-		}
-
-		regions = append(regions, region)
-	}
-
-	return regions, nil
-}
-
-// Deprecated: use RegionFromName.
-func ParseRegionNoValidation(value string) Region {
-	return RegionFromName(value)
-}
-
-// Deprecated: no replacement.
-func ParseRegionsNoValidation(values []string) []Region {
-	regions := make([]Region, 0, len(values))
-	for _, value := range values {
-		regions = append(regions, RegionFromName(value))
-	}
-
-	return regions
 }

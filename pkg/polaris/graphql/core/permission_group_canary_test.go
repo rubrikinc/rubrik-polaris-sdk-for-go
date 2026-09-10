@@ -21,14 +21,10 @@
 package core
 
 import (
-	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
 // canaryPermissionGroups maps RSC version tags to the known PermissionGroup
@@ -397,65 +393,12 @@ func TestPermissionGroupCanary(t *testing.T) {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
-	ctx := context.Background()
-
-	// Load service account credentials. Usually resolved using the
-	// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
-	account, err := polaris.DefaultServiceAccount(true)
-	if err != nil {
-		t.Fatalf("failed to load service account: %v", err)
-	}
-
-	client, err := polaris.NewClientWithLogger(account, log.NewStandardLogger())
-	if err != nil {
-		t.Fatalf("failed to create client: %v", err)
-	}
-
-	// Get the deployment version to select the appropriate expected values.
-	version, err := client.GQL.DeploymentVersion(ctx)
-	if err != nil {
-		t.Fatalf("failed to get deployment version: %v", err)
-	}
-	t.Logf("RSC deployment version: %s", version)
-
 	// Get the known permission groups for this version.
 	knownPermissionGroups := canaryPermissionGroupsForVersion(version)
 
-	// GraphQL introspection query to get the PermissionsGroup enum values.
-	query := `query SdkGolangPermissionsGroupIntrospection {
-		__type(name: "PermissionsGroup") {
-			enumValues {
-				name
-			}
-		}
-	}`
-
-	buf, err := client.GQL.Request(ctx, query, struct{}{})
+	rscEnumValues, err := graphql.EnumValuesAsSet(t.Context(), client.GQL, "PermissionsGroup")
 	if err != nil {
-		t.Fatalf("failed to execute introspection query: %v", err)
-	}
-
-	var payload struct {
-		Data struct {
-			Type struct {
-				EnumValues []struct {
-					Name string `json:"name"`
-				} `json:"enumValues"`
-			} `json:"__type"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		t.Fatalf("failed to unmarshal introspection response: %v", err)
-	}
-
-	if payload.Data.Type.EnumValues == nil {
-		t.Fatal("PermissionsGroup enum not found in RSC schema")
-	}
-
-	// Build a set of enum values from RSC.
-	rscEnumValues := make(map[string]struct{}, len(payload.Data.Type.EnumValues))
-	for _, v := range payload.Data.Type.EnumValues {
-		rscEnumValues[v.Name] = struct{}{}
+		t.Fatal(err)
 	}
 
 	// Check that all known SDK constants are present in RSC.
