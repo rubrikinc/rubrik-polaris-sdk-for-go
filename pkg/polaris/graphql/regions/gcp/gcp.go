@@ -38,10 +38,14 @@ const (
 	RegionAsiaSouth2
 	RegionAsiaSouthEast1
 	RegionAsiaSouthEast2
+	RegionAsiaSouthEast3
 	RegionAustraliaSouthEast1
 	RegionAustraliaSouthEast2
 	RegionEU
 	RegionEur4
+	RegionEur5
+	RegionEur7
+	RegionEur8
 	RegionEuropeCentral2
 	RegionEuropeNorth1
 	RegionEuropeNorth2
@@ -338,16 +342,14 @@ var regionInfoMap = map[Region]struct {
 		rcsRegionEnum:          "SOUTH_AFRICA_NORTH",
 	},
 	RegionAsia: {
-		name:                   "asia",
-		displayName:            "Data centers in Asia, excluding Hong Kong and Indonesia",
-		regionEnum:             "ASIA",
-		cloudAccountRegionEnum: "ASIA",
+		name:        "asia",
+		displayName: "Data centers in Asia, excluding Hong Kong and Indonesia",
+		regionEnum:  "ASIA",
 	},
 	RegionAsia1: {
-		name:                   "asia1",
-		displayName:            "asia-northeast1 (Tokyo, Japan, APAC) and asia-northeast2 (Osaka, Japan, APAC)",
-		regionEnum:             "ASIA1",
-		cloudAccountRegionEnum: "ASIA1",
+		name:        "asia1",
+		displayName: "asia-northeast1 (Tokyo, Japan, APAC) and asia-northeast2 (Osaka, Japan, APAC)",
+		regionEnum:  "ASIA1",
 	},
 	RegionAsiaEast1: {
 		name:                   "asia-east1",
@@ -412,6 +414,12 @@ var regionInfoMap = map[Region]struct {
 		cloudAccountRegionEnum: "ASIA_SOUTHEAST2",
 		rcsRegionEnum:          "ASIA_PACIFIC_JAKARTA",
 	},
+	RegionAsiaSouthEast3: {
+		name:                   "asia-southeast3",
+		displayName:            "asia-southeast3 (Bangkok, Thailand, APAC)",
+		regionEnum:             "ASIA_SOUTHEAST3",
+		cloudAccountRegionEnum: "ASIA_SOUTHEAST3",
+	},
 	RegionAustraliaSouthEast1: {
 		name:                   "australia-southeast1",
 		displayName:            "australia-southeast1 (Sydney, Australia, APAC)",
@@ -427,16 +435,29 @@ var regionInfoMap = map[Region]struct {
 		rcsRegionEnum:          "ASIA_PACIFIC_MELBOURNE",
 	},
 	RegionEU: {
-		name:                   "eu",
-		displayName:            "Data centers within member states of the European Union",
-		regionEnum:             "EU",
-		cloudAccountRegionEnum: "EU",
+		name:        "eu",
+		displayName: "Data centers within member states of the European Union",
+		regionEnum:  "EU",
 	},
 	RegionEur4: {
-		name:                   "eur4",
-		displayName:            "europe-north1 (Hamina, Finland, Europe) and europe-west4 (Eemshaven, Netherlands, Europe)",
-		regionEnum:             "EUR4",
-		cloudAccountRegionEnum: "EUR4",
+		name:        "eur4",
+		displayName: "europe-north1 (Hamina, Finland, Europe) and europe-west4 (Eemshaven, Netherlands, Europe)",
+		regionEnum:  "EUR4",
+	},
+	RegionEur5: {
+		name:        "eur5",
+		displayName: "Europe 5",
+		regionEnum:  "EUR5",
+	},
+	RegionEur7: {
+		name:        "eur7",
+		displayName: "Europe 7",
+		regionEnum:  "EUR7",
+	},
+	RegionEur8: {
+		name:        "eur8",
+		displayName: "Europe 8",
+		regionEnum:  "EUR8",
 	},
 	RegionEuropeCentral2: {
 		name:                   "europe-central2",
@@ -550,10 +571,9 @@ var regionInfoMap = map[Region]struct {
 		rcsRegionEnum:          "ISRAEL_CENTRAL",
 	},
 	RegionNAM4: {
-		name:                   "nam4",
-		displayName:            "us-central1 (Council Bluffs, Iowa, North America) and us-east1 (Moncks Corner, South Carolina, North America)",
-		regionEnum:             "NAM4",
-		cloudAccountRegionEnum: "NAM4",
+		name:        "nam4",
+		displayName: "us-central1 (Council Bluffs, Iowa, North America) and us-east1 (Moncks Corner, South Carolina, North America)",
+		regionEnum:  "NAM4",
 	},
 	RegionNorthAmericaNorthEast1: {
 		name:                   "northamerica-northeast1",
@@ -591,10 +611,9 @@ var regionInfoMap = map[Region]struct {
 		rcsRegionEnum:          "SOUTHAMERICA_WEST_1",
 	},
 	RegionUS: {
-		name:                   "us",
-		displayName:            "Data centers in the United States",
-		regionEnum:             "US",
-		cloudAccountRegionEnum: "US",
+		name:        "us",
+		displayName: "Data centers in the United States",
+		regionEnum:  "US",
 	},
 	RegionUSCentral1: {
 		name:                   "us-central1",
@@ -629,6 +648,7 @@ var regionInfoMap = map[Region]struct {
 		displayName:            "us-east7 (Bridgeport, Alabama, North America)",
 		regionEnum:             "US_EAST7",
 		cloudAccountRegionEnum: "US_EAST7",
+		rcsRegionEnum:          "US_EAST_7",
 	},
 	RegionUSSouth1: {
 		name:                   "us-south1",
@@ -670,5 +690,6 @@ var regionInfoMap = map[Region]struct {
 		displayName:            "us-west8 (Mesa, Arizona, North America)",
 		regionEnum:             "US_WEST8",
 		cloudAccountRegionEnum: "US_WEST8",
+		rcsRegionEnum:          "US_WEST_8",
 	},
 }

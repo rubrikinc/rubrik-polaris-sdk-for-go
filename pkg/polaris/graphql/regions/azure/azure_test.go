@@ -61,6 +61,9 @@ func TestRegion(t *testing.T) {
 func TestRegionEnum(t *testing.T) {
 	unsupported := []Region{
 		RegionSource,
+		RegionChinaNorth2,
+		RegionJioIndiaCentral,
+		RegionJioIndiaWest,
 		RegionTaiwanNorth,
 	}
 
@@ -102,8 +105,14 @@ func TestRegionEnum(t *testing.T) {
 func TestNativeRegionEnum(t *testing.T) {
 	unsupported := []Region{
 		RegionSource,
+		RegionGermanyCentral,
+		RegionGermanyNortheast,
+		RegionJioIndiaCentral,
+		RegionJioIndiaWest,
 		RegionNewZealandNorth,
 		RegionTaiwanNorth,
+		RegionUSDoDCentral,
+		RegionUSDoDEast,
 	}
 
 	for region, info := range regionInfoMap {
@@ -144,8 +153,14 @@ func TestNativeRegionEnum(t *testing.T) {
 func TestCloudAccountRegionEnum(t *testing.T) {
 	unsupported := []Region{
 		RegionSource,
+		RegionGermanyCentral,
+		RegionGermanyNortheast,
+		RegionJioIndiaCentral,
+		RegionJioIndiaWest,
 		RegionNewZealandNorth,
 		RegionTaiwanNorth,
+		RegionUSDoDCentral,
+		RegionUSDoDEast,
 	}
 
 	for region, info := range regionInfoMap {
@@ -186,6 +201,8 @@ func TestCloudAccountRegionEnum(t *testing.T) {
 func TestCommonRegionEnum(t *testing.T) {
 	unsupported := []Region{
 		RegionSource,
+		RegionGermanyCentral,
+		RegionGermanyNortheast,
 		RegionJioIndiaCentral,
 		RegionJioIndiaWest,
 		RegionUSDoDCentral,
@@ -229,13 +246,10 @@ func TestCommonRegionEnum(t *testing.T) {
 
 func TestRegionForReplicationEnum(t *testing.T) {
 	unsupported := []Region{
-		RegionAustriaEast,
-		RegionBelgiumCentral,
-		RegionChileCentral,
-		RegionIndonesiaCentral,
+		RegionGermanyCentral,
+		RegionGermanyNortheast,
 		RegionJioIndiaCentral,
 		RegionJioIndiaWest,
-		RegionMalaysiaWest,
 		RegionNewZealandNorth,
 		RegionTaiwanNorth,
 		RegionUSDoDCentral,
@@ -284,6 +298,8 @@ func TestRCSRegionEnum(t *testing.T) {
 		RegionChinaEast2,
 		RegionChinaNorth,
 		RegionChinaNorth2,
+		RegionGermanyCentral,
+		RegionGermanyNortheast,
 		RegionJioIndiaCentral,
 		RegionJioIndiaWest,
 		RegionTaiwanNorth,

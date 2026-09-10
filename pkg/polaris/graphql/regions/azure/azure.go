@@ -49,7 +49,9 @@ const (
 	RegionEastUS2
 	RegionFranceCentral
 	RegionFranceSouth
+	RegionGermanyCentral
 	RegionGermanyNorth
+	RegionGermanyNortheast
 	RegionGermanyWestCentral
 	RegionIndonesiaCentral
 	RegionIsraelCentral
@@ -177,13 +179,13 @@ func (region Region) ToRegionEnumPtr() *RegionEnum {
 	return &RegionEnum{Region: region}
 }
 
-// ToRegionForReplicationEnum returns the RSC GraphQL AzureRegionForReplication
+// ToRegionForReplicationEnum returns the RSC GraphQL AzureNativeRegionForReplication
 // enum value for the region.
 func (region Region) ToRegionForReplicationEnum() RegionForReplicationEnum {
 	return RegionForReplicationEnum{Region: region}
 }
 
-// ToRegionForReplicationEnumPtr returns the RSC GraphQL AzureRegionForReplication
+// ToRegionForReplicationEnumPtr returns the RSC GraphQL AzureNativeRegionForReplication
 // enum value for the region as a pointer. If the region is unknown, nil is returned.
 func (region Region) ToRegionForReplicationEnumPtr() *RegionForReplicationEnum {
 	if region == RegionUnknown {
@@ -236,7 +238,7 @@ const (
 	FromNativeRegionEnum                // Parse the value as a GraphQL AzureNativeRegion enum value.
 	FromRegionalDisplayName             // Parse the value as a region regional display name.
 	FromRegionEnum                      // Parse the value as a GraphQL AzureRegion enum value.
-	FromRegionForReplicationEnum        // Parse the value as a GraphQL AzureRegionForReplication enum value.
+	FromRegionForReplicationEnum        // Parse the value as a GraphQL AzureNativeRegionForReplication enum value.
 	FromRCSRegionEnum                   // Parse the value as a GraphQL RcsRegionEnumType enum value.
 )
 
@@ -317,7 +319,7 @@ func RegionFromRegionEnum(value string) Region {
 }
 
 // RegionFromRegionForReplicationEnum parses the value as a GraphQL
-// AzureRegionForReplication enum value.
+// AzureNativeRegionForReplication enum value.
 func RegionFromRegionForReplicationEnum(value string) Region {
 	return RegionFrom(value, FromRegionForReplicationEnum)
 }
@@ -421,7 +423,7 @@ func (region NativeRegionEnum) String() string {
 	return regionInfoMap[region.Region].nativeRegionEnum
 }
 
-// RegionForReplicationEnum represents the GraphQL AzureRegionForReplication enum type.
+// RegionForReplicationEnum represents the GraphQL AzureNativeRegionForReplication enum type.
 type RegionForReplicationEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
@@ -564,24 +566,26 @@ var regionInfoMap = map[Region]struct {
 		rcsRegionEnum:            "AUSTRALIA_SOUTHEAST",
 	},
 	RegionAustriaEast: {
-		name:                   "austriaeast",
-		displayName:            "Austria East",
-		regionalDisplayName:    "(Europe) Austria East",
-		regionEnum:             "AUSTRIA_EAST",
-		cloudAccountRegionEnum: "AUSTRIAEAST",
-		commonRegionEnum:       "AUSTRIAEAST",
-		nativeRegionEnum:       "AUSTRIA_EAST",
-		rcsRegionEnum:          "AUSTRIA_EAST",
+		name:                     "austriaeast",
+		displayName:              "Austria East",
+		regionalDisplayName:      "(Europe) Austria East",
+		regionEnum:               "AUSTRIA_EAST",
+		cloudAccountRegionEnum:   "AUSTRIAEAST",
+		commonRegionEnum:         "AUSTRIAEAST",
+		nativeRegionEnum:         "AUSTRIA_EAST",
+		regionForReplicationEnum: "AUSTRIA_EAST",
+		rcsRegionEnum:            "AUSTRIA_EAST",
 	},
 	RegionBelgiumCentral: {
-		name:                   "belgiumcentral",
-		displayName:            "Belgium Central",
-		regionalDisplayName:    "(Europe) Belgium Central",
-		regionEnum:             "BELGIUM_CENTRAL",
-		cloudAccountRegionEnum: "BELGIUMCENTRAL",
-		commonRegionEnum:       "BELGIUMCENTRAL",
-		nativeRegionEnum:       "BELGIUM_CENTRAL",
-		rcsRegionEnum:          "BELGIUM_CENTRAL",
+		name:                     "belgiumcentral",
+		displayName:              "Belgium Central",
+		regionalDisplayName:      "(Europe) Belgium Central",
+		regionEnum:               "BELGIUM_CENTRAL",
+		cloudAccountRegionEnum:   "BELGIUMCENTRAL",
+		commonRegionEnum:         "BELGIUMCENTRAL",
+		nativeRegionEnum:         "BELGIUM_CENTRAL",
+		regionForReplicationEnum: "BELGIUM_CENTRAL",
+		rcsRegionEnum:            "BELGIUM_CENTRAL",
 	},
 	RegionBrazilSouth: {
 		name:                     "brazilsouth",
@@ -650,14 +654,15 @@ var regionInfoMap = map[Region]struct {
 		rcsRegionEnum:            "US_CENTRAL",
 	},
 	RegionChileCentral: {
-		name:                   "chilecentral",
-		displayName:            "Chile Central",
-		regionalDisplayName:    "(South America) Chile Central",
-		regionEnum:             "CHILE_CENTRAL",
-		cloudAccountRegionEnum: "CHILECENTRAL",
-		commonRegionEnum:       "CHILECENTRAL",
-		nativeRegionEnum:       "CHILE_CENTRAL",
-		rcsRegionEnum:          "CHILE_CENTRAL",
+		name:                     "chilecentral",
+		displayName:              "Chile Central",
+		regionalDisplayName:      "(South America) Chile Central",
+		regionEnum:               "CHILE_CENTRAL",
+		cloudAccountRegionEnum:   "CHILECENTRAL",
+		commonRegionEnum:         "CHILECENTRAL",
+		nativeRegionEnum:         "CHILE_CENTRAL",
+		regionForReplicationEnum: "CHILE_CENTRAL",
+		rcsRegionEnum:            "CHILE_CENTRAL",
 	},
 	RegionChinaEast: {
 		name:                     "chinaeast",
@@ -693,7 +698,6 @@ var regionInfoMap = map[Region]struct {
 		name:                     "chinanorth2",
 		displayName:              "China North 2",
 		regionalDisplayName:      "(China) China North 2",
-		regionEnum:               "CHINA_NORTH2",
 		cloudAccountRegionEnum:   "CHINANORTH2",
 		commonRegionEnum:         "CHINANORTH2",
 		nativeRegionEnum:         "CHINA_NORTH2",
@@ -754,6 +758,12 @@ var regionInfoMap = map[Region]struct {
 		regionForReplicationEnum: "FRANCE_SOUTH",
 		rcsRegionEnum:            "FRANCE_SOUTH",
 	},
+	RegionGermanyCentral: {
+		name:            "germanycentral",
+		displayName:     "Germany Central",
+		regionalDisplayName: "(Europe) Germany Central",
+		regionEnum:      "GERMANY_CENTRAL",
+	},
 	RegionGermanyNorth: {
 		name:                     "germanynorth",
 		displayName:              "Germany North",
@@ -764,6 +774,12 @@ var regionInfoMap = map[Region]struct {
 		nativeRegionEnum:         "GERMANY_NORTH",
 		regionForReplicationEnum: "GERMANY_NORTH",
 		rcsRegionEnum:            "GERMANY_NORTH",
+	},
+	RegionGermanyNortheast: {
+		name:            "germanynortheast",
+		displayName:     "Germany Northeast",
+		regionalDisplayName: "(Europe) Germany Northeast",
+		regionEnum:      "GERMANY_NORTHEAST",
 	},
 	RegionGermanyWestCentral: {
 		name:                     "germanywestcentral",
@@ -777,14 +793,15 @@ var regionInfoMap = map[Region]struct {
 		rcsRegionEnum:            "GERMANY_WEST_CENTRAL",
 	},
 	RegionIndonesiaCentral: {
-		name:                   "indonesiacentral",
-		displayName:            "Indonesia Central",
-		regionalDisplayName:    "(Asia Pacific) Indonesia Central",
-		regionEnum:             "INDONESIA_CENTRAL",
-		cloudAccountRegionEnum: "INDONESIACENTRAL",
-		commonRegionEnum:       "INDONESIACENTRAL",
-		nativeRegionEnum:       "INDONESIA_CENTRAL",
-		rcsRegionEnum:          "INDONESIA_CENTRAL",
+		name:                     "indonesiacentral",
+		displayName:              "Indonesia Central",
+		regionalDisplayName:      "(Asia Pacific) Indonesia Central",
+		regionEnum:               "INDONESIA_CENTRAL",
+		cloudAccountRegionEnum:   "INDONESIACENTRAL",
+		commonRegionEnum:         "INDONESIACENTRAL",
+		nativeRegionEnum:         "INDONESIA_CENTRAL",
+		regionForReplicationEnum: "INDONESIA_CENTRAL",
+		rcsRegionEnum:            "INDONESIA_CENTRAL",
 	},
 	RegionIsraelCentral: {
 		name:                     "israelcentral",
@@ -831,20 +848,14 @@ var regionInfoMap = map[Region]struct {
 		rcsRegionEnum:            "JAPAN_WEST",
 	},
 	RegionJioIndiaCentral: {
-		name:                   "jioindiacentral",
-		displayName:            "Jio India Central",
-		regionalDisplayName:    "(Asia Pacific) Jio India Central",
-		regionEnum:             "JIO_INDIA_CENTRAL",
-		cloudAccountRegionEnum: "JIOINDIACENTRAL",
-		nativeRegionEnum:       "JIO_INDIA_CENTRAL",
+		name:                "jioindiacentral",
+		displayName:         "Jio India Central",
+		regionalDisplayName: "(Asia Pacific) Jio India Central",
 	},
 	RegionJioIndiaWest: {
-		name:                   "jioindiawest",
-		displayName:            "Jio India West",
-		regionalDisplayName:    "(Asia Pacific) Jio India West",
-		regionEnum:             "JIO_INDIA_WEST",
-		cloudAccountRegionEnum: "JIOINDIAWEST",
-		nativeRegionEnum:       "JIO_INDIA_WEST",
+		name:                "jioindiawest",
+		displayName:         "Jio India West",
+		regionalDisplayName: "(Asia Pacific) Jio India West",
 	},
 	RegionKoreaCentral: {
 		name:                     "koreacentral",
@@ -869,14 +880,15 @@ var regionInfoMap = map[Region]struct {
 		rcsRegionEnum:            "KOREA_SOUTH",
 	},
 	RegionMalaysiaWest: {
-		name:                   "malaysiawest",
-		displayName:            "Malaysia West",
-		regionalDisplayName:    "(Asia Pacific) Malaysia West",
-		regionEnum:             "MALAYSIA_WEST",
-		cloudAccountRegionEnum: "MALAYSIAWEST",
-		commonRegionEnum:       "MALAYSIAWEST",
-		nativeRegionEnum:       "MALAYSIA_WEST",
-		rcsRegionEnum:          "MALAYSIA_WEST",
+		name:                     "malaysiawest",
+		displayName:              "Malaysia West",
+		regionalDisplayName:      "(Asia Pacific) Malaysia West",
+		regionEnum:               "MALAYSIA_WEST",
+		cloudAccountRegionEnum:   "MALAYSIAWEST",
+		commonRegionEnum:         "MALAYSIAWEST",
+		nativeRegionEnum:         "MALAYSIA_WEST",
+		regionForReplicationEnum: "MALAYSIA_WEST",
+		rcsRegionEnum:            "MALAYSIA_WEST",
 	},
 	RegionMexicoCentral: {
 		name:                     "mexicocentral",
@@ -1124,20 +1136,16 @@ var regionInfoMap = map[Region]struct {
 		rcsRegionEnum:            "UK_WEST",
 	},
 	RegionUSDoDCentral: {
-		name:                   "usdodcentral",
-		displayName:            "US DoD Central",
-		regionalDisplayName:    "(US Gov) US DoD Central",
-		regionEnum:             "GOV_US_DOD_CENTRAL",
-		cloudAccountRegionEnum: "USDODCENTRAL",
-		nativeRegionEnum:       "US_DOD_CENTRAL",
+		name:                "usdodcentral",
+		displayName:         "US DoD Central",
+		regionalDisplayName: "(US Gov) US DoD Central",
+		regionEnum:          "GOV_US_DOD_CENTRAL",
 	},
 	RegionUSDoDEast: {
-		name:                   "usdodeast",
-		displayName:            "US DoD East",
-		regionalDisplayName:    "(US Gov) US DoD East",
-		regionEnum:             "GOV_US_DOD_EAST",
-		cloudAccountRegionEnum: "USDODEAST",
-		nativeRegionEnum:       "US_DOD_EAST",
+		name:                "usdodeast",
+		displayName:         "US DoD East",
+		regionalDisplayName: "(US Gov) US DoD East",
+		regionEnum:          "GOV_US_DOD_EAST",
 	},
 	RegionUSGovArizona: {
 		name:                     "usgovarizona",

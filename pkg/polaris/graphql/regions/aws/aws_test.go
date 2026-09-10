@@ -104,9 +104,6 @@ func TestRegionEnum(t *testing.T) {
 func TestNativeRegionEnum(t *testing.T) {
 	unsupported := []Region{
 		RegionSource,
-		RegionUsISOEast1,
-		RegionUsISOWest1,
-		RegionUsISOBEast1,
 	}
 
 	for region, info := range regionInfoMap {

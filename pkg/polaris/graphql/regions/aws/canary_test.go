@@ -118,7 +118,7 @@ func TestNativeRegionEnumCanary(t *testing.T) {
 }
 
 // TestRegionForReplicationEnumCanary acts as a canary test to catch changes to
-// the AwsRegionForReplication enum in RSC early.
+// the AwsNativeRegionForReplication enum in RSC early.
 func TestRegionForReplicationEnumCanary(t *testing.T) {
 	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
@@ -131,12 +131,12 @@ func TestRegionForReplicationEnumCanary(t *testing.T) {
 		}
 	}
 
-	rscValues, err := graphql.EnumValuesAsSet(t.Context(), client.GQL, "AwsRegionForReplication")
+	rscValues, err := graphql.EnumValuesAsSet(t.Context(), client.GQL, "AwsNativeRegionForReplication")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assertEnumValues(t, "AwsRegionForReplication", sdkValues, rscValues)
+	assertEnumValues(t, "AwsNativeRegionForReplication", sdkValues, rscValues)
 }
 
 // assertEnumValues checks that sdkValues and rscValues contain the same set of

@@ -113,13 +113,13 @@ func (region Region) ToRegionEnumPtr() *RegionEnum {
 	return &RegionEnum{Region: region}
 }
 
-// ToRegionForReplicationEnum returns the RSC GraphQL AwsRegionForReplication
+// ToRegionForReplicationEnum returns the RSC GraphQL AwsNativeRegionForReplication
 // enum value for the region.
 func (region Region) ToRegionForReplicationEnum() RegionForReplicationEnum {
 	return RegionForReplicationEnum{Region: region}
 }
 
-// ToRegionForReplicationEnumPtr returns the RSC GraphQL AwsRegionForReplication
+// ToRegionForReplicationEnumPtr returns the RSC GraphQL AwsNativeRegionForReplication
 // enum value for the region as a pointer. If the region is unknown, nil is returned.
 func (region Region) ToRegionForReplicationEnumPtr() *RegionForReplicationEnum {
 	if region == RegionUnknown {
@@ -169,7 +169,7 @@ const (
 	FromName                            // Parse the value as a region name.
 	FromNativeRegionEnum                // Parse the value as a GraphQL AwsNativeRegion enum value.
 	FromRegionEnum                      // Parse the value as a GraphQL AwsRegion enum value.
-	FromRegionForReplicationEnum        // Parse the value as a GraphQL AwsRegionForReplication enum value.
+	FromRegionForReplicationEnum        // Parse the value as a GraphQL AwsNativeRegionForReplication enum value.
 	FromRCSRegionEnum                   // Parse the value as a GraphQL RcsRegionEnumType enum value.
 )
 
@@ -226,7 +226,7 @@ func RegionFromRegionEnum(value string) Region {
 }
 
 // RegionFromRegionForReplicationEnum parses the value as a GraphQL
-// AwsRegionForReplication enum value.
+// AwsNativeRegionForReplication enum value.
 func RegionFromRegionForReplicationEnum(value string) Region {
 	return RegionFrom(value, FromRegionForReplicationEnum)
 }
@@ -283,7 +283,7 @@ func (region NativeRegionEnum) String() string {
 	return regionInfoMap[region.Region].nativeRegionEnum
 }
 
-// RegionForReplicationEnum represents the GraphQL AwsRegionForReplication enum
+// RegionForReplicationEnum represents the GraphQL AwsNativeRegionForReplication enum
 // type.
 type RegionForReplicationEnum struct{ Region }
 
@@ -716,16 +716,19 @@ var regionInfoMap = map[Region]struct {
 	RegionUsISOEast1: {
 		name:                     "us-iso-east-1",
 		displayName:              "US ISO East",
+		nativeRegionEnum:         "US_ISO_EAST_1",
 		regionForReplicationEnum: "US_ISO_EAST_1",
 	},
 	RegionUsISOWest1: {
 		name:                     "us-iso-west-1",
 		displayName:              "US ISO West",
+		nativeRegionEnum:         "US_ISO_WEST_1",
 		regionForReplicationEnum: "US_ISO_WEST_1",
 	},
 	RegionUsISOBEast1: {
 		name:                     "us-isob-east-1",
 		displayName:              "US ISOB East",
+		nativeRegionEnum:         "US_ISOB_EAST_1",
 		regionForReplicationEnum: "US_ISOB_EAST_1",
 	},
 }
