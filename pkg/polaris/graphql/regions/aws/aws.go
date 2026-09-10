@@ -307,7 +307,8 @@ func (region RegionForReplicationEnum) String() string {
 	return regionInfoMap[region.Region].regionForReplicationEnum
 }
 
-// RCSRegionEnum represents the GraphQL RcsRegionEnumType enum type.
+// RCSRegionEnum represents the GraphQL RcsRegionEnumType enum type. This region
+// type is primarily used for RCS/RCV GraphQL queries/mutations.
 type RCSRegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
@@ -336,6 +337,18 @@ func AllRegionNames() []string {
 	for region, info := range regionInfoMap {
 		if region != RegionUnknown && region != RegionSource {
 			regions = append(regions, info.name)
+		}
+	}
+
+	return regions
+}
+
+// AllRCSRegionNames returns all the recognized RCS/RCV region names.
+func AllRCSRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for _, info := range regionInfoMap {
+		if info.rcsRegionEnum != "" {
+			regions = append(regions, info.rcsRegionEnum)
 		}
 	}
 
