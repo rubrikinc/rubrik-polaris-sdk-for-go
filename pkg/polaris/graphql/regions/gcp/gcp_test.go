@@ -95,7 +95,17 @@ func TestRegionEnum(t *testing.T) {
 }
 
 func TestCloudAccountRegionEnum(t *testing.T) {
-	unsupported := []Region{}
+	unsupported := []Region{
+		RegionAsia,
+		RegionAsia1,
+		RegionEU,
+		RegionEur4,
+		RegionEur5,
+		RegionEur7,
+		RegionEur8,
+		RegionNAM4,
+		RegionUS,
+	}
 
 	for region, info := range regionInfoMap {
 		want := region
@@ -136,13 +146,15 @@ func TestRCSRegionEnum(t *testing.T) {
 	unsupported := []Region{
 		RegionAsia,
 		RegionAsia1,
+		RegionAsiaSouthEast3,
 		RegionEU,
 		RegionEur4,
+		RegionEur5,
+		RegionEur7,
+		RegionEur8,
 		RegionEuropeNorth2,
 		RegionNAM4,
 		RegionUS,
-		RegionUSEast7,
-		RegionUSWest8,
 	}
 
 	for region, info := range regionInfoMap {
