@@ -100,6 +100,9 @@ func (region Region) DisplayName() string {
 // ToCloudAccountRegionEnum returns the RSC GraphQL GcpCloudAccountRegion enum
 // value for the region.
 func (region Region) ToCloudAccountRegionEnum() CloudAccountRegionEnum {
+	if regionInfoMap[region].cloudAccountRegionEnum == "" {
+		return CloudAccountRegionEnum{Region: RegionUnknown}
+	}
 	return CloudAccountRegionEnum{Region: region}
 }
 
@@ -107,38 +110,44 @@ func (region Region) ToCloudAccountRegionEnum() CloudAccountRegionEnum {
 // enum value for the region as a pointer. If the region is unknown, nil is
 // returned.
 func (region Region) ToCloudAccountRegionEnumPtr() *CloudAccountRegionEnum {
-	if region == RegionUnknown {
-		return nil
+	if r := region.ToCloudAccountRegionEnum(); r.Region != RegionUnknown {
+		return &r
 	}
-	return &CloudAccountRegionEnum{Region: region}
+	return nil
 }
 
 // ToRegionEnum returns the RSC GraphQL GcpRegion enum value for the region.
 func (region Region) ToRegionEnum() RegionEnum {
+	if regionInfoMap[region].regionEnum == "" {
+		return RegionEnum{Region: RegionUnknown}
+	}
 	return RegionEnum{Region: region}
 }
 
 // ToRegionEnumPtr returns the RSC GraphQL GcpRegion enum value for the region
 // as a pointer. If the region is unknown, nil is returned.
 func (region Region) ToRegionEnumPtr() *RegionEnum {
-	if region == RegionUnknown {
-		return nil
+	if r := region.ToRegionEnum(); r.Region != RegionUnknown {
+		return &r
 	}
-	return &RegionEnum{Region: region}
+	return nil
 }
 
 // ToRCSRegionEnum returns the RSC GraphQL RcsRegionEnumType enum value for the region.
 func (region Region) ToRCSRegionEnum() RCSRegionEnum {
+	if regionInfoMap[region].rcsRegionEnum == "" {
+		return RCSRegionEnum{Region: RegionUnknown}
+	}
 	return RCSRegionEnum{Region: region}
 }
 
 // ToRCSRegionEnumPtr returns the RSC GraphQL RcsRegionEnumType enum value for the
 // region as a pointer. If the region is unknown, nil is returned.
 func (region Region) ToRCSRegionEnumPtr() *RCSRegionEnum {
-	if region == RegionUnknown {
-		return nil
+	if r := region.ToRCSRegionEnum(); r.Region != RegionUnknown {
+		return &r
 	}
-	return &RCSRegionEnum{Region: region}
+	return nil
 }
 
 // MarshalJSON returns the region as a JSON string using the region name.
@@ -230,7 +239,7 @@ type RegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region RegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].regionEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -245,7 +254,10 @@ func (region *RegionEnum) UnmarshalJSON(b []byte) error {
 
 // String returns the string representation of the RegionEnum.
 func (region RegionEnum) String() string {
-	return regionInfoMap[region.Region].regionEnum
+	if r := regionInfoMap[region.Region].regionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].regionEnum
 }
 
 // CloudAccountRegionEnum represents the GraphQL GcpCloudAccountRegion enum
@@ -254,7 +266,7 @@ type CloudAccountRegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region CloudAccountRegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].cloudAccountRegionEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -269,7 +281,10 @@ func (region *CloudAccountRegionEnum) UnmarshalJSON(b []byte) error {
 
 // String returns the string representation of the CloudAccountRegionEnum.
 func (region CloudAccountRegionEnum) String() string {
-	return regionInfoMap[region.Region].cloudAccountRegionEnum
+	if r := regionInfoMap[region.Region].cloudAccountRegionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].cloudAccountRegionEnum
 }
 
 // RCSRegionEnum represents the GraphQL RcsRegionEnumType enum type. This region
@@ -278,7 +293,7 @@ type RCSRegionEnum struct{ Region }
 
 // MarshalJSON returns the region as a JSON string.
 func (region RCSRegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(regionInfoMap[region.Region].rcsRegionEnum)
+	return json.Marshal(region.String())
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -293,7 +308,10 @@ func (region *RCSRegionEnum) UnmarshalJSON(b []byte) error {
 
 // String returns the string representation of the RCSRegionEnum.
 func (region RCSRegionEnum) String() string {
-	return regionInfoMap[region.Region].rcsRegionEnum
+	if r := regionInfoMap[region.Region].rcsRegionEnum; r != "" {
+		return r
+	}
+	return regionInfoMap[RegionUnknown].rcsRegionEnum
 }
 
 // AllRegionNames returns all the recognized region names.

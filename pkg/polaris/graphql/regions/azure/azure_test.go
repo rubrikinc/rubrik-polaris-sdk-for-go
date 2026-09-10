@@ -92,7 +92,7 @@ func TestRegionEnum(t *testing.T) {
 		}
 
 		// ToPtr.
-		if r := region.ToRegionEnumPtr(); (r == nil && region != RegionUnknown) || (r != nil && *r != region.ToRegionEnum()) {
+		if r := region.ToRegionEnumPtr(); (r == nil && want != RegionUnknown) || (r != nil && *r != want.ToRegionEnum()) {
 			got := "<nil>"
 			if r != nil {
 				got = fmt.Sprintf("%q", r.Name())
@@ -140,7 +140,7 @@ func TestNativeRegionEnum(t *testing.T) {
 		}
 
 		// ToPtr.
-		if r := region.ToNativeRegionEnumPtr(); (r == nil && region != RegionUnknown) || (r != nil && *r != region.ToNativeRegionEnum()) {
+		if r := region.ToNativeRegionEnumPtr(); (r == nil && want != RegionUnknown) || (r != nil && *r != want.ToNativeRegionEnum()) {
 			got := "<nil>"
 			if r != nil {
 				got = fmt.Sprintf("%q", r.Name())
@@ -188,7 +188,7 @@ func TestCloudAccountRegionEnum(t *testing.T) {
 		}
 
 		// ToPtr.
-		if r := region.ToCloudAccountRegionEnumPtr(); (r == nil && region != RegionUnknown) || (r != nil && *r != region.ToCloudAccountRegionEnum()) {
+		if r := region.ToCloudAccountRegionEnumPtr(); (r == nil && want != RegionUnknown) || (r != nil && *r != want.ToCloudAccountRegionEnum()) {
 			got := "<nil>"
 			if r != nil {
 				got = fmt.Sprintf("%q", r.Name())
@@ -234,7 +234,7 @@ func TestCommonRegionEnum(t *testing.T) {
 		}
 
 		// ToPtr.
-		if r := region.ToCommonRegionEnumPtr(); (r == nil && region != RegionUnknown) || (r != nil && *r != region.ToCommonRegionEnum()) {
+		if r := region.ToCommonRegionEnumPtr(); (r == nil && want != RegionUnknown) || (r != nil && *r != want.ToCommonRegionEnum()) {
 			got := "<nil>"
 			if r != nil {
 				got = fmt.Sprintf("%q", r.Name())
@@ -281,7 +281,7 @@ func TestRegionForReplicationEnum(t *testing.T) {
 		}
 
 		// ToPtr.
-		if r := region.ToRegionForReplicationEnumPtr(); (r == nil && region != RegionUnknown) || (r != nil && *r != region.ToRegionForReplicationEnum()) {
+		if r := region.ToRegionForReplicationEnumPtr(); (r == nil && want != RegionUnknown) || (r != nil && *r != want.ToRegionForReplicationEnum()) {
 			got := "<nil>"
 			if r != nil {
 				got = fmt.Sprintf("%q", r.Name())
@@ -332,7 +332,7 @@ func TestRCSRegionEnum(t *testing.T) {
 		}
 
 		// ToPtr.
-		if r := region.ToRCSRegionEnumPtr(); (r == nil && region != RegionUnknown) || (r != nil && *r != region.ToRCSRegionEnum()) {
+		if r := region.ToRCSRegionEnumPtr(); (r == nil && want != RegionUnknown) || (r != nil && *r != want.ToRCSRegionEnum()) {
 			got := "<nil>"
 			if r != nil {
 				got = fmt.Sprintf("%q", r.Name())
