@@ -41,42 +41,6 @@ type EnumValue struct {
 func EnumValues(ctx context.Context, client *Client, enumName string) ([]EnumValue, error) {
 	client.Log().Print(log.Trace)
 
-	values, err := enumValues(ctx, client, enumName)
-	if err != nil {
-		return nil, err
-	}
-
-	slice := make([]EnumValue, 0, len(values))
-	for _, v := range values {
-		slice = append(slice, v)
-	}
-
-	return slice, nil
-}
-
-// EnumValuesAsSet returns the values of the named GraphQL enum type as a map
-// keyed by name.
-func EnumValuesAsSet(ctx context.Context, client *Client, enumName string) (map[string]EnumValue, error) {
-	client.Log().Print(log.Trace)
-
-	values, err := enumValues(ctx, client, enumName)
-	if err != nil {
-		return nil, err
-	}
-
-	set := make(map[string]EnumValue, len(values))
-	for _, v := range values {
-		set[v.Name] = v
-	}
-
-	return set, nil
-}
-
-// enumValues fetches the enum values for the named GraphQL enum type using
-// schema introspection.
-func enumValues(ctx context.Context, client *Client, enumName string) ([]EnumValue, error) {
-	client.Log().Print(log.Trace)
-
 	enumValuesQuery := `query SdkGolangOperationEnum($enumName: String!) {
 		result: __type(name: $enumName) {
 			name
@@ -111,4 +75,22 @@ func enumValues(ctx context.Context, client *Client, enumName string) ([]EnumVal
 	}
 
 	return payload.Data.Result.EnumValues, nil
+}
+
+// EnumValuesAsSet returns the values of the named GraphQL enum type as a map
+// keyed by name.
+func EnumValuesAsSet(ctx context.Context, client *Client, enumName string) (map[string]EnumValue, error) {
+	client.Log().Print(log.Trace)
+
+	values, err := EnumValues(ctx, client, enumName)
+	if err != nil {
+		return nil, err
+	}
+
+	set := make(map[string]EnumValue, len(values))
+	for _, v := range values {
+		set[v.Name] = v
+	}
+
+	return set, nil
 }
