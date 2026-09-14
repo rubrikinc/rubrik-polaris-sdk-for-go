@@ -44,7 +44,7 @@ import (
 type ListTargetMappingFilter struct {
 	Field    string   `json:"field"`
 	Text     string   `json:"text"`
-	TestList []string `json:"testList,omitempty"`
+	TextList []string `json:"textList,omitempty"`
 }
 
 // ListTargetMappingResult holds the result of a target mapping list operation.
@@ -79,7 +79,8 @@ func ListTargetMappings[R ListTargetMappingResult](ctx context.Context, gql *gra
 // CreateStorageSettingParams represents the valid type parameters for a storage
 // setting create operation.
 type CreateStorageSettingParams interface {
-	CreateAWSStorageSettingParams | CreateAzureStorageSettingParams | CreateGCPStorageSettingParams
+	CreateAWSStorageSettingParams | CreateAzureStorageSettingParams | CreateGCPStorageSettingParams |
+	CreateRCVAWSStorageSettingParams | CreateRCVAzureStorageSettingParams | CreateRCVGCPStorageSettingParams
 }
 
 // CreateStorageSettingResult represents the result of a storge setting create
@@ -119,7 +120,8 @@ func CreateCloudNativeStorageSetting[R CreateStorageSettingResult[P], P CreateSt
 // UpdateStorageSettingParams represents the valid type parameters for a storage
 // setting update operation.
 type UpdateStorageSettingParams interface {
-	UpdateAWSStorageSettingParams | UpdateAzureStorageSettingParams | UpdateGCPStorageSettingParams
+	UpdateAWSStorageSettingParams | UpdateAzureStorageSettingParams | UpdateGCPStorageSettingParams |
+	UpdateRCVAWSStorageSettingParams | UpdateRCVAzureStorageSettingParams | UpdateRCVGCPStorageSettingParams
 }
 
 // UpdateStorageSettingResult represents the result of a storage setting update
