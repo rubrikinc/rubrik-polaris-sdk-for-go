@@ -1,0 +1,13 @@
+mutation RubrikPolarisSDKRequest(
+    $id:   UUID!,
+    $name: String!
+) {
+    result: updateCloudNativeRcvGcpStorageSetting(input: {
+        id:   $id,
+        name: $name
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}
