@@ -44,6 +44,16 @@ type RegionalConfig struct {
 	Region         gqlgcp.Region
 	SubnetName     string
 	VPCNetworkName string
+
+	// HostProjectID is the ID of the GCP project owning the VPC network. It is
+	// only needed when the network is a Shared VPC, in which case it is the ID
+	// of the Shared VPC host project. Leave empty when the network belongs to
+	// the same project as the Exocompute service.
+	HostProjectID string
+
+	// SecondaryRangeName is the name of the GKE pods secondary IP range on the
+	// subnet. Leave empty to use the RSC default, pods-cidr-range.
+	SecondaryRangeName string
 }
 
 // GCPConfigurationsByCloudAccountID returns all GCP exocompute configurations
@@ -108,9 +118,11 @@ func (a API) UpdateGCPConfiguration(ctx context.Context, cloudAccountID uuid.UUI
 	configs := make([]exocompute.GCPRegionalConfig, 0, len(regionalConfigs))
 	for _, config := range regionalConfigs {
 		configs = append(configs, exocompute.GCPRegionalConfig{
-			Region:         config.Region.ToCloudAccountRegionEnum(),
-			SubnetName:     config.SubnetName,
-			VPCNetworkName: config.VPCNetworkName,
+			Region:             config.Region.ToCloudAccountRegionEnum(),
+			SubnetName:         config.SubnetName,
+			VPCNetworkName:     config.VPCNetworkName,
+			HostProjectID:      config.HostProjectID,
+			SecondaryRangeName: config.SecondaryRangeName,
 		})
 	}
 
