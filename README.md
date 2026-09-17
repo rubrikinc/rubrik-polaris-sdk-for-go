@@ -267,7 +267,12 @@ correctly to Polaris:
     "projectId": "<gcp-project-id>",
     "projectName": "<gcp-project-name>",
     "projectNumber": <gcp-project-number>,
-    "organizationName": "<gcp-organization-name>"
+    "organizationName": "<gcp-organization-name>",
+    "exocompute": {
+        "region": "<gcp-region>",
+        "subnetName": "<gcp-subnet-name>",
+        "vpcNetworkName": "<gcp-vpc-network-name>"
+    }
 }
 ```
 
