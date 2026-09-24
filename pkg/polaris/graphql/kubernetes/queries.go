@@ -27,7 +27,7 @@ package kubernetes
 // addK8sCluster GraphQL query
 var addK8sClusterQuery = `mutation SdkGolangAddK8sCluster(
     $clusterUuid: String!,
-    $config: K8sClusterCreateInput!) {
+    $config: K8sClusterAddInput!) {
     result: addK8sCluster(
         input: {
             clusterUuid: $clusterUuid,

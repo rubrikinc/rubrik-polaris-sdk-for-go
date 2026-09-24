@@ -1,6 +1,6 @@
 mutation RubrikPolarisSDKRequest(
     $clusterUuid: String!,
-    $config: K8sClusterCreateInput!) {
+    $config: K8sClusterAddInput!) {
     result: addK8sCluster(
         input: {
             clusterUuid: $clusterUuid,
