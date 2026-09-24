@@ -94,8 +94,14 @@ dependency rules, and test scaffolding.
 
 Run `/rx-checks` to execute all of the above automatically.
 
-## Commit & PR Conventions
+## Commit Messages
 
-- Commit messages: imperative mood, no trailing period
-- PRs require: linked issue, test description, CHANGELOG update
-- Versioning: SemVer (`vMAJOR.MINOR.PATCH`)
+Follow the seven rules of a great Git commit message (https://cbea.ms/git-commit). Key points: subject line ≤50 chars, imperative mood, no trailing period. Use a body only when the WHY is non-obvious from the diff — not to list every file changed.
+
+## Pull Requests
+
+Read `.github/pull_request_template.md` before creating a PR and fill it in faithfully. If how the change was tested isn't clear from context, ask. Don't remove unchecked checkboxes. Don't hard-wrap prose — write paragraphs as single lines and let GitHub handle wrapping.
+
+## Versioning
+
+SemVer (`vMAJOR.MINOR.PATCH`). Update CHANGELOG for every user-visible change.
