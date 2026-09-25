@@ -49,9 +49,6 @@ const (
 	Config ProtectionFeature = "CONFIG"
 )
 
-// Note: Config is deliberately absent. Unlike the features above, config
-// protection permissions are not carried by Cloud Discovery, so including it
-// here would list accounts that never onboarded the feature.
 var allProtectionFeatures = []ProtectionFeature{
 	EC2,
 	RDS,
@@ -59,6 +56,7 @@ var allProtectionFeatures = []ProtectionFeature{
 	DynamoDB,
 	EKS,
 	CloudDiscovery,
+	Config,
 }
 
 // NativeAccount represents an RSC native account. NativeAccount are connected
