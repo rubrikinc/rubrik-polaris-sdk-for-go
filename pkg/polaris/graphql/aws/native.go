@@ -43,8 +43,15 @@ const (
 	DynamoDB       ProtectionFeature = "DYNAMODB"
 	EKS            ProtectionFeature = "EKS"
 	CloudDiscovery ProtectionFeature = "CLOUD_DISCOVERY"
+
+	// Config is the native protection feature backing Cloud Applications,
+	// onboarded as the CLOUD_NATIVE_CONFIG_PROTECTION cloud account feature.
+	Config ProtectionFeature = "CONFIG"
 )
 
+// Note: Config is deliberately absent. Unlike the features above, config
+// protection permissions are not carried by Cloud Discovery, so including it
+// here would list accounts that never onboarded the feature.
 var allProtectionFeatures = []ProtectionFeature{
 	EC2,
 	RDS,

@@ -329,6 +329,7 @@ func SupportedFeatures() []core.Feature {
 		core.FeatureCloudCostReport,
 		core.FeatureCloudDiscovery,
 		core.FeatureCloudNativeArchival,
+		core.FeatureCloudNativeConfigProtection,
 		core.FeatureCloudNativeDynamoDBProtection,
 		core.FeatureCloudNativeProtection,
 		core.FeatureCloudNativeS3Protection,

@@ -95,6 +95,7 @@ var (
 	FeatureCloudNativeArchival                         = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
 	FeatureCloudNativeArchivalEncryption               = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
 	FeatureCloudNativeBlobProtection                   = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
+	FeatureCloudNativeConfigProtection                 = Feature{Name: "CLOUD_NATIVE_CONFIG_PROTECTION"}
 	FeatureCloudNativeDynamoDBProtection               = Feature{Name: "CLOUD_NATIVE_DYNAMODB_PROTECTION"}
 	FeatureCloudNativeProtection                       = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
 	FeatureCloudNativeS3Protection                     = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
@@ -174,6 +175,7 @@ func (f Feature) IsProtectionFeature() bool {
 		FeatureAzureSQLMIProtection,
 		FeatureCloudDiscovery,
 		FeatureCloudNativeBlobProtection,
+		FeatureCloudNativeConfigProtection,
 		FeatureCloudNativeDynamoDBProtection,
 		FeatureCloudNativeProtection,
 		FeatureCloudNativeS3Protection,
@@ -218,6 +220,7 @@ func AllProtectionFeatures(cloud CloudVendor) []Feature {
 	switch cloud {
 	case CloudVendorAWS:
 		return []Feature{
+			FeatureCloudNativeConfigProtection,
 			FeatureCloudNativeDynamoDBProtection,
 			FeatureCloudNativeProtection,
 			FeatureCloudNativeS3Protection,
@@ -318,6 +321,7 @@ var validFeatures = map[string]struct{}{
 	FeatureCloudNativeArchival.Name:                         {},
 	FeatureCloudNativeArchivalEncryption.Name:               {},
 	FeatureCloudNativeBlobProtection.Name:                   {},
+	FeatureCloudNativeConfigProtection.Name:                 {},
 	FeatureCloudNativeDynamoDBProtection.Name:               {},
 	FeatureCloudNativeProtection.Name:                       {},
 	FeatureCloudNativeS3Protection.Name:                     {},
