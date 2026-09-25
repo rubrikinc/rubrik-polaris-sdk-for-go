@@ -20,7 +20,10 @@
 
 package core
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestParseFeatureNoValidation(t *testing.T) {
 	if feature := ParseFeatureNoValidation("CLOUD_NATIVE_PROTECTION"); !feature.Equal(FeatureCloudNativeProtection) {
@@ -32,6 +35,28 @@ func TestParseFeatureNoValidation(t *testing.T) {
 	}
 
 	if feature := ParseFeatureNoValidation("cloud-native-protection"); !feature.Equal(FeatureCloudNativeProtection) {
+		t.Errorf("invalid feature: %s", feature)
+	}
+}
+
+func TestCloudNativeConfigProtection(t *testing.T) {
+	if name := FeatureCloudNativeConfigProtection.Name; name != "CLOUD_NATIVE_CONFIG_PROTECTION" {
+		t.Errorf("invalid feature name: %s", name)
+	}
+
+	if !FeatureCloudNativeConfigProtection.IsProtectionFeature() {
+		t.Error("CLOUD_NATIVE_CONFIG_PROTECTION should be a protection feature")
+	}
+
+	if !slices.ContainsFunc(AllProtectionFeatures(CloudVendorAWS), FeatureCloudNativeConfigProtection.Equal) {
+		t.Error("CLOUD_NATIVE_CONFIG_PROTECTION should be an AWS protection feature")
+	}
+
+	feature, err := ParseFeature("CLOUD_NATIVE_CONFIG_PROTECTION")
+	if err != nil {
+		t.Fatalf("failed to parse feature: %v", err)
+	}
+	if !feature.Equal(FeatureCloudNativeConfigProtection) {
 		t.Errorf("invalid feature: %s", feature)
 	}
 }
