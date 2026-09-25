@@ -136,6 +136,7 @@ type ObjectType string
 const (
 	ObjectActiveDirectory             ObjectType = "ACTIVE_DIRECTORY_OBJECT_TYPE"
 	ObjectAtlassianJira               ObjectType = "ATLASSIAN_JIRA_OBJECT_TYPE"
+	ObjectAWSConfig                   ObjectType = "AWS_CONFIG_OBJECT_TYPE"
 	ObjectAWSDynamoDB                 ObjectType = "AWS_DYNAMODB_OBJECT_TYPE"
 	ObjectAWSEC2EBS                   ObjectType = "AWS_EC2_EBS_OBJECT_TYPE"
 	ObjectAWSRDS                      ObjectType = "AWS_RDS_OBJECT_TYPE"
@@ -189,6 +190,7 @@ func AllObjectTypesAsStrings() []string {
 	return []string{
 		string(ObjectActiveDirectory),
 		string(ObjectAtlassianJira),
+		string(ObjectAWSConfig),
 		string(ObjectAWSDynamoDB),
 		string(ObjectAWSEC2EBS),
 		string(ObjectAWSRDS),
