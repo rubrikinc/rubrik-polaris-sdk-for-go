@@ -21,8 +21,18 @@
 package aws
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
@@ -40,6 +50,62 @@ func TestToCloudAccountKeepsConfigProtection(t *testing.T) {
 	})
 	if _, ok := account.Feature(core.FeatureCloudNativeConfigProtection); !ok {
 		t.Error("CLOUD_NATIVE_CONFIG_PROTECTION dropped by toCloudAccount")
+	}
+}
+
+// TestDisableFeatureDisablesConfigProtection verifies that disabling the Cloud
+// Native Config Protection feature starts a CONFIG native account disable job.
+// RSC refuses to disable Cloud Discovery while the feature is still enabled, so
+// skipping it makes account removal fail.
+func TestDisableFeatureDisablesConfigProtection(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	var disabled []string
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+		buf, err := io.ReadAll(req.Body)
+		if err != nil {
+			cancel(err)
+			return
+		}
+		var payload struct {
+			Query     string `json:"query"`
+			Variables struct {
+				Feature string `json:"awsNativeProtectionFeature"`
+			} `json:"variables"`
+		}
+		if err := json.Unmarshal(buf, &payload); err != nil {
+			cancel(err)
+			return
+		}
+		switch {
+		case strings.Contains(payload.Query, "startAwsNativeAccountDisableJob"):
+			disabled = append(disabled, payload.Variables.Feature)
+			if _, err := fmt.Fprint(w, `{"data":{"startAwsNativeAccountDisableJob":{"error":"","jobId":"01a0e796-2fe3-75a3-9f1a-aa6cadec1888"}}}`); err != nil {
+				cancel(err)
+			}
+		case strings.Contains(payload.Query, "getKorgTaskchainStatus"):
+			if _, err := fmt.Fprint(w, `{"data":{"getKorgTaskchainStatus":{"taskchain":{"id":1,"state":"SUCCEEDED","taskchainUuid":"01a0e796-2fe3-75a3-9f1a-aa6cadec1888"}}}}`); err != nil {
+				cancel(err)
+			}
+		default:
+			cancel(fmt.Errorf("unexpected query: %s", payload.Query))
+		}
+	}))
+	defer srv.Close()
+
+	account := CloudAccount{
+		ID: uuid.MustParse("e381bc19-ea11-493c-9751-2252116aef7d"),
+		Features: []Feature{{
+			Feature: core.FeatureCloudNativeConfigProtection,
+			Status:  core.StatusConnected,
+		}},
+	}
+	if err := Wrap(mockClient(srv)).disableFeature(ctx, account, core.FeatureCloudNativeConfigProtection, false); err != nil {
+		t.Fatal(err)
+	}
+	if len(disabled) != 1 || disabled[0] != string(aws.Config) {
+		t.Errorf("expected one %s disable job, got %v", aws.Config, disabled)
 	}
 }
 
