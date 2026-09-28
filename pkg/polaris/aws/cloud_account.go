@@ -251,6 +251,7 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 		core.FeatureRDSProtection,
 		core.FeatureCloudNativeS3Protection,
 		core.FeatureCloudNativeDynamoDBProtection,
+		core.FeatureCloudNativeConfigProtection,
 		core.FeatureExocompute,
 		core.FeatureCloudDiscovery,
 	}
@@ -311,6 +312,8 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 		protectionFeature = aws.S3
 	case feature.Equal(core.FeatureCloudNativeDynamoDBProtection):
 		protectionFeature = aws.DynamoDB
+	case feature.Equal(core.FeatureCloudNativeConfigProtection):
+		protectionFeature = aws.Config
 	case feature.Equal(core.FeatureKubernetesProtection):
 		protectionFeature = aws.EKS
 	case feature.Equal(core.FeatureCloudDiscovery):
