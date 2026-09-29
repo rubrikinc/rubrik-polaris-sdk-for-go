@@ -1,0 +1,11 @@
+mutation RubrikPolarisSDKRequest($config: K8sProtectionSetAddInput!) {
+    result: addK8sProtectionSet(input: {config: $config}) {
+        id
+        definition
+        hookConfigs
+        kubernetesClusterUuid
+        kubernetesNamespace
+        name
+        rsType
+    }
+}
