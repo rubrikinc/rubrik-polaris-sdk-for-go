@@ -73,6 +73,8 @@ func SupportedFeatures() []core.Feature {
 		core.FeatureCloudNativeProtection,
 		core.FeatureCloudSQLProtection,
 		core.FeatureExocompute,
+		core.FeatureGCPBigQueryProtection,
+		core.FeatureGCPBigQueryReservation,
 		core.FeatureGCPSharedVPCHost,
 		core.FeatureServerAndApps,
 	}

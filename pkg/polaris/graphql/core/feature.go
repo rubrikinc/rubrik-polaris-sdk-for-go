@@ -105,6 +105,8 @@ var (
 	FeatureDSPMData                                    = Feature{Name: "DSPM_DATA"}
 	FeatureDSPMMetadata                                = Feature{Name: "DSPM_METADATA"}
 	FeatureExocompute                                  = Feature{Name: "EXOCOMPUTE"}
+	FeatureGCPBigQueryProtection                       = Feature{Name: "GCP_BIGQUERY_PROTECTION"}
+	FeatureGCPBigQueryReservation                      = Feature{Name: "GCP_BIGQUERY_RESERVATION"}
 	FeatureGCPSharedVPCHost                            = Feature{Name: "GCP_SHARED_VPC_HOST"}
 	FeatureGitHubRepositoryProtection                  = Feature{Name: "GITHUB_REPOSITORY_PROTECTION"}
 	FeatureKubernetesProtection                        = Feature{Name: "KUBERNETES_PROTECTION"}
@@ -180,6 +182,7 @@ func (f Feature) IsProtectionFeature() bool {
 		FeatureCloudNativeProtection,
 		FeatureCloudNativeS3Protection,
 		FeatureCloudSQLProtection,
+		FeatureGCPBigQueryProtection,
 		FeatureGitHubRepositoryProtection,
 		FeatureKubernetesProtection,
 		FeatureRDSProtection,
@@ -240,6 +243,7 @@ func AllProtectionFeatures(cloud CloudVendor) []Feature {
 		return []Feature{
 			FeatureCloudNativeProtection,
 			FeatureCloudSQLProtection,
+			FeatureGCPBigQueryProtection,
 		}
 	default:
 		return nil
@@ -331,6 +335,8 @@ var validFeatures = map[string]struct{}{
 	FeatureDSPMData.Name:                                    {},
 	FeatureDSPMMetadata.Name:                                {},
 	FeatureExocompute.Name:                                  {},
+	FeatureGCPBigQueryProtection.Name:                       {},
+	FeatureGCPBigQueryReservation.Name:                      {},
 	FeatureGCPSharedVPCHost.Name:                            {},
 	FeatureGitHubRepositoryProtection.Name:                  {},
 	FeatureKubernetesProtection.Name:                        {},
