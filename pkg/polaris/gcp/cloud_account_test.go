@@ -194,7 +194,7 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 // SDK's answer to which features a GCP project can be onboarded with, so a
 // missing entry misleads callers that enumerate it rather than failing loudly.
 func TestSupportedFeaturesIncludesCloudSQL(t *testing.T) {
-	if _, ok := core.LookupFeature(SupportedFeatures(), core.FeatureCloudSQLProtection); !ok {
+	if _, ok := core.LookupFeature(core.GCPProjectFeatures(), core.FeatureCloudSQLProtection); !ok {
 		t.Error("CLOUD_SQL_PROTECTION missing from SupportedFeatures")
 	}
 }
