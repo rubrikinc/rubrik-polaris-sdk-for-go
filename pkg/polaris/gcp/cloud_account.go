@@ -67,17 +67,15 @@ type Feature struct {
 }
 
 // SupportedFeatures returns the features supported by GCP cloud accounts.
+//
+// Deprecated: use core.GCPProjectAllowlistNames instead.
 func SupportedFeatures() []core.Feature {
-	return []core.Feature{
-		core.FeatureCloudNativeArchival,
-		core.FeatureCloudNativeProtection,
-		core.FeatureCloudSQLProtection,
-		core.FeatureExocompute,
-		core.FeatureGCPBigQueryProtection,
-		core.FeatureGCPBigQueryReservation,
-		core.FeatureGCPSharedVPCHost,
-		core.FeatureServerAndApps,
+	var features []core.Feature
+	for _, name := range core.GCPProjectAllowlistNames() {
+		features = append(features, core.Feature{Name: name})
 	}
+
+	return features
 }
 
 // ProjectByID returns the project with the specified RSC cloud account ID.

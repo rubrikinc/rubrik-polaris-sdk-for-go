@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -325,46 +326,26 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 	return aws.Wrap(a.client).StartNativeAccountDisableJob(ctx, cloudAccountID, protectionFeature, deleteSnapshots)
 }
 
-// SupportedFeatures returns the features supported by AWS cloud accounts.
+// SupportedFeatures returns the features supported by AWS cloud accounts. This
+// includes the features which RSC enables on its own, e.g. CLOUD_COST_REPORT.
+//
+// Deprecated: use core.AWSAccountAllowlistNames instead.
 func SupportedFeatures() []core.Feature {
-	return []core.Feature{
-		core.FeatureArchival,
-		core.FeatureCloudCostReport,
-		core.FeatureCloudDiscovery,
-		core.FeatureCloudNativeArchival,
-		core.FeatureCloudNativeConfigProtection,
-		core.FeatureCloudNativeDynamoDBProtection,
-		core.FeatureCloudNativeProtection,
-		core.FeatureCloudNativeS3Protection,
-		core.FeatureCyberRecoveryDataClassificationData,
-		core.FeatureCyberRecoveryDataClassificationMetadata,
-		core.FeatureDSPMData,
-		core.FeatureDSPMMetadata,
-		core.FeatureExocompute,
-		core.FeatureKubernetesProtection,
-		core.FeatureLaminarCrossAccount,
-		core.FeatureLaminarInternal,
-		core.FeatureOutpost,
-		core.FeatureRDSProtection,
-		core.FeatureRoleChaining,
-		core.FeatureServerAndApps,
+	var features []core.Feature
+	for _, name := range core.AWSAccountAllowlistNames() {
+		features = append(features, core.Feature{Name: name})
 	}
-}
 
-var supportedFeatures = func() map[string]struct{} {
-	m := make(map[string]struct{}, len(SupportedFeatures()))
-	for _, f := range SupportedFeatures() {
-		m[f.Name] = struct{}{}
-	}
-	return m
-}()
+	return features
+}
 
 // toCloudAccount converts a polaris/graphql/aws CloudAccountWithFeatures to a
 // polaris/aws CloudAccount.
 func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccount {
+	supportedFeatures := core.AWSAccountAllowlistNames()
 	features := make([]Feature, 0, len(accountWithFeatures.Features))
 	for _, feature := range accountWithFeatures.Features {
-		if _, ok := supportedFeatures[feature.Feature]; !ok {
+		if !slices.Contains(supportedFeatures, feature.Feature) {
 			continue
 		}
 
