@@ -621,28 +621,16 @@ func (a API) SetServicePrincipal(ctx context.Context, principal ServicePrincipal
 }
 
 // SupportedFeatures returns the features supported by Azure cloud accounts.
+//
+// Deprecated: use core.AzureSubscriptionAllowlistNames instead.
 func SupportedFeatures() []core.Feature {
-	return []core.Feature{
-		core.FeatureAzurePostgresFlexibleServerProtection,
-		core.FeatureAzureSQLDBProtection,
-		core.FeatureAzureSQLMIProtection,
-		core.FeatureCloudDiscovery,
-		core.FeatureCloudNativeArchival,
-		core.FeatureCloudNativeArchivalEncryption,
-		core.FeatureCloudNativeBlobProtection,
-		core.FeatureCloudNativeProtection,
-		core.FeatureExocompute,
-		core.FeatureServerAndApps,
+	var features []core.Feature
+	for _, name := range core.AzureSubscriptionAllowlistNames() {
+		features = append(features, core.Feature{Name: name})
 	}
-}
 
-var supportedFeatures = func() map[string]struct{} {
-	m := make(map[string]struct{}, len(SupportedFeatures()))
-	for _, f := range SupportedFeatures() {
-		m[f.Name] = struct{}{}
-	}
-	return m
-}()
+	return features
+}
 
 // toSubscriptions returns the unique subscriptions found in the rawTenants
 // slice. This function requires that the tenants include subscription details.
@@ -652,6 +640,7 @@ func toSubscriptions(rawTenants []gqlazure.CloudAccountTenant) []CloudAccount {
 		accounts map[uuid.UUID]*CloudAccount
 	}
 
+	supportedFeatures := core.AzureSubscriptionAllowlistNames()
 	tenantSet := make(map[uuid.UUID]*tenantAccounts)
 	for _, rawTenant := range rawTenants {
 		tenant, ok := tenantSet[rawTenant.ID]
@@ -684,7 +673,7 @@ func toSubscriptions(rawTenants []gqlazure.CloudAccountTenant) []CloudAccount {
 				}
 				account = tenant.accounts[rawAccount.ID]
 			}
-			if _, ok := supportedFeatures[rawAccount.Feature.Feature]; !ok {
+			if !slices.Contains(supportedFeatures, rawAccount.Feature.Feature) {
 				continue
 			}
 

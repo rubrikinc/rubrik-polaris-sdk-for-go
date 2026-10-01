@@ -52,36 +52,27 @@ func WrapGQL(client *graphql.Client) API {
 	return API{client: client, log: client.Log()}
 }
 
-// azureSupportedFeatures contains all features and permission groups supported
-// by Azure DevOps organizations.
-//
-// Note, the AZURE_DEVOPS_PROTECTION feature is deprecated and should not be
-// used. The AZURE_DEVOPS_DEVELOPER_COLLABORATION_PROTECTION is not GA and due
-// to issues with the GraphQL API it cannot be supported yet.
-var azureSupportedFeatures = []core.Feature{
-	core.FeatureAzureDevOpsRepositoryProtection.WithPermissionGroups(
-		core.PermissionGroupBasic,
-		core.PermissionGroupRecovery,
-	),
-}
-
 // AzureSupportedFeatures returns the features and permission groups supported
 // by Azure DevOps organizations.
+//
+// Deprecated: use core.AzureDevOpsOrganizationFeatures instead.
 func AzureSupportedFeatures() []core.Feature {
-	return slices.Clone(azureSupportedFeatures)
+	return core.AzureDevOpsOrganizationFeatures()
 }
 
 // AzureSupportedFeatureNames returns the name of all features supported by
 // Azure DevOps organizations.
+//
+// Deprecated: use core.AzureDevOpsOrganizationFeatureNames instead.
 func AzureSupportedFeatureNames() []string {
-	return core.FeatureNames(azureSupportedFeatures)
+	return core.AzureDevOpsOrganizationFeatureNames()
 }
 
 // AzureSupportedPermissionGroups returns the deduplicated set of permission
 // groups across all features supported by Azure DevOps organizations.
 func AzureSupportedPermissionGroups() []core.PermissionGroup {
 	var groups []core.PermissionGroup
-	for _, feature := range azureSupportedFeatures {
+	for _, feature := range core.AzureDevOpsOrganizationFeatures() {
 		groups = append(groups, feature.PermissionGroups...)
 	}
 
@@ -104,7 +95,7 @@ func AzureSupportedPermissionGroupNames() []string {
 // are supported by Azure DevOps organizations, otherwise it returns an error
 // describing what is not supported.
 func AzureCheckFeature(feature core.Feature) error {
-	f, ok := core.LookupFeature(azureSupportedFeatures, feature)
+	f, ok := core.LookupFeature(core.AzureDevOpsOrganizationFeatures(), feature)
 	if !ok {
 		return fmt.Errorf("feature %q is not supported", feature.Name)
 	}
@@ -118,32 +109,27 @@ func AzureCheckFeature(feature core.Feature) error {
 	return nil
 }
 
-// githubSupportedFeatures contains all features and permission groups supported
-// by GitHub organizations.
-var githubSupportedFeatures = []core.Feature{
-	core.FeatureGitHubRepositoryProtection.WithPermissionGroups(
-		core.PermissionGroupBasic,
-		core.PermissionGroupRecovery,
-	),
-}
-
 // GitHubSupportedFeatures returns the features and permission groups supported
 // by GitHub organizations.
+//
+// Deprecated: use core.GitHubOrganizationFeatures instead.
 func GitHubSupportedFeatures() []core.Feature {
-	return slices.Clone(githubSupportedFeatures)
+	return core.GitHubOrganizationFeatures()
 }
 
 // GitHubSupportedFeatureNames returns the name of all features supported by
 // GitHub organizations.
+//
+// Deprecated: use core.GitHubOrganizationFeatureNames instead.
 func GitHubSupportedFeatureNames() []string {
-	return core.FeatureNames(githubSupportedFeatures)
+	return core.GitHubOrganizationFeatureNames()
 }
 
 // GitHubSupportedPermissionGroups returns the deduplicated set of permission
 // groups across all features supported by GitHub organizations.
 func GitHubSupportedPermissionGroups() []core.PermissionGroup {
 	var groups []core.PermissionGroup
-	for _, feature := range githubSupportedFeatures {
+	for _, feature := range core.GitHubOrganizationFeatures() {
 		groups = append(groups, feature.PermissionGroups...)
 	}
 
@@ -166,7 +152,7 @@ func GitHubSupportedPermissionGroupNames() []string {
 // are supported by GitHub organizations, otherwise it returns an error
 // describing what is not supported.
 func GitHubCheckFeature(feature core.Feature) error {
-	f, ok := core.LookupFeature(githubSupportedFeatures, feature)
+	f, ok := core.LookupFeature(core.GitHubOrganizationFeatures(), feature)
 	if !ok {
 		return fmt.Errorf("feature %q is not supported", feature.Name)
 	}

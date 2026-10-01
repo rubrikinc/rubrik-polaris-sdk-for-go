@@ -27,6 +27,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/devops"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	gqldevops "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/devops"
 	azureregions "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	polarislog "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
@@ -69,7 +70,7 @@ func main() {
 	orgs, err := devops.Wrap(client).AddAzureCloudAccount(ctx, gqldevops.AddAzureCloudAccountParams{
 		OrganizationNativeIDs: []string{organizationID},
 		TenantDomain:          tenantDomain,
-		Features:              devops.AzureSupportedFeatures(),
+		Features:              core.AzureDevOpsOrganizationFeatures(),
 		HostType:              gqldevops.HostTypeRubrik,
 		StorageType:           gqldevops.StorageTypeRCV,
 		ExocomputeRegion:      &exocomputeRegion,
