@@ -67,6 +67,7 @@ var (
 	FeatureGCPBigQueryReservation                      = Feature{Name: GCPBigQueryReservation}
 	FeatureGCPSharedVPCHost                            = Feature{Name: GCPSharedVPCHost}
 	FeatureGitHubDeveloperCollaborationProtection      = Feature{Name: GitHubDeveloperCollaborationProtection}
+	FeatureGitHubPackagesProtection                    = Feature{Name: GitHubPackagesProtection}
 	FeatureGitHubRepositoryProtection                  = Feature{Name: GitHubRepositoryProtection}
 	FeatureGlueIcebergProtection                       = Feature{Name: GlueIcebergProtection}
 	FeatureKubernetesProtection                        = Feature{Name: KubernetesProtection}
