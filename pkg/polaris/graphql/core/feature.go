@@ -59,6 +59,7 @@ var (
 	FeatureCriticalResourceProtection                  = Feature{Name: CriticalResourceProtection}
 	FeatureCyberRecoveryDataClassificationData         = Feature{Name: CyberRecoveryDataClassificationData}
 	FeatureCyberRecoveryDataClassificationMetadata     = Feature{Name: CyberRecoveryDataClassificationMetadata}
+	FeatureDataCenterRoleBasedArchival                 = Feature{Name: DataCenterRoleBasedArchival}
 	FeatureDSPMData                                    = Feature{Name: DSPMData}
 	FeatureDSPMMetadata                                = Feature{Name: DSPMMetadata}
 	FeatureExocompute                                  = Feature{Name: Exocompute}
