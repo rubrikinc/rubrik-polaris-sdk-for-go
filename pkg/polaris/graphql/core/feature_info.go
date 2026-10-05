@@ -57,6 +57,7 @@ const (
 	CriticalResourceProtection                  = "CRITICAL_RESOURCE_PROTECTION"
 	CyberRecoveryDataClassificationData         = "CYBERRECOVERY_DATA_CLASSIFICATION_DATA"
 	CyberRecoveryDataClassificationMetadata     = "CYBERRECOVERY_DATA_CLASSIFICATION_METADATA"
+	DataCenterRoleBasedArchival                 = "DATA_CENTER_ROLE_BASED_ARCHIVAL"
 	DSPMData                                    = "DSPM_DATA"
 	DSPMMetadata                                = "DSPM_METADATA"
 	Exocompute                                  = "EXOCOMPUTE"
@@ -494,6 +495,8 @@ var featureInfoMap = map[string]struct {
 		protection: true,
 		public:     true,
 	},
+	// Not onboarded through any of the cloud account types.
+	CCESBaaS: {},
 	// Internal. Not onboarded through any of the cloud account types.
 	CloudAccounts: {},
 	CloudCostReport: {
@@ -556,7 +559,6 @@ var featureInfoMap = map[string]struct {
 		permissionGroups: cloudAccountPermissionGroups{
 			azureSubscription: {
 				PermissionGroupBasic,
-				PermissionGroupInventoryGeneration,
 				PermissionGroupRecovery,
 			},
 		},
@@ -572,7 +574,6 @@ var featureInfoMap = map[string]struct {
 				PermissionGroupRecovery2,
 				PermissionGroupRecovery3,
 				PermissionGroupRecovery4,
-				PermissionGroupRecoveryNetworking,
 			},
 			awsAccountIAM: {
 				PermissionGroupBasic,
@@ -581,7 +582,6 @@ var featureInfoMap = map[string]struct {
 				PermissionGroupRecovery2,
 				PermissionGroupRecovery3,
 				PermissionGroupRecovery4,
-				PermissionGroupRecoveryNetworking,
 			},
 		},
 		protection: true,
@@ -705,6 +705,9 @@ var featureInfoMap = map[string]struct {
 		},
 		public: true,
 	},
+	// Data Center (CDM) archival feature, not onboarded through any of the
+	// cloud account types.
+	DataCenterRoleBasedArchival: {},
 	DSPMData: {
 		permissionGroups: cloudAccountPermissionGroups{
 			awsAccountCFT: {
@@ -763,7 +766,7 @@ var featureInfoMap = map[string]struct {
 				PermissionGroupBasic,
 			},
 		},
-		allowed: true,
+		public: true,
 	},
 	GCPSharedVPCHost: {
 		permissionGroups: cloudAccountPermissionGroups{
@@ -867,7 +870,6 @@ var featureInfoMap = map[string]struct {
 		permissionGroups: cloudAccountPermissionGroups{
 			awsAccountCFT: {
 				PermissionGroupBasic,
-				PermissionGroupRSCManagedCluster,
 			},
 		},
 		public: true,

@@ -20,6 +20,10 @@
 
 package core
 
+import (
+	"slices"
+)
+
 // PermissionGroup represents a named set of permissions for a feature. Note,
 // not all permission groups are applicable to all features.
 type PermissionGroup string
@@ -74,3 +78,73 @@ const (
 	PermissionGroupSQLArchival                   PermissionGroup = "SQL_ARCHIVAL"
 	PermissionGroupSurgicalRecovery              PermissionGroup = "SURGICAL_RECOVERY"
 )
+
+// AWSCloudFormationPermissionGroupNames returns the names of the permission
+// groups of the features which can be onboarded for an AWS account using the
+// CloudFormation workflow, sorted by name.
+func AWSCloudFormationPermissionGroupNames() []string {
+	return PermissionGroupNames(permissionGroupsFor(AWSCloudFormationFeatures()))
+}
+
+// AWSIAMRolesPermissionGroupNames returns the names of the permission groups of
+// the features which can be onboarded for an AWS account using the IAM roles
+// workflow, sorted by name.
+func AWSIAMRolesPermissionGroupNames() []string {
+	return PermissionGroupNames(permissionGroupsFor(AWSIAMRolesFeatures()))
+}
+
+// AWSManagedPermissionGroupNames returns the names of the permission groups of
+// the features which can be onboarded for an RSC-managed (BaaS) AWS account,
+// sorted by name.
+func AWSManagedPermissionGroupNames() []string {
+	return PermissionGroupNames(permissionGroupsFor(AWSManagedFeatures()))
+}
+
+// AzureSubscriptionPermissionGroupNames returns the names of the permission
+// groups of the features which can be onboarded for an Azure subscription,
+// sorted by name.
+func AzureSubscriptionPermissionGroupNames() []string {
+	return PermissionGroupNames(permissionGroupsFor(AzureSubscriptionFeatures()))
+}
+
+// AzureDevOpsOrganizationPermissionGroupNames returns the names of the
+// permission groups of the features which can be onboarded for an Azure DevOps
+// organization, sorted by name.
+func AzureDevOpsOrganizationPermissionGroupNames() []string {
+	return PermissionGroupNames(permissionGroupsFor(AzureDevOpsOrganizationFeatures()))
+}
+
+// GCPProjectPermissionGroupNames returns the names of the permission groups of
+// the features which can be onboarded for a GCP project, sorted by name.
+func GCPProjectPermissionGroupNames() []string {
+	return PermissionGroupNames(permissionGroupsFor(GCPProjectFeatures()))
+}
+
+// GitHubOrganizationPermissionGroupNames returns the names of the permission
+// groups of the features which can be onboarded for a GitHub organization,
+// sorted by name.
+func GitHubOrganizationPermissionGroupNames() []string {
+	return PermissionGroupNames(permissionGroupsFor(GitHubOrganizationFeatures()))
+}
+
+// PermissionGroupNames returns the names of the permission groups.
+func PermissionGroupNames(groups []PermissionGroup) []string {
+	var names []string
+	for _, group := range groups {
+		names = append(names, string(group))
+	}
+
+	return names
+}
+
+// permissionGroupsFor returns the permission groups for the specified feature,
+// sorted by name.
+func permissionGroupsFor(features []Feature) []PermissionGroup {
+	var groups []PermissionGroup
+	for _, feature := range features {
+		groups = append(groups, feature.PermissionGroups...)
+	}
+	slices.Sort(groups)
+
+	return slices.Compact(groups)
+}
