@@ -65,6 +65,7 @@ const (
 	GCPBigQueryReservation                      = "GCP_BIGQUERY_RESERVATION"
 	GCPSharedVPCHost                            = "GCP_SHARED_VPC_HOST"
 	GitHubDeveloperCollaborationProtection      = "GITHUB_DEVELOPER_COLLABORATION_PROTECTION"
+	GitHubPackagesProtection                    = "GITHUB_PACKAGES_PROTECTION"
 	GitHubRepositoryProtection                  = "GITHUB_REPOSITORY_PROTECTION"
 	GlueIcebergProtection                       = "GLUE_ICEBERG_PROTECTION"
 	KubernetesProtection                        = "KUBERNETES_PROTECTION"
@@ -782,6 +783,14 @@ var featureInfoMap = map[string]struct {
 			githubOrg: {
 				PermissionGroupBasic,
 				PermissionGroupRecovery,
+			},
+		},
+		protection: true,
+	},
+	GitHubPackagesProtection: {
+		permissionGroups: cloudAccountPermissionGroups{
+			githubOrg: {
+				PermissionGroupBasic,
 			},
 		},
 		protection: true,
