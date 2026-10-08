@@ -1,0 +1,12 @@
+query RubrikPolarisSDKRequest($tenantId: String!, $vaultUrl: URL!) {
+    result: validateKmsConnection(input: {
+        kmsDetails: {
+            secureAuthAzureKeyVault: {
+                tenantId: $tenantId,
+                vaultUrl: $vaultUrl,
+            },
+        },
+    }) {
+        errorString
+    }
+}

@@ -40,6 +40,11 @@ const (
 	FeatureFlagAzureSQLDBCopyBackup            FeatureFlagName = "CNP_AZURE_SQL_DB_COPY_BACKUP"
 	FeatureFlagAzureSQLSLARevamp               FeatureFlagName = "CNP_AZURE_SQL_SLA_REVAMP"
 	FeatureFlagMultipleKeyValuePairsInTagRules FeatureFlagName = "CNP_MULTIPLE_KEY_VALUE_PAIRS_IN_TAG_RULES_ENABLED"
+	FeatureFlagUnifiedEncryptionManagement     FeatureFlagName = "UNIFIED_ENCRYPTION_MANAGEMENT_ENABLED"
+	FeatureFlagAWSKMSForUEM                    FeatureFlagName = "AWS_KMS_FOR_UEM_ENABLED"
+	FeatureFlagAWSCloudAccountUEM              FeatureFlagName = "REL_ENABLE_AWS_EC2_UEM"
+	FeatureFlagAzureCloudAccountUEM            FeatureFlagName = "REL_ENABLE_AZURE_VM_UEM"
+	FeatureFlagAzureSecureAuthForUEM           FeatureFlagName = "UEM_SECURE_AUTH_FOR_AKV_ENABLED"
 )
 
 // FeatureFlag holds the name and state of a single RSC feature flag.
