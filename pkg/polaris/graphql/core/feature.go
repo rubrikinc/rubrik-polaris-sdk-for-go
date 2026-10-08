@@ -27,99 +27,61 @@ import (
 	"strings"
 )
 
-// Note: When adding new PermissionGroup constants, also add them to the
-// canaryPermissionGroups in permission_group_canary_test.go.
-const (
-	PermissionGroupAKSCustomPrivateDNSZone       PermissionGroup = "AKS_CUSTOM_PRIVATE_DNS_ZONE"
-	PermissionGroupAlloyDB                       PermissionGroup = "ALLOYDB"
-	PermissionGroupAdvancedDiagnostics           PermissionGroup = "ADVANCED_DIAGNOSTICS"
-	PermissionGroupArcVMExport                   PermissionGroup = "ARC_VM_EXPORT"
-	PermissionGroupAutomatedNetworkingSetup      PermissionGroup = "AUTOMATED_NETWORKING_SETUP"
-	PermissionGroupBaaSBasic                     PermissionGroup = "BAAS_BASIC"
-	PermissionGroupBackupV2                      PermissionGroup = "BACKUP_V2"
-	PermissionGroupBasic                         PermissionGroup = "BASIC"
-	PermissionGroupBasic2                        PermissionGroup = "BASIC_2"
-	PermissionGroupCCES                          PermissionGroup = "CLOUD_CLUSTER_ES"
-	PermissionGroupCloudSQL                      PermissionGroup = "CLOUDSQL"
-	PermissionGroupCustomerHostedLogging         PermissionGroup = "CUSTOMER_HOSTED_LOGGING"
-	PermissionGroupCustomerManagedCluster        PermissionGroup = "CUSTOMER_MANAGED_BASIC"
-	PermissionGroupCustomerManagedStorageIndexng PermissionGroup = "CUSTOMER_MANAGED_STORAGE_INDEXING"
-	PermissionGroupDataCenterConsolidation       PermissionGroup = "DATA_CENTER_CONSOLIDATION"
-	PermissionGroupDataCenterImmutability        PermissionGroup = "DATA_CENTER_IMMUTABILITY"
-	PermissionGroupDataCenterKMS                 PermissionGroup = "DATA_CENTER_KMS"
-	PermissionGroupDownloadFile                  PermissionGroup = "DOWNLOAD_FILE"
-	PermissionGroupEncryption                    PermissionGroup = "ENCRYPTION"
-	PermissionGroupExport                        PermissionGroup = "EXPORT"
-	PermissionGroupExportAndRestore              PermissionGroup = "EXPORT_AND_RESTORE"
-	PermissionGroupExportAndRestorePowerOffVM    PermissionGroup = "EXPORT_AND_RESTORE_POWER_OFF_VM"
-	PermissionGroupExportPowerOff                PermissionGroup = "EXPORT_POWER_OFF"
-	PermissionGroupExportPowerOn                 PermissionGroup = "EXPORT_POWER_ON"
-	PermissionGroupFileLevelRecovery             PermissionGroup = "FILE_LEVEL_RECOVERY"
-	PermissionGroupGatewayKeyCreation            PermissionGroup = "GATEWAY_KEY_CREATION"
-	PermissionGroupInvalid                       PermissionGroup = "GROUP_UNSPECIFIED"
-	PermissionGroupInventoryGeneration           PermissionGroup = "INVENTORY_GENERATION"
-	PermissionGroupKMSKeySharing                 PermissionGroup = "KMS_KEY_SHARING"
-	PermissionGroupNATGateway                    PermissionGroup = "NAT_GATEWAY"
-	PermissionGroupPrivateEndpoints              PermissionGroup = "PRIVATE_ENDPOINTS"
-	PermissionGroupRecoverToS3                   PermissionGroup = "RECOVER_TO_S3"
-	PermissionGroupRecovery                      PermissionGroup = "RECOVERY"
-	PermissionGroupRecovery2                     PermissionGroup = "RECOVERY_2"
-	PermissionGroupRecovery3                     PermissionGroup = "RECOVERY_3"
-	PermissionGroupRecovery4                     PermissionGroup = "RECOVERY_4"
-	PermissionGroupRecoveryNetworking            PermissionGroup = "RECOVERY_NETWORKING"
-	PermissionGroupRecoveryRDSConnectivity       PermissionGroup = "RECOVERY_RDS_CONNECTIVITY"
-	PermissionGroupRestore                       PermissionGroup = "RESTORE"
-	PermissionGroupRSCManagedCluster             PermissionGroup = "RSC_MANAGED_CLUSTER"
-	PermissionGroupSAPHanaSSBasic                PermissionGroup = "SAP_HANA_SS_BASIC"
-	PermissionGroupSAPHanaSSRecovery             PermissionGroup = "SAP_HANA_SS_RECOVERY"
-	PermissionGroupServiceEndpointAutomation     PermissionGroup = "SERVICE_ENDPOINT_AUTOMATION"
-	PermissionGroupSnapshotPrivateAccess         PermissionGroup = "SNAPSHOT_PRIVATE_ACCESS"
-	PermissionGroupSQLArchival                   PermissionGroup = "SQL_ARCHIVAL"
-	PermissionGroupSurgicalRecovery              PermissionGroup = "SURGICAL_RECOVERY"
-)
-
 var (
 	FeatureInvalid                                     = Feature{Name: ""}
-	FeatureAll                                         = Feature{Name: "ALL"}
-	FeatureAppFlows                                    = Feature{Name: "APP_FLOWS"}
-	FeatureArchival                                    = Feature{Name: "ARCHIVAL"}
-	FeatureAzureDevOpsDeveloperCollaborationProtection = Feature{Name: "AZURE_DEVOPS_DEVELOPER_COLLABORATION_PROTECTION"}
-	FeatureAzureDevOpsProtection                       = Feature{Name: "AZURE_DEVOPS_PROTECTION"} // Deprecated: use FeatureAzureDevOpsRepositoryProtection
-	FeatureAzureDevOpsRepositoryProtection             = Feature{Name: "AZURE_DEVOPS_REPOSITORY_PROTECTION"}
-	FeatureAzurePostgresFlexibleServerProtection       = Feature{Name: "AZURE_POSTGRES_FLEXIBLE_SERVER_PROTECTION"}
-	FeatureAzureSQLDBProtection                        = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
-	FeatureAzureSQLMIProtection                        = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
-	FeatureCloudAccounts                               = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
-	FeatureCloudCostReport                             = Feature{Name: "CLOUD_COST_REPORT"}
-	FeatureCloudDiscovery                              = Feature{Name: "CLOUD_DISCOVERY"}
-	FeatureCloudNativeArchival                         = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
-	FeatureCloudNativeArchivalEncryption               = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
-	FeatureCloudNativeBlobProtection                   = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
-	FeatureCloudNativeConfigProtection                 = Feature{Name: "CLOUD_NATIVE_CONFIG_PROTECTION"}
-	FeatureCloudNativeDynamoDBProtection               = Feature{Name: "CLOUD_NATIVE_DYNAMODB_PROTECTION"}
-	FeatureCloudNativeProtection                       = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
-	FeatureCloudNativeS3Protection                     = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
-	FeatureCloudSQLProtection                          = Feature{Name: "CLOUD_SQL_PROTECTION"}
-	FeatureCyberRecoveryDataClassificationData         = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_DATA"}
-	FeatureCyberRecoveryDataClassificationMetadata     = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_METADATA"}
-	FeatureDSPMData                                    = Feature{Name: "DSPM_DATA"}
-	FeatureDSPMMetadata                                = Feature{Name: "DSPM_METADATA"}
-	FeatureExocompute                                  = Feature{Name: "EXOCOMPUTE"}
-	FeatureGCPBigQueryProtection                       = Feature{Name: "GCP_BIGQUERY_PROTECTION"}
-	FeatureGCPBigQueryReservation                      = Feature{Name: "GCP_BIGQUERY_RESERVATION"}
-	FeatureGCPSharedVPCHost                            = Feature{Name: "GCP_SHARED_VPC_HOST"}
-	FeatureGitHubRepositoryProtection                  = Feature{Name: "GITHUB_REPOSITORY_PROTECTION"}
-	FeatureKubernetesProtection                        = Feature{Name: "KUBERNETES_PROTECTION"}
-	FeatureLaminarCrossAccount                         = Feature{Name: "LAMINAR_CROSS_ACCOUNT"}
-	FeatureLaminarInternal                             = Feature{Name: "LAMINAR_INTERNAL"}
-	FeatureLaminarOutpostApplication                   = Feature{Name: "LAMINAR_OUTPOST_APPLICATION"}
-	FeatureLaminarOutpostManagedIdentity               = Feature{Name: "LAMINAR_OUTPOST_MANAGED_IDENTITY"}
-	FeatureLaminarTargetApplication                    = Feature{Name: "LAMINAR_TARGET_APPLICATION"}
-	FeatureLaminarTargetManagedIdentity                = Feature{Name: "LAMINAR_TARGET_MANAGED_IDENTITY"}
-	FeatureOutpost                                     = Feature{Name: "OUTPOST"}
-	FeatureRDSProtection                               = Feature{Name: "RDS_PROTECTION"}
-	FeatureRoleChaining                                = Feature{Name: "ROLE_CHAINING"}
-	FeatureServerAndApps                               = Feature{Name: "SERVERS_AND_APPS"}
+	FeatureAll                                         = Feature{Name: All}
+	FeatureAlloyDBProtection                           = Feature{Name: AlloyDBProtection}
+	FeatureAppFlows                                    = Feature{Name: AppFlows}
+	FeatureArchival                                    = Feature{Name: Archival}
+	FeatureAWSKMSKeySharing                            = Feature{Name: AWSKMSKeySharing}
+	FeatureAzureCosmosNoSQLProtection                  = Feature{Name: AzureCosmosNoSQLProtection}
+	FeatureAzureDevOpsArtifactsProtection              = Feature{Name: AzureDevOpsArtifactsProtection}
+	FeatureAzureDevOpsDeveloperCollaborationProtection = Feature{Name: AzureDevOpsDeveloperCollaborationProtection}
+	FeatureAzureDevOpsProtection                       = Feature{Name: AzureDevOpsProtection}
+	FeatureAzureDevOpsRepositoryProtection             = Feature{Name: AzureDevOpsRepositoryProtection}
+	FeatureAzureLocalCloudAccount                      = Feature{Name: AzureLocalCloudAccount}
+	FeatureAzurePostgresFlexibleServerProtection       = Feature{Name: AzurePostgresFlexibleServerProtection}
+	FeatureAzureSQLDBProtection                        = Feature{Name: AzureSQLDBProtection}
+	FeatureAzureSQLMIProtection                        = Feature{Name: AzureSQLMIProtection}
+	FeatureCCESBaaS                                    = Feature{Name: CCESBaaS}
+	FeatureCloudAccounts                               = Feature{Name: CloudAccounts}
+	FeatureCloudCostReport                             = Feature{Name: CloudCostReport}
+	FeatureCloudDiscovery                              = Feature{Name: CloudDiscovery}
+	FeatureCloudNativeArchival                         = Feature{Name: CloudNativeArchival}
+	FeatureCloudNativeArchivalEncryption               = Feature{Name: CloudNativeArchivalEncryption}
+	FeatureCloudNativeBlobProtection                   = Feature{Name: CloudNativeBlobProtection}
+	FeatureCloudNativeConfigProtection                 = Feature{Name: CloudNativeConfigProtection}
+	FeatureCloudNativeDynamoDBProtection               = Feature{Name: CloudNativeDynamoDBProtection}
+	FeatureCloudNativeProtection                       = Feature{Name: CloudNativeProtection}
+	FeatureCloudNativeS3Protection                     = Feature{Name: CloudNativeS3Protection}
+	FeatureCloudNativeUEMKeyManagement                 = Feature{Name: CloudNativeUEMKeyManagement}
+	FeatureCloudSQLProtection                          = Feature{Name: CloudSQLProtection}
+	FeatureCriticalResourceProtection                  = Feature{Name: CriticalResourceProtection}
+	FeatureCyberRecoveryDataClassificationData         = Feature{Name: CyberRecoveryDataClassificationData}
+	FeatureCyberRecoveryDataClassificationMetadata     = Feature{Name: CyberRecoveryDataClassificationMetadata}
+	FeatureDataCenterRoleBasedArchival                 = Feature{Name: DataCenterRoleBasedArchival}
+	FeatureDSPMData                                    = Feature{Name: DSPMData}
+	FeatureDSPMMetadata                                = Feature{Name: DSPMMetadata}
+	FeatureExocompute                                  = Feature{Name: Exocompute}
+	FeatureGCPBigQueryProtection                       = Feature{Name: GCPBigQueryProtection}
+	FeatureGCPBigQueryReservation                      = Feature{Name: GCPBigQueryReservation}
+	FeatureGCPSharedVPCHost                            = Feature{Name: GCPSharedVPCHost}
+	FeatureGitHubDeveloperCollaborationProtection      = Feature{Name: GitHubDeveloperCollaborationProtection}
+	FeatureGitHubPackagesProtection                    = Feature{Name: GitHubPackagesProtection}
+	FeatureGitHubRepositoryProtection                  = Feature{Name: GitHubRepositoryProtection}
+	FeatureGlueIcebergProtection                       = Feature{Name: GlueIcebergProtection}
+	FeatureKubernetesProtection                        = Feature{Name: KubernetesProtection}
+	FeatureLaminarCrossAccount                         = Feature{Name: LaminarCrossAccount}
+	FeatureLaminarInternal                             = Feature{Name: LaminarInternal}
+	FeatureLaminarOutpostApplication                   = Feature{Name: LaminarOutpostApplication}
+	FeatureLaminarOutpostManagedIdentity               = Feature{Name: LaminarOutpostManagedIdentity}
+	FeatureLaminarTargetApplication                    = Feature{Name: LaminarTargetApplication}
+	FeatureLaminarTargetManagedIdentity                = Feature{Name: LaminarTargetManagedIdentity}
+	FeatureOutpost                                     = Feature{Name: Outpost}
+	FeatureRDSProtection                               = Feature{Name: RDSProtection}
+	FeatureRoleChaining                                = Feature{Name: RoleChaining}
+	FeatureS3TablesIcebergProtection                   = Feature{Name: S3TablesIcebergProtection}
+	FeatureServerAndApps                               = Feature{Name: ServerAndApps}
 )
 
 // Feature represents an RSC cloud account feature with a set of permission
@@ -128,10 +90,6 @@ type Feature struct {
 	Name             string            `json:"featureType"`
 	PermissionGroups []PermissionGroup `json:"permissionsGroups"`
 }
-
-// PermissionGroup represents a named set of permissions for a feature. Note,
-// not all permission groups are applicable to all features.
-type PermissionGroup string
 
 // Equal returns true if the features have the same name. Note, this function
 // does not compare the permission groups.
@@ -166,31 +124,11 @@ func (f Feature) HasPermissionGroup(permissionGroup PermissionGroup) bool {
 	return slices.Contains(f.PermissionGroups, permissionGroup)
 }
 
-// IsProtectionFeature
+// IsProtectionFeature returns true if the feature is a protection feature.
+// Protection features, public or not, are marked as such in the feature info
+// map. Unknown features are not protection features.
 func (f Feature) IsProtectionFeature() bool {
-	protectionFeatures := []Feature{
-		FeatureAzureDevOpsDeveloperCollaborationProtection,
-		FeatureAzureDevOpsProtection,
-		FeatureAzureDevOpsRepositoryProtection,
-		FeatureAzurePostgresFlexibleServerProtection,
-		FeatureAzureSQLDBProtection,
-		FeatureAzureSQLMIProtection,
-		FeatureCloudDiscovery,
-		FeatureCloudNativeBlobProtection,
-		FeatureCloudNativeConfigProtection,
-		FeatureCloudNativeDynamoDBProtection,
-		FeatureCloudNativeProtection,
-		FeatureCloudNativeS3Protection,
-		FeatureCloudSQLProtection,
-		FeatureGCPBigQueryProtection,
-		FeatureGitHubRepositoryProtection,
-		FeatureKubernetesProtection,
-		FeatureRDSProtection,
-	}
-
-	return slices.ContainsFunc(protectionFeatures, func(feature Feature) bool {
-		return f.Equal(feature)
-	})
+	return featureInfoMap[f.Name].protection
 }
 
 // String returns a string representation of the feature.
@@ -219,35 +157,15 @@ func (f Feature) WithPermissionGroups(permissionGroups ...PermissionGroup) Featu
 
 // AllProtectionFeatures returns the protection features for the specified cloud
 // vendor.
+//
+// Deprecated: use CloudVendorProtectionFeatureNames instead.
 func AllProtectionFeatures(cloud CloudVendor) []Feature {
-	switch cloud {
-	case CloudVendorAWS:
-		return []Feature{
-			FeatureCloudNativeConfigProtection,
-			FeatureCloudNativeDynamoDBProtection,
-			FeatureCloudNativeProtection,
-			FeatureCloudNativeS3Protection,
-			FeatureKubernetesProtection,
-			FeatureRDSProtection,
-		}
-	case CloudVendorAzure:
-		return []Feature{
-			FeatureAzurePostgresFlexibleServerProtection,
-			FeatureAzureSQLDBProtection,
-			FeatureAzureSQLMIProtection,
-			FeatureCloudNativeBlobProtection,
-			FeatureCloudNativeProtection,
-			FeatureKubernetesProtection,
-		}
-	case CloudVendorGCP:
-		return []Feature{
-			FeatureCloudNativeProtection,
-			FeatureCloudSQLProtection,
-			FeatureGCPBigQueryProtection,
-		}
-	default:
-		return nil
+	var features []Feature
+	for _, name := range CloudVendorProtectionFeatureNames(cloud) {
+		features = append(features, Feature{Name: name})
 	}
+
+	return features
 }
 
 // FeatureNames returns the names of the features.
@@ -295,6 +213,12 @@ func LookupFeature(features []Feature, feature Feature) (Feature, bool) {
 	return Feature{}, false
 }
 
+// LookupFeatureName returns the feature with the specified name if it exists
+// in the feature slice.
+func LookupFeatureName(features []Feature, name string) (Feature, bool) {
+	return LookupFeature(features, Feature{Name: name})
+}
+
 // ValidateRoleChaining returns an error if ROLE_CHAINING is combined with
 // other features. The ROLE_CHAINING feature is mutually exclusive with all
 // other features.
@@ -308,61 +232,20 @@ func ValidateRoleChaining(features []Feature) error {
 	return nil
 }
 
-// Deprecated: no replacement.
-var validFeatures = map[string]struct{}{
-	FeatureAll.Name:      {},
-	FeatureAppFlows.Name: {},
-	FeatureArchival.Name: {},
-	FeatureAzureDevOpsDeveloperCollaborationProtection.Name: {},
-	FeatureAzureDevOpsProtection.Name:                       {}, // Deprecated: use FeatureAzureDevOpsRepositoryProtection
-	FeatureAzureDevOpsRepositoryProtection.Name:             {},
-	FeatureAzurePostgresFlexibleServerProtection.Name:       {},
-	FeatureAzureSQLDBProtection.Name:                        {},
-	FeatureAzureSQLMIProtection.Name:                        {},
-	FeatureCloudAccounts.Name:                               {}, // Deprecated: no replacement.
-	FeatureCloudCostReport.Name:                             {},
-	FeatureCloudDiscovery.Name:                              {},
-	FeatureCloudNativeArchival.Name:                         {},
-	FeatureCloudNativeArchivalEncryption.Name:               {},
-	FeatureCloudNativeBlobProtection.Name:                   {},
-	FeatureCloudNativeConfigProtection.Name:                 {},
-	FeatureCloudNativeDynamoDBProtection.Name:               {},
-	FeatureCloudNativeProtection.Name:                       {},
-	FeatureCloudNativeS3Protection.Name:                     {},
-	FeatureCloudSQLProtection.Name:                          {},
-	FeatureCyberRecoveryDataClassificationData.Name:         {},
-	FeatureCyberRecoveryDataClassificationMetadata.Name:     {},
-	FeatureDSPMData.Name:                                    {},
-	FeatureDSPMMetadata.Name:                                {},
-	FeatureExocompute.Name:                                  {},
-	FeatureGCPBigQueryProtection.Name:                       {},
-	FeatureGCPBigQueryReservation.Name:                      {},
-	FeatureGCPSharedVPCHost.Name:                            {},
-	FeatureGitHubRepositoryProtection.Name:                  {},
-	FeatureKubernetesProtection.Name:                        {},
-	FeatureLaminarCrossAccount.Name:                         {},
-	FeatureLaminarInternal.Name:                             {},
-	FeatureLaminarOutpostApplication.Name:                   {},
-	FeatureLaminarOutpostManagedIdentity.Name:               {},
-	FeatureLaminarTargetApplication.Name:                    {},
-	FeatureLaminarTargetManagedIdentity.Name:                {},
-	FeatureOutpost.Name:                                     {},
-	FeatureRDSProtection.Name:                               {},
-	FeatureRoleChaining.Name:                                {},
-	FeatureServerAndApps.Name:                               {},
-}
-
 // Deprecated: use Feature.Name instead.
 func FormatFeature(feature Feature) string {
 	return strings.ReplaceAll(strings.ToLower(feature.Name), "_", "-")
 }
 
-// Deprecated: use Feature{Name: <feature>} instead or ParseFeatureNoValidation
-// if you need to remain backwards compatible with previously accepted feature
-// names.
+// ParseFeature returns the Feature matching the given feature name. Returns an
+// error if the feature name is not a known RSC feature, public or not.
+//
+// Deprecated: use the Parse<AccountType>Feature function of the cloud account
+// type, e.g. ParseAWSCloudFormationFeature, or Feature{Name: <feature>} if no
+// validation is needed.
 func ParseFeature(feature string) (Feature, error) {
 	f := ParseFeatureNoValidation(feature)
-	if _, ok := validFeatures[f.Name]; ok {
+	if _, ok := featureInfoMap[f.Name]; ok {
 		return f, nil
 	}
 
@@ -371,6 +254,10 @@ func ParseFeature(feature string) (Feature, error) {
 
 // ParseFeatureNoValidation returns the Feature matching the given feature name.
 // No validation is performed.
+//
+// Deprecated: use the Parse<AccountType>Feature function of the cloud account
+// type, e.g. ParseAWSCloudFormationFeature, or Feature{Name: <feature>} if no
+// validation is needed.
 func ParseFeatureNoValidation(feature string) Feature {
 	return Feature{Name: strings.ToUpper(strings.ReplaceAll(feature, "-", "_"))}
 }

@@ -58,12 +58,7 @@ type ManagedAccountStack struct {
 // (RDS_PROTECTION), S3 (CLOUD_NATIVE_S3_PROTECTION) and Cloud Discovery
 // (CLOUD_DISCOVERY).
 func ManagedAccountDefaultFeatureNames() []string {
-	return []string{
-		core.FeatureCloudNativeProtection.Name,
-		core.FeatureRDSProtection.Name,
-		core.FeatureCloudNativeS3Protection.Name,
-		core.FeatureCloudDiscovery.Name,
-	}
+	return core.AWSManagedFeatureNames()
 }
 
 // ManagedAccountSupportedRegions returns the AWS regions supported by the

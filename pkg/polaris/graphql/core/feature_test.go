@@ -48,15 +48,115 @@ func TestCloudNativeConfigProtection(t *testing.T) {
 		t.Error("CLOUD_NATIVE_CONFIG_PROTECTION should be a protection feature")
 	}
 
-	if !slices.ContainsFunc(AllProtectionFeatures(CloudVendorAWS), FeatureCloudNativeConfigProtection.Equal) {
+	if !slices.Contains(CloudVendorProtectionFeatureNames(CloudVendorAWS), FeatureCloudNativeConfigProtection.Name) {
 		t.Error("CLOUD_NATIVE_CONFIG_PROTECTION should be an AWS protection feature")
 	}
+}
 
-	feature, err := ParseFeature("CLOUD_NATIVE_CONFIG_PROTECTION")
-	if err != nil {
-		t.Fatalf("failed to parse feature: %v", err)
+func TestAccountTypeFeatures(t *testing.T) {
+	for name, features := range map[string][]Feature{
+		"AWSCloudFormationFeatures":       AWSCloudFormationFeatures(),
+		"AWSIAMRolesFeatures":             AWSIAMRolesFeatures(),
+		"AWSManagedFeatures":              AWSManagedFeatures(),
+		"AzureSubscriptionFeatures":       AzureSubscriptionFeatures(),
+		"AzureDevOpsOrganizationFeatures": AzureDevOpsOrganizationFeatures(),
+		"GCPProjectFeatures":              GCPProjectFeatures(),
+		"GitHubOrganizationFeatures":      GitHubOrganizationFeatures(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if len(features) == 0 {
+				t.Fatal("no features")
+			}
+
+			names := FeatureNames(features)
+			if !slices.IsSorted(names) {
+				t.Errorf("features are not sorted by name: %v", names)
+			}
+			if len(slices.Compact(slices.Clone(names))) != len(names) {
+				t.Errorf("features contain duplicates: %v", names)
+			}
+		})
 	}
-	if !feature.Equal(FeatureCloudNativeConfigProtection) {
-		t.Errorf("invalid feature: %s", feature)
+}
+
+func TestCloudVendorFeatureNames(t *testing.T) {
+	// Every account type feature must be part of the cloud vendor union.
+	for cloud, features := range map[CloudVendor][]Feature{
+		CloudVendorAWS:   slices.Concat(AWSCloudFormationFeatures(), AWSIAMRolesFeatures(), AWSManagedFeatures()),
+		CloudVendorAzure: slices.Concat(AzureSubscriptionFeatures(), AzureDevOpsOrganizationFeatures()),
+		CloudVendorGCP:   GCPProjectFeatures(),
+	} {
+		names := CloudVendorFeatureNames(cloud)
+		if !slices.IsSorted(names) {
+			t.Errorf("%s feature names are not sorted: %v", cloud, names)
+		}
+		if len(slices.Compact(slices.Clone(names))) != len(names) {
+			t.Errorf("%s feature names contain duplicates: %v", cloud, names)
+		}
+		for _, feature := range features {
+			if !slices.Contains(names, feature.Name) {
+				t.Errorf("%s features are missing %s", cloud, feature.Name)
+			}
+		}
+	}
+}
+
+func TestLookupFeatureName(t *testing.T) {
+	features := []Feature{
+		FeatureCloudNativeProtection.WithPermissionGroups(PermissionGroupBasic),
+		FeatureExocompute,
+	}
+
+	feature, ok := LookupFeatureName(features, CloudNativeProtection)
+	if !ok {
+		t.Fatal("expected CLOUD_NATIVE_PROTECTION to be found")
+	}
+	if !feature.DeepEqual(features[0]) {
+		t.Errorf("unexpected feature: %s", feature)
+	}
+
+	if _, ok := LookupFeatureName(features, CloudSQLProtection); ok {
+		t.Error("expected CLOUD_SQL_PROTECTION not to be found")
+	}
+}
+
+// TestAllowlists verifies that the allowlists keep the same features when
+// reading cloud accounts from RSC as previous versions of the SDK.
+func TestAllowlists(t *testing.T) {
+	for name, tc := range map[string]struct {
+		names []string
+		want  []string
+	}{
+		"AWSAccountAllowlistNames": {
+			names: AWSAccountAllowlistNames(),
+			want: []string{
+				Archival, CloudCostReport, CloudDiscovery, CloudNativeArchival, CloudNativeConfigProtection,
+				CloudNativeDynamoDBProtection, CloudNativeProtection, CloudNativeS3Protection,
+				CyberRecoveryDataClassificationData, CyberRecoveryDataClassificationMetadata, DSPMData, DSPMMetadata,
+				Exocompute, KubernetesProtection, LaminarCrossAccount, LaminarInternal, Outpost, RDSProtection,
+				RoleChaining, ServerAndApps,
+			},
+		},
+		"AzureSubscriptionAllowlistNames": {
+			names: AzureSubscriptionAllowlistNames(),
+			want: []string{
+				AzurePostgresFlexibleServerProtection, AzureSQLDBProtection, AzureSQLMIProtection, CloudDiscovery,
+				CloudNativeArchival, CloudNativeArchivalEncryption, CloudNativeBlobProtection, CloudNativeProtection,
+				Exocompute, ServerAndApps,
+			},
+		},
+		"GCPProjectAllowlistNames": {
+			names: GCPProjectAllowlistNames(),
+			want: []string{
+				CloudNativeArchival, CloudNativeProtection, CloudSQLProtection, Exocompute, GCPBigQueryProtection,
+				GCPBigQueryReservation, GCPSharedVPCHost, ServerAndApps,
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if got := tc.names; !slices.Equal(got, tc.want) {
+				t.Errorf("unexpected features\n got: %v\nwant: %v", got, tc.want)
+			}
+		})
 	}
 }

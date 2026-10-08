@@ -65,10 +65,10 @@ func TestManagedAccountSupportedRegionsResolve(t *testing.T) {
 func TestManagedAccountDefaultFeatureNames(t *testing.T) {
 	got := ManagedAccountDefaultFeatureNames()
 	want := []string{
-		"CLOUD_NATIVE_PROTECTION",
-		"RDS_PROTECTION",
-		"CLOUD_NATIVE_S3_PROTECTION",
 		"CLOUD_DISCOVERY",
+		"CLOUD_NATIVE_PROTECTION",
+		"CLOUD_NATIVE_S3_PROTECTION",
+		"RDS_PROTECTION",
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("unexpected default BaaS features\n got: %v\nwant: %v", got, want)
