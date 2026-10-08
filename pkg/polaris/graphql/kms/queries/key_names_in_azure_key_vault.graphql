@@ -1,0 +1,3 @@
+query RubrikPolarisSDKRequest($kmsKeyVaultId: UUID!) {
+    result: keyNamesInAzureKeyVault(kmsKeyVaultId: $kmsKeyVaultId)
+}

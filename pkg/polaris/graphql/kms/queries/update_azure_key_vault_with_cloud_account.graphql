@@ -1,0 +1,11 @@
+mutation RubrikPolarisSDKRequest(
+    $kmsKeyVaultId: String!,
+    $instanceName:  String,
+    $description:   String,
+) {
+    result: updateAzureKeyVaultWithCloudAccount(input: {
+        kmsKeyVaultId: $kmsKeyVaultId,
+        instanceName:  $instanceName,
+        description:   $description,
+    })
+}

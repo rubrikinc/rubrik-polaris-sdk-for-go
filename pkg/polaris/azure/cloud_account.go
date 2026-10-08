@@ -631,6 +631,7 @@ func SupportedFeatures() []core.Feature {
 		core.FeatureCloudNativeArchivalEncryption,
 		core.FeatureCloudNativeBlobProtection,
 		core.FeatureCloudNativeProtection,
+		core.FeatureCloudNativeUEMKeyManagement,
 		core.FeatureExocompute,
 		core.FeatureServerAndApps,
 	}

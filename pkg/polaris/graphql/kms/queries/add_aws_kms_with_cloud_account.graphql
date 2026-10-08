@@ -1,0 +1,21 @@
+mutation RubrikPolarisSDKRequest(
+    $cloudAccountId:    String!,
+    $instanceName:      String!,
+    $region:            String!,
+    $description:       String,
+    $stsRegionEndpoint: String,
+    $kmsRegionEndpoint: String,
+) {
+    result: addAwsKmsWithCloudAccount(input: {
+        awsKms: {
+            cloudAccountId:    $cloudAccountId,
+            instanceName:      $instanceName,
+            region:            $region,
+            description:       $description,
+            stsRegionEndpoint: $stsRegionEndpoint,
+            kmsRegionEndpoint: $kmsRegionEndpoint,
+        },
+    }) {
+        kmsKeyVaultId
+    }
+}

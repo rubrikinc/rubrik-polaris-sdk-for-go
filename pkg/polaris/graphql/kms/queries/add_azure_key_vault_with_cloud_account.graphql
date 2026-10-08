@@ -1,0 +1,19 @@
+mutation RubrikPolarisSDKRequest(
+    $cloudAccountId: String!,
+    $instanceName:   String!,
+    $region:         String!,
+    $vaultName:      String!,
+    $description:    String,
+) {
+    result: addAzureKeyVaultWithCloudAccount(input: {
+        azureKeyVault: {
+            cloudAccountId: $cloudAccountId,
+            instanceName:   $instanceName,
+            region:         $region,
+            vaultName:      $vaultName,
+            description:    $description,
+        },
+    }) {
+        kmsKeyVaultId
+    }
+}
