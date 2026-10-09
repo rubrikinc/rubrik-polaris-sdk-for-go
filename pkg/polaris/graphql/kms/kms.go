@@ -35,7 +35,11 @@
 // workflow and are currently not part of this package.
 package kms
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+)
 
 // Type represents the RSC GraphQL KmsType enum type.
 type Type string
@@ -73,9 +77,17 @@ const (
 	MethodSecure ProvisioningMethod = "SECURE_PROVISION"
 )
 
-// ProvisioningMethodValues returns the provisioning methods a key manager can
-// have. PROVISION_METHOD_UNSPECIFIED is part of the RSC enum but is never a
-// valid input.
-func ProvisioningMethodValues() []ProvisioningMethod {
-	return slices.Clone([]ProvisioningMethod{MethodCloudAccount, MethodDirect, MethodSecure})
+// ProvisioningMethodValues returns the provisioning methods a key manager of
+// the specified cloud vendor can have. PROVISION_METHOD_UNSPECIFIED is part of
+// the RSC enum but is never a valid input. An empty slice is returned for cloud
+// vendors other than AWS and Azure.
+func ProvisioningMethodValues(vendor core.CloudVendor) []ProvisioningMethod {
+	switch vendor {
+	case core.CloudVendorAWS:
+		return []ProvisioningMethod{MethodCloudAccount, MethodDirect}
+	case core.CloudVendorAzure:
+		return []ProvisioningMethod{MethodCloudAccount, MethodDirect, MethodSecure}
+	default:
+		return []ProvisioningMethod{}
+	}
 }
