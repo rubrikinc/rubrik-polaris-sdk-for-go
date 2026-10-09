@@ -26,10 +26,72 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/kms"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
+
+// AzureKeyManagers returns the Azure Key Vault key managers matching the filter. Any
+// types in the filter are ignored.
+func (a API) AzureKeyManagers(ctx context.Context, filter kms.ListKeyManagerFilter) ([]kms.KeyManager, error) {
+	a.log.Print(log.Trace)
+
+	filter.Types = []kms.Type{kms.TypeAzureKeyVault}
+	keyManagers, err := kms.ListKeyManagers(ctx, a.client, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Azure Key Vault key managers: %s", err)
+	}
+
+	return keyManagers, nil
+}
+
+// AzureKeyManagerByID returns the Azure Key Vault key manager with the specified
+// ID. If no such key manager exists, graphql.ErrNotFound is returned. This
+// includes the ID of a key manager of another KMS type.
+func (a API) AzureKeyManagerByID(ctx context.Context, keyManagerID uuid.UUID) (kms.KeyManager, error) {
+	a.log.Print(log.Trace)
+
+	// RSC has no query for a single key manager, so the Azure Key Vault key managers
+	// are filtered client side.
+	keyManagers, err := kms.ListKeyManagers(ctx, a.client, kms.ListKeyManagerFilter{Types: []kms.Type{kms.TypeAzureKeyVault}})
+	if err != nil {
+		return kms.KeyManager{}, fmt.Errorf("failed to get Azure Key Vault key manager: %s", err)
+	}
+
+	for _, keyManager := range keyManagers {
+		if keyManager.KeyVaultInfo.ID == keyManagerID {
+			return keyManager, nil
+		}
+	}
+
+	return kms.KeyManager{}, fmt.Errorf("key manager %q of type Azure Key Vault %w", keyManagerID, graphql.ErrNotFound)
+}
+
+// AzureKeyManagerByName returns the Azure Key Vault key manager with the specified
+// name. If no such key manager exists, graphql.ErrNotFound is returned. This
+// includes the name of a key manager of another KMS type.
+func (a API) AzureKeyManagerByName(ctx context.Context, name string) (kms.KeyManager, error) {
+	a.log.Print(log.Trace)
+
+	// The name filter matches on prefix, so the result still needs to be
+	// narrowed to an exact match.
+	keyManagers, err := kms.ListKeyManagers(ctx, a.client, kms.ListKeyManagerFilter{
+		NamePrefix: name,
+		Types:      []kms.Type{kms.TypeAzureKeyVault},
+	})
+	if err != nil {
+		return kms.KeyManager{}, fmt.Errorf("failed to get Azure Key Vault key manager: %s", err)
+	}
+
+	for _, keyManager := range keyManagers {
+		if keyManager.Name == name {
+			return keyManager, nil
+		}
+	}
+
+	return kms.KeyManager{}, fmt.Errorf("key manager %q of type Azure Key Vault %w", name, graphql.ErrNotFound)
+}
 
 // CreateAzureKeyManager creates a cloud account provisioned Azure Key Vault key
 // manager and returns its ID. The Azure subscription must already be onboarded

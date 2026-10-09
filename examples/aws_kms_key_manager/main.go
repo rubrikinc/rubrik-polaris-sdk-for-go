@@ -102,8 +102,8 @@ func main() {
 		fmt.Printf("KMS key ID: %s\n", keyID)
 	}
 
-	// List all key managers.
-	keyManagers, err := kms.Wrap(client).KeyManagers(ctx, gqlkms.ListKeyManagerFilter{})
+	// List the AWS key managers.
+	keyManagers, err := kms.Wrap(client).AWSKeyManagers(ctx, gqlkms.ListKeyManagerFilter{})
 	if err != nil {
 		log.Fatal(err)
 	}
