@@ -41,13 +41,19 @@ const (
 	RegionAsiaSouthEast1
 	RegionAsiaSouthEast2
 	RegionAsiaSouthEast3
+	RegionAU
 	RegionAustraliaSouthEast1
 	RegionAustraliaSouthEast2
+	RegionCA
+	RegionDE
 	RegionEU
+	RegionEur3
 	RegionEur4
 	RegionEur5
+	RegionEur6
 	RegionEur7
 	RegionEur8
+	RegionEurope
 	RegionEuropeCentral2
 	RegionEuropeNorth1
 	RegionEuropeNorth2
@@ -61,10 +67,23 @@ const (
 	RegionEuropeWest9
 	RegionEuropeWest10
 	RegionEuropeWest12
+	RegionGlobal
+	RegionIN
+	RegionIT
+	RegionJP
 	RegionMECentral1
 	RegionMECentral2
 	RegionMEWest1
+	RegionNAM3
 	RegionNAM4
+	RegionNAM6
+	RegionNAM7
+	RegionNAM8
+	RegionNAM9
+	RegionNAM10
+	RegionNAM11
+	RegionNAM12
+	RegionNAMEurAsia1
 	RegionNorthAmericaNorthEast1
 	RegionNorthAmericaNorthEast2
 	RegionNorthAmericaSouth1
@@ -145,6 +164,24 @@ func (region Region) ToRCSRegionEnumPtr() *RCSRegionEnum {
 	return &RCSRegionEnum{Region: region}
 }
 
+// ToKMSLocationEnum returns the RSC GraphQL GcpKmsLocation enum value for the
+// region.
+func (region Region) ToKMSLocationEnum() KMSLocationEnum {
+	if regionInfoMap[region].kmsLocationEnum == "" {
+		return KMSLocationEnum{Region: RegionUnknown}
+	}
+	return KMSLocationEnum{Region: region}
+}
+
+// ToKMSLocationEnumPtr returns the RSC GraphQL GcpKmsLocation enum value for
+// the region as a pointer. If the region is unknown, nil is returned.
+func (region Region) ToKMSLocationEnumPtr() *KMSLocationEnum {
+	if r := region.ToKMSLocationEnum(); r.Region != RegionUnknown {
+		return &r
+	}
+	return nil
+}
+
 // MarshalJSON returns the region as a JSON string using the region name.
 func (region Region) MarshalJSON() ([]byte, error) {
 	return json.Marshal(regionInfoMap[region].name)
@@ -172,6 +209,7 @@ const (
 	FromName                          // Parse the value as a region name.
 	FromRegionEnum                    // Parse the value as a GraphQL GcpRegion enum value.
 	FromRCSRegionEnum                 // Parse the value as a GraphQL RcsRegionEnumType enum value.
+	FromKMSLocationEnum               // Parse the value as a GraphQL GcpKmsLocation enum value.
 )
 
 // RegionFrom parses the value as a region identifier in the specified format.
@@ -191,6 +229,8 @@ func RegionFrom(value string, valueFormat int) Region {
 		case (valueFormat == FromAny || valueFormat == FromDisplayName) && info.displayName == value:
 			return r
 		case (valueFormat == FromAny || valueFormat == FromRCSRegionEnum) && info.rcsRegionEnum == value:
+			return r
+		case (valueFormat == FromAny || valueFormat == FromKMSLocationEnum) && info.kmsLocationEnum == value:
 			return r
 		}
 	}
@@ -227,6 +267,12 @@ func RegionFromRegionEnum(value string) Region {
 // RegionFromRCSRegionEnum parses the value as a GraphQL RcsRegionEnumType enum value.
 func RegionFromRCSRegionEnum(value string) Region {
 	return RegionFrom(value, FromRCSRegionEnum)
+}
+
+// RegionFromKMSLocationEnum parses the value as a GraphQL GcpKmsLocation enum
+// value.
+func RegionFromKMSLocationEnum(value string) Region {
+	return RegionFrom(value, FromKMSLocationEnum)
 }
 
 // RegionEnum represents the GraphQL GcpRegion enum type.
@@ -324,6 +370,33 @@ func (region RCSRegionEnum) String() string {
 	return regionInfoMap[RegionUnknown].rcsRegionEnum
 }
 
+// KMSLocationEnum represents the GraphQL GcpKmsLocation enum type. This region
+// type is used for GCP Cloud KMS key manager GraphQL queries/mutations. Besides
+// regions, it holds multi-regions, dual-regions and the global location.
+type KMSLocationEnum struct{ Region }
+
+// MarshalJSON returns the region as a JSON string.
+func (region KMSLocationEnum) MarshalJSON() ([]byte, error) {
+	return json.Marshal(region.String())
+}
+
+// UnmarshalJSON parses the region from a JSON string.
+func (region *KMSLocationEnum) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	region.Region = RegionFromKMSLocationEnum(s)
+	return nil
+}
+
+// String returns the string representation of the KMSLocationEnum. The
+// GcpKmsLocation enum has no value for an unknown location, so an empty string
+// is returned for a region which isn't a GCP KMS location.
+func (region KMSLocationEnum) String() string {
+	return regionInfoMap[region.Region].kmsLocationEnum
+}
+
 // AllRegionNames returns all the recognized region names.
 func AllRegionNames() []string {
 	regions := make([]string, 0, len(regionInfoMap))
@@ -350,12 +423,26 @@ func AllRCSRegionNames() []string {
 	return regions
 }
 
+// AllKMSLocationNames returns the names of all regions which are GCP KMS
+// locations, e.g. us-east1, europe and global.
+func AllKMSLocationNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for _, info := range regionInfoMap {
+		if info.kmsLocationEnum != "" {
+			regions = append(regions, info.name)
+		}
+	}
+
+	return regions
+}
+
 var regionInfoMap = map[Region]struct {
 	name                   string
 	displayName            string
 	regionEnum             string
 	cloudAccountRegionEnum string
 	rcsRegionEnum          string
+	kmsLocationEnum        string
 }{
 	RegionUnknown: {
 		name:                   "",
@@ -370,16 +457,19 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "AFRICA_SOUTH1",
 		cloudAccountRegionEnum: "AFRICA_SOUTH1",
 		rcsRegionEnum:          "SOUTH_AFRICA_NORTH",
+		kmsLocationEnum:        "AFRICA_SOUTH1",
 	},
 	RegionAsia: {
-		name:        "asia",
-		displayName: "Data centers in Asia, excluding Hong Kong and Indonesia",
-		regionEnum:  "ASIA",
+		name:            "asia",
+		displayName:     "Data centers in Asia, excluding Hong Kong and Indonesia",
+		regionEnum:      "ASIA",
+		kmsLocationEnum: "ASIA",
 	},
 	RegionAsia1: {
-		name:        "asia1",
-		displayName: "asia-northeast1 (Tokyo, Japan, APAC) and asia-northeast2 (Osaka, Japan, APAC)",
-		regionEnum:  "ASIA1",
+		name:            "asia1",
+		displayName:     "asia-northeast1 (Tokyo, Japan, APAC) and asia-northeast2 (Osaka, Japan, APAC)",
+		regionEnum:      "ASIA1",
+		kmsLocationEnum: "ASIA1",
 	},
 	RegionAsiaEast1: {
 		name:                   "asia-east1",
@@ -387,6 +477,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "ASIA_EAST1",
 		cloudAccountRegionEnum: "ASIA_EAST1",
 		rcsRegionEnum:          "ASIA_EAST_TAIWAN",
+		kmsLocationEnum:        "ASIA_EAST1",
 	},
 	RegionAsiaEast2: {
 		name:                   "asia-east2",
@@ -394,6 +485,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "ASIA_EAST2",
 		cloudAccountRegionEnum: "ASIA_EAST2",
 		rcsRegionEnum:          "ASIA_EAST_2",
+		kmsLocationEnum:        "ASIA_EAST2",
 	},
 	RegionAsiaNorthEast1: {
 		name:                   "asia-northeast1",
@@ -401,6 +493,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "ASIA_NORTHEAST1",
 		cloudAccountRegionEnum: "ASIA_NORTHEAST1",
 		rcsRegionEnum:          "JAPAN_EAST",
+		kmsLocationEnum:        "ASIA_NORTHEAST1",
 	},
 	RegionAsiaNorthEast2: {
 		name:                   "asia-northeast2",
@@ -408,6 +501,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "ASIA_NORTHEAST2",
 		cloudAccountRegionEnum: "ASIA_NORTHEAST2",
 		rcsRegionEnum:          "JAPAN_WEST",
+		kmsLocationEnum:        "ASIA_NORTHEAST2",
 	},
 	RegionAsiaNorthEast3: {
 		name:                   "asia-northeast3",
@@ -415,6 +509,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "ASIA_NORTHEAST3",
 		cloudAccountRegionEnum: "ASIA_NORTHEAST3",
 		rcsRegionEnum:          "KOREA_CENTRAL",
+		kmsLocationEnum:        "ASIA_NORTHEAST3",
 	},
 	RegionAsiaSouth1: {
 		name:                   "asia-south1",
@@ -422,6 +517,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "ASIA_SOUTH1",
 		cloudAccountRegionEnum: "ASIA_SOUTH1",
 		rcsRegionEnum:          "INDIA_WEST",
+		kmsLocationEnum:        "ASIA_SOUTH1",
 	},
 	RegionAsiaSouth2: {
 		name:                   "asia-south2",
@@ -429,6 +525,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "ASIA_SOUTH2",
 		cloudAccountRegionEnum: "ASIA_SOUTH2",
 		rcsRegionEnum:          "INDIA_SOUTH_2",
+		kmsLocationEnum:        "ASIA_SOUTH2",
 	},
 	RegionAsiaSouthEast1: {
 		name:                   "asia-southeast1",
@@ -436,6 +533,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "ASIA_SOUTHEAST1",
 		cloudAccountRegionEnum: "ASIA_SOUTHEAST1",
 		rcsRegionEnum:          "ASIA_SOUTHEAST",
+		kmsLocationEnum:        "ASIA_SOUTHEAST1",
 	},
 	RegionAsiaSouthEast2: {
 		name:                   "asia-southeast2",
@@ -443,12 +541,19 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "ASIA_SOUTHEAST2",
 		cloudAccountRegionEnum: "ASIA_SOUTHEAST2",
 		rcsRegionEnum:          "ASIA_PACIFIC_JAKARTA",
+		kmsLocationEnum:        "ASIA_SOUTHEAST2",
 	},
 	RegionAsiaSouthEast3: {
 		name:                   "asia-southeast3",
 		displayName:            "asia-southeast3 (Bangkok, Thailand, APAC)",
 		regionEnum:             "ASIA_SOUTHEAST3",
 		cloudAccountRegionEnum: "ASIA_SOUTHEAST3",
+		kmsLocationEnum:        "ASIA_SOUTHEAST3",
+	},
+	RegionAU: {
+		name:            "au",
+		displayName:     "All regions in Australia",
+		kmsLocationEnum: "AU",
 	},
 	RegionAustraliaSouthEast1: {
 		name:                   "australia-southeast1",
@@ -456,6 +561,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "AUSTRALIA_SOUTHEAST1",
 		cloudAccountRegionEnum: "AUSTRALIA_SOUTHEAST1",
 		rcsRegionEnum:          "ASIA_PACIFIC_SYDNEY",
+		kmsLocationEnum:        "AUSTRALIA_SOUTHEAST1",
 	},
 	RegionAustraliaSouthEast2: {
 		name:                   "australia-southeast2",
@@ -463,31 +569,61 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "AUSTRALIA_SOUTHEAST2",
 		cloudAccountRegionEnum: "AUSTRALIA_SOUTHEAST2",
 		rcsRegionEnum:          "ASIA_PACIFIC_MELBOURNE",
+		kmsLocationEnum:        "AUSTRALIA_SOUTHEAST2",
+	},
+	RegionCA: {
+		name:            "ca",
+		displayName:     "All regions in Canada",
+		kmsLocationEnum: "CA",
+	},
+	RegionDE: {
+		name:            "de",
+		displayName:     "All regions in Germany",
+		kmsLocationEnum: "DE",
 	},
 	RegionEU: {
 		name:        "eu",
 		displayName: "Data centers within member states of the European Union",
 		regionEnum:  "EU",
 	},
+	RegionEur3: {
+		name:            "eur3",
+		displayName:     "St. Ghislain (Belgium) and Eemshaven (Netherlands)",
+		kmsLocationEnum: "EUR3",
+	},
 	RegionEur4: {
-		name:        "eur4",
-		displayName: "europe-north1 (Hamina, Finland, Europe) and europe-west4 (Eemshaven, Netherlands, Europe)",
-		regionEnum:  "EUR4",
+		name:            "eur4",
+		displayName:     "europe-north1 (Hamina, Finland, Europe) and europe-west4 (Eemshaven, Netherlands, Europe)",
+		regionEnum:      "EUR4",
+		kmsLocationEnum: "EUR4",
 	},
 	RegionEur5: {
-		name:        "eur5",
-		displayName: "europe-west1 (St. Ghislain, Belgium, Europe) and europe-west2 (London, England, Europe)",
-		regionEnum:  "EUR5",
+		name:            "eur5",
+		displayName:     "europe-west1 (St. Ghislain, Belgium, Europe) and europe-west2 (London, England, Europe)",
+		regionEnum:      "EUR5",
+		kmsLocationEnum: "EUR5",
+	},
+	RegionEur6: {
+		name:            "eur6",
+		displayName:     "Eemshaven (Netherlands), Frankfurt (Germany), and Zurich (Switzerland)",
+		kmsLocationEnum: "EUR6",
 	},
 	RegionEur7: {
-		name:        "eur7",
-		displayName: "europe-west2 (London, England, Europe) and europe-west3 (Frankfurt, Germany, Europe)",
-		regionEnum:  "EUR7",
+		name:            "eur7",
+		displayName:     "europe-west2 (London, England, Europe) and europe-west3 (Frankfurt, Germany, Europe)",
+		regionEnum:      "EUR7",
+		kmsLocationEnum: "EUR7",
 	},
 	RegionEur8: {
-		name:        "eur8",
-		displayName: "europe-west3 (Frankfurt, Germany, Europe) and europe-west6 (Zurich, Switzerland, Europe)",
-		regionEnum:  "EUR8",
+		name:            "eur8",
+		displayName:     "europe-west3 (Frankfurt, Germany, Europe) and europe-west6 (Zurich, Switzerland, Europe)",
+		regionEnum:      "EUR8",
+		kmsLocationEnum: "EUR8",
+	},
+	RegionEurope: {
+		name:            "europe",
+		displayName:     "All regions in the European Union",
+		kmsLocationEnum: "EUROPE",
 	},
 	RegionEuropeCentral2: {
 		name:                   "europe-central2",
@@ -495,6 +631,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "EUROPE_CENTRAL2",
 		cloudAccountRegionEnum: "EUROPE_CENTRAL2",
 		rcsRegionEnum:          "POLAND_CENTRAL",
+		kmsLocationEnum:        "EUROPE_CENTRAL2",
 	},
 	RegionEuropeNorth1: {
 		name:                   "europe-north1",
@@ -502,12 +639,14 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "EUROPE_NORTH1",
 		cloudAccountRegionEnum: "EUROPE_NORTH1",
 		rcsRegionEnum:          "EUROPE_NORTH_FINLAND",
+		kmsLocationEnum:        "EUROPE_NORTH1",
 	},
 	RegionEuropeNorth2: {
 		name:                   "europe-north2",
 		displayName:            "europe-north2 (Stockholm, Sweden, Europe)",
 		regionEnum:             "EUROPE_NORTH2",
 		cloudAccountRegionEnum: "EUROPE_NORTH2",
+		kmsLocationEnum:        "EUROPE_NORTH2",
 	},
 	RegionEuropeSouthWest1: {
 		name:                   "europe-southwest1",
@@ -515,6 +654,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "EUROPE_SOUTHWEST1",
 		cloudAccountRegionEnum: "EUROPE_SOUTHWEST1",
 		rcsRegionEnum:          "SPAIN_CENTRAL",
+		kmsLocationEnum:        "EUROPE_SOUTHWEST1",
 	},
 	RegionEuropeWest1: {
 		name:                   "europe-west1",
@@ -522,6 +662,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "EUROPE_WEST1",
 		cloudAccountRegionEnum: "EUROPE_WEST1",
 		rcsRegionEnum:          "EUROPE_WEST_BELGIUM",
+		kmsLocationEnum:        "EUROPE_WEST1",
 	},
 	RegionEuropeWest2: {
 		name:                   "europe-west2",
@@ -529,6 +670,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "EUROPE_WEST2",
 		cloudAccountRegionEnum: "EUROPE_WEST2",
 		rcsRegionEnum:          "UK_SOUTH",
+		kmsLocationEnum:        "EUROPE_WEST2",
 	},
 	RegionEuropeWest3: {
 		name:                   "europe-west3",
@@ -536,6 +678,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "EUROPE_WEST3",
 		cloudAccountRegionEnum: "EUROPE_WEST3",
 		rcsRegionEnum:          "GERMANY_WEST_CENTRAL",
+		kmsLocationEnum:        "EUROPE_WEST3",
 	},
 	RegionEuropeWest4: {
 		name:                   "europe-west4",
@@ -543,6 +686,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "EUROPE_WEST4",
 		cloudAccountRegionEnum: "EUROPE_WEST4",
 		rcsRegionEnum:          "EUROPE_WEST_4",
+		kmsLocationEnum:        "EUROPE_WEST4",
 	},
 	RegionEuropeWest6: {
 		name:                   "europe-west6",
@@ -550,6 +694,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "EUROPE_WEST6",
 		cloudAccountRegionEnum: "EUROPE_WEST6",
 		rcsRegionEnum:          "SWITZERLAND_NORTH",
+		kmsLocationEnum:        "EUROPE_WEST6",
 	},
 	RegionEuropeWest8: {
 		name:                   "europe-west8",
@@ -557,6 +702,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "EUROPE_WEST8",
 		cloudAccountRegionEnum: "EUROPE_WEST8",
 		rcsRegionEnum:          "ITALY_NORTH",
+		kmsLocationEnum:        "EUROPE_WEST8",
 	},
 	RegionEuropeWest9: {
 		name:                   "europe-west9",
@@ -564,6 +710,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "EUROPE_WEST9",
 		cloudAccountRegionEnum: "EUROPE_WEST9",
 		rcsRegionEnum:          "FRANCE_CENTRAL",
+		kmsLocationEnum:        "EUROPE_WEST9",
 	},
 	RegionEuropeWest10: {
 		name:                   "europe-west10",
@@ -571,6 +718,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "EUROPE_WEST10",
 		cloudAccountRegionEnum: "EUROPE_WEST10",
 		rcsRegionEnum:          "GERMANY_NORTH",
+		kmsLocationEnum:        "EUROPE_WEST10",
 	},
 	RegionEuropeWest12: {
 		name:                   "europe-west12",
@@ -578,6 +726,27 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "EUROPE_WEST12",
 		cloudAccountRegionEnum: "EUROPE_WEST12",
 		rcsRegionEnum:          "EUROPE_WEST_12",
+		kmsLocationEnum:        "EUROPE_WEST12",
+	},
+	RegionGlobal: {
+		name:            "global",
+		displayName:     "Global",
+		kmsLocationEnum: "GLOBAL",
+	},
+	RegionIN: {
+		name:            "in",
+		displayName:     "All regions in India",
+		kmsLocationEnum: "IN",
+	},
+	RegionIT: {
+		name:            "it",
+		displayName:     "All regions in Italy",
+		kmsLocationEnum: "IT",
+	},
+	RegionJP: {
+		name:            "jp",
+		displayName:     "All regions in Japan",
+		kmsLocationEnum: "JP",
 	},
 	RegionMECentral1: {
 		name:                   "me-central1",
@@ -585,6 +754,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "ME_CENTRAL1",
 		cloudAccountRegionEnum: "ME_CENTRAL1",
 		rcsRegionEnum:          "QATAR_CENTRAL",
+		kmsLocationEnum:        "ME_CENTRAL1",
 	},
 	RegionMECentral2: {
 		name:                   "me-central2",
@@ -592,6 +762,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "ME_CENTRAL2",
 		cloudAccountRegionEnum: "ME_CENTRAL2",
 		rcsRegionEnum:          "ME_CENTRAL_2",
+		kmsLocationEnum:        "ME_CENTRAL2",
 	},
 	RegionMEWest1: {
 		name:                   "me-west1",
@@ -599,11 +770,58 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "ME_WEST1",
 		cloudAccountRegionEnum: "ME_WEST1",
 		rcsRegionEnum:          "ISRAEL_CENTRAL",
+		kmsLocationEnum:        "ME_WEST1",
+	},
+	RegionNAM3: {
+		name:            "nam3",
+		displayName:     "Ashburn (Virginia) and Moncks Corner (South Carolina)",
+		kmsLocationEnum: "NAM3",
 	},
 	RegionNAM4: {
-		name:        "nam4",
-		displayName: "us-central1 (Council Bluffs, Iowa, North America) and us-east1 (Moncks Corner, South Carolina, North America)",
-		regionEnum:  "NAM4",
+		name:            "nam4",
+		displayName:     "us-central1 (Council Bluffs, Iowa, North America) and us-east1 (Moncks Corner, South Carolina, North America)",
+		regionEnum:      "NAM4",
+		kmsLocationEnum: "NAM4",
+	},
+	RegionNAM6: {
+		name:            "nam6",
+		displayName:     "Council Bluffs (Iowa) and Moncks Corner (South Carolina)",
+		kmsLocationEnum: "NAM6",
+	},
+	RegionNAM7: {
+		name:            "nam7",
+		displayName:     "Council Bluffs (Iowa), Ashburn (Virginia), and Pryor (Oklahoma)",
+		kmsLocationEnum: "NAM7",
+	},
+	RegionNAM8: {
+		name:            "nam8",
+		displayName:     "Los Angeles (California), The Dalles (Oregon), and Salt Lake City (Utah)",
+		kmsLocationEnum: "NAM8",
+	},
+	RegionNAM9: {
+		name:            "nam9",
+		displayName:     "Ashburn (Virginia) and Council Bluffs (Iowa)",
+		kmsLocationEnum: "NAM9",
+	},
+	RegionNAM10: {
+		name:            "nam10",
+		displayName:     "Council Bluffs (Iowa), Salt Lake City (Utah), and Pryor (Oklahoma)",
+		kmsLocationEnum: "NAM10",
+	},
+	RegionNAM11: {
+		name:            "nam11",
+		displayName:     "Council Bluffs (Iowa), Moncks Corner (South Carolina), and Pryor (Oklahoma)",
+		kmsLocationEnum: "NAM11",
+	},
+	RegionNAM12: {
+		name:            "nam12",
+		displayName:     "Council Bluffs (Iowa), Ashburn (Virginia), Pryor (Oklahoma), and The Dalles (Oregon)",
+		kmsLocationEnum: "NAM12",
+	},
+	RegionNAMEurAsia1: {
+		name:            "nam-eur-asia1",
+		displayName:     "North America, Europe, and Asia (Council Bluffs (Iowa), Pryor (Oklahoma), St. Ghislain (Belgium), and Changhua County (Taiwan))",
+		kmsLocationEnum: "NAM_EUR_ASIA1",
 	},
 	RegionNorthAmericaNorthEast1: {
 		name:                   "northamerica-northeast1",
@@ -611,6 +829,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "NORTHAMERICA_NORTHEAST1",
 		cloudAccountRegionEnum: "NORTHAMERICA_NORTHEAST1",
 		rcsRegionEnum:          "NORTHAMERICA_NORTHEAST_1",
+		kmsLocationEnum:        "NORTHAMERICA_NORTHEAST1",
 	},
 	RegionNorthAmericaNorthEast2: {
 		name:                   "northamerica-northeast2",
@@ -618,6 +837,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "NORTHAMERICA_NORTHEAST2",
 		cloudAccountRegionEnum: "NORTHAMERICA_NORTHEAST2",
 		rcsRegionEnum:          "CANADA_CENTRAL",
+		kmsLocationEnum:        "NORTHAMERICA_NORTHEAST2",
 	},
 	RegionNorthAmericaSouth1: {
 		name:                   "northamerica-south1",
@@ -625,6 +845,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "NORTHAMERICA_SOUTH1",
 		cloudAccountRegionEnum: "NORTHAMERICA_SOUTH1",
 		rcsRegionEnum:          "NORTHAMERICA_SOUTH_1",
+		kmsLocationEnum:        "NORTHAMERICA_SOUTH1",
 	},
 	RegionSouthAmericaEast1: {
 		name:                   "southamerica-east1",
@@ -632,6 +853,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "SOUTHAMERICA_EAST1",
 		cloudAccountRegionEnum: "SOUTHAMERICA_EAST1",
 		rcsRegionEnum:          "BRAZIL_SOUTH",
+		kmsLocationEnum:        "SOUTHAMERICA_EAST1",
 	},
 	RegionSouthAmericaWest1: {
 		name:                   "southamerica-west1",
@@ -639,11 +861,13 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "SOUTHAMERICA_WEST1",
 		cloudAccountRegionEnum: "SOUTHAMERICA_WEST1",
 		rcsRegionEnum:          "SOUTHAMERICA_WEST_1",
+		kmsLocationEnum:        "SOUTHAMERICA_WEST1",
 	},
 	RegionUS: {
-		name:        "us",
-		displayName: "Data centers in the United States",
-		regionEnum:  "US",
+		name:            "us",
+		displayName:     "Data centers in the United States",
+		regionEnum:      "US",
+		kmsLocationEnum: "US",
 	},
 	RegionUSCentral1: {
 		name:                   "us-central1",
@@ -651,6 +875,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "USCENTRAL1",
 		cloudAccountRegionEnum: "US_CENTRAL1",
 		rcsRegionEnum:          "US_CENTRAL",
+		kmsLocationEnum:        "US_CENTRAL1",
 	},
 	RegionUSEast1: {
 		name:                   "us-east1",
@@ -658,6 +883,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "USEAST1",
 		cloudAccountRegionEnum: "US_EAST1",
 		rcsRegionEnum:          "US_EAST_1",
+		kmsLocationEnum:        "US_EAST1",
 	},
 	RegionUSEast4: {
 		name:                   "us-east4",
@@ -665,6 +891,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "USEAST4",
 		cloudAccountRegionEnum: "US_EAST4",
 		rcsRegionEnum:          "US_EAST",
+		kmsLocationEnum:        "US_EAST4",
 	},
 	RegionUSEast5: {
 		name:                   "us-east5",
@@ -672,6 +899,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "US_EAST5",
 		cloudAccountRegionEnum: "US_EAST5",
 		rcsRegionEnum:          "US_EAST_5",
+		kmsLocationEnum:        "US_EAST5",
 	},
 	RegionUSEast7: {
 		name:                   "us-east7",
@@ -686,6 +914,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "US_SOUTH1",
 		cloudAccountRegionEnum: "US_SOUTH1",
 		rcsRegionEnum:          "US_SOUTH_1",
+		kmsLocationEnum:        "US_SOUTH1",
 	},
 	RegionUSWest1: {
 		name:                   "us-west1",
@@ -693,6 +922,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "USWEST1",
 		cloudAccountRegionEnum: "US_WEST1",
 		rcsRegionEnum:          "US_WEST_1",
+		kmsLocationEnum:        "US_WEST1",
 	},
 	RegionUSWest2: {
 		name:                   "us-west2",
@@ -700,6 +930,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "USWEST2",
 		cloudAccountRegionEnum: "US_WEST2",
 		rcsRegionEnum:          "US_WEST_LOS_ANGELES",
+		kmsLocationEnum:        "US_WEST2",
 	},
 	RegionUSWest3: {
 		name:                   "us-west3",
@@ -707,6 +938,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "US_WEST3",
 		cloudAccountRegionEnum: "US_WEST3",
 		rcsRegionEnum:          "US_WEST_3",
+		kmsLocationEnum:        "US_WEST3",
 	},
 	RegionUSWest4: {
 		name:                   "us-west4",
@@ -714,6 +946,7 @@ var regionInfoMap = map[Region]struct {
 		regionEnum:             "US_WEST4",
 		cloudAccountRegionEnum: "US_WEST4",
 		rcsRegionEnum:          "US_WEST_4",
+		kmsLocationEnum:        "US_WEST4",
 	},
 	RegionUSWest8: {
 		name:                   "us-west8",

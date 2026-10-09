@@ -68,6 +68,27 @@ var addAzureKeyVaultWithCloudAccountQuery = `mutation SdkGolangAddAzureKeyVaultW
     }
 }`
 
+// addGcpKmsWithCloudAccount GraphQL query
+var addGcpKmsWithCloudAccountQuery = `mutation SdkGolangAddGcpKmsWithCloudAccount(
+    $cloudAccountId: String!,
+    $instanceName:   String!,
+    $keyRing:        String!,
+    $location:       GcpKmsLocation!,
+    $description:    String,
+) {
+    result: addGcpKmsWithCloudAccount(input: {
+        gcpKms: {
+            cloudAccountId: $cloudAccountId,
+            instanceName:   $instanceName,
+            keyRing:        $keyRing,
+            location:       $location,
+            description:    $description,
+        },
+    }) {
+        kmsKeyVaultId
+    }
+}`
+
 // addSecureAuthAzureKeyVault GraphQL query
 var addSecureAuthAzureKeyVaultQuery = `mutation SdkGolangAddSecureAuthAzureKeyVault(
     $clientId:     String!,
@@ -84,6 +105,31 @@ var addSecureAuthAzureKeyVaultQuery = `mutation SdkGolangAddSecureAuthAzureKeyVa
         description:  $description,
     }) {
         kmsKeyVaultId
+    }
+}`
+
+// allCryptoKeyIdsInGcpKms GraphQL query
+var allCryptoKeyIdsInGcpKmsQuery = `query SdkGolangAllCryptoKeyIdsInGcpKms($kmsKeyVaultId: UUID!) {
+    result: allCryptoKeyIdsInGcpKms(kmsKeyVaultId: $kmsKeyVaultId) {
+        cryptoKeyName
+        purpose
+        primaryVersionId
+    }
+}`
+
+// allKeyRingsInGcpProject GraphQL query
+var allKeyRingsInGcpProjectQuery = `query SdkGolangAllKeyRingsInGcpProject($cloudAccountId: UUID!, $location: GcpKmsLocation!) {
+    result: allKeyRingsInGcpProject(cloudAccountId: $cloudAccountId, location: $location) {
+        keyRing
+    }
+}`
+
+// allKeyVersionsForCryptoKeyInGcpKms GraphQL query
+var allKeyVersionsForCryptoKeyInGcpKmsQuery = `query SdkGolangAllKeyVersionsForCryptoKeyInGcpKms($kmsKeyVaultId: UUID!, $cryptoKeyName: String!) {
+    result: allKeyVersionsForCryptoKeyInGcpKms(kmsKeyVaultId: $kmsKeyVaultId, cryptoKeyName: $cryptoKeyName) {
+        cryptoKeyVersion
+        state
+        createdAt
     }
 }`
 
@@ -216,6 +262,19 @@ var updateAzureKeyVaultWithCloudAccountQuery = `mutation SdkGolangUpdateAzureKey
     $description:   String,
 ) {
     result: updateAzureKeyVaultWithCloudAccount(input: {
+        kmsKeyVaultId: $kmsKeyVaultId,
+        instanceName:  $instanceName,
+        description:   $description,
+    })
+}`
+
+// updateGcpKmsWithCloudAccount GraphQL query
+var updateGcpKmsWithCloudAccountQuery = `mutation SdkGolangUpdateGcpKmsWithCloudAccount(
+    $kmsKeyVaultId: String!,
+    $instanceName:  String,
+    $description:   String,
+) {
+    result: updateGcpKmsWithCloudAccount(input: {
         kmsKeyVaultId: $kmsKeyVaultId,
         instanceName:  $instanceName,
         description:   $description,

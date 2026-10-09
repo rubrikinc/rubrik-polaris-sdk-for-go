@@ -45,6 +45,8 @@ const (
 	FeatureFlagAWSCloudAccountUEM              FeatureFlagName = "REL_ENABLE_AWS_EC2_UEM"
 	FeatureFlagAzureCloudAccountUEM            FeatureFlagName = "REL_ENABLE_AZURE_VM_UEM"
 	FeatureFlagAzureSecureAuthForUEM           FeatureFlagName = "UEM_SECURE_AUTH_FOR_AKV_ENABLED"
+	FeatureFlagGCPCloudAccountUEM              FeatureFlagName = "REL_ENABLE_CNP_GCP_UEM_KEY_MANAGEMENT"
+	FeatureFlagGCPKMSForUEM                    FeatureFlagName = "REL_ENABLE_GCP_KMS_FOR_UEM"
 )
 
 // FeatureFlag holds the name and state of a single RSC feature flag.
