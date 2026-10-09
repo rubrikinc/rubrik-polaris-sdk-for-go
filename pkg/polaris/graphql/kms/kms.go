@@ -80,13 +80,15 @@ const (
 // ProvisioningMethodValues returns the provisioning methods a key manager of
 // the specified cloud vendor can have. PROVISION_METHOD_UNSPECIFIED is part of
 // the RSC enum but is never a valid input. An empty slice is returned for cloud
-// vendors other than AWS and Azure.
+// vendors other than AWS, Azure and GCP.
 func ProvisioningMethodValues(vendor core.CloudVendor) []ProvisioningMethod {
 	switch vendor {
 	case core.CloudVendorAWS:
 		return []ProvisioningMethod{MethodCloudAccount, MethodDirect}
 	case core.CloudVendorAzure:
 		return []ProvisioningMethod{MethodCloudAccount, MethodDirect, MethodSecure}
+	case core.CloudVendorGCP:
+		return []ProvisioningMethod{MethodCloudAccount}
 	default:
 		return []ProvisioningMethod{}
 	}

@@ -117,6 +117,28 @@ func TestCloudAccountRegionEnumCanary(t *testing.T) {
 	assertEnumValues(t, "GcpCloudAccountRegion", sdkValues, rscValues)
 }
 
+// TestKMSLocationEnumCanary acts as a canary test to catch changes to the
+// GcpKmsLocation enum in RSC early.
+func TestKMSLocationEnumCanary(t *testing.T) {
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	sdkValues := make(map[string]struct{}, len(regionInfoMap))
+	for _, info := range regionInfoMap {
+		if info.kmsLocationEnum != "" {
+			sdkValues[info.kmsLocationEnum] = struct{}{}
+		}
+	}
+
+	rscValues, err := graphql.EnumValuesAsSet(t.Context(), client.GQL, "GcpKmsLocation")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assertEnumValues(t, "GcpKmsLocation", sdkValues, rscValues)
+}
+
 // assertEnumValues checks that sdkValues and rscValues contain the same set of
 // enum value names, reporting each discrepancy as a separate test error.
 func assertEnumValues(t *testing.T, enumName string, sdkValues map[string]struct{}, rscValues map[string]graphql.EnumValue) {
