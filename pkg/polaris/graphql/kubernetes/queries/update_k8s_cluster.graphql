@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($id: UUID!, $config: K8sClusterUpdateInput!) {
+    result: updateK8sCluster(input: {id: $id, config: $config}) {
+        success
+    }
+}
