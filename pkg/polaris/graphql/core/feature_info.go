@@ -668,6 +668,7 @@ var featureInfoMap = map[string]struct {
 				PermissionGroupBasic,
 			},
 		},
+		public: true,
 	},
 	CloudSQLProtection: {
 		permissionGroups: cloudAccountPermissionGroups{
