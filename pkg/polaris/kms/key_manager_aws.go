@@ -26,10 +26,72 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/kms"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
+
+// AWSKeyManagers returns the AWS KMS key managers matching the filter. Any
+// types in the filter are ignored.
+func (a API) AWSKeyManagers(ctx context.Context, filter kms.ListKeyManagerFilter) ([]kms.KeyManager, error) {
+	a.log.Print(log.Trace)
+
+	filter.Types = []kms.Type{kms.TypeAWSKMS}
+	keyManagers, err := kms.ListKeyManagers(ctx, a.client, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get AWS KMS key managers: %s", err)
+	}
+
+	return keyManagers, nil
+}
+
+// AWSKeyManagerByID returns the AWS KMS key manager with the specified
+// ID. If no such key manager exists, graphql.ErrNotFound is returned. This
+// includes the ID of a key manager of another KMS type.
+func (a API) AWSKeyManagerByID(ctx context.Context, keyManagerID uuid.UUID) (kms.KeyManager, error) {
+	a.log.Print(log.Trace)
+
+	// RSC has no query for a single key manager, so the AWS KMS key managers
+	// are filtered client side.
+	keyManagers, err := kms.ListKeyManagers(ctx, a.client, kms.ListKeyManagerFilter{Types: []kms.Type{kms.TypeAWSKMS}})
+	if err != nil {
+		return kms.KeyManager{}, fmt.Errorf("failed to get AWS KMS key manager: %s", err)
+	}
+
+	for _, keyManager := range keyManagers {
+		if keyManager.KeyVaultInfo.ID == keyManagerID {
+			return keyManager, nil
+		}
+	}
+
+	return kms.KeyManager{}, fmt.Errorf("key manager %q of type AWS KMS %w", keyManagerID, graphql.ErrNotFound)
+}
+
+// AWSKeyManagerByName returns the AWS KMS key manager with the specified
+// name. If no such key manager exists, graphql.ErrNotFound is returned. This
+// includes the name of a key manager of another KMS type.
+func (a API) AWSKeyManagerByName(ctx context.Context, name string) (kms.KeyManager, error) {
+	a.log.Print(log.Trace)
+
+	// The name filter matches on prefix, so the result still needs to be
+	// narrowed to an exact match.
+	keyManagers, err := kms.ListKeyManagers(ctx, a.client, kms.ListKeyManagerFilter{
+		NamePrefix: name,
+		Types:      []kms.Type{kms.TypeAWSKMS},
+	})
+	if err != nil {
+		return kms.KeyManager{}, fmt.Errorf("failed to get AWS KMS key manager: %s", err)
+	}
+
+	for _, keyManager := range keyManagers {
+		if keyManager.Name == name {
+			return keyManager, nil
+		}
+	}
+
+	return kms.KeyManager{}, fmt.Errorf("key manager %q of type AWS KMS %w", name, graphql.ErrNotFound)
+}
 
 // CreateAWSKeyManager creates a cloud account provisioned AWS KMS key manager
 // and returns its ID. The AWS account must already be onboarded with the
