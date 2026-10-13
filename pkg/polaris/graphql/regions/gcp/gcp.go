@@ -167,19 +167,17 @@ func (region Region) ToRCSRegionEnumPtr() *RCSRegionEnum {
 // ToKMSLocationEnum returns the RSC GraphQL GcpKmsLocation enum value for the
 // region.
 func (region Region) ToKMSLocationEnum() KMSLocationEnum {
-	if regionInfoMap[region].kmsLocationEnum == "" {
-		return KMSLocationEnum{Region: RegionUnknown}
-	}
 	return KMSLocationEnum{Region: region}
 }
 
 // ToKMSLocationEnumPtr returns the RSC GraphQL GcpKmsLocation enum value for
-// the region as a pointer. If the region is unknown, nil is returned.
+// the region as a pointer. If the region is unknown or has no GcpKmsLocation
+// value, nil is returned.
 func (region Region) ToKMSLocationEnumPtr() *KMSLocationEnum {
-	if r := region.ToKMSLocationEnum(); r.Region != RegionUnknown {
-		return &r
+	if region == RegionUnknown || regionInfoMap[region].kmsLocationEnum == "" {
+		return nil
 	}
-	return nil
+	return &KMSLocationEnum{Region: region}
 }
 
 // MarshalJSON returns the region as a JSON string using the region name.
@@ -375,9 +373,15 @@ func (region RCSRegionEnum) String() string {
 // regions, it holds multi-regions, dual-regions and the global location.
 type KMSLocationEnum struct{ Region }
 
-// MarshalJSON returns the region as a JSON string.
+// MarshalJSON returns the region as a JSON string. An error is returned if the
+// region has no GcpKmsLocation value. The GcpKmsLocation enum has no value for
+// an unknown location, so this includes RegionUnknown.
 func (region KMSLocationEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(region.String())
+	value := regionInfoMap[region.Region].kmsLocationEnum
+	if value == "" {
+		return nil, fmt.Errorf("region %q has no GcpKmsLocation value", region.Region.Name())
+	}
+	return json.Marshal(value)
 }
 
 // UnmarshalJSON parses the region from a JSON string.
