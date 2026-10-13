@@ -42,7 +42,7 @@ func (AWSCloudAccount) ListQuery(filters []ListAccountFilter) (string, any) {
 		Text:  "CLOUD_ACCOUNT_AWS",
 	}}
 	return allCloudAccountsQuery, struct {
-		Filters []ListAccountFilter `json:"filters"`
+		Filters []ListAccountFilter `json:"filter"`
 	}{Filters: append(filters, extraFilters...)}
 }
 

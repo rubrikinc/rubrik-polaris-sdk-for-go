@@ -58,7 +58,7 @@ func (AWSTargetMapping) ListQuery(filters []ListTargetMappingFilter) (string, an
 	}}
 
 	return allTargetMappingsQuery, struct {
-		Filters []ListTargetMappingFilter `json:"filters,omitempty"`
+		Filters []ListTargetMappingFilter `json:"filter,omitempty"`
 	}{Filters: append(filters, extraFilters...)}
 }
 

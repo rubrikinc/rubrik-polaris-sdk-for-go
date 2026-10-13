@@ -1,0 +1,27 @@
+mutation RubrikPolarisSDKRequest(
+    $name:                String!,
+    $region:              AzureRegion!,
+    $rcvRegion:           RcsRegionEnumType,
+    $rcvTier:             RcsTierEnumType,
+    $locTemplateType:     CloudNativeLocTemplateType!,
+    $sourceWorkloadCloud: SourceWorkloadCloud,
+    $redundancy:          RcvRedundancy,
+    $rsaKey:              String,
+    $azureKeyVaultKey:    AzureKeyVaultKeyIdentifierInput
+) {
+    result: createCloudNativeRcvAzureStorageSetting(input: {
+        name:                       $name,
+        region:                     $region,
+        rcvRegion:                  $rcvRegion,
+        rcvTier:                    $rcvTier,
+        cloudNativeLocTemplateType: $locTemplateType,
+        sourceWorkloadCloud:        $sourceWorkloadCloud,
+        redundancy:                 $redundancy,
+        rsaKey:                     $rsaKey,
+        azureKeyVaultKey:           $azureKeyVaultKey
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}
