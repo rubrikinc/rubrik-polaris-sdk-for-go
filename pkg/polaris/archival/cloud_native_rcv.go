@@ -38,12 +38,6 @@ import (
 // function names below is the destination cloud, the cloud hosting the vault,
 // and not the cloud the archived workloads originate from.
 
-// Location template types accepted by the RSC cloud native archival API.
-const (
-	locTemplateSourceRegion   = "SOURCE_REGION"
-	locTemplateSpecificRegion = "SPECIFIC_REGION"
-)
-
 // RCVAWSTargetMappingByID returns the RCV AWS target mapping with the specified
 // ID. If no target mapping with the specified ID is found, graphql.ErrNotFound
 // is returned.
@@ -112,9 +106,9 @@ func (a API) CreateRCVAWSStorageSetting(ctx context.Context, createParams archiv
 	a.log.Print(log.Trace)
 
 	if createParams.LocTemplate == "" {
-		createParams.LocTemplate = locTemplateSpecificRegion
+		createParams.LocTemplate = archival.LocTemplateSpecificRegion
 		if createParams.Region.Region == aws.RegionUnknown {
-			createParams.LocTemplate = locTemplateSourceRegion
+			createParams.LocTemplate = archival.LocTemplateSourceRegion
 		}
 	}
 
@@ -222,9 +216,9 @@ func (a API) CreateRCVAzureStorageSetting(ctx context.Context, createParams arch
 	a.log.Print(log.Trace)
 
 	if createParams.LocTemplate == "" {
-		createParams.LocTemplate = locTemplateSpecificRegion
+		createParams.LocTemplate = archival.LocTemplateSpecificRegion
 		if createParams.Region.Region == azure.RegionUnknown {
-			createParams.LocTemplate = locTemplateSourceRegion
+			createParams.LocTemplate = archival.LocTemplateSourceRegion
 		}
 	}
 	createParams.RCVRegion = createParams.Region.Region.ToRCSRegionEnum()
@@ -328,9 +322,9 @@ func (a API) CreateRCVGCPStorageSetting(ctx context.Context, createParams archiv
 	a.log.Print(log.Trace)
 
 	if createParams.LocTemplate == "" {
-		createParams.LocTemplate = locTemplateSpecificRegion
+		createParams.LocTemplate = archival.LocTemplateSpecificRegion
 		if createParams.Region.Region == gcp.RegionUnknown {
-			createParams.LocTemplate = locTemplateSourceRegion
+			createParams.LocTemplate = archival.LocTemplateSourceRegion
 		}
 	}
 

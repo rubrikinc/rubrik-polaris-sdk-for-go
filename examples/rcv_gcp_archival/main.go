@@ -68,7 +68,7 @@ func main() {
 	targetMappingID, err := archivalClient.CreateRCVGCPStorageSetting(ctx, gqlarchival.CreateRCVGCPStorageSettingParams{
 		Name:   "Test",
 		Region: gcp.RegionFromName("us-west1").ToRCSRegionEnum(),
-		Tier:   "BACKUP",
+		Tier:   gqlarchival.RCVTierBackup,
 	})
 	if err != nil {
 		log.Fatal(err)

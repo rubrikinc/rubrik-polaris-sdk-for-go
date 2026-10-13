@@ -47,12 +47,12 @@ type RCVGCPTargetMapping struct {
 		Status string `json:"status"`
 	} `json:"connectionStatus"`
 	TargetTemplate struct {
-		Region              gcp.RCSRegionEnum `json:"rcvGcpRegion"`
-		Tier                string            `json:"rcvGcpTier"`
-		EncryptionType      string            `json:"rcvGcpEncryptionType"`
-		LocTemplate         string            `json:"cloudNativeLocTemplateType"`
-		TemplateLocationID  uuid.UUID         `json:"templateLocationId"`
-		SourceWorkloadCloud string            `json:"sourceWorkloadCloud"`
+		Region              gcp.RCSRegionEnum    `json:"rcvGcpRegion"`
+		Tier                RCVTier              `json:"rcvGcpTier"`
+		EncryptionType      TargetEncryptionType `json:"rcvGcpEncryptionType"`
+		LocTemplate         LocTemplateType      `json:"cloudNativeLocTemplateType"`
+		TemplateLocationID  uuid.UUID            `json:"templateLocationId"`
+		SourceWorkloadCloud SourceWorkloadCloud  `json:"sourceWorkloadCloud"`
 	}
 }
 
@@ -76,8 +76,8 @@ func (RCVGCPTargetMapping) ListQuery(filters []ListTargetMappingFilter) (string,
 type CreateRCVGCPStorageSettingParams struct {
 	Name        string            `json:"name"`
 	Region      gcp.RCSRegionEnum `json:"region"`
-	Tier        string            `json:"tier"`
-	LocTemplate string            `json:"locTemplateType"`
+	Tier        RCVTier           `json:"tier"`
+	LocTemplate LocTemplateType   `json:"locTemplateType"`
 }
 
 // CreateRCVGCPStorageSettingResult holds the result of an RCV GCP storage

@@ -65,7 +65,7 @@ func main() {
 	targetMappingID, err := archival.Wrap(client).CreateRCVAWSStorageSetting(ctx, gqlarchival.CreateRCVAWSStorageSettingParams{
 		Name:   "ja-test",
 		Region: aws.RegionUsEast1.ToRCSRegionEnum(),
-		Tier:   "ARCHIVE",
+		Tier:   gqlarchival.RCVTierArchive,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -91,7 +91,7 @@ func main() {
 	// updated.
 	if err := archival.Wrap(client).UpdateRCVAWSStorageSetting(ctx, targetMappingID, gqlarchival.UpdateRCVAWSStorageSettingParams{
 		Name: "ja-test-updated",
-		Tier: "ARCHIVE",
+		Tier: gqlarchival.RCVTierArchive,
 	}); err != nil {
 		log.Fatal(err)
 	}

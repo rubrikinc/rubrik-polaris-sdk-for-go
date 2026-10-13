@@ -72,7 +72,7 @@ func main() {
 	targetMappingID, err := archivalClient.CreateRCVAzureStorageSetting(ctx, gqlarchival.CreateRCVAzureStorageSettingParams{
 		Name:   "Test",
 		Region: azure.RegionFromName("westus2").ToRegionEnum(),
-		Tier:   "BACKUP",
+		Tier:   gqlarchival.RCVTierBackup,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -99,7 +99,7 @@ func main() {
 	// redundancy can be updated.
 	if err := archivalClient.UpdateRCVAzureStorageSetting(ctx, targetMappingID, gqlarchival.UpdateRCVAzureStorageSettingParams{
 		Name: "TestUpdated",
-		Tier: "ARCHIVE",
+		Tier: gqlarchival.RCVTierArchive,
 	}); err != nil {
 		log.Fatal(err)
 	}
