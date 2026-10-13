@@ -22,6 +22,7 @@ package aws
 
 import (
 	"encoding/json"
+	"slices"
 	"sort"
 )
 
@@ -365,6 +366,7 @@ func AllRegionNames() []string {
 		}
 	}
 
+	slices.Sort(regions)
 	return regions
 }
 
@@ -377,6 +379,7 @@ func AllRCSRegionNames() []string {
 		}
 	}
 
+	slices.Sort(regions)
 	return regions
 }
 

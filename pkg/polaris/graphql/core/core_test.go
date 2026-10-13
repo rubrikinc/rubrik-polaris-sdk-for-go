@@ -38,7 +38,8 @@ var (
 	// we reduce the risk of hitting rate limits when access tokens are created.
 	client *polaris.Client
 
-	//
+	// version is the RSC deployment version of the common RSC client. Used by
+	// tests which depend on the RSC version.
 	version graphql.Version
 )
 

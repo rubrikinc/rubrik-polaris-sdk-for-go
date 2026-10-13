@@ -22,6 +22,7 @@ package azure
 
 import (
 	"encoding/json"
+	"slices"
 )
 
 const (
@@ -515,6 +516,7 @@ func AllRegionNames() []string {
 		}
 	}
 
+	slices.Sort(regions)
 	return regions
 }
 
@@ -527,6 +529,7 @@ func AllRCSRegionNames() []string {
 		}
 	}
 
+	slices.Sort(regions)
 	return regions
 }
 

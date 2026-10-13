@@ -22,6 +22,7 @@ package gcp
 
 import (
 	"encoding/json"
+	"slices"
 )
 
 const (
@@ -323,6 +324,7 @@ func AllRegionNames() []string {
 		}
 	}
 
+	slices.Sort(regions)
 	return regions
 }
 
@@ -335,6 +337,7 @@ func AllRCSRegionNames() []string {
 		}
 	}
 
+	slices.Sort(regions)
 	return regions
 }
 
@@ -464,17 +467,17 @@ var regionInfoMap = map[Region]struct {
 	},
 	RegionEur5: {
 		name:        "eur5",
-		displayName: "Europe 5",
+		displayName: "europe-west1 (St. Ghislain, Belgium, Europe) and europe-west2 (London, England, Europe)",
 		regionEnum:  "EUR5",
 	},
 	RegionEur7: {
 		name:        "eur7",
-		displayName: "Europe 7",
+		displayName: "europe-west2 (London, England, Europe) and europe-west3 (Frankfurt, Germany, Europe)",
 		regionEnum:  "EUR7",
 	},
 	RegionEur8: {
 		name:        "eur8",
-		displayName: "Europe 8",
+		displayName: "europe-west3 (Frankfurt, Germany, Europe) and europe-west6 (Zurich, Switzerland, Europe)",
 		regionEnum:  "EUR8",
 	},
 	RegionEuropeCentral2: {
