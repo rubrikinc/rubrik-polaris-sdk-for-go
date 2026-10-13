@@ -71,6 +71,7 @@ func SupportedFeatures() []core.Feature {
 	return []core.Feature{
 		core.FeatureCloudNativeArchival,
 		core.FeatureCloudNativeProtection,
+		core.FeatureCloudNativeUEMKeyManagement,
 		core.FeatureCloudSQLProtection,
 		core.FeatureExocompute,
 		core.FeatureGCPBigQueryProtection,

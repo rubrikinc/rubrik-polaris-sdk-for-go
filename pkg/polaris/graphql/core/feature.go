@@ -99,6 +99,7 @@ var (
 	FeatureCloudNativeDynamoDBProtection               = Feature{Name: "CLOUD_NATIVE_DYNAMODB_PROTECTION"}
 	FeatureCloudNativeProtection                       = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
 	FeatureCloudNativeS3Protection                     = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
+	FeatureCloudNativeUEMKeyManagement                 = Feature{Name: "CLOUD_NATIVE_UEM_KEY_MANAGEMENT"}
 	FeatureCloudSQLProtection                          = Feature{Name: "CLOUD_SQL_PROTECTION"}
 	FeatureCyberRecoveryDataClassificationData         = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_DATA"}
 	FeatureCyberRecoveryDataClassificationMetadata     = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_METADATA"}
@@ -329,6 +330,7 @@ var validFeatures = map[string]struct{}{
 	FeatureCloudNativeDynamoDBProtection.Name:               {},
 	FeatureCloudNativeProtection.Name:                       {},
 	FeatureCloudNativeS3Protection.Name:                     {},
+	FeatureCloudNativeUEMKeyManagement.Name:                 {},
 	FeatureCloudSQLProtection.Name:                          {},
 	FeatureCyberRecoveryDataClassificationData.Name:         {},
 	FeatureCyberRecoveryDataClassificationMetadata.Name:     {},

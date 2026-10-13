@@ -1,0 +1,58 @@
+query RubrikPolarisSDKRequest(
+    $first:                    Int,
+    $after:                    String,
+    $kmsName:                  String,
+    $kmsTypeFilter:            [KmsType!],
+    $provisioningMethodFilter: [ProvisioningMethod!],
+) {
+    result: kmsInstances(
+        first:                    $first,
+        after:                    $after,
+        kmsName:                  $kmsName,
+        kmsTypeFilter:            $kmsTypeFilter,
+        provisioningMethodFilter: $provisioningMethodFilter,
+    ) {
+        nodes {
+            name
+            description
+            kmsType
+            naturalId
+            dataLocationsCount
+            keyVaultInfo {
+                ... on AwsKmsInfo {
+                    id: kmsId
+                    provisioningMethod
+                    cloudAccountId
+                    iamRoleArn
+                    awsRegion: region
+                    stsRegionEndpoint
+                    kmsRegionEndpoint
+                }
+                ... on AzureKeyVaultInfo {
+                    id: kmsKeyVaultId
+                    provisioningMethod
+                    cloudAccountId
+                    keyVaultUrl
+                    tenantId
+                    clientId
+                    azureRegion: region
+                }
+                ... on GcpKmsInfo {
+                    id: kmsId
+                    provisioningMethod
+                    cloudAccountId
+                    keyRing
+                    displayLocationName
+                }
+                ... on KmipServerInfo {
+                    address
+                    port
+                }
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}

@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($kmsKeyVaultId: UUID!) {
+    result: deleteKmsInstance(input: {
+        kmsKeyVaultId: $kmsKeyVaultId,
+    })
+}

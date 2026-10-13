@@ -1,0 +1,5 @@
+query RubrikPolarisSDKRequest {
+    result: awsKmsRegions {
+        regions
+    }
+}

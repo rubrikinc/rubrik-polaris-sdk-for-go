@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -57,7 +58,27 @@ func TestRegion(t *testing.T) {
 }
 
 func TestRegionEnum(t *testing.T) {
-	unsupported := []Region{}
+	unsupported := []Region{
+		RegionAU,
+		RegionCA,
+		RegionDE,
+		RegionEur3,
+		RegionEur6,
+		RegionEurope,
+		RegionGlobal,
+		RegionIN,
+		RegionIT,
+		RegionJP,
+		RegionNAM3,
+		RegionNAM6,
+		RegionNAM7,
+		RegionNAM8,
+		RegionNAM9,
+		RegionNAM10,
+		RegionNAM11,
+		RegionNAM12,
+		RegionNAMEurAsia1,
+	}
 
 	for region, info := range regionInfoMap {
 		want := region
@@ -105,12 +126,31 @@ func TestCloudAccountRegionEnum(t *testing.T) {
 	unsupported := []Region{
 		RegionAsia,
 		RegionAsia1,
+		RegionAU,
+		RegionCA,
+		RegionDE,
 		RegionEU,
+		RegionEur3,
 		RegionEur4,
 		RegionEur5,
+		RegionEur6,
 		RegionEur7,
 		RegionEur8,
+		RegionEurope,
+		RegionGlobal,
+		RegionIN,
+		RegionIT,
+		RegionJP,
+		RegionNAM3,
 		RegionNAM4,
+		RegionNAM6,
+		RegionNAM7,
+		RegionNAM8,
+		RegionNAM9,
+		RegionNAM10,
+		RegionNAM11,
+		RegionNAM12,
+		RegionNAMEurAsia1,
 		RegionUS,
 	}
 
@@ -161,13 +201,32 @@ func TestRCSRegionEnum(t *testing.T) {
 		RegionAsia,
 		RegionAsia1,
 		RegionAsiaSouthEast3,
+		RegionAU,
+		RegionCA,
+		RegionDE,
 		RegionEU,
+		RegionEur3,
 		RegionEur4,
 		RegionEur5,
+		RegionEur6,
 		RegionEur7,
 		RegionEur8,
+		RegionEurope,
 		RegionEuropeNorth2,
+		RegionGlobal,
+		RegionIN,
+		RegionIT,
+		RegionJP,
+		RegionNAM3,
 		RegionNAM4,
+		RegionNAM6,
+		RegionNAM7,
+		RegionNAM8,
+		RegionNAM9,
+		RegionNAM10,
+		RegionNAM11,
+		RegionNAM12,
+		RegionNAMEurAsia1,
 		RegionUS,
 	}
 
@@ -209,6 +268,65 @@ func TestRCSRegionEnum(t *testing.T) {
 				got = fmt.Sprintf("%q", r.Name())
 			}
 			t.Errorf("got %s want %q", got, want)
+		}
+	}
+}
+
+func TestKMSLocationEnum(t *testing.T) {
+	// The GcpKmsLocation enum has no value for an unknown location, so
+	// RegionUnknown is unsupported too.
+	unsupported := []Region{
+		RegionUnknown,
+		RegionEU,
+		RegionUSEast7,
+		RegionUSWest8,
+	}
+
+	for region, info := range regionInfoMap {
+		want := region
+		if slices.Contains(unsupported, region) {
+			want = RegionUnknown
+		}
+
+		// Lookup.
+		if r := RegionFromKMSLocationEnum(info.kmsLocationEnum); r != want {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		}
+
+		// Marshal/unmarshal. Regions without a value for the enum fail to
+		// marshal.
+		buf, err := json.Marshal(region.ToKMSLocationEnum())
+		if slices.Contains(unsupported, region) {
+			if err == nil {
+				t.Errorf("got %s want a marshal error for %q", buf, region)
+			}
+		} else {
+			if err != nil {
+				t.Fatal(err)
+			}
+			var enum KMSLocationEnum
+			if err := json.Unmarshal(buf, &enum); err != nil {
+				t.Fatal(err)
+			}
+			if r := enum.Region; r != want {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+			}
+		}
+
+		// ToPtr.
+		if r := region.ToKMSLocationEnumPtr(); (r == nil && want != RegionUnknown) || (r != nil && *r != want.ToKMSLocationEnum()) {
+			got := "<nil>"
+			if r != nil {
+				got = fmt.Sprintf("%q", r.Name())
+			}
+			t.Errorf("got %s want %q", got, want)
+		}
+
+		// The region name is the Cloud KMS location name.
+		if want != RegionUnknown {
+			if name := strings.ToLower(strings.ReplaceAll(info.kmsLocationEnum, "_", "-")); name != info.name {
+				t.Errorf("got %q want %q", info.name, name)
+			}
 		}
 	}
 }

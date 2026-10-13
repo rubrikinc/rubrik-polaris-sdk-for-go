@@ -1,0 +1,9 @@
+query RubrikPolarisSDKRequest($kmsKeyVaultId: String!) {
+    result: validateKmsConnection(input: {
+        kmsDetails: {
+            kmsKeyVaultId: $kmsKeyVaultId,
+        },
+    }) {
+        errorString
+    }
+}
