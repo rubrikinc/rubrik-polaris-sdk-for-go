@@ -131,7 +131,7 @@ func TestAllowlists(t *testing.T) {
 			names: AWSAccountAllowlistNames(),
 			want: []string{
 				Archival, CloudCostReport, CloudDiscovery, CloudNativeArchival, CloudNativeConfigProtection,
-				CloudNativeDynamoDBProtection, CloudNativeProtection, CloudNativeS3Protection,
+				CloudNativeDynamoDBProtection, CloudNativeProtection, CloudNativeS3Protection, CloudNativeUEMKeyManagement,
 				CyberRecoveryDataClassificationData, CyberRecoveryDataClassificationMetadata, DSPMData, DSPMMetadata,
 				Exocompute, KubernetesProtection, LaminarCrossAccount, LaminarInternal, Outpost, RDSProtection,
 				RoleChaining, ServerAndApps,
@@ -142,14 +142,14 @@ func TestAllowlists(t *testing.T) {
 			want: []string{
 				AzurePostgresFlexibleServerProtection, AzureSQLDBProtection, AzureSQLMIProtection, CloudDiscovery,
 				CloudNativeArchival, CloudNativeArchivalEncryption, CloudNativeBlobProtection, CloudNativeProtection,
-				Exocompute, ServerAndApps,
+				CloudNativeUEMKeyManagement, Exocompute, ServerAndApps,
 			},
 		},
 		"GCPProjectAllowlistNames": {
 			names: GCPProjectAllowlistNames(),
 			want: []string{
-				CloudNativeArchival, CloudNativeProtection, CloudSQLProtection, Exocompute, GCPBigQueryProtection,
-				GCPBigQueryReservation, GCPSharedVPCHost, ServerAndApps,
+				CloudNativeArchival, CloudNativeProtection, CloudNativeUEMKeyManagement, CloudSQLProtection, Exocompute,
+				GCPBigQueryProtection, GCPBigQueryReservation, GCPSharedVPCHost, ServerAndApps,
 			},
 		},
 	} {
