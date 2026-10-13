@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -78,17 +79,24 @@ func TestRegionEnum(t *testing.T) {
 			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
 		}
 
-		// Marshal/unmarshal.
-		var enum RegionEnum
+		// Marshal/unmarshal. Regions without a value for the enum fail to
+		// marshal.
 		buf, err := json.Marshal(region.ToRegionEnum())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := json.Unmarshal(buf, &enum); err != nil {
-			t.Fatal(err)
-		}
-		if r := enum.Region; r != want {
-			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		if want != region {
+			if err == nil {
+				t.Errorf("got %s want a marshal error for %q", buf, region)
+			}
+		} else {
+			if err != nil {
+				t.Fatal(err)
+			}
+			var enum RegionEnum
+			if err := json.Unmarshal(buf, &enum); err != nil {
+				t.Fatal(err)
+			}
+			if r := enum.Region; r != want {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+			}
 		}
 
 		// ToPtr.
@@ -126,17 +134,24 @@ func TestNativeRegionEnum(t *testing.T) {
 			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
 		}
 
-		// Marshal/unmarshal.
-		var enum NativeRegionEnum
+		// Marshal/unmarshal. Regions without a value for the enum fail to
+		// marshal.
 		buf, err := json.Marshal(region.ToNativeRegionEnum())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := json.Unmarshal(buf, &enum); err != nil {
-			t.Fatal(err)
-		}
-		if r := enum.Region; r != want {
-			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		if want != region {
+			if err == nil {
+				t.Errorf("got %s want a marshal error for %q", buf, region)
+			}
+		} else {
+			if err != nil {
+				t.Fatal(err)
+			}
+			var enum NativeRegionEnum
+			if err := json.Unmarshal(buf, &enum); err != nil {
+				t.Fatal(err)
+			}
+			if r := enum.Region; r != want {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+			}
 		}
 
 		// ToPtr.
@@ -174,17 +189,24 @@ func TestCloudAccountRegionEnum(t *testing.T) {
 			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
 		}
 
-		// Marshal/unmarshal.
-		var enum CloudAccountRegionEnum
+		// Marshal/unmarshal. Regions without a value for the enum fail to
+		// marshal.
 		buf, err := json.Marshal(region.ToCloudAccountRegionEnum())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := json.Unmarshal(buf, &enum); err != nil {
-			t.Fatal(err)
-		}
-		if r := enum.Region; r != want {
-			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		if want != region {
+			if err == nil {
+				t.Errorf("got %s want a marshal error for %q", buf, region)
+			}
+		} else {
+			if err != nil {
+				t.Fatal(err)
+			}
+			var enum CloudAccountRegionEnum
+			if err := json.Unmarshal(buf, &enum); err != nil {
+				t.Fatal(err)
+			}
+			if r := enum.Region; r != want {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+			}
 		}
 
 		// ToPtr.
@@ -220,17 +242,24 @@ func TestCommonRegionEnum(t *testing.T) {
 			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
 		}
 
-		// Marshal/unmarshal.
-		var enum CommonRegionEnum
+		// Marshal/unmarshal. Regions without a value for the enum fail to
+		// marshal.
 		buf, err := json.Marshal(region.ToCommonRegionEnum())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := json.Unmarshal(buf, &enum); err != nil {
-			t.Fatal(err)
-		}
-		if r := enum.Region; r != want {
-			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		if want != region {
+			if err == nil {
+				t.Errorf("got %s want a marshal error for %q", buf, region)
+			}
+		} else {
+			if err != nil {
+				t.Fatal(err)
+			}
+			var enum CommonRegionEnum
+			if err := json.Unmarshal(buf, &enum); err != nil {
+				t.Fatal(err)
+			}
+			if r := enum.Region; r != want {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+			}
 		}
 
 		// ToPtr.
@@ -267,17 +296,24 @@ func TestRegionForReplicationEnum(t *testing.T) {
 			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
 		}
 
-		// Marshal/unmarshal.
-		var enum RegionForReplicationEnum
+		// Marshal/unmarshal. Regions without a value for the enum fail to
+		// marshal.
 		buf, err := json.Marshal(region.ToRegionForReplicationEnum())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := json.Unmarshal(buf, &enum); err != nil {
-			t.Fatal(err)
-		}
-		if r := enum.Region; r != want {
-			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		if want != region {
+			if err == nil {
+				t.Errorf("got %s want a marshal error for %q", buf, region)
+			}
+		} else {
+			if err != nil {
+				t.Fatal(err)
+			}
+			var enum RegionForReplicationEnum
+			if err := json.Unmarshal(buf, &enum); err != nil {
+				t.Fatal(err)
+			}
+			if r := enum.Region; r != want {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+			}
 		}
 
 		// ToPtr.
@@ -318,17 +354,24 @@ func TestRCSRegionEnum(t *testing.T) {
 			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
 		}
 
-		// Marshal/unmarshal.
-		var enum RCSRegionEnum
+		// Marshal/unmarshal. Regions without a value for the enum fail to
+		// marshal.
 		buf, err := json.Marshal(region.ToRCSRegionEnum())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := json.Unmarshal(buf, &enum); err != nil {
-			t.Fatal(err)
-		}
-		if r := enum.Region; r != want {
-			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		if want != region {
+			if err == nil {
+				t.Errorf("got %s want a marshal error for %q", buf, region)
+			}
+		} else {
+			if err != nil {
+				t.Fatal(err)
+			}
+			var enum RCSRegionEnum
+			if err := json.Unmarshal(buf, &enum); err != nil {
+				t.Fatal(err)
+			}
+			if r := enum.Region; r != want {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+			}
 		}
 
 		// ToPtr.
@@ -380,6 +423,27 @@ func TestCommonRegionEnumRoundTrip(t *testing.T) {
 	}
 	if RegionFromCloudAccountRegionEnum("NEWZEALANDNORTH") != RegionUnknown {
 		t.Error("NEWZEALANDNORTH must not resolve via the cloud account region enum")
+	}
+}
+
+func TestCommonRegionEnumMarshalError(t *testing.T) {
+	// Verify that a region without a value for a specific GraphQL enum type
+	// results in a marshal error.
+	_, err := json.Marshal(RegionGermanyNortheast.ToCommonRegionEnum())
+	if err == nil {
+		t.Fatal("expected an error for a region without an AzureCommonRegion value")
+	}
+	if msg := err.Error(); !strings.Contains(msg, `"germanynortheast"`) || !strings.Contains(msg, "AzureCommonRegion") {
+		t.Errorf("error %q should name the region and the enum", msg)
+	}
+
+	// The unknown region still marshals to the placeholder.
+	buf, err := json.Marshal(RegionUnknown.ToCommonRegionEnum())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(buf); got != `"UNKNOWN_AZURE_REGION"` {
+		t.Errorf("got %s want %q", got, "UNKNOWN_AZURE_REGION")
 	}
 }
 

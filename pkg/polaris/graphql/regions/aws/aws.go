@@ -22,13 +22,14 @@ package aws
 
 import (
 	"encoding/json"
+	"fmt"
 	"slices"
 	"sort"
 )
 
 const (
-	RegionSource  Region = -1
 	RegionUnknown Region = iota
+	RegionSource
 	RegionAfSouth1
 	RegionApEast1
 	RegionApNorthEast1
@@ -88,73 +89,65 @@ func (region Region) DisplayName() string {
 // ToNativeRegionEnum returns the RSC GraphQL AwsNativeRegion enum value for the
 // region.
 func (region Region) ToNativeRegionEnum() NativeRegionEnum {
-	if regionInfoMap[region].nativeRegionEnum == "" {
-		return NativeRegionEnum{Region: RegionUnknown}
-	}
 	return NativeRegionEnum{Region: region}
 }
 
 // ToNativeRegionEnumPtr returns the RSC GraphQL AwsNativeRegion enum value for
-// the region as a pointer. If the region is unknown, nil is returned.
+// the region as a pointer. If the region is unknown or has no AwsNativeRegion
+// value, nil is returned.
 func (region Region) ToNativeRegionEnumPtr() *NativeRegionEnum {
-	if r := region.ToNativeRegionEnum(); r.Region != RegionUnknown {
-		return &r
+	if region == RegionUnknown || regionInfoMap[region].nativeRegionEnum == "" {
+		return nil
 	}
-	return nil
+	return &NativeRegionEnum{Region: region}
 }
 
 // ToRegionEnum returns the RSC GraphQL AwsRegion enum value for the region.
 func (region Region) ToRegionEnum() RegionEnum {
-	if regionInfoMap[region].regionEnum == "" {
-		return RegionEnum{Region: RegionUnknown}
-	}
 	return RegionEnum{Region: region}
 }
 
-// ToRegionEnumPtr returns the RSC GraphQL AwsNativeRegion enum value for the
-// region as a pointer. If the region is unknown, nil is returned.
+// ToRegionEnumPtr returns the RSC GraphQL AwsRegion enum value for the region
+// as a pointer. If the region is unknown or has no AwsRegion value, nil is
+// returned.
 func (region Region) ToRegionEnumPtr() *RegionEnum {
-	if r := region.ToRegionEnum(); r.Region != RegionUnknown {
-		return &r
+	if region == RegionUnknown || regionInfoMap[region].regionEnum == "" {
+		return nil
 	}
-	return nil
+	return &RegionEnum{Region: region}
 }
 
 // ToRegionForReplicationEnum returns the RSC GraphQL
 // AwsNativeRegionForReplication enum value for the region.
 func (region Region) ToRegionForReplicationEnum() RegionForReplicationEnum {
-	if regionInfoMap[region].regionForReplicationEnum == "" {
-		return RegionForReplicationEnum{Region: RegionUnknown}
-	}
 	return RegionForReplicationEnum{Region: region}
 }
 
 // ToRegionForReplicationEnumPtr returns the RSC GraphQL
 // AwsNativeRegionForReplication enum value for the region as a pointer. If the
-// region is unknown, nil is returned.
+// region is unknown or has no AwsNativeRegionForReplication value, nil is
+// returned.
 func (region Region) ToRegionForReplicationEnumPtr() *RegionForReplicationEnum {
-	if r := region.ToRegionForReplicationEnum(); r.Region != RegionUnknown {
-		return &r
+	if region == RegionUnknown || regionInfoMap[region].regionForReplicationEnum == "" {
+		return nil
 	}
-	return nil
+	return &RegionForReplicationEnum{Region: region}
 }
 
 // ToRCSRegionEnum returns the RSC GraphQL RcsRegionEnumType enum value for the
 // region.
 func (region Region) ToRCSRegionEnum() RCSRegionEnum {
-	if regionInfoMap[region].rcsRegionEnum == "" {
-		return RCSRegionEnum{Region: RegionUnknown}
-	}
 	return RCSRegionEnum{Region: region}
 }
 
 // ToRCSRegionEnumPtr returns the RSC GraphQL RcsRegionEnumType enum value for
-// the region as a pointer. If the region is unknown, nil is returned.
+// the region as a pointer. If the region is unknown or has no RcsRegionEnumType
+// value, nil is returned.
 func (region Region) ToRCSRegionEnumPtr() *RCSRegionEnum {
-	if r := region.ToRCSRegionEnum(); r.Region != RegionUnknown {
-		return &r
+	if region == RegionUnknown || regionInfoMap[region].rcsRegionEnum == "" {
+		return nil
 	}
-	return nil
+	return &RCSRegionEnum{Region: region}
 }
 
 // MarshalJSON returns the region as a JSON string using the region name.
@@ -254,9 +247,14 @@ func RegionFromRCSRegionEnum(value string) Region {
 // RegionEnum represents the GraphQL AwsRegion enum type.
 type RegionEnum struct{ Region }
 
-// MarshalJSON returns the region as a JSON string.
+// MarshalJSON returns the region as a JSON string. An error is returned if the
+// region has no AwsRegion value.
 func (region RegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(region.String())
+	value := regionInfoMap[region.Region].regionEnum
+	if value == "" {
+		return nil, fmt.Errorf("region %q has no AwsRegion value", region.Region.Name())
+	}
+	return json.Marshal(value)
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -280,9 +278,14 @@ func (region RegionEnum) String() string {
 // NativeRegionEnum represents the GraphQL AwsNativeRegion enum type.
 type NativeRegionEnum struct{ Region }
 
-// MarshalJSON returns the region as a JSON string.
+// MarshalJSON returns the region as a JSON string. An error is returned if the
+// region has no AwsNativeRegion value.
 func (region NativeRegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(region.String())
+	value := regionInfoMap[region.Region].nativeRegionEnum
+	if value == "" {
+		return nil, fmt.Errorf("region %q has no AwsNativeRegion value", region.Region.Name())
+	}
+	return json.Marshal(value)
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -307,9 +310,14 @@ func (region NativeRegionEnum) String() string {
 // type.
 type RegionForReplicationEnum struct{ Region }
 
-// MarshalJSON returns the region as a JSON string.
+// MarshalJSON returns the region as a JSON string. An error is returned if the
+// region has no AwsNativeRegionForReplication value.
 func (region RegionForReplicationEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(region.String())
+	value := regionInfoMap[region.Region].regionForReplicationEnum
+	if value == "" {
+		return nil, fmt.Errorf("region %q has no AwsNativeRegionForReplication value", region.Region.Name())
+	}
+	return json.Marshal(value)
 }
 
 // UnmarshalJSON parses the region from a JSON string.
@@ -334,9 +342,14 @@ func (region RegionForReplicationEnum) String() string {
 // type is primarily used for RCS/RCV GraphQL queries/mutations.
 type RCSRegionEnum struct{ Region }
 
-// MarshalJSON returns the region as a JSON string.
+// MarshalJSON returns the region as a JSON string. An error is returned if the
+// region has no RcsRegionEnumType value.
 func (region RCSRegionEnum) MarshalJSON() ([]byte, error) {
-	return json.Marshal(region.String())
+	value := regionInfoMap[region.Region].rcsRegionEnum
+	if value == "" {
+		return nil, fmt.Errorf("region %q has no RcsRegionEnumType value", region.Region.Name())
+	}
+	return json.Marshal(value)
 }
 
 // UnmarshalJSON parses the region from a JSON string.
