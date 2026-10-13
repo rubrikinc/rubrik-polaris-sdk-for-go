@@ -38,9 +38,9 @@ import (
 // target template RcvAwsTargetTemplate, whereas the Azure equivalents use RCS
 // rather than RCV.
 
-// AWSKmsKey identifies an AWS KMS key used for client-side encryption of an RCV
+// AWSKMSKey identifies an AWS KMS key used for client-side encryption of an RCV
 // AWS archival location.
-type AWSKmsKey struct {
+type AWSKMSKey struct {
 	KeyManagerID uuid.UUID `json:"keyManagerId"`
 	KeyID        string    `json:"keyId"`
 }
@@ -56,13 +56,13 @@ type RCVAWSTargetMapping struct {
 		Status string `json:"status"`
 	} `json:"connectionStatus"`
 	TargetTemplate struct {
-		Region              aws.RCSRegionEnum `json:"rcvAwsRegion"`
-		Tier                string            `json:"rcvAwsTier"`
-		Redundancy          string            `json:"rcvAwsRedundancy"`
-		EncryptionType      string            `json:"rcvAwsEncryptionType"`
-		LocTemplate         string            `json:"cloudNativeLocTemplateType"`
-		TemplateLocationID  uuid.UUID         `json:"templateLocationId"`
-		SourceWorkloadCloud string            `json:"sourceWorkloadCloud"`
+		Region              aws.RCSRegionEnum    `json:"rcvAwsRegion"`
+		Tier                RCVTier              `json:"rcvAwsTier"`
+		Redundancy          RCVRedundancy        `json:"rcvAwsRedundancy"`
+		EncryptionType      TargetEncryptionType `json:"rcvAwsEncryptionType"`
+		LocTemplate         LocTemplateType      `json:"cloudNativeLocTemplateType"`
+		TemplateLocationID  uuid.UUID            `json:"templateLocationId"`
+		SourceWorkloadCloud SourceWorkloadCloud  `json:"sourceWorkloadCloud"`
 	}
 }
 
@@ -84,15 +84,20 @@ func (RCVAWSTargetMapping) ListQuery(filters []ListTargetMappingFilter) (string,
 // setting create operation. The tier, redundancy, encryption key and KMS key
 // are optional. RCV AWS storage settings are also referred to as RCV AWS target
 // mappings.
+//
+// EncryptionKeyInDER is misnamed in the RSC API: it takes a base64 encoded
+// 32 byte AES-256 key, not a DER encoded key. RSC rejects anything which does
+// not base64 decode to exactly 32 non-zero bytes. It must be set together with
+// EnableSSEWithCPK, and neither may be combined with KMSKey.
 type CreateRCVAWSStorageSettingParams struct {
 	Name               string            `json:"name"`
 	Region             aws.RCSRegionEnum `json:"region"`
-	Tier               string            `json:"tier,omitempty"`
-	LocTemplate        string            `json:"locTemplateType"`
-	Redundancy         string            `json:"redundancy,omitempty"`
-	EnableSseWithCpk   *bool             `json:"enableSseWithCpk,omitempty"`
-	EncryptionKeyInDer secret.String     `json:"encryptionKeyInDer,omitempty"`
-	KmsKey             *AWSKmsKey        `json:"awsKmsKey,omitempty"`
+	Tier               RCVTier           `json:"tier,omitempty"`
+	LocTemplate        LocTemplateType   `json:"locTemplateType"`
+	Redundancy         RCVRedundancy     `json:"redundancy,omitempty"`
+	EnableSSEWithCPK   *bool             `json:"enableSseWithCpk,omitempty"`
+	EncryptionKeyInDER secret.String     `json:"encryptionKeyInDer,omitempty"`
+	KMSKey             *AWSKMSKey        `json:"awsKmsKey,omitempty"`
 }
 
 // CreateRCVAWSStorageSettingResult holds the result of an RCV AWS storage
@@ -115,8 +120,8 @@ func (r CreateRCVAWSStorageSettingResult) Validate() (uuid.UUID, error) {
 // setting update operation. The RSC API only supports updating the name and the
 // tier.
 type UpdateRCVAWSStorageSettingParams struct {
-	Name string `json:"name"`
-	Tier string `json:"tier,omitempty"`
+	Name string  `json:"name"`
+	Tier RCVTier `json:"tier,omitempty"`
 }
 
 // UpdateRCVAWSStorageSettingResult holds the result of an RCV AWS storage

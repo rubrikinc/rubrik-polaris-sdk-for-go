@@ -68,13 +68,13 @@ type RCVAzureTargetMapping struct {
 	} `json:"connectionStatus"`
 	TargetTemplate struct {
 		Region               azure.RCSRegionEnum     `json:"rcvAzureRegion"`
-		Tier                 string                  `json:"rcvAzureTier"`
-		Redundancy           string                  `json:"rcvAzureRedundancy"`
-		EncryptionType       string                  `json:"rcvAzureEncryptionType"`
+		Tier                 RCVTier                 `json:"rcvAzureTier"`
+		Redundancy           RCVRedundancy           `json:"rcvAzureRedundancy"`
+		EncryptionType       TargetEncryptionType    `json:"rcvAzureEncryptionType"`
 		ImmutabilitySettings RCVImmutabilitySettings `json:"immutabilitySettings"`
-		LocTemplate          string                  `json:"cloudNativeLocTemplateType"`
+		LocTemplate          LocTemplateType         `json:"cloudNativeLocTemplateType"`
 		TemplateLocationID   uuid.UUID               `json:"templateLocationId"`
-		SourceWorkloadCloud  string                  `json:"sourceWorkloadCloud"`
+		SourceWorkloadCloud  SourceWorkloadCloud     `json:"sourceWorkloadCloud"`
 	}
 }
 
@@ -105,10 +105,10 @@ type CreateRCVAzureStorageSettingParams struct {
 	Name                string              `json:"name"`
 	Region              azure.RegionEnum    `json:"region"`
 	RCVRegion           azure.RCSRegionEnum `json:"rcvRegion"`
-	Tier                string              `json:"rcvTier,omitempty"`
-	LocTemplate         string              `json:"locTemplateType"`
-	SourceWorkloadCloud string              `json:"sourceWorkloadCloud,omitempty"`
-	Redundancy          string              `json:"redundancy,omitempty"`
+	Tier                RCVTier             `json:"rcvTier,omitempty"`
+	LocTemplate         LocTemplateType     `json:"locTemplateType"`
+	SourceWorkloadCloud SourceWorkloadCloud `json:"sourceWorkloadCloud,omitempty"`
+	Redundancy          RCVRedundancy       `json:"redundancy,omitempty"`
 	RSAKey              secret.String       `json:"rsaKey,omitempty"`
 	KeyVaultKey         *AzureKeyVaultKey   `json:"azureKeyVaultKey,omitempty"`
 }
@@ -134,10 +134,10 @@ func (r CreateRCVAzureStorageSettingResult) Validate() (uuid.UUID, error) {
 // name, the tier and the redundancy. Child vaults are only updated when
 // UpdateChildVaults is true.
 type UpdateRCVAzureStorageSettingParams struct {
-	Name              string `json:"name"`
-	Tier              string `json:"tier,omitempty"`
-	Redundancy        string `json:"redundancy,omitempty"`
-	UpdateChildVaults *bool  `json:"updateChildVaults,omitempty"`
+	Name              string        `json:"name"`
+	Tier              RCVTier       `json:"tier,omitempty"`
+	Redundancy        RCVRedundancy `json:"redundancy,omitempty"`
+	UpdateChildVaults *bool         `json:"updateChildVaults,omitempty"`
 }
 
 // UpdateRCVAzureStorageSettingResult holds the result of an RCV Azure storage
