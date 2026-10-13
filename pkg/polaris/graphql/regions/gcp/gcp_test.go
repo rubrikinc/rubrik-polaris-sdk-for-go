@@ -273,7 +273,10 @@ func TestRCSRegionEnum(t *testing.T) {
 }
 
 func TestKMSLocationEnum(t *testing.T) {
+	// The GcpKmsLocation enum has no value for an unknown location, so
+	// RegionUnknown is unsupported too.
 	unsupported := []Region{
+		RegionUnknown,
 		RegionEU,
 		RegionUSEast7,
 		RegionUSWest8,
@@ -290,17 +293,24 @@ func TestKMSLocationEnum(t *testing.T) {
 			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
 		}
 
-		// Marshal/unmarshal.
-		var enum KMSLocationEnum
+		// Marshal/unmarshal. Regions without a value for the enum fail to
+		// marshal.
 		buf, err := json.Marshal(region.ToKMSLocationEnum())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := json.Unmarshal(buf, &enum); err != nil {
-			t.Fatal(err)
-		}
-		if r := enum.Region; r != want {
-			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		if slices.Contains(unsupported, region) {
+			if err == nil {
+				t.Errorf("got %s want a marshal error for %q", buf, region)
+			}
+		} else {
+			if err != nil {
+				t.Fatal(err)
+			}
+			var enum KMSLocationEnum
+			if err := json.Unmarshal(buf, &enum); err != nil {
+				t.Fatal(err)
+			}
+			if r := enum.Region; r != want {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+			}
 		}
 
 		// ToPtr.
