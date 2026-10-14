@@ -1,0 +1,17 @@
+mutation RubrikPolarisSDKRequest(
+    $archivalGroupId: UUID!,
+    $keyVaultId:      String,
+    $kmsType:         KmsType,
+    $gcpKmsKey:       GcpKmsKey
+) {
+    result: rekeyCnpArchivalGroupMasterKey(input: {
+        archivalGroupId: $archivalGroupId,
+        newKeyVaultKeyIdentifier: {
+            keyVaultId: $keyVaultId,
+            kmsType:    $kmsType,
+            key: {
+                gcpKmsKey: $gcpKmsKey
+            }
+        }
+    })
+}
