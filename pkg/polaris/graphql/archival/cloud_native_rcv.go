@@ -114,19 +114,21 @@ const (
 	TargetEncryptionUEKMRSABased       TargetEncryptionType = "UEKM_RSA_BASED"
 	TargetEncryptionUEKMAWSKMSBased    TargetEncryptionType = "UEKM_AWS_KMS_BASED"
 	TargetEncryptionUEKMAKVBased       TargetEncryptionType = "UEKM_AKV_BASED"
+	TargetEncryptionUEKMGCPKMSBased    TargetEncryptionType = "UEKM_GCP_KMS_BASED"
 	TargetEncryptionSSEDefaultPMK      TargetEncryptionType = "SSE_DEFAULT_PMK"
 	TargetEncryptionSSECustomerManaged TargetEncryptionType = "SSE_CMK"
 	TargetEncryptionSSECustomerKey     TargetEncryptionType = "SSE_CPK"
 )
 
 // RCVTargetEncryptionTypeValues returns the encryption types an RCV archival
-// location reports: the platform managed default, the two client-side customer
+// location reports: the platform managed default, the client-side customer
 // managed key modes, and server-side encryption with a customer provided key.
 func RCVTargetEncryptionTypeValues() []TargetEncryptionType {
 	return slices.Clone([]TargetEncryptionType{
 		TargetEncryptionSSEDefaultPMK,
 		TargetEncryptionUEKMAWSKMSBased,
 		TargetEncryptionUEKMAKVBased,
+		TargetEncryptionUEKMGCPKMSBased,
 		TargetEncryptionUEKMRSABased,
 		TargetEncryptionSSECustomerKey,
 	})

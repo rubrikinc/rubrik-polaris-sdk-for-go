@@ -364,13 +364,15 @@ var createCloudNativeRcvGcpStorageSettingQuery = `mutation SdkGolangCreateCloudN
     $name:            String!,
     $region:          RcsRegionEnumType!,
     $tier:            RcsTierEnumType!,
-    $locTemplateType: CloudNativeLocTemplateType!
+    $locTemplateType: CloudNativeLocTemplateType!,
+    $gcpKmsKey:       GcpKmsKeyIdentifierInput
 ) {
     result: createCloudNativeRcvGcpStorageSetting(input: {
         name:                       $name,
         region:                     $region,
         tier:                       $tier,
-        cloudNativeLocTemplateType: $locTemplateType
+        cloudNativeLocTemplateType: $locTemplateType,
+        gcpKmsKey:                  $gcpKmsKey
     }) {
         targetMapping {
             id

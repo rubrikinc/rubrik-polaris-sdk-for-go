@@ -33,8 +33,18 @@ import (
 // The cloud in the type names below is the destination cloud, the cloud hosting
 // the vault, and not the cloud the archived workloads originate from.
 //
-// The GCP API is the smallest of the three: it takes only a name, region, tier
-// and location template, with no redundancy or encryption key options.
+// The GCP API is the smallest of the three: it takes a name, region, tier and
+// location template, and optionally a Cloud KMS key for client-side
+// encryption. There is no redundancy option.
+
+// GCPKMSKey identifies a GCP Cloud KMS key used for client-side encryption of
+// an RCV GCP archival location. The key manager must already be registered in
+// RSC.
+type GCPKMSKey struct {
+	KeyManagerID uuid.UUID `json:"keyManagerId"`
+	KeyName      string    `json:"keyName"`
+	KeyVersion   string    `json:"keyVersion"`
+}
 
 // RCVGCPTargetMapping holds the result of an RCV GCP target mapping list
 // operation.
@@ -71,13 +81,15 @@ func (RCVGCPTargetMapping) ListQuery(filters []ListTargetMappingFilter) (string,
 }
 
 // CreateRCVGCPStorageSettingParams holds the parameters for an RCV GCP storage
-// setting create operation. RCV GCP storage settings are also referred to as
-// RCV GCP target mappings.
+// setting create operation. The Cloud KMS key is optional. When it is left
+// out, RCV creates and manages the encryption key. RCV GCP storage settings are
+// also referred to as RCV GCP target mappings.
 type CreateRCVGCPStorageSettingParams struct {
 	Name        string            `json:"name"`
 	Region      gcp.RCSRegionEnum `json:"region"`
 	Tier        RCVTier           `json:"tier"`
 	LocTemplate LocTemplateType   `json:"locTemplateType"`
+	KMSKey      *GCPKMSKey        `json:"gcpKmsKey,omitempty"`
 }
 
 // CreateRCVGCPStorageSettingResult holds the result of an RCV GCP storage
