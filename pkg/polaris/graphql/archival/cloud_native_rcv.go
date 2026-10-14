@@ -20,7 +20,11 @@
 
 package archival
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+)
 
 // RCVTier represents the RSC GraphQL RcsTierEnumType enum type.
 type RCVTier string
@@ -121,15 +125,28 @@ const (
 )
 
 // RCVTargetEncryptionTypeValues returns the encryption types an RCV archival
-// location reports: the platform managed default, the client-side customer
-// managed key modes, and server-side encryption with a customer provided key.
-func RCVTargetEncryptionTypeValues() []TargetEncryptionType {
-	return slices.Clone([]TargetEncryptionType{
-		TargetEncryptionSSEDefaultPMK,
-		TargetEncryptionUEKMAWSKMSBased,
-		TargetEncryptionUEKMAKVBased,
-		TargetEncryptionUEKMGCPKMSBased,
-		TargetEncryptionUEKMRSABased,
-		TargetEncryptionSSECustomerKey,
-	})
+// location hosted by the specified cloud vendor can report. Returns nil for
+// cloud vendors without RCV support.
+func RCVTargetEncryptionTypeValues(cloudVendor core.CloudVendor) []TargetEncryptionType {
+	switch cloudVendor {
+	case core.CloudVendorAWS:
+		return slices.Clone([]TargetEncryptionType{
+			TargetEncryptionSSECustomerKey,
+			TargetEncryptionUEKMAWSKMSBased,
+		})
+	case core.CloudVendorAzure:
+		return slices.Clone([]TargetEncryptionType{
+			TargetEncryptionSSEDefaultPMK,
+			TargetEncryptionSSECustomerKey,
+			TargetEncryptionRSAKeyBased,
+			TargetEncryptionUEKMAKVBased,
+		})
+	case core.CloudVendorGCP:
+		return slices.Clone([]TargetEncryptionType{
+			TargetEncryptionSSEDefaultPMK,
+			TargetEncryptionUEKMGCPKMSBased,
+		})
+	default:
+		return nil
+	}
 }
