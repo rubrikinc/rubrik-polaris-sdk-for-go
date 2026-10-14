@@ -468,6 +468,8 @@ var rekeyCnpArchivalGroupMasterKeyQuery = `mutation SdkGolangRekeyCnpArchivalGro
     $archivalGroupId: UUID!,
     $keyVaultId:      String,
     $kmsType:         KmsType,
+    $awsKmsKey:       AwsKmsKey,
+    $azureKey:        AzureKeyVaultKey,
     $gcpKmsKey:       GcpKmsKey
 ) {
     result: rekeyCnpArchivalGroupMasterKey(input: {
@@ -476,6 +478,8 @@ var rekeyCnpArchivalGroupMasterKeyQuery = `mutation SdkGolangRekeyCnpArchivalGro
             keyVaultId: $keyVaultId,
             kmsType:    $kmsType,
             key: {
+                awsKmsKey: $awsKmsKey,
+                akvKey:    $azureKey,
                 gcpKmsKey: $gcpKmsKey
             }
         }

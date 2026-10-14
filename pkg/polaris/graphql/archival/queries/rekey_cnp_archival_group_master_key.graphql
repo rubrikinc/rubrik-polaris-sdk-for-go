@@ -2,6 +2,8 @@ mutation RubrikPolarisSDKRequest(
     $archivalGroupId: UUID!,
     $keyVaultId:      String,
     $kmsType:         KmsType,
+    $awsKmsKey:       AwsKmsKey,
+    $azureKey:        AzureKeyVaultKey,
     $gcpKmsKey:       GcpKmsKey
 ) {
     result: rekeyCnpArchivalGroupMasterKey(input: {
@@ -10,6 +12,8 @@ mutation RubrikPolarisSDKRequest(
             keyVaultId: $keyVaultId,
             kmsType:    $kmsType,
             key: {
+                awsKmsKey: $awsKmsKey,
+                akvKey:    $azureKey,
                 gcpKmsKey: $gcpKmsKey
             }
         }

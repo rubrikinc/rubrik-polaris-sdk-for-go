@@ -309,6 +309,58 @@ func (a API) RekeyRCVGCPMasterKey(ctx context.Context, targetMappingID uuid.UUID
 	return nil
 }
 
+// RekeyRCVAWSMasterKey rekeys the master key of the RCV AWS archival location
+// with the specified target mapping ID, moving it to the AWS KMS key given in
+// the parameters. The function returns once the rekey has completed. If the
+// rekey fails for any of the group's archival locations, an error holding the
+// error message reported by RSC is returned.
+func (a API) RekeyRCVAWSMasterKey(ctx context.Context, targetMappingID uuid.UUID, params archival.RekeyArchivalGroupMasterKeyParams) error {
+	a.log.Print(log.Trace)
+
+	// The encryption details can only be filtered by name, so the name of the
+	// target mapping is needed to find the rekey status.
+	targetMapping, err := a.RCVAWSTargetMappingByID(ctx, targetMappingID)
+	if err != nil {
+		return fmt.Errorf("failed to get rcv aws target mapping: %s", err)
+	}
+
+	if err := archival.RekeyArchivalGroupMasterKey(ctx, a.client, targetMappingID, params); err != nil {
+		return fmt.Errorf("failed to rekey master key: %s", err)
+	}
+
+	if err := a.waitForRekey(ctx, targetMappingID, targetMapping.Name); err != nil {
+		return fmt.Errorf("failed to wait for rekey: %s", err)
+	}
+
+	return nil
+}
+
+// RekeyRCVAzureMasterKey rekeys the master key of the RCV Azure archival
+// location with the specified target mapping ID, moving it to the Azure Key
+// Vault key given in the parameters. The function returns once the rekey has
+// completed. If the rekey fails for any of the group's archival locations, an
+// error holding the error message reported by RSC is returned.
+func (a API) RekeyRCVAzureMasterKey(ctx context.Context, targetMappingID uuid.UUID, params archival.RekeyArchivalGroupMasterKeyParams) error {
+	a.log.Print(log.Trace)
+
+	// The encryption details can only be filtered by name, so the name of the
+	// target mapping is needed to find the rekey status.
+	targetMapping, err := a.RCVAzureTargetMappingByID(ctx, targetMappingID)
+	if err != nil {
+		return fmt.Errorf("failed to get rcv azure target mapping: %s", err)
+	}
+
+	if err := archival.RekeyArchivalGroupMasterKey(ctx, a.client, targetMappingID, params); err != nil {
+		return fmt.Errorf("failed to rekey master key: %s", err)
+	}
+
+	if err := a.waitForRekey(ctx, targetMappingID, targetMapping.Name); err != nil {
+		return fmt.Errorf("failed to wait for rekey: %s", err)
+	}
+
+	return nil
+}
+
 // waitForRekey waits for the master key rekey of the archival group with the
 // specified ID to complete. A failed rekey of any of the group's archival
 // locations is returned as an error.

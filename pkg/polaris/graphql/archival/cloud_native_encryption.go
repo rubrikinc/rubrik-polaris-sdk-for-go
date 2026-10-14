@@ -23,6 +23,7 @@ package archival
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"time"
 
@@ -161,14 +162,19 @@ func ListArchivalGroupEncryptionDetails(ctx context.Context, gql *graphql.Client
 }
 
 // RekeyArchivalGroupMasterKeyParams holds the parameters for a cloud native
-// archival group master key rekey operation.
+// archival group master key rekey operation. Exactly one of the keys must be
+// set, the key holds the ID of the key manager it belongs to.
 type RekeyArchivalGroupMasterKeyParams struct {
-	// KeyManagerID is the ID of the key manager holding the new key.
-	KeyManagerID uuid.UUID
+	// AWSKMSKey is the new AWS KMS key.
+	AWSKMSKey *AWSKMSKey
+
+	// AzureKeyVaultKey is the new Azure Key Vault key. Both the key name and the
+	// key version should be given.
+	AzureKeyVaultKey *AzureKeyVaultKey
 
 	// GCPKMSKey is the new GCP Cloud KMS key. Both the key name and the key
 	// version are required.
-	GCPKMSKey GCPKMSKey
+	GCPKMSKey *GCPKMSKey
 }
 
 // RekeyArchivalGroupMasterKey rekeys the master key of the cloud native
@@ -179,24 +185,54 @@ type RekeyArchivalGroupMasterKeyParams struct {
 func RekeyArchivalGroupMasterKey(ctx context.Context, gql *graphql.Client, groupID uuid.UUID, params RekeyArchivalGroupMasterKeyParams) error {
 	gql.Log().Print(log.Trace)
 
-	query := rekeyCnpArchivalGroupMasterKeyQuery
-	buf, err := gql.Request(ctx, query, struct {
+	// The key input types of the API hold the key only, the key manager is
+	// passed separately as the key vault ID. Keys which are not set are left
+	// out of the request.
+	type awsKey struct {
+		KeyID string `json:"keyId"`
+	}
+	type azureKey struct {
+		KeyName    string `json:"keyName"`
+		KeyVersion string `json:"keyVersion"`
+	}
+	type gcpKey struct {
+		KeyName    string `json:"keyName"`
+		KeyVersion string `json:"keyVersion"`
+	}
+	variables := struct {
 		ArchivalGroupID uuid.UUID `json:"archivalGroupId"`
 		KeyVaultID      uuid.UUID `json:"keyVaultId"`
 		KMSType         kms.Type  `json:"kmsType"`
-		GCPKMSKey       struct {
-			KeyName    string `json:"keyName"`
-			KeyVersion string `json:"keyVersion"`
-		} `json:"gcpKmsKey"`
-	}{
-		ArchivalGroupID: groupID,
-		KeyVaultID:      params.KeyManagerID,
-		KMSType:         kms.TypeGCPKMS,
-		GCPKMSKey: struct {
-			KeyName    string `json:"keyName"`
-			KeyVersion string `json:"keyVersion"`
-		}{KeyName: params.GCPKMSKey.KeyName, KeyVersion: params.GCPKMSKey.KeyVersion},
-	})
+		AWSKMSKey       *awsKey   `json:"awsKmsKey,omitempty"`
+		AzureKey        *azureKey `json:"azureKey,omitempty"`
+		GCPKMSKey       *gcpKey   `json:"gcpKmsKey,omitempty"`
+	}{ArchivalGroupID: groupID}
+
+	var keys int
+	if key := params.AWSKMSKey; key != nil {
+		variables.KeyVaultID = key.KeyManagerID
+		variables.KMSType = kms.TypeAWSKMS
+		variables.AWSKMSKey = &awsKey{KeyID: key.KeyID}
+		keys++
+	}
+	if key := params.AzureKeyVaultKey; key != nil {
+		variables.KeyVaultID = key.KeyVaultID
+		variables.KMSType = kms.TypeAzureKeyVault
+		variables.AzureKey = &azureKey{KeyName: key.KeyName, KeyVersion: key.KeyVersion}
+		keys++
+	}
+	if key := params.GCPKMSKey; key != nil {
+		variables.KeyVaultID = key.KeyManagerID
+		variables.KMSType = kms.TypeGCPKMS
+		variables.GCPKMSKey = &gcpKey{KeyName: key.KeyName, KeyVersion: key.KeyVersion}
+		keys++
+	}
+	if keys != 1 {
+		return fmt.Errorf("exactly one key must be specified, got %d", keys)
+	}
+
+	query := rekeyCnpArchivalGroupMasterKeyQuery
+	buf, err := gql.Request(ctx, query, variables)
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
