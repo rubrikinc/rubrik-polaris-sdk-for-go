@@ -114,3 +114,46 @@ func TestObjectSpecificConfigsOmitZeroRetention(t *testing.T) {
 		})
 	}
 }
+
+// TestIcebergConfigJSON verifies how the Iceberg SLA config marshals. An empty
+// strategy must be omitted, since "" is not a valid IcebergSnapshotSelectionStrategy
+// enum value, while an empty tag regex and a false fallback must be sent, since
+// both are meaningful to RSC.
+func TestIcebergConfigJSON(t *testing.T) {
+	tests := []struct {
+		name  string
+		value IcebergConfig
+		want  string
+	}{{
+		name:  "Empty",
+		value: IcebergConfig{},
+		want:  `{"tagRegex":"","fallbackToLatest":false}`,
+	}, {
+		name:  "Tagged",
+		value: IcebergConfig{SnapshotSelectionStrategy: IcebergSnapshotLatestTagged, TagRegex: "^nightly_"},
+		want:  `{"snapshotSelectionStrategy":"ICEBERG_SNAPSHOT_LATEST_TAGGED","tagRegex":"^nightly_","fallbackToLatest":false}`,
+	}, {
+		name:  "Latest",
+		value: IcebergConfig{SnapshotSelectionStrategy: IcebergSnapshotLatest, FallbackToLatest: true},
+		want:  `{"snapshotSelectionStrategy":"ICEBERG_SNAPSHOT_LATEST","tagRegex":"","fallbackToLatest":true}`,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(tt.value)
+			if err != nil {
+				t.Fatalf("Marshal failed: %v", err)
+			}
+			if got := string(data); got != tt.want {
+				t.Errorf("got %s, want %s", got, tt.want)
+			}
+		})
+	}
+
+	data, err := json.Marshal(ObjectSpecificConfigs{IcebergConfig: &IcebergConfig{}})
+	if err != nil {
+		t.Fatalf("Marshal failed: %v", err)
+	}
+	if !strings.Contains(string(data), `"icebergSlaConfigInput":`) {
+		t.Errorf("expected icebergSlaConfigInput in %s", data)
+	}
+}

@@ -33,6 +33,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	awsregions "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	azureregions "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 )
 
@@ -300,5 +301,106 @@ func TestObjectByIDAndWorkloadOtherErrorIsNotNotFound(t *testing.T) {
 	}
 	if errors.Is(err, graphql.ErrNotFound) {
 		t.Errorf("got %v, want it not to match graphql.ErrNotFound", err)
+	}
+}
+
+// TestIcebergObjectsByType verifies that IcebergObjectsByType sends the Iceberg
+// table type filter and an ancestor filter, and that the response unmarshals
+// into an IcebergObject, including the region and the parent taken from the
+// physical path.
+func TestIcebergObjectsByType(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	const response = `{
+		"data": {
+			"result": {
+				"descendantConnection": {
+					"count": 1,
+					"nodes": [{
+						"id": "11111111-1111-1111-1111-111111111111",
+						"name": "orders",
+						"objectType": "GLUE_ICEBERG_TABLE",
+						"region": "US_EAST_1",
+						"physicalPath": [{
+							"fid": "22222222-2222-2222-2222-222222222222",
+							"name": "example-account",
+							"objectType": "AwsNativeAccount"
+						}, {
+							"fid": "33333333-3333-3333-3333-333333333333",
+							"name": "us-east-1",
+							"objectType": "GLUE_ICEBERG_CATALOG"
+						}, {
+							"fid": "44444444-4444-4444-4444-444444444444",
+							"name": "sales",
+							"objectType": "GLUE_ICEBERG_DATABASE"
+						}]
+					}],
+					"pageInfo": {"endCursor": "", "hasNextPage": false}
+				}
+			}
+		}
+	}`
+
+	var gotFilter []Filter
+	var gotTypeFilter []ObjectType
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			t.Fatalf("read request body: %v", err)
+		}
+		var decoded struct {
+			Variables struct {
+				Filter     []Filter     `json:"filter"`
+				TypeFilter []ObjectType `json:"typeFilter"`
+			} `json:"variables"`
+		}
+		if err := json.Unmarshal(body, &decoded); err != nil {
+			t.Fatalf("unmarshal request body: %v", err)
+		}
+		gotFilter = decoded.Variables.Filter
+		gotTypeFilter = decoded.Variables.TypeFilter
+		io.WriteString(w, response)
+	}))
+	defer srv.Close()
+
+	catalogID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
+	tables, err := IcebergObjectsByType[GlueIcebergTable](ctx, Wrap(graphql.NewTestClient(srv)), AncestorFilter(catalogID))
+	if err != nil {
+		t.Fatalf("IcebergObjectsByType failed: %v", err)
+	}
+
+	if len(gotTypeFilter) != 1 || gotTypeFilter[0] != "GLUE_ICEBERG_TABLE" {
+		t.Errorf("type filter: got %v, want [GLUE_ICEBERG_TABLE]", gotTypeFilter)
+	}
+	if len(gotFilter) != 1 || gotFilter[0].Field != "ANCESTOR_ID" ||
+		len(gotFilter[0].Texts) != 1 || gotFilter[0].Texts[0] != catalogID.String() {
+		t.Errorf("filter: got %+v, want ANCESTOR_ID=[%s]", gotFilter, catalogID)
+	}
+
+	if len(tables) != 1 {
+		t.Fatalf("got %d tables, want 1", len(tables))
+	}
+	table := tables[0]
+	if table.Name != "orders" {
+		t.Errorf("name: got %q", table.Name)
+	}
+	if table.Region.Region != awsregions.RegionUsEast1 {
+		t.Errorf("region: got %v, want us-east-1", table.Region)
+	}
+	parent, ok := table.Parent()
+	if !ok {
+		t.Fatal("parent: not found")
+	}
+	if parent.ID != uuid.MustParse("44444444-4444-4444-4444-444444444444") || parent.ObjectType != "GLUE_ICEBERG_DATABASE" {
+		t.Errorf("parent: got %+v, want the sales database", parent)
+	}
+}
+
+// TestIcebergObjectWithoutParent verifies that Parent reports no parent for an
+// object with an empty physical path.
+func TestIcebergObjectWithoutParent(t *testing.T) {
+	if _, ok := (IcebergObject{}).Parent(); ok {
+		t.Error("parent: got one for an empty physical path")
 	}
 }
