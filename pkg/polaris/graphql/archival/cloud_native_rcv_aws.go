@@ -38,8 +38,9 @@ import (
 // target template RcvAwsTargetTemplate, whereas the Azure equivalents use RCS
 // rather than RCV.
 
-// AWSKMSKey identifies an AWS KMS key used for client-side encryption of an RCV
-// AWS archival location.
+// AWSKMSKey identifies an AWS KMS key used for client-side encryption of an AWS
+// or an RCV AWS archival location. The key manager must already be registered
+// in RSC.
 type AWSKMSKey struct {
 	KeyManagerID uuid.UUID `json:"keyManagerId"`
 	KeyID        string    `json:"keyId"`

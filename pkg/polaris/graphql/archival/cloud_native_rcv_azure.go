@@ -49,7 +49,8 @@ type RCVImmutabilitySettings struct {
 }
 
 // AzureKeyVaultKey identifies an Azure Key Vault key used for client-side
-// encryption of an RCV Azure archival location.
+// encryption of an Azure or an RCV Azure archival location. The key vault must
+// already be registered as a key manager in RSC.
 type AzureKeyVaultKey struct {
 	KeyVaultID uuid.UUID `json:"kmsKeyVaultId"`
 	KeyName    string    `json:"keyName"`
