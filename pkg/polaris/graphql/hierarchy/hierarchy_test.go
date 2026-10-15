@@ -23,6 +23,7 @@ package hierarchy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -162,8 +163,8 @@ func TestAzurePostgresFlexibleServer(t *testing.T) {
 }
 
 // TestAzureSQLManagedInstanceServer verifies the type's inventory type filter
-// and that an API response unmarshals into the type, including the parent
-// subscription details.
+// and that an API response unmarshals into the type, including the supported
+// authentication mechanisms and the parent subscription details.
 func TestAzureSQLManagedInstanceServer(t *testing.T) {
 	// InventoryObject is a constraint interface, so it can't be used as a
 	// variable type; call typeFilter directly on the value instead.
@@ -175,6 +176,7 @@ func TestAzureSQLManagedInstanceServer(t *testing.T) {
 		"id": "11111111-1111-1111-1111-111111111111",
 		"name": "example-sql-mi",
 		"objectType": "AzureSqlManagedInstanceServer",
+		"authType": "SQL_AUTH_AND_AAD",
 		"azureResourceGroupDetails": {
 			"azureSubscriptionDetails": {
 				"id": "22222222-2222-2222-2222-222222222222",
@@ -199,6 +201,9 @@ func TestAzureSQLManagedInstanceServer(t *testing.T) {
 	if obj.ObjectType != "AzureSqlManagedInstanceServer" {
 		t.Errorf("objectType: got %q", obj.ObjectType)
 	}
+	if obj.AuthType != "SQL_AUTH_AND_AAD" {
+		t.Errorf("authType: got %q, want %q", obj.AuthType, "SQL_AUTH_AND_AAD")
+	}
 
 	sub := obj.ResourceGroup.Subscription
 	if sub.CloudAccountID != uuid.MustParse("33333333-3333-3333-3333-333333333333") {
@@ -216,5 +221,84 @@ func TestAzureSQLManagedInstanceServer(t *testing.T) {
 	// both sides resolved to RegionUnknown.
 	if len(sub.RegionSpecs) != 1 || sub.RegionSpecs[0].Region.Region != azureregions.RegionEastUS2 {
 		t.Errorf("region specs: got %+v, want [EAST_US2]", sub.RegionSpecs)
+	}
+}
+
+// notFoundResponse is the shape RSC answers with for a hierarchy object which
+// does not exist. Note that the HTTP status is 200 and the 404 appears only in
+// the GraphQL error extensions.
+const notFoundResponse = `{
+	"data": null,
+	"errors": [
+		{
+			"message": "NOT_FOUND: Unable to find managed object for ID or you are not authorized to access it",
+			"extensions": {
+				"code": 404,
+				"trace": {"traceId": "kRKX9KBaV6v2HFaefdkynQ=="}
+			}
+		}
+	]
+}`
+
+// TestObjectByIDAndWorkloadNotFound verifies that a missing hierarchy object is
+// reported as graphql.ErrNotFound, so callers can match on the sentinel, and
+// that the underlying GQLError is still reachable so the RSC trace ID is not
+// lost.
+func TestObjectByIDAndWorkloadNotFound(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, _ *http.Request) {
+		io.WriteString(w, notFoundResponse)
+	}))
+	defer srv.Close()
+
+	_, err := ObjectByIDAndWorkload[Object](ctx, graphql.NewTestClient(srv),
+		uuid.MustParse("11111111-1111-1111-1111-111111111111"), WorkloadAllSubHierarchyType)
+	if err == nil {
+		t.Fatal("ObjectByIDAndWorkload succeeded, want an error")
+	}
+	if !errors.Is(err, graphql.ErrNotFound) {
+		t.Errorf("got %v, want it to match graphql.ErrNotFound", err)
+	}
+
+	var gqlErr graphql.GQLError
+	if !errors.As(err, &gqlErr) {
+		t.Fatalf("got %v, want the GQLError to remain in the chain", err)
+	}
+	if gqlErr.Code() != http.StatusNotFound {
+		t.Errorf("code: got %d, want %d", gqlErr.Code(), http.StatusNotFound)
+	}
+}
+
+// TestObjectByIDAndWorkloadOtherErrorIsNotNotFound verifies that an error which
+// is not a 404 is not reported as graphql.ErrNotFound. Without this, a
+// permission or server failure would be mistaken for a deleted object.
+func TestObjectByIDAndWorkloadOtherErrorIsNotNotFound(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	const forbiddenResponse = `{
+		"data": null,
+		"errors": [
+			{
+				"message": "Objects are not authorized.",
+				"extensions": {"code": 403, "trace": {"traceId": "mGREPE/AMVXl+dlY9A5+pg=="}}
+			}
+		]
+	}`
+
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, _ *http.Request) {
+		io.WriteString(w, forbiddenResponse)
+	}))
+	defer srv.Close()
+
+	_, err := ObjectByIDAndWorkload[Object](ctx, graphql.NewTestClient(srv),
+		uuid.MustParse("11111111-1111-1111-1111-111111111111"), WorkloadAllSubHierarchyType)
+	if err == nil {
+		t.Fatal("ObjectByIDAndWorkload succeeded, want an error")
+	}
+	if errors.Is(err, graphql.ErrNotFound) {
+		t.Errorf("got %v, want it not to match graphql.ErrNotFound", err)
 	}
 }

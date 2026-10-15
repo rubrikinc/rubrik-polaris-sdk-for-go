@@ -31,17 +31,26 @@ var cloudNativeCustomerTagsQuery = `query SdkGolangCloudNativeCustomerTags($clou
             key
             value
         }
+        excludedTags
         shouldOverrideResourceTags
     }
 }`
 
 // setCustomerTags GraphQL query
-var setCustomerTagsQuery = `mutation SdkGolangSetCustomerTags($cloudVendor: CloudVendor!, $customerTags: [TagInput!]!, $shouldOverrideResourceTags: Boolean!) {
+var setCustomerTagsQuery = `mutation SdkGolangSetCustomerTags(
+    $cloudVendor:                CloudVendor!,
+    $cloudAccountId:             UUID,
+    $customerTags:               [TagInput!]!,
+    $excludedTags:               [String!],
+    $shouldOverrideResourceTags: Boolean!,
+) {
     result: setCustomerTags(input: {
         cloudVendor: $cloudVendor
+        cloudAccountId: $cloudAccountId
         customerTags: {
             tagList: $customerTags
         }
+        excludedTags: $excludedTags
         shouldOverrideResourceTags: $shouldOverrideResourceTags
     })
 }`

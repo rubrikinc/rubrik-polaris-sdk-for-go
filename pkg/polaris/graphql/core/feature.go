@@ -33,6 +33,7 @@ const (
 	PermissionGroupAKSCustomPrivateDNSZone       PermissionGroup = "AKS_CUSTOM_PRIVATE_DNS_ZONE"
 	PermissionGroupAlloyDB                       PermissionGroup = "ALLOYDB"
 	PermissionGroupAdvancedDiagnostics           PermissionGroup = "ADVANCED_DIAGNOSTICS"
+	PermissionGroupArcVMExport                   PermissionGroup = "ARC_VM_EXPORT"
 	PermissionGroupAutomatedNetworkingSetup      PermissionGroup = "AUTOMATED_NETWORKING_SETUP"
 	PermissionGroupBaaSBasic                     PermissionGroup = "BAAS_BASIC"
 	PermissionGroupBackupV2                      PermissionGroup = "BACKUP_V2"
@@ -48,6 +49,7 @@ const (
 	PermissionGroupDataCenterKMS                 PermissionGroup = "DATA_CENTER_KMS"
 	PermissionGroupDownloadFile                  PermissionGroup = "DOWNLOAD_FILE"
 	PermissionGroupEncryption                    PermissionGroup = "ENCRYPTION"
+	PermissionGroupExport                        PermissionGroup = "EXPORT"
 	PermissionGroupExportAndRestore              PermissionGroup = "EXPORT_AND_RESTORE"
 	PermissionGroupExportAndRestorePowerOffVM    PermissionGroup = "EXPORT_AND_RESTORE_POWER_OFF_VM"
 	PermissionGroupExportPowerOff                PermissionGroup = "EXPORT_POWER_OFF"
@@ -88,18 +90,23 @@ var (
 	FeatureAzureSQLDBProtection                        = Feature{Name: "AZURE_SQL_DB_PROTECTION"}
 	FeatureAzureSQLMIProtection                        = Feature{Name: "AZURE_SQL_MI_PROTECTION"}
 	FeatureCloudAccounts                               = Feature{Name: "CLOUDACCOUNTS"} // Deprecated: no replacement.
+	FeatureCloudCostReport                             = Feature{Name: "CLOUD_COST_REPORT"}
 	FeatureCloudDiscovery                              = Feature{Name: "CLOUD_DISCOVERY"}
 	FeatureCloudNativeArchival                         = Feature{Name: "CLOUD_NATIVE_ARCHIVAL"}
 	FeatureCloudNativeArchivalEncryption               = Feature{Name: "CLOUD_NATIVE_ARCHIVAL_ENCRYPTION"}
 	FeatureCloudNativeBlobProtection                   = Feature{Name: "CLOUD_NATIVE_BLOB_PROTECTION"}
+	FeatureCloudNativeConfigProtection                 = Feature{Name: "CLOUD_NATIVE_CONFIG_PROTECTION"}
 	FeatureCloudNativeDynamoDBProtection               = Feature{Name: "CLOUD_NATIVE_DYNAMODB_PROTECTION"}
 	FeatureCloudNativeProtection                       = Feature{Name: "CLOUD_NATIVE_PROTECTION"}
 	FeatureCloudNativeS3Protection                     = Feature{Name: "CLOUD_NATIVE_S3_PROTECTION"}
+	FeatureCloudSQLProtection                          = Feature{Name: "CLOUD_SQL_PROTECTION"}
 	FeatureCyberRecoveryDataClassificationData         = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_DATA"}
 	FeatureCyberRecoveryDataClassificationMetadata     = Feature{Name: "CYBERRECOVERY_DATA_CLASSIFICATION_METADATA"}
 	FeatureDSPMData                                    = Feature{Name: "DSPM_DATA"}
 	FeatureDSPMMetadata                                = Feature{Name: "DSPM_METADATA"}
 	FeatureExocompute                                  = Feature{Name: "EXOCOMPUTE"}
+	FeatureGCPBigQueryProtection                       = Feature{Name: "GCP_BIGQUERY_PROTECTION"}
+	FeatureGCPBigQueryReservation                      = Feature{Name: "GCP_BIGQUERY_RESERVATION"}
 	FeatureGCPSharedVPCHost                            = Feature{Name: "GCP_SHARED_VPC_HOST"}
 	FeatureGitHubRepositoryProtection                  = Feature{Name: "GITHUB_REPOSITORY_PROTECTION"}
 	FeatureKubernetesProtection                        = Feature{Name: "KUBERNETES_PROTECTION"}
@@ -170,9 +177,12 @@ func (f Feature) IsProtectionFeature() bool {
 		FeatureAzureSQLMIProtection,
 		FeatureCloudDiscovery,
 		FeatureCloudNativeBlobProtection,
+		FeatureCloudNativeConfigProtection,
 		FeatureCloudNativeDynamoDBProtection,
 		FeatureCloudNativeProtection,
 		FeatureCloudNativeS3Protection,
+		FeatureCloudSQLProtection,
+		FeatureGCPBigQueryProtection,
 		FeatureGitHubRepositoryProtection,
 		FeatureKubernetesProtection,
 		FeatureRDSProtection,
@@ -213,6 +223,7 @@ func AllProtectionFeatures(cloud CloudVendor) []Feature {
 	switch cloud {
 	case CloudVendorAWS:
 		return []Feature{
+			FeatureCloudNativeConfigProtection,
 			FeatureCloudNativeDynamoDBProtection,
 			FeatureCloudNativeProtection,
 			FeatureCloudNativeS3Protection,
@@ -231,6 +242,8 @@ func AllProtectionFeatures(cloud CloudVendor) []Feature {
 	case CloudVendorGCP:
 		return []Feature{
 			FeatureCloudNativeProtection,
+			FeatureCloudSQLProtection,
+			FeatureGCPBigQueryProtection,
 		}
 	default:
 		return nil
@@ -307,18 +320,23 @@ var validFeatures = map[string]struct{}{
 	FeatureAzureSQLDBProtection.Name:                        {},
 	FeatureAzureSQLMIProtection.Name:                        {},
 	FeatureCloudAccounts.Name:                               {}, // Deprecated: no replacement.
+	FeatureCloudCostReport.Name:                             {},
 	FeatureCloudDiscovery.Name:                              {},
 	FeatureCloudNativeArchival.Name:                         {},
 	FeatureCloudNativeArchivalEncryption.Name:               {},
 	FeatureCloudNativeBlobProtection.Name:                   {},
+	FeatureCloudNativeConfigProtection.Name:                 {},
 	FeatureCloudNativeDynamoDBProtection.Name:               {},
 	FeatureCloudNativeProtection.Name:                       {},
 	FeatureCloudNativeS3Protection.Name:                     {},
+	FeatureCloudSQLProtection.Name:                          {},
 	FeatureCyberRecoveryDataClassificationData.Name:         {},
 	FeatureCyberRecoveryDataClassificationMetadata.Name:     {},
 	FeatureDSPMData.Name:                                    {},
 	FeatureDSPMMetadata.Name:                                {},
 	FeatureExocompute.Name:                                  {},
+	FeatureGCPBigQueryProtection.Name:                       {},
+	FeatureGCPBigQueryReservation.Name:                      {},
 	FeatureGCPSharedVPCHost.Name:                            {},
 	FeatureGitHubRepositoryProtection.Name:                  {},
 	FeatureKubernetesProtection.Name:                        {},

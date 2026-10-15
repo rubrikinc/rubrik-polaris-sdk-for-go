@@ -1,0 +1,18 @@
+{
+    "data": {
+        "result": {
+            "scriptDetails": [
+                {
+                    "serverId": "{{ .SQLOnlyServerID }}",
+                    "authType": "SQL_AUTH_ONLY",
+                    "script": "-- exec #rubrikCreateBakUser 'backup_login_name', 'backup_login_password';"
+                },
+                {
+                    "serverId": "{{ .EntraIDServerID }}",
+                    "authType": "SQL_AUTH_AND_AAD",
+                    "script": "-- entra id variant"
+                }
+            ]
+        }
+    }
+}

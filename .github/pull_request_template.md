@@ -1,41 +1,22 @@
-# Description
+## What changed
 
-Please describe your pull request in detail.
+<!-- Bullet list of specific types, functions, queries, or constants added/modified -->
 
-## Related Issue
+-
 
-This project only accepts pull requests related to open issues.
+## Why
 
-* If suggesting a new feature or change, please discuss it in an issue first.
-* If fixing a bug, there should be an issue describing it with steps to reproduce
+<!-- 1-2 sentences: what was missing, what broke, or what the caller needs -->
 
-_Please link to the issue here_
+## Testing
 
-## Motivation and Context
+<!-- Name the tests added or updated and what each guards. Note if integration tests were run against a live RSC deployment. -->
 
-Why is this change required? What problem does it solve?
+- [ ] Unit tests added/updated
+- [ ] `go fmt`, `go vet`, `staticcheck` pass
+- [ ] `go test ./...` passes
+- [ ] Integration tests run (`TEST_INTEGRATION=1`) <!-- remove if not applicable -->
 
-## How Has This Been Tested?
+## Notes for review
 
-* Please describe in detail how you tested your changes.
-* Include details of your testing environment, and the tests you ran to see how your change affects other areas of the code, etc.
-
-## Screenshots (if appropriate):
-
-## Types of changes
-
-What types of changes does your code introduce? Put an `x` in all the boxes that apply:
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to change)
-- [ ] Other (please describe in the Description above)
-
-## Checklist:
-
-Go over all the following points, and put an `x` in all the boxes that apply. If you're unsure about any of these, don't hesitate to ask. We're here to help!
-- [ ] My code follows the code style of this project.
-- [ ] My change requires a change to the documentation.
-- [ ] I have updated the documentation accordingly.
-- [ ] I have updated the CHANGELOG file accordingly for the version that this merge modifies.
-- [ ] I have added tests to cover my changes.
-- [ ] All new and existing tests passed.
+<!-- Compatibility considerations, known gaps, caveats — delete section if none -->

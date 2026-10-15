@@ -27,7 +27,9 @@ package hierarchy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -391,10 +393,17 @@ func (AzurePostgresFlexibleServer) typeFilter() ObjectType {
 
 // AzureSQLManagedInstanceServer represents an Azure SQL Managed Instance server
 // from the inventory root. In addition to the common object fields it exposes
-// the parent subscription details, so callers can filter servers by
-// subscription client-side — the inventory query has no subscription filter.
+// the authentication mechanisms the server supports and the parent subscription
+// details, the latter so callers can filter servers by subscription
+// client-side — the inventory query has no subscription filter.
 type AzureSQLManagedInstanceServer struct {
 	Object
+	// AuthType is the authentication mechanisms the server supports, e.g.
+	// SQL_AUTH_ONLY. It determines how the backup credentials RSC uses for the
+	// server can be configured. It mirrors the azure.AzureSQLAuthenticationType
+	// values but is typed as a string here because importing the graphql/azure
+	// package would create an import cycle (azure -> core -> hierarchy).
+	AuthType      string `json:"authType"`
 	ResourceGroup struct {
 		Subscription AzureSubscriptionDetails `json:"azureSubscriptionDetails"`
 	} `json:"azureResourceGroupDetails"`
@@ -511,6 +520,12 @@ func objectsByFilter[T InventoryObject](ctx context.Context, a API, workloadHier
 // This can be used to query any hierarchy object (VMs, databases, tag rules,
 // etc.) and retrieve its information. The workloadHierarchy parameter
 // determines which workload type to use for resolution.
+//
+// If no object with the specified ID is found, graphql.ErrNotFound is returned.
+// Note that RSC answers with the same response for an object which does not
+// exist and for an object the service account is not authorized to access, so
+// the two cannot be told apart. The underlying error is wrapped as well, so the
+// RSC trace ID remains available for troubleshooting.
 func ObjectByIDAndWorkload[T any](ctx context.Context, gql *graphql.Client, fid uuid.UUID, workloadHierarchy Workload) (T, error) {
 	gql.Log().Print(log.Trace)
 
@@ -521,6 +536,10 @@ func ObjectByIDAndWorkload[T any](ctx context.Context, gql *graphql.Client, fid 
 		WorkloadHierarchy Workload  `json:"workloadHierarchy,omitempty"`
 	}{FID: fid, WorkloadHierarchy: workloadHierarchy})
 	if err != nil {
+		var gqlErr graphql.GQLError
+		if errors.As(err, &gqlErr) && gqlErr.Code() == http.StatusNotFound {
+			return zero, fmt.Errorf("hierarchy object %s %w: %w", fid, graphql.ErrNotFound, err)
+		}
 		return zero, graphql.RequestError(query, err)
 	}
 

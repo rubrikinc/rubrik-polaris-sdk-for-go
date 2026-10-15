@@ -216,28 +216,33 @@ func TestManagedAccountPermissionsVersion(t *testing.T) {
 	}
 }
 
-// TestFeaturesForRemovalOrdersCloudDiscoveryLast verifies the removal ordering:
-// protection features first, CLOUD_DISCOVERY last (RSC rejects removing Cloud
-// Discovery while protection features remain). This ordering is used by both
+// TestFeaturesForRemovalOrdersCostReportAndCloudDiscoveryLast verifies the
+// removal ordering required by RSC: protection features first, then
+// CLOUD_COST_REPORT and CLOUD_DISCOVERY last. This ordering is used by both
 // RemoveManagedAccount and RemoveManagedAccountFinalize.
-func TestFeaturesForRemovalOrdersCloudDiscoveryLast(t *testing.T) {
+func TestFeaturesForRemovalOrdersCostReportAndCloudDiscoveryLast(t *testing.T) {
 	features := []Feature{
 		{Feature: core.FeatureCloudDiscovery},
+		{Feature: core.FeatureCloudCostReport},
 		{Feature: core.FeatureCloudNativeProtection},
 		{Feature: core.FeatureRDSProtection},
 		{Feature: core.FeatureCloudNativeS3Protection},
 	}
+	want := []core.Feature{
+		core.FeatureCloudNativeProtection,
+		core.FeatureRDSProtection,
+		core.FeatureCloudNativeS3Protection,
+		core.FeatureCloudCostReport,
+		core.FeatureCloudDiscovery,
+	}
 
 	ordered := featuresForRemoval(features)
-	if len(ordered) != len(features) {
-		t.Fatalf("got %d features, want %d", len(ordered), len(features))
+	if len(ordered) != len(want) {
+		t.Fatalf("got %d features, want %d", len(ordered), len(want))
 	}
-	if !ordered[len(ordered)-1].Equal(core.FeatureCloudDiscovery) {
-		t.Errorf("CLOUD_DISCOVERY must be removed last, got order: %v", ordered)
-	}
-	for _, feature := range ordered[:len(ordered)-1] {
-		if feature.Equal(core.FeatureCloudDiscovery) {
-			t.Errorf("CLOUD_DISCOVERY appears before the last position: %v", ordered)
+	for i, feature := range want {
+		if !ordered[i].Equal(feature) {
+			t.Errorf("feature %d is %s, want %s", i, ordered[i].Name, feature.Name)
 		}
 	}
 }

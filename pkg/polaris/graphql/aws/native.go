@@ -43,6 +43,10 @@ const (
 	DynamoDB       ProtectionFeature = "DYNAMODB"
 	EKS            ProtectionFeature = "EKS"
 	CloudDiscovery ProtectionFeature = "CLOUD_DISCOVERY"
+
+	// Config is the native protection feature backing Cloud Applications,
+	// onboarded as the CLOUD_NATIVE_CONFIG_PROTECTION cloud account feature.
+	Config ProtectionFeature = "CONFIG"
 )
 
 var allProtectionFeatures = []ProtectionFeature{
@@ -52,6 +56,7 @@ var allProtectionFeatures = []ProtectionFeature{
 	DynamoDB,
 	EKS,
 	CloudDiscovery,
+	Config,
 }
 
 // NativeAccount represents an RSC native account. NativeAccount are connected

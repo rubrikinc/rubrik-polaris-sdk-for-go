@@ -1,11 +1,13 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
+	"slices"
 	"strings"
 
 	"github.com/kr/pretty"
@@ -227,7 +229,25 @@ func clean(ctx context.Context, client *polaris.Client, provider string) error {
 				}
 			}
 
-			// Remove all features for the subscription.
+			// Remove all features for the subscription. RSC requires the
+			// Cloud Native Archival Encryption feature to be removed before
+			// Cloud Native Archival, and the Cloud Discovery feature to be
+			// removed after all other protection features.
+			removeOrder := func(feature core.Feature) int {
+				switch {
+				case feature.Equal(core.FeatureCloudNativeArchivalEncryption):
+					return 0
+				case feature.Equal(core.FeatureCloudNativeArchival):
+					return 1
+				case feature.Equal(core.FeatureCloudDiscovery):
+					return 3
+				default:
+					return 2
+				}
+			}
+			slices.SortStableFunc(azureAcc.Features, func(i, j azure.Feature) int {
+				return cmp.Compare(removeOrder(i.Feature), removeOrder(j.Feature))
+			})
 			for _, feature := range azureAcc.Features {
 				if err := azureClient.RemoveSubscription(ctx, azureAcc.ID, feature.Feature, false); err != nil {
 					return fmt.Errorf("failed to remove Azure cloud account feature %v: %s", feature.Name, err)

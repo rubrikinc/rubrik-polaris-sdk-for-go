@@ -136,6 +136,7 @@ type ObjectType string
 const (
 	ObjectActiveDirectory             ObjectType = "ACTIVE_DIRECTORY_OBJECT_TYPE"
 	ObjectAtlassianJira               ObjectType = "ATLASSIAN_JIRA_OBJECT_TYPE"
+	ObjectAWSConfig                   ObjectType = "AWS_CONFIG_OBJECT_TYPE"
 	ObjectAWSDynamoDB                 ObjectType = "AWS_DYNAMODB_OBJECT_TYPE"
 	ObjectAWSEC2EBS                   ObjectType = "AWS_EC2_EBS_OBJECT_TYPE"
 	ObjectAWSRDS                      ObjectType = "AWS_RDS_OBJECT_TYPE"
@@ -153,6 +154,7 @@ const (
 	ObjectExchange                    ObjectType = "EXCHANGE_OBJECT_TYPE"
 	ObjectFileset                     ObjectType = "FILESET_OBJECT_TYPE"
 	ObjectGCP                         ObjectType = "GCP_OBJECT_TYPE"
+	ObjectGCPBigQuery                 ObjectType = "GCP_BIGQUERY_OBJECT_TYPE"
 	ObjectGCPCloudSQL                 ObjectType = "GCP_CLOUD_SQL_OBJECT_TYPE"
 	ObjectGitHub                      ObjectType = "GITHUB_OBJECT_TYPE"
 	ObjectGoogleWorkspace             ObjectType = "GOOGLE_WORKSPACE_OBJECT_TYPE"
@@ -189,6 +191,7 @@ func AllObjectTypesAsStrings() []string {
 	return []string{
 		string(ObjectActiveDirectory),
 		string(ObjectAtlassianJira),
+		string(ObjectAWSConfig),
 		string(ObjectAWSDynamoDB),
 		string(ObjectAWSEC2EBS),
 		string(ObjectAWSRDS),
@@ -206,6 +209,7 @@ func AllObjectTypesAsStrings() []string {
 		string(ObjectExchange),
 		string(ObjectFileset),
 		string(ObjectGCP),
+		string(ObjectGCPBigQuery),
 		string(ObjectGCPCloudSQL),
 		string(ObjectGitHub),
 		string(ObjectGoogleWorkspace),

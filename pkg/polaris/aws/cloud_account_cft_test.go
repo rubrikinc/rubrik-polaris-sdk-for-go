@@ -21,11 +21,9 @@
 package aws
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"reflect"
-	"slices"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
@@ -81,22 +79,20 @@ func TestAwsAccountAddAndRemoveWithCFT(t *testing.T) {
 	if account.NativeID != testAccount.AccountID {
 		t.Fatalf("invalid native id: %v", account.NativeID)
 	}
-	if n := len(account.Features); n != 1 {
-		t.Fatalf("invalid number of features: %v", n)
+	cnp, ok := account.Feature(core.FeatureCloudNativeProtection)
+	if !ok {
+		t.Fatal("cloud native protection feature not found")
 	}
-	if !account.Features[0].Equal(core.FeatureCloudNativeProtection) {
-		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
-	}
-	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+	if regions := cnp.Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
-	if account.Features[0].Status != core.StatusConnected {
-		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
+	if cnp.Status != core.StatusConnected {
+		t.Fatalf("invalid feature status: %v", cnp.Status)
 	}
 	if mode := account.OnboardingMode(); mode != OnboardingModeCFT {
 		t.Fatalf("invalid onboarding mode: %v", mode)
 	}
-	if mode := account.Features[0].OnboardingMode(); mode != OnboardingModeCFT {
+	if mode := cnp.OnboardingMode(); mode != OnboardingModeCFT {
 		t.Fatalf("invalid feature onboarding mode: %v", mode)
 	}
 
@@ -109,23 +105,29 @@ func TestAwsAccountAddAndRemoveWithCFT(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n := len(account.Features); n != 1 {
-		t.Fatalf("invalid number of features: %v", n)
+	cnp, ok = account.Feature(core.FeatureCloudNativeProtection)
+	if !ok {
+		t.Fatal("cloud native protection feature not found")
 	}
-	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-west-2"}) {
+	if regions := cnp.Regions; !reflect.DeepEqual(regions, []string{"us-west-2"}) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
 
-	// Remove AWS account from RSC.
-	err = awsClient.RemoveAccountWithCFT(ctx, Profile(testAccount.Profile), cnpFeature, false)
-	if err != nil {
+	// Remove AWS account from RSC. All the features of the account are removed
+	// and not just the features added by the test, since RSC may add the cloud
+	// cost report feature to the account when it is onboarded.
+	// RemoveAccountWithCFT orders the features for removal.
+	removeFeatures := make([]core.Feature, 0, len(account.Features))
+	for _, feature := range account.Features {
+		removeFeatures = append(removeFeatures, feature.Feature)
+	}
+	if err := awsClient.RemoveAccountWithCFT(ctx, Profile(testAccount.Profile), removeFeatures, false); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	account, err = awsClient.AccountByNativeID(ctx, testAccount.AccountID)
-	if !errors.Is(err, graphql.ErrNotFound) {
-		t.Fatal(err)
+	if _, err := awsClient.AccountByNativeID(ctx, testAccount.AccountID); !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatalf("expected the account to be removed, got error: %v", err)
 	}
 }
 
@@ -181,55 +183,57 @@ func TestAwsAccountAddAndRemoveUsingPermissionGroupsWithCFT(t *testing.T) {
 	if account.NativeID != testAccount.AccountID {
 		t.Fatalf("invalid native id: %v", account.NativeID)
 	}
-	if n := len(account.Features); n != 2 {
-		t.Fatalf("invalid number of features: %v", n)
+	cnp, ok := account.Feature(core.FeatureCloudNativeProtection)
+	if !ok {
+		t.Fatal("cloud native protection feature not found")
 	}
-	slices.SortFunc(account.Features, func(lhs, rhs Feature) int {
-		return cmp.Compare(lhs.Feature.Name, rhs.Feature.Name)
-	})
-	if !account.Features[0].Equal(core.FeatureCloudNativeProtection) {
-		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
-	}
-	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+	if regions := cnp.Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
-	if account.Features[0].Status != core.StatusConnected {
-		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
+	if cnp.Status != core.StatusConnected {
+		t.Fatalf("invalid feature status: %v", cnp.Status)
 	}
-	if groups := account.Features[0].PermissionGroups; !reflect.DeepEqual(groups, []core.PermissionGroup{core.PermissionGroupBasic}) {
+	if groups := cnp.PermissionGroups; !reflect.DeepEqual(groups, []core.PermissionGroup{core.PermissionGroupBasic}) {
 		t.Fatalf("invalid permission groups: %v", groups)
 	}
-	if !account.Features[1].Equal(core.FeatureExocompute) {
-		t.Fatalf("invalid feature name: %v", account.Features[1].Name)
+	exo, ok := account.Feature(core.FeatureExocompute)
+	if !ok {
+		t.Fatal("exocompute feature not found")
 	}
-	if regions := account.Features[1].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+	if regions := exo.Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
-	if account.Features[1].Status != core.StatusConnected {
-		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
+	if exo.Status != core.StatusConnected {
+		t.Fatalf("invalid feature status: %v", exo.Status)
 	}
-	if groups := account.Features[1].PermissionGroups; !reflect.DeepEqual(groups, []core.PermissionGroup{core.PermissionGroupBasic, core.PermissionGroupRSCManagedCluster}) {
+	if groups := exo.PermissionGroups; !reflect.DeepEqual(groups, []core.PermissionGroup{core.PermissionGroupBasic, core.PermissionGroupRSCManagedCluster}) {
 		t.Fatalf("invalid permission groups: %v", groups)
 	}
 	if mode := account.OnboardingMode(); mode != OnboardingModeCFT {
 		t.Fatalf("invalid onboarding mode: %v", mode)
 	}
-	if mode := account.Features[0].OnboardingMode(); mode != OnboardingModeCFT {
-		t.Fatalf("invalid feature[0] onboarding mode: %v", mode)
+	if mode := cnp.OnboardingMode(); mode != OnboardingModeCFT {
+		t.Fatalf("invalid cloud native protection onboarding mode: %v", mode)
 	}
-	if mode := account.Features[1].OnboardingMode(); mode != OnboardingModeCFT {
-		t.Fatalf("invalid feature[1] onboarding mode: %v", mode)
+	if mode := exo.OnboardingMode(); mode != OnboardingModeCFT {
+		t.Fatalf("invalid exocompute onboarding mode: %v", mode)
 	}
-	// Remove AWS account from RSC.
-	err = awsClient.RemoveAccountWithCFT(ctx, Profile(testAccount.Profile), features, false)
-	if err != nil {
+
+	// Remove AWS account from RSC. All the features of the account are removed
+	// and not just the features added by the test, since RSC may add the cloud
+	// cost report feature to the account when it is onboarded.
+	// RemoveAccountWithCFT orders the features for removal.
+	removeFeatures := make([]core.Feature, 0, len(account.Features))
+	for _, feature := range account.Features {
+		removeFeatures = append(removeFeatures, feature.Feature)
+	}
+	if err := awsClient.RemoveAccountWithCFT(ctx, Profile(testAccount.Profile), removeFeatures, false); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	account, err = awsClient.AccountByNativeID(ctx, testAccount.AccountID)
-	if !errors.Is(err, graphql.ErrNotFound) {
-		t.Fatal(err)
+	if _, err := awsClient.AccountByNativeID(ctx, testAccount.AccountID); !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatalf("expected the account to be removed, got error: %v", err)
 	}
 }
 
@@ -280,22 +284,20 @@ func TestAwsCrossAccountAddAndRemoveWithCFT(t *testing.T) {
 	if account.NativeID != testAccount.CrossAccountID {
 		t.Fatalf("invalid native id: %v", account.NativeID)
 	}
-	if n := len(account.Features); n != 1 {
-		t.Fatalf("invalid number of features: %v", n)
+	cnp, ok := account.Feature(core.FeatureCloudNativeProtection)
+	if !ok {
+		t.Fatal("cloud native protection feature not found")
 	}
-	if !account.Features[0].Equal(core.FeatureCloudNativeProtection) {
-		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
-	}
-	if regions := account.Features[0].Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
+	if regions := cnp.Regions; !reflect.DeepEqual(regions, []string{"us-east-2"}) {
 		t.Fatalf("invalid feature regions: %v", regions)
 	}
-	if account.Features[0].Status != core.StatusConnected {
-		t.Fatalf("invalid feature status: %v", account.Features[0].Status)
+	if cnp.Status != core.StatusConnected {
+		t.Fatalf("invalid feature status: %v", cnp.Status)
 	}
 	if mode := account.OnboardingMode(); mode != OnboardingModeCFT {
 		t.Fatalf("invalid onboarding mode: %v", mode)
 	}
-	if mode := account.Features[0].OnboardingMode(); mode != OnboardingModeCFT {
+	if mode := cnp.OnboardingMode(); mode != OnboardingModeCFT {
 		t.Fatalf("invalid feature onboarding mode: %v", mode)
 	}
 
@@ -313,16 +315,22 @@ func TestAwsCrossAccountAddAndRemoveWithCFT(t *testing.T) {
 		t.Fatalf("invalid id: %v", account.ID)
 	}
 
-	// Remove AWS account from RSC using a cross account role.
+	// Remove AWS account from RSC using a cross account role. All the features
+	// of the account are removed and not just the features added by the test,
+	// since RSC may add the cloud cost report feature to the account when it is
+	// onboarded. RemoveAccountWithCFT orders the features for removal.
+	removeFeatures := make([]core.Feature, 0, len(account.Features))
+	for _, feature := range account.Features {
+		removeFeatures = append(removeFeatures, feature.Feature)
+	}
 	err = awsClient.RemoveAccountWithCFT(ctx, ProfileWithRole(testAccount.Profile, testAccount.CrossAccountRole),
-		cnpFeature, false)
+		removeFeatures, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify that the account was successfully removed.
-	account, err = awsClient.AccountByNativeID(ctx, testAccount.AccountID)
-	if !errors.Is(err, graphql.ErrNotFound) {
-		t.Fatal(err)
+	if _, err := awsClient.AccountByNativeID(ctx, testAccount.CrossAccountID); !errors.Is(err, graphql.ErrNotFound) {
+		t.Fatalf("expected the account to be removed, got error: %v", err)
 	}
 }

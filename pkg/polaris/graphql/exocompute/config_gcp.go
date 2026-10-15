@@ -58,9 +58,11 @@ type GCPConfiguration struct {
 // GCPRegionalConfig holds the configuration for a GCP region. A GCP Exocompute
 // configuration consist of a set of regional configurations.
 type GCPRegionalConfig struct {
-	Region         gcp.CloudAccountRegionEnum `json:"region"`
-	SubnetName     string                     `json:"subnetName"`
-	VPCNetworkName string                     `json:"vpcNetworkName"`
+	Region             gcp.CloudAccountRegionEnum `json:"region"`
+	SubnetName         string                     `json:"subnetName"`
+	VPCNetworkName     string                     `json:"vpcNetworkName"`
+	HostProjectID      string                     `json:"projectId,omitempty"`
+	SecondaryRangeName string                     `json:"clusterSecondaryRangeName,omitempty"`
 }
 
 // UpdateGCPConfigurationParams holds the parameters for a GCP exocompute

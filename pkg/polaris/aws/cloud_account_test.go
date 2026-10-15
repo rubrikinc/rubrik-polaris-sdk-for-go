@@ -20,7 +20,28 @@
 
 package aws
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+)
+
+// TestToCloudAccountKeepsConfigProtection guards against the Cloud Native
+// Config Protection feature being dropped from SupportedFeatures. The list
+// filters every account read, so a missing entry makes an onboarded feature
+// invisible to AccountByID and friends rather than failing loudly.
+func TestToCloudAccountKeepsConfigProtection(t *testing.T) {
+	account := toCloudAccount(aws.CloudAccountWithFeatures{
+		Features: []aws.Feature{{
+			Feature: core.FeatureCloudNativeConfigProtection.Name,
+			Status:  core.StatusConnecting,
+		}},
+	})
+	if _, ok := account.Feature(core.FeatureCloudNativeConfigProtection); !ok {
+		t.Error("CLOUD_NATIVE_CONFIG_PROTECTION dropped by toCloudAccount")
+	}
+}
 
 func TestFeatureOnboardingMode(t *testing.T) {
 	tests := []struct {

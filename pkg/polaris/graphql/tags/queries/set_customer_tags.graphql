@@ -1,9 +1,17 @@
-mutation RubrikPolarisSDKRequest($cloudVendor: CloudVendor!, $customerTags: [TagInput!]!, $shouldOverrideResourceTags: Boolean!) {
+mutation RubrikPolarisSDKRequest(
+    $cloudVendor:                CloudVendor!,
+    $cloudAccountId:             UUID,
+    $customerTags:               [TagInput!]!,
+    $excludedTags:               [String!],
+    $shouldOverrideResourceTags: Boolean!,
+) {
     result: setCustomerTags(input: {
         cloudVendor: $cloudVendor
+        cloudAccountId: $cloudAccountId
         customerTags: {
             tagList: $customerTags
         }
+        excludedTags: $excludedTags
         shouldOverrideResourceTags: $shouldOverrideResourceTags
     })
 }

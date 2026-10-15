@@ -166,3 +166,143 @@ func (a API) ClearCloudNativeSQLServerBackupCredentials(ctx context.Context, obj
 
 	return payload.Data.Result.SuccessObjectIDs, payload.Data.Result.FailedObjectIDs, nil
 }
+
+// AddCloudNativeSQLServerBackupCredentials registers the credentials RSC uses
+// to back up the specified objects, after a setup script has been run against
+// them. The object IDs can refer to any level of the hierarchy the credentials
+// apply to, e.g. subscriptions, resource groups, servers or databases. The
+// workload type must match the object type, e.g. hierarchy.WorkloadAzureSQLMIDB
+// for Azure SQL Managed Instances.
+//
+// Pass credentials to authenticate as a SQL Server user, or nil to authenticate
+// using Microsoft Entra ID instead. Which one is correct is decided by the
+// object rather than by the caller, and follows the authentication mechanisms
+// the server supports, reported by SQLServerSetupScripts as AuthType:
+//
+//	AAD_ONLY and SQL_AUTH_AND_AAD - nil, Microsoft Entra ID
+//	SQL_AUTH_ONLY                 - credentials for the user the script created
+//
+// RSC does not enforce this: it accepts credentials for a server whose setup
+// script never created a SQL Server login, and the resulting configuration only
+// fails when a backup runs. Callers must check AuthType themselves.
+//
+// Unlike SetupCloudNativeSQLServerBackup this is not asynchronous: the
+// credentials are recorded by the request itself, with no task chain to wait
+// for. Returns the IDs of the objects the credentials were added for and the
+// IDs of the objects they could not be added for.
+func (a API) AddCloudNativeSQLServerBackupCredentials(ctx context.Context, objectIDs []uuid.UUID, workloadType hierarchy.Workload, credentials *LoginCredentials) (successIDs, failedIDs []uuid.UUID, err error) {
+	a.log.Print(log.Trace)
+
+	query := addCloudNativeSqlServerBackupCredentialsQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ObjectIDs         []uuid.UUID        `json:"objectIds"`
+		WorkloadType      hierarchy.Workload `json:"workloadType"`
+		BackupCredentials *LoginCredentials  `json:"backupCredentials,omitempty"`
+		ShouldUseAad      bool               `json:"shouldUseAad"`
+	}{
+		ObjectIDs:         objectIDs,
+		WorkloadType:      workloadType,
+		BackupCredentials: credentials,
+		ShouldUseAad:      credentials == nil,
+	})
+	if err != nil {
+		return nil, nil, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				SuccessObjectIDs []uuid.UUID `json:"successObjectIds"`
+				FailedObjectIDs  []uuid.UUID `json:"failedObjectIds"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, nil, graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result.SuccessObjectIDs, payload.Data.Result.FailedObjectIDs, nil
+}
+
+// AzureSQLAuthenticationType represents the authentication mechanisms a SQL
+// Server supports.
+type AzureSQLAuthenticationType string
+
+const (
+	// AzureSQLAuthTypeUnspecified means the authentication type is unknown.
+	AzureSQLAuthTypeUnspecified AzureSQLAuthenticationType = "AUTH_TYPE_UNSPECIFIED"
+
+	// AzureSQLAuthTypeEntraIDOnly means the server only supports Microsoft
+	// Entra ID authentication. RSC spells Entra ID by its former name, AAD.
+	AzureSQLAuthTypeEntraIDOnly AzureSQLAuthenticationType = "AAD_ONLY"
+
+	// AzureSQLAuthTypeSQLAndEntraID means the server supports both SQL Server
+	// and Microsoft Entra ID authentication.
+	AzureSQLAuthTypeSQLAndEntraID AzureSQLAuthenticationType = "SQL_AUTH_AND_AAD"
+
+	// AzureSQLAuthTypeSQLOnly means the server only supports SQL Server
+	// authentication.
+	AzureSQLAuthTypeSQLOnly AzureSQLAuthenticationType = "SQL_AUTH_ONLY"
+)
+
+// SQLServerSetupScript is the setup script for a single SQL Server, and the
+// authentication mechanisms that server supports.
+type SQLServerSetupScript struct {
+	// ServerID is the RSC ID of the server the script is for.
+	ServerID uuid.UUID `json:"serverId"`
+	// AuthType is the authentication mechanisms the server supports, and it
+	// decides which script RSC generates below and therefore how the backup
+	// credentials must be registered:
+	//
+	//   AAD_ONLY and SQL_AUTH_AND_AAD - Microsoft Entra ID
+	//   SQL_AUTH_ONLY                 - a SQL Server login
+	//
+	// Note that SQL_AUTH_AND_AAD means Entra ID, even though the server also
+	// supports SQL Server authentication: RSC returns the Entra ID script for
+	// any server which supports Entra ID at all.
+	AuthType AzureSQLAuthenticationType `json:"authType"`
+	// Script is the T-SQL setup script to run against the server. It creates
+	// the objects RSC needs to perform backups.
+	//
+	// Which script is returned follows AuthType above. The SQL_AUTH_ONLY script
+	// is a template: the user RSC authenticates as is created by a procedure
+	// call at the end of the script, which must be supplied with the intended
+	// login and password before the script is run. The Entra ID script instead
+	// grants access to the RSC service principal and creates no SQL Server
+	// login at all, which is why registering SQL Server credentials for such a
+	// server would leave a configuration that only fails at backup time.
+	Script string `json:"script"`
+}
+
+// SQLServerSetupScripts returns the setup script for each of the specified SQL
+// Servers, to be run against the server before its backup credentials are
+// registered with AddCloudNativeSQLServerBackupCredentials.
+//
+// The scripts are generated by RSC and differ per server, both by server and by
+// the authentication mechanisms it supports. They carry no secret issued by
+// RSC: where a script takes a password at all it is a placeholder, which the
+// caller replaces with the intended one before running the script.
+func (a API) SQLServerSetupScripts(ctx context.Context, serverIDs []uuid.UUID) ([]SQLServerSetupScript, error) {
+	a.log.Print(log.Trace)
+
+	query := sqlServerSetupScriptsBulkQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ServerIDs []uuid.UUID `json:"serverIds"`
+	}{ServerIDs: serverIDs})
+	if err != nil {
+		return nil, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				ScriptDetails []SQLServerSetupScript `json:"scriptDetails"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return nil, graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result.ScriptDetails, nil
+}

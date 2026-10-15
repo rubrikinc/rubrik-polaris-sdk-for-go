@@ -30,6 +30,7 @@ query RubrikPolarisSDKRequest($fid: UUID!, $workloadHierarchy: WorkloadLevelHier
             orgId
         }
         ... on AzureSqlManagedInstanceServer {
+            authType
             azureResourceGroupDetails {
                 azureSubscriptionDetails {
                     id

@@ -320,6 +320,8 @@ var gcpExocomputeConfigsQuery = `query SdkGolangGcpExocomputeConfigs(
                 taskchainId
             }
             regionalExocomputeConfig {
+                clusterSecondaryRangeName
+                projectId
                 region
                 subnetName
                 vpcNetworkName

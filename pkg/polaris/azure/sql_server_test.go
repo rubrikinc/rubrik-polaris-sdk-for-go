@@ -295,3 +295,133 @@ func TestSetupSQLManagedInstanceBackupCancelled(t *testing.T) {
 		t.Errorf("task chain polls: got %d, want the polling to stop on cancellation", got)
 	}
 }
+
+// addCredentialsHandler stubs the add credentials mutation, reporting the given
+// servers as succeeded and failed, and captures the variables sent.
+func addCredentialsHandler(cancel context.CancelCauseFunc, succeeded, failed []uuid.UUID, gotVars *map[string]any) http.Handler {
+	return handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			cancel(err)
+			return
+		}
+		var payload struct {
+			Variables map[string]any `json:"variables"`
+		}
+		if err := json.Unmarshal(body, &payload); err != nil {
+			cancel(err)
+			return
+		}
+		*gotVars = payload.Variables
+
+		response := map[string]any{"data": map[string]any{"result": map[string]any{
+			"successObjectIds": succeeded,
+			"failedObjectIds":  failed,
+		}}}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			cancel(err)
+		}
+	})
+}
+
+// TestAddSQLManagedInstanceBackupCredentials verifies the happy path sends the
+// SQL Server credentials against the managed instance database workload.
+func TestAddSQLManagedInstanceBackupCredentials(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	serverID := uuid.New()
+
+	var gotVars map[string]any
+	srv := httptest.NewServer(addCredentialsHandler(cancel, []uuid.UUID{serverID}, nil, &gotVars))
+	defer srv.Close()
+
+	if err := WrapGQL(graphql.NewTestClient(srv)).AddSQLManagedInstanceBackupCredentials(ctx,
+		[]uuid.UUID{serverID}, testCredentials); err != nil {
+		t.Fatalf("AddSQLManagedInstanceBackupCredentials failed: %v", err)
+	}
+
+	if got := gotVars["workloadType"]; got != "AzureSqlManagedInstanceDb" {
+		t.Errorf("workloadType: got %v, want AzureSqlManagedInstanceDb", got)
+	}
+	if shouldUseAad, _ := gotVars["shouldUseAad"].(bool); shouldUseAad {
+		t.Error("shouldUseAad: got true, want false when SQL Server credentials are given")
+	}
+	if _, ok := gotVars["backupCredentials"]; !ok {
+		t.Error("backupCredentials: not sent, want the given credentials")
+	}
+}
+
+// TestAddSQLManagedInstanceBackupCredentialsUsingEntraID verifies the Entra ID
+// variant sends no credentials at all.
+func TestAddSQLManagedInstanceBackupCredentialsUsingEntraID(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	serverID := uuid.New()
+
+	var gotVars map[string]any
+	srv := httptest.NewServer(addCredentialsHandler(cancel, []uuid.UUID{serverID}, nil, &gotVars))
+	defer srv.Close()
+
+	if err := WrapGQL(graphql.NewTestClient(srv)).AddSQLManagedInstanceBackupCredentialsUsingEntraID(ctx,
+		[]uuid.UUID{serverID}); err != nil {
+		t.Fatalf("AddSQLManagedInstanceBackupCredentialsUsingEntraID failed: %v", err)
+	}
+
+	if shouldUseAad, _ := gotVars["shouldUseAad"].(bool); !shouldUseAad {
+		t.Error("shouldUseAad: got false, want true when no credentials are given")
+	}
+	if credentials, ok := gotVars["backupCredentials"]; ok {
+		t.Errorf("backupCredentials: got %v, want the field to be absent", credentials)
+	}
+}
+
+// TestAddSQLManagedInstanceBackupCredentialsFailedServer verifies that a server
+// RSC reports in failedObjectIds is an error, so a rejected server cannot pass
+// as success.
+func TestAddSQLManagedInstanceBackupCredentialsFailedServer(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	succeeded, rejected := uuid.New(), uuid.New()
+
+	var gotVars map[string]any
+	srv := httptest.NewServer(addCredentialsHandler(cancel, []uuid.UUID{succeeded}, []uuid.UUID{rejected}, &gotVars))
+	defer srv.Close()
+
+	err := WrapGQL(graphql.NewTestClient(srv)).AddSQLManagedInstanceBackupCredentials(ctx,
+		[]uuid.UUID{succeeded, rejected}, testCredentials)
+	if err == nil {
+		t.Fatal("expected AddSQLManagedInstanceBackupCredentials to fail for the rejected server")
+	}
+	if !strings.Contains(err.Error(), rejected.String()) {
+		t.Errorf("error does not name the rejected server %s: %v", rejected, err)
+	}
+}
+
+// TestAddSQLManagedInstanceBackupCredentialsUnacknowledgedServer verifies that a
+// server RSC lists in neither reply field is reported, rather than passing as
+// success for a server whose credentials were never registered.
+func TestAddSQLManagedInstanceBackupCredentialsUnacknowledgedServer(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	acknowledged, dropped := uuid.New(), uuid.New()
+
+	var gotVars map[string]any
+	srv := httptest.NewServer(addCredentialsHandler(cancel, []uuid.UUID{acknowledged}, nil, &gotVars))
+	defer srv.Close()
+
+	err := WrapGQL(graphql.NewTestClient(srv)).AddSQLManagedInstanceBackupCredentials(ctx,
+		[]uuid.UUID{acknowledged, dropped}, testCredentials)
+	if err == nil {
+		t.Fatal("expected AddSQLManagedInstanceBackupCredentials to fail for the server RSC did not acknowledge")
+	}
+	if !strings.Contains(err.Error(), dropped.String()) {
+		t.Errorf("error does not name the dropped server %s: %v", dropped, err)
+	}
+	if strings.Contains(err.Error(), acknowledged.String()) {
+		t.Errorf("error names the server that succeeded %s: %v", acknowledged, err)
+	}
+}
