@@ -72,9 +72,11 @@ func (AzureTargetMapping) ListQuery(filters []ListTargetMappingFilter) (string, 
 
 // CreateAzureStorageSettingParams holds the parameters for an Azure storage
 // setting create operation.
-// The native ID, storage account region, the storage account tags, and the
-// customer managed keys are optional. Note, the API ignores the ContainerName
-// field and generates its own name.
+// The native ID, storage account region, the storage account tags, the
+// customer managed keys and the key vault key are optional. The key vault key
+// selects client-side encryption, RSC accepts it together with customer
+// managed keys but then rejects any update that sets customer managed keys.
+// Note, the API ignores the ContainerName field and generates its own name.
 // Azure storage settings are also referred to as Azure target mappings.
 type CreateAzureStorageSettingParams struct {
 	CloudAccountID       uuid.UUID          `json:"cloudAccountId"`
@@ -89,6 +91,7 @@ type CreateAzureStorageSettingParams struct {
 	StorageAccountRegion azure.RegionEnum   `json:"storageAccountRegion"`
 	StorageAccountTags   *core.Tags         `json:"storageAccountTags,omitempty"`
 	CMKInfo              []AzureCustomerKey `json:"cmkInfo,omitempty"`
+	KeyVaultKey          *AzureKeyVaultKey  `json:"azureKeyVaultKey,omitempty"`
 }
 
 // CreateAzureStorageSettingResult holds the result of an Azure storage setting

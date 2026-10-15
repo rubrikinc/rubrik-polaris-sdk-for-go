@@ -4,7 +4,8 @@ mutation RubrikPolarisSDKRequest(
     $bucketPrefix:    String!,
     $storageClass:    AwsStorageClass!,
     $region:          AwsRegion,
-    $kmsMasterKeyId:  String!,
+    $kmsMasterKeyId:  String,
+    $awsKmsKey:       AwsKmsKeyIdentifierInput,
     $locTemplateType: CloudNativeLocTemplateType!,
     $bucketTags:      TagsInput
 ) {
@@ -15,6 +16,7 @@ mutation RubrikPolarisSDKRequest(
         storageClass:               $storageClass,
         region:                     $region,
         kmsMasterKeyId:             $kmsMasterKeyId,
+        awsKmsKey:                  $awsKmsKey,
         cloudNativeLocTemplateType: $locTemplateType,
         bucketTags:                 $bucketTags
     }) {
