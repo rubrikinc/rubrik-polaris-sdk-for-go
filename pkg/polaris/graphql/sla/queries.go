@@ -415,6 +415,11 @@ fragment GlobalSlaReplyFields on GlobalSlaReply {
                 unit
             }
         }
+        icebergSlaConfig {
+            fallbackToLatest
+            snapshotSelectionStrategy
+            tagRegex
+        }
     }
     objectTypes
     retentionLockMode
@@ -799,6 +804,11 @@ fragment GlobalSlaReplyFields on GlobalSlaReply {
                 duration
                 unit
             }
+        }
+        icebergSlaConfig {
+            fallbackToLatest
+            snapshotSelectionStrategy
+            tagRegex
         }
     }
     objectTypes

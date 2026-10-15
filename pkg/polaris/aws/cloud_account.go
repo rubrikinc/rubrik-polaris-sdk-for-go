@@ -252,6 +252,8 @@ func (a API) disableFeature(ctx context.Context, account CloudAccount, feature c
 		core.FeatureCloudNativeS3Protection,
 		core.FeatureCloudNativeDynamoDBProtection,
 		core.FeatureCloudNativeConfigProtection,
+		core.FeatureGlueIcebergProtection,
+		core.FeatureS3TablesIcebergProtection,
 		core.FeatureExocompute,
 		core.FeatureCloudDiscovery,
 	}
@@ -314,6 +316,10 @@ func (a API) disableProtectionFeature(ctx context.Context, cloudAccountID uuid.U
 		protectionFeature = aws.DynamoDB
 	case feature.Equal(core.FeatureCloudNativeConfigProtection):
 		protectionFeature = aws.Config
+	case feature.Equal(core.FeatureGlueIcebergProtection):
+		protectionFeature = aws.GlueIceberg
+	case feature.Equal(core.FeatureS3TablesIcebergProtection):
+		protectionFeature = aws.S3TablesIceberg
 	case feature.Equal(core.FeatureKubernetesProtection):
 		protectionFeature = aws.EKS
 	case feature.Equal(core.FeatureCloudDiscovery):
@@ -341,12 +347,14 @@ func SupportedFeatures() []core.Feature {
 		core.FeatureDSPMData,
 		core.FeatureDSPMMetadata,
 		core.FeatureExocompute,
+		core.FeatureGlueIcebergProtection,
 		core.FeatureKubernetesProtection,
 		core.FeatureLaminarCrossAccount,
 		core.FeatureLaminarInternal,
 		core.FeatureOutpost,
 		core.FeatureRDSProtection,
 		core.FeatureRoleChaining,
+		core.FeatureS3TablesIcebergProtection,
 		core.FeatureServerAndApps,
 	}
 }

@@ -109,6 +109,7 @@ var (
 	FeatureGCPBigQueryReservation                      = Feature{Name: "GCP_BIGQUERY_RESERVATION"}
 	FeatureGCPSharedVPCHost                            = Feature{Name: "GCP_SHARED_VPC_HOST"}
 	FeatureGitHubRepositoryProtection                  = Feature{Name: "GITHUB_REPOSITORY_PROTECTION"}
+	FeatureGlueIcebergProtection                       = Feature{Name: "GLUE_ICEBERG_PROTECTION"}
 	FeatureKubernetesProtection                        = Feature{Name: "KUBERNETES_PROTECTION"}
 	FeatureLaminarCrossAccount                         = Feature{Name: "LAMINAR_CROSS_ACCOUNT"}
 	FeatureLaminarInternal                             = Feature{Name: "LAMINAR_INTERNAL"}
@@ -119,6 +120,7 @@ var (
 	FeatureOutpost                                     = Feature{Name: "OUTPOST"}
 	FeatureRDSProtection                               = Feature{Name: "RDS_PROTECTION"}
 	FeatureRoleChaining                                = Feature{Name: "ROLE_CHAINING"}
+	FeatureS3TablesIcebergProtection                   = Feature{Name: "S3_TABLES_ICEBERG_PROTECTION"}
 	FeatureServerAndApps                               = Feature{Name: "SERVERS_AND_APPS"}
 )
 
@@ -184,8 +186,10 @@ func (f Feature) IsProtectionFeature() bool {
 		FeatureCloudSQLProtection,
 		FeatureGCPBigQueryProtection,
 		FeatureGitHubRepositoryProtection,
+		FeatureGlueIcebergProtection,
 		FeatureKubernetesProtection,
 		FeatureRDSProtection,
+		FeatureS3TablesIcebergProtection,
 	}
 
 	return slices.ContainsFunc(protectionFeatures, func(feature Feature) bool {
@@ -227,8 +231,10 @@ func AllProtectionFeatures(cloud CloudVendor) []Feature {
 			FeatureCloudNativeDynamoDBProtection,
 			FeatureCloudNativeProtection,
 			FeatureCloudNativeS3Protection,
+			FeatureGlueIcebergProtection,
 			FeatureKubernetesProtection,
 			FeatureRDSProtection,
+			FeatureS3TablesIcebergProtection,
 		}
 	case CloudVendorAzure:
 		return []Feature{
@@ -339,6 +345,7 @@ var validFeatures = map[string]struct{}{
 	FeatureGCPBigQueryReservation.Name:                      {},
 	FeatureGCPSharedVPCHost.Name:                            {},
 	FeatureGitHubRepositoryProtection.Name:                  {},
+	FeatureGlueIcebergProtection.Name:                       {},
 	FeatureKubernetesProtection.Name:                        {},
 	FeatureLaminarCrossAccount.Name:                         {},
 	FeatureLaminarInternal.Name:                             {},
@@ -349,6 +356,7 @@ var validFeatures = map[string]struct{}{
 	FeatureOutpost.Name:                                     {},
 	FeatureRDSProtection.Name:                               {},
 	FeatureRoleChaining.Name:                                {},
+	FeatureS3TablesIcebergProtection.Name:                   {},
 	FeatureServerAndApps.Name:                               {},
 }
 

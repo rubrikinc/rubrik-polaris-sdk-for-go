@@ -60,3 +60,33 @@ func TestCloudNativeConfigProtection(t *testing.T) {
 		t.Errorf("invalid feature: %s", feature)
 	}
 }
+
+func TestIcebergProtectionFeatures(t *testing.T) {
+	tests := []struct {
+		feature Feature
+		name    string
+	}{
+		{feature: FeatureGlueIcebergProtection, name: "GLUE_ICEBERG_PROTECTION"},
+		{feature: FeatureS3TablesIcebergProtection, name: "S3_TABLES_ICEBERG_PROTECTION"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.feature.Name != tt.name {
+				t.Errorf("invalid feature name: %s", tt.feature.Name)
+			}
+			if !tt.feature.IsProtectionFeature() {
+				t.Errorf("%s should be a protection feature", tt.name)
+			}
+			if !slices.ContainsFunc(AllProtectionFeatures(CloudVendorAWS), tt.feature.Equal) {
+				t.Errorf("%s should be an AWS protection feature", tt.name)
+			}
+			feature, err := ParseFeature(tt.name)
+			if err != nil {
+				t.Fatalf("failed to parse feature: %v", err)
+			}
+			if !feature.Equal(tt.feature) {
+				t.Errorf("invalid feature: %s", feature)
+			}
+		})
+	}
+}

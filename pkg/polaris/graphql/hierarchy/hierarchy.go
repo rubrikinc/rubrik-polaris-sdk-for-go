@@ -34,6 +34,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	awsregions "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	azureregions "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -96,6 +97,12 @@ const (
 
 	// WorkloadAzureStorageAccount represents Azure storage accounts.
 	WorkloadAzureStorageAccount
+
+	// WorkloadGlueIcebergTable represents AWS Glue Iceberg tables.
+	WorkloadGlueIcebergTable
+
+	// WorkloadS3TablesIcebergTable represents Amazon S3 Tables Iceberg tables.
+	WorkloadS3TablesIcebergTable
 )
 
 // workloadMap maps Workload values to their GraphQL and string
@@ -104,12 +111,14 @@ var workloadMap = map[Workload]struct {
 	GraphQL string
 	Value   string
 }{
-	WorkloadAllSubHierarchyType: {GraphQL: "AllSubHierarchyType", Value: "ALL_SUB_HIERARCHY_TYPE"},
-	WorkloadAzureVM:             {GraphQL: "AzureNativeVirtualMachine", Value: "AZURE_NATIVE_VIRTUAL_MACHINE"},
-	WorkloadAzureManagedDisk:    {GraphQL: "AzureNativeManagedDisk", Value: "AZURE_NATIVE_MANAGED_DISK"},
-	WorkloadAzureSQLDB:          {GraphQL: "AzureSqlDatabaseDb", Value: "AZURE_SQL_DATABASE_DB"},
-	WorkloadAzureSQLMIDB:        {GraphQL: "AzureSqlManagedInstanceDb", Value: "AZURE_SQL_MANAGED_INSTANCE_DB"},
-	WorkloadAzureStorageAccount: {GraphQL: "AZURE_STORAGE_ACCOUNT", Value: "AZURE_STORAGE_ACCOUNT"},
+	WorkloadAllSubHierarchyType:  {GraphQL: "AllSubHierarchyType", Value: "ALL_SUB_HIERARCHY_TYPE"},
+	WorkloadAzureVM:              {GraphQL: "AzureNativeVirtualMachine", Value: "AZURE_NATIVE_VIRTUAL_MACHINE"},
+	WorkloadAzureManagedDisk:     {GraphQL: "AzureNativeManagedDisk", Value: "AZURE_NATIVE_MANAGED_DISK"},
+	WorkloadAzureSQLDB:           {GraphQL: "AzureSqlDatabaseDb", Value: "AZURE_SQL_DATABASE_DB"},
+	WorkloadAzureSQLMIDB:         {GraphQL: "AzureSqlManagedInstanceDb", Value: "AZURE_SQL_MANAGED_INSTANCE_DB"},
+	WorkloadAzureStorageAccount:  {GraphQL: "AZURE_STORAGE_ACCOUNT", Value: "AZURE_STORAGE_ACCOUNT"},
+	WorkloadGlueIcebergTable:     {GraphQL: "GLUE_ICEBERG_TABLE", Value: "GLUE_ICEBERG_TABLE"},
+	WorkloadS3TablesIcebergTable: {GraphQL: "S3_TABLES_ICEBERG_TABLE", Value: "S3_TABLES_ICEBERG_TABLE"},
 }
 
 // ToWorkload converts a string to a Workload constant.
@@ -200,7 +209,13 @@ type InventoryObject interface {
 		AzureSQLManagedInstanceServer |
 		CloudNativeTagRule |
 		GitHubOrganization |
-		GitHubRepository
+		GitHubRepository |
+		GlueIcebergCatalog |
+		GlueIcebergDatabase |
+		GlueIcebergTable |
+		S3TablesIcebergCatalog |
+		S3TablesIcebergNamespace |
+		S3TablesIcebergTable
 
 	// typeFilter returns the object type filter to use for the inventory root
 	// query. It corresponds to values in the GraphQL Enum HierarchyObjectTypeEnum.
@@ -353,6 +368,152 @@ func (GitHubRepository) typeFilter() ObjectType {
 	return "GITHUB_REPOSITORY"
 }
 
+// PathNode is one step of a hierarchy object's path, e.g., its physical path.
+type PathNode struct {
+	ID         uuid.UUID  `json:"fid"`
+	Name       string     `json:"name"`
+	ObjectType ObjectType `json:"objectType"`
+}
+
+// IcebergObject holds the fields common to the Apache Iceberg hierarchy objects
+// in AWS: AWS Glue catalogs, databases and tables, and Amazon S3 Tables
+// catalogs, namespaces and tables.
+type IcebergObject struct {
+	Object
+	Region awsregions.NativeRegionEnum `json:"region"`
+
+	// PhysicalPath holds the ancestors of the object, ordered from the root of
+	// the hierarchy down to the object's parent. E.g., the path of an AWS Glue
+	// Iceberg table ends with its catalog and database.
+	PhysicalPath []PathNode `json:"physicalPath"`
+}
+
+// Parent returns the immediate parent of the object, i.e., the last node of
+// the physical path. False is returned if the object has no parent.
+func (o IcebergObject) Parent() (PathNode, bool) {
+	if len(o.PhysicalPath) == 0 {
+		return PathNode{}, false
+	}
+	return o.PhysicalPath[len(o.PhysicalPath)-1], true
+}
+
+func (o IcebergObject) icebergObject() IcebergObject {
+	return o
+}
+
+// IcebergInventoryObject is a constraint for the Apache Iceberg types that can
+// be returned from the inventory root query.
+type IcebergInventoryObject interface {
+	GlueIcebergCatalog |
+		GlueIcebergDatabase |
+		GlueIcebergTable |
+		S3TablesIcebergCatalog |
+		S3TablesIcebergNamespace |
+		S3TablesIcebergTable
+
+	typeFilter() ObjectType
+	icebergObject() IcebergObject
+}
+
+// IcebergObjectsByName returns the Apache Iceberg objects of type T from the
+// inventory root matching the specified exact name. The objects are returned
+// as IcebergObject values, so callers can handle all the Iceberg types in the
+// same way. Use AncestorFilter to limit the search to the objects below a
+// parent, since Iceberg names are only unique within their parent.
+func IcebergObjectsByName[T IcebergInventoryObject](ctx context.Context, a API, name string, filters ...Filter) ([]IcebergObject, error) {
+	a.log.Print(log.Trace)
+
+	f := append([]Filter{{Field: "NAME_EXACT_MATCH", Texts: []string{name}}}, filters...)
+	results, err := objectsByFilter[T](ctx, a, WorkloadAllSubHierarchyType, f)
+	if err != nil {
+		return nil, err
+	}
+
+	objects := make([]IcebergObject, 0, len(results))
+	for _, r := range results {
+		objects = append(objects, r.icebergObject())
+	}
+	return objects, nil
+}
+
+// IcebergObjectsByType returns all Apache Iceberg objects of type T from the
+// inventory root, as IcebergObject values. Use AncestorFilter to limit the
+// result to the objects below a parent.
+func IcebergObjectsByType[T IcebergInventoryObject](ctx context.Context, a API, filters ...Filter) ([]IcebergObject, error) {
+	a.log.Print(log.Trace)
+
+	results, err := objectsByFilter[T](ctx, a, WorkloadAllSubHierarchyType, filters)
+	if err != nil {
+		return nil, err
+	}
+
+	objects := make([]IcebergObject, 0, len(results))
+	for _, r := range results {
+		objects = append(objects, r.icebergObject())
+	}
+	return objects, nil
+}
+
+// GlueIcebergCatalog represents an AWS Glue Iceberg catalog from the inventory
+// root. There is one catalog per AWS account and region.
+type GlueIcebergCatalog struct {
+	IcebergObject
+}
+
+func (GlueIcebergCatalog) typeFilter() ObjectType {
+	return "GLUE_ICEBERG_CATALOG"
+}
+
+// GlueIcebergDatabase represents an AWS Glue Iceberg database from the
+// inventory root.
+type GlueIcebergDatabase struct {
+	IcebergObject
+}
+
+func (GlueIcebergDatabase) typeFilter() ObjectType {
+	return "GLUE_ICEBERG_DATABASE"
+}
+
+// GlueIcebergTable represents an AWS Glue Iceberg table from the inventory
+// root.
+type GlueIcebergTable struct {
+	IcebergObject
+}
+
+func (GlueIcebergTable) typeFilter() ObjectType {
+	return "GLUE_ICEBERG_TABLE"
+}
+
+// S3TablesIcebergCatalog represents an Amazon S3 Tables Iceberg catalog from
+// the inventory root. There is one catalog per S3 table bucket.
+type S3TablesIcebergCatalog struct {
+	IcebergObject
+}
+
+func (S3TablesIcebergCatalog) typeFilter() ObjectType {
+	return "S3_TABLES_ICEBERG_CATALOG"
+}
+
+// S3TablesIcebergNamespace represents an Amazon S3 Tables Iceberg namespace
+// from the inventory root.
+type S3TablesIcebergNamespace struct {
+	IcebergObject
+}
+
+func (S3TablesIcebergNamespace) typeFilter() ObjectType {
+	return "S3_TABLES_ICEBERG_NAMESPACE"
+}
+
+// S3TablesIcebergTable represents an Amazon S3 Tables Iceberg table from the
+// inventory root.
+type S3TablesIcebergTable struct {
+	IcebergObject
+}
+
+func (S3TablesIcebergTable) typeFilter() ObjectType {
+	return "S3_TABLES_ICEBERG_TABLE"
+}
+
 // AzureSubscriptionDetails holds the parent Azure subscription details returned
 // for inventory objects that expose them, such as SQL Managed Instance servers.
 type AzureSubscriptionDetails struct {
@@ -417,6 +578,12 @@ func (AzureSQLManagedInstanceServer) typeFilter() ObjectType {
 type Filter struct {
 	Field string   `json:"field"`
 	Texts []string `json:"texts"`
+}
+
+// AncestorFilter returns a filter which limits an inventory query to objects
+// below the hierarchy object with the specified ID, at any depth.
+func AncestorFilter(id uuid.UUID) Filter {
+	return Filter{Field: "ANCESTOR_ID", Texts: []string{id.String()}}
 }
 
 // ObjectsByName returns hierarchy objects from the inventory root matching
