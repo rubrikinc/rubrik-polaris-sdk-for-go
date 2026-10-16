@@ -50,7 +50,7 @@ type CreateAzureKeyManagerParams struct {
 	Name string `json:"instanceName"`
 
 	// Region is the Azure region of the key vault.
-	Region azure.Region `json:"region"`
+	Region azure.RegionEnum `json:"region"`
 
 	// VaultName is the name of the key vault, not its URL. RSC derives the URL
 	// from the name and the cloud account's Azure environment.

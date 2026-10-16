@@ -58,7 +58,7 @@ func TestCreateKeyManagerInvalidRegion(t *testing.T) {
 		_, err := WrapGQL(graphql.NewTestClient(srv)).CreateAzureKeyManager(t.Context(), kms.CreateAzureKeyManagerParams{
 			CloudAccountID: "b78f366d-d79e-48d0-9a7a-a98ef63755bf",
 			Name:           "azure-key-manager",
-			Region:         region,
+			Region:         azure.RegionEnum{Region: region},
 			VaultName:      "example-vault",
 		})
 		if err == nil {
