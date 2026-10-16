@@ -46,6 +46,9 @@ var privateContainerRegistryQuery = `query SdkGolangPrivateContainerRegistry($ex
                 ... on PcrAwsImagePullDetails {
                     awsNativeId
                 }
+                ... on PcrGcpImagePullDetails {
+                    serviceAccountEmail
+                }
             }
         }
     }
@@ -57,13 +60,15 @@ var setPrivateContainerRegistryDetailsQuery = `mutation SdkGolangSetPrivateConta
     $exocomputeAccountId:      UUID!,
     $registryUrl:              String!,
     $pcrAwsImagePullDetails:   PcrAwsImagePullDetailsInput,
-    $pcrAzureImagePullDetails: PcrAzureImagePullDetailsInput
+    $pcrAzureImagePullDetails: PcrAzureImagePullDetailsInput,
+    $pcrGcpImagePullDetails:   PcrGcpImagePullDetailsInput
 ) {
     result: setPrivateContainerRegistry(input: {
         cloudType:                $cloudType,
         exocomputeAccountId:      $exocomputeAccountId,
         registryUrl:              $registryUrl,
         pcrAwsImagePullDetails:   $pcrAwsImagePullDetails,
-        pcrAzureImagePullDetails: $pcrAzureImagePullDetails
+        pcrAzureImagePullDetails: $pcrAzureImagePullDetails,
+        pcrGcpImagePullDetails:   $pcrGcpImagePullDetails
     })
 }`
