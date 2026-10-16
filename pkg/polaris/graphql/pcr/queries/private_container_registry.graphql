@@ -12,6 +12,9 @@ query RubrikPolarisSDKRequest($exocomputeAccountId: UUID!) {
                 ... on PcrAwsImagePullDetails {
                     awsNativeId
                 }
+                ... on PcrGcpImagePullDetails {
+                    serviceAccountEmail
+                }
             }
         }
     }

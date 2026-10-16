@@ -39,6 +39,7 @@ const (
 	FeatureFlagAzurePostgresFlexibleServer     FeatureFlagName = "REL_ENABLE_AZURE_POSTGRES_FLEXIBLE_SERVER"
 	FeatureFlagAzureSQLDBCopyBackup            FeatureFlagName = "CNP_AZURE_SQL_DB_COPY_BACKUP"
 	FeatureFlagAzureSQLSLARevamp               FeatureFlagName = "CNP_AZURE_SQL_SLA_REVAMP"
+	FeatureFlagGCPPrivateContainerRegistry     FeatureFlagName = "REL_ENABLE_GCP_PRIVATE_CONTAINER_REGISTRY"
 	FeatureFlagMultipleKeyValuePairsInTagRules FeatureFlagName = "CNP_MULTIPLE_KEY_VALUE_PAIRS_IN_TAG_RULES_ENABLED"
 )
 
