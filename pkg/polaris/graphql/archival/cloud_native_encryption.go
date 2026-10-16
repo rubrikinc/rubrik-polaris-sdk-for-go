@@ -109,12 +109,32 @@ type ArchivalLocationEncryptionDetails struct {
 
 // ArchivalGroupEncryptionDetails holds the encryption details of a cloud
 // native archival group and its child archival locations with an active key
-// hierarchy.
+// hierarchy. The KMS key is the key protecting the master key of the group, it
+// is nil when the group isn't encrypted with a key from a key manager. Only the
+// key matching the type of the KMS key is set.
 type ArchivalGroupEncryptionDetails struct {
-	ID          uuid.UUID                           `json:"archivalGroupId"`
-	Name        string                              `json:"name"`
-	RekeyStatus RekeyStatus                         `json:"rekeyStatus"`
-	Locations   []ArchivalLocationEncryptionDetails `json:"archivalLocations"`
+	ID             uuid.UUID            `json:"archivalGroupId"`
+	Name           string               `json:"name"`
+	RekeyStatus    RekeyStatus          `json:"rekeyStatus"`
+	EncryptionType TargetEncryptionType `json:"encryptionType"`
+	KMSKey         *struct {
+		KeyManagerID string   `json:"keyVaultId"`
+		Type         kms.Type `json:"kmsType"`
+		Key          *struct {
+			AzureKey *struct {
+				KeyName    string `json:"keyName"`
+				KeyVersion string `json:"keyVersion"`
+			} `json:"akvKey"`
+			AWSKMSKey *struct {
+				KeyID string `json:"keyId"`
+			} `json:"awsKmsKey"`
+			GCPKMSKey *struct {
+				KeyName    string `json:"keyName"`
+				KeyVersion string `json:"keyVersion"`
+			} `json:"gcpKmsKey"`
+		} `json:"key"`
+	} `json:"kmsKey"`
+	Locations []ArchivalLocationEncryptionDetails `json:"archivalLocations"`
 }
 
 // ListArchivalGroupEncryptionDetails returns the encryption details of the

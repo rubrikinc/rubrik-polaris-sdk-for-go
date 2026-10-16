@@ -159,6 +159,24 @@ var cnpArchivalGroupsEncryptionDetailsQuery = `query SdkGolangCnpArchivalGroupsE
             archivalGroupId
             name
             rekeyStatus
+            encryptionType
+            kmsKey {
+                keyVaultId
+                kmsType
+                key {
+                    akvKey {
+                        keyName
+                        keyVersion
+                    }
+                    awsKmsKey {
+                        keyId
+                    }
+                    gcpKmsKey {
+                        keyName
+                        keyVersion
+                    }
+                }
+            }
             archivalLocations {
                 archivalLocationId
                 region
