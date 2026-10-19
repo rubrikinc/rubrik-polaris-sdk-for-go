@@ -291,6 +291,11 @@ func (a API) AddProject(ctx context.Context, project ProjectFunc, features []cor
 // RemoveProject removes the features from the project with the specified RSC
 // cloud account ID. If deleteSnapshots is true and a cloud native protection
 // feature is being removed, the snapshots are deleted, otherwise they are kept.
+//
+// The Cloud Discovery feature is the parent of the protection features. It is
+// always removed last, after the other features have been removed, and it never
+// deletes snapshots. Removing Cloud Discovery while any other protection
+// feature remains on the project is an error.
 func (a API) RemoveProject(ctx context.Context, cloudAccountID uuid.UUID, features []core.Feature, deleteSnapshots bool) error {
 	a.log.Print(log.Trace)
 
@@ -303,6 +308,51 @@ func (a API) RemoveProject(ctx context.Context, cloudAccountID uuid.UUID, featur
 			return fmt.Errorf("cannot remove feature not added: %s", feature)
 		}
 	}
+
+	var cloudDiscovery, others []core.Feature
+	for _, feature := range features {
+		if feature.Equal(core.FeatureCloudDiscovery) {
+			cloudDiscovery = append(cloudDiscovery, feature)
+		} else {
+			others = append(others, feature)
+		}
+	}
+
+	// RSC rejects removing Cloud Discovery while a protection feature is
+	// connected, but only after accepting the request, in the task chain that
+	// disables the feature. Check here to fail before anything is removed.
+	if len(cloudDiscovery) > 0 {
+		for _, f := range account.Features {
+			if f.Equal(core.FeatureCloudDiscovery) || !f.IsProtectionFeature() {
+				continue
+			}
+			if f.Status != core.StatusConnected && f.Status != core.StatusMissingPermissions {
+				continue
+			}
+			if _, ok := core.LookupFeature(others, f.Feature); !ok {
+				return fmt.Errorf("cloud discovery must be removed after all other protection features, %s is enabled", f.Feature)
+			}
+		}
+	}
+
+	if len(others) > 0 {
+		if err := a.removeFeatures(ctx, cloudAccountID, others, deleteSnapshots); err != nil {
+			return err
+		}
+	}
+	if len(cloudDiscovery) > 0 {
+		if err := a.removeFeatures(ctx, cloudAccountID, cloudDiscovery, false); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// removeFeatures removes the features from the project with the specified RSC
+// cloud account ID and waits for the features to be removed.
+func (a API) removeFeatures(ctx context.Context, cloudAccountID uuid.UUID, features []core.Feature, deleteSnapshots bool) error {
+	a.log.Print(log.Trace)
 
 	jobs, err := gcp.Wrap(a.client).CloudAccountDeleteProjectV2(ctx, cloudAccountID, features, deleteSnapshots)
 	if err != nil {
