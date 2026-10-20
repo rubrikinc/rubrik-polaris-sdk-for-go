@@ -97,6 +97,10 @@ func (RCVAzureTargetMapping) ListQuery(filters []ListTargetMappingFilter) (strin
 // redundancy, RSA key and Key Vault key are optional. When the RSA key is left
 // out, RCV creates and manages the encryption key.
 //
+// The RSA key must be an unencrypted PEM-encoded RSA private key, in either
+// PKCS#1 or PKCS#8 form, with a size of 2048, 3072 or 4096 bits. DER and base64
+// encoded keys are rejected by RSC.
+//
 // Note that the RSC API requires both the Azure region and the RCV region. The
 // high level API derives both from a single region to keep them from drifting
 // apart. RCV Azure storage settings are also referred to as RCV Azure target
