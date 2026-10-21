@@ -26,6 +26,8 @@ import (
 	"slices"
 )
 
+// Note, the region constants is not guaranteed to keep its numbers between
+// versions. They are kept sorted alphabetically.
 const (
 	RegionUnknown Region = iota
 	RegionAfricaSouth1
@@ -448,12 +450,13 @@ var regionInfoMap = map[Region]struct {
 	rcsRegionEnum          string
 	kmsLocationEnum        string
 }{
+	// regionEnum has been deprecated in the GraphQL API but is still required
+	// for some endpoints, like creating a source region archival location.
 	RegionUnknown: {
-		name:                   "",
-		displayName:            "<Unknown>",
-		regionEnum:             "UNKNOWN_GCP_REGION",
-		cloudAccountRegionEnum: "UNKNOWN_GCP_REGION",
-		rcsRegionEnum:          "UNKNOWN_GCP_REGION",
+		name:          "",
+		displayName:   "<Unknown>",
+		regionEnum:    "UNKNOWN_GCP_REGION",
+		rcsRegionEnum: "UNKNOWN_GCP_REGION",
 	},
 	RegionAfricaSouth1: {
 		name:                   "africa-south1",

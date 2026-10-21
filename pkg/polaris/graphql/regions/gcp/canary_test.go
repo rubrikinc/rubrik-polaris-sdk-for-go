@@ -81,8 +81,10 @@ func TestRegionEnumCanary(t *testing.T) {
 	}
 
 	sdkValues := make(map[string]struct{}, len(regionInfoMap))
-	for _, info := range regionInfoMap {
-		if info.regionEnum != "" {
+	for region, info := range regionInfoMap {
+		// The unknown region sentinel value has been deprecated in the GraphQL
+		// API and is not returned by the introspection query.
+		if region != RegionUnknown && info.regionEnum != "" {
 			sdkValues[info.regionEnum] = struct{}{}
 		}
 	}

@@ -22,6 +22,7 @@ package kms
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -43,10 +44,15 @@ func (a API) KeyManagers(ctx context.Context, filter kms.ListKeyManagerFilter) (
 	return keyManagers, nil
 }
 
-// KeyManagerByID returns the key manager with the specified ID. If no such key
-// manager exists, graphql.ErrNotFound is returned.
-func (a API) KeyManagerByID(ctx context.Context, keyManagerID uuid.UUID) (kms.KeyManager, error) {
+// KeyManagerByID returns the key manager with the specified ID, matches against
+// both the natural ID and the key vault ID. If no such key manager exists,
+// graphql.ErrNotFound is returned.
+func (a API) KeyManagerByID(ctx context.Context, keyManagerID string) (kms.KeyManager, error) {
 	a.log.Print(log.Trace)
+
+	if keyManagerID == "" {
+		return kms.KeyManager{}, errors.New("key manager ID cannot be empty")
+	}
 
 	// RSC has no query for a single key manager, so the full list is filtered
 	// client side.
@@ -56,7 +62,10 @@ func (a API) KeyManagerByID(ctx context.Context, keyManagerID uuid.UUID) (kms.Ke
 	}
 
 	for _, keyManager := range keyManagers {
-		if keyManager.KeyVaultInfo.ID == keyManagerID {
+		if keyManager.NaturalID == keyManagerID {
+			return keyManager, nil
+		}
+		if id := keyManager.KeyVaultInfo.ID; id != uuid.Nil && id.String() == keyManagerID {
 			return keyManager, nil
 		}
 	}

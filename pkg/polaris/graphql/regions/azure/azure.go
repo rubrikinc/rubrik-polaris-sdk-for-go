@@ -26,6 +26,8 @@ import (
 	"slices"
 )
 
+// Note, the region constants is not guaranteed to keep its numbers between
+// versions. They are kept sorted alphabetically.
 const (
 	RegionUnknown Region = iota
 	RegionSource
@@ -46,6 +48,7 @@ const (
 	RegionChinaEast2
 	RegionChinaNorth
 	RegionChinaNorth2
+	RegionDenmarkEast
 	RegionEastAsia
 	RegionEastUS
 	RegionEastUS2
@@ -55,6 +58,7 @@ const (
 	RegionGermanyNorth
 	RegionGermanyNortheast
 	RegionGermanyWestCentral
+	RegionIndiaSouthCentral
 	RegionIndonesiaCentral
 	RegionIsraelCentral
 	RegionItalyNorth
@@ -761,6 +765,16 @@ var regionInfoMap = map[Region]struct {
 		nativeRegionEnum:         "CHINA_NORTH2",
 		regionForReplicationEnum: "CHINA_NORTH2",
 	},
+	RegionDenmarkEast: {
+		name:                   "denmarkeast",
+		displayName:            "Denmark East",
+		regionalDisplayName:    "(Europe) Denmark East",
+		regionEnum:             "DENMARK_EAST",
+		cloudAccountRegionEnum: "DENMARKEAST",
+		commonRegionEnum:       "DENMARKEAST",
+		nativeRegionEnum:       "DENMARK_EAST",
+		rcsRegionEnum:          "DENMARK_EAST",
+	},
 	RegionEastAsia: {
 		name:                     "eastasia",
 		displayName:              "East Asia",
@@ -849,6 +863,16 @@ var regionInfoMap = map[Region]struct {
 		nativeRegionEnum:         "GERMANY_WEST_CENTRAL",
 		regionForReplicationEnum: "GERMANY_WEST_CENTRAL",
 		rcsRegionEnum:            "GERMANY_WEST_CENTRAL",
+	},
+	RegionIndiaSouthCentral: {
+		name:                   "indiasouthcentral",
+		displayName:            "India South Central",
+		regionalDisplayName:    "(Asia Pacific) India South Central",
+		regionEnum:             "INDIA_SOUTH_CENTRAL",
+		cloudAccountRegionEnum: "INDIASOUTHCENTRAL",
+		commonRegionEnum:       "INDIASOUTHCENTRAL",
+		nativeRegionEnum:       "INDIA_SOUTH_CENTRAL",
+		rcsRegionEnum:          "INDIA_SOUTH_CENTRAL",
 	},
 	RegionIndonesiaCentral: {
 		name:                     "indonesiacentral",

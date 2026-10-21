@@ -27,6 +27,8 @@ import (
 	"sort"
 )
 
+// Note, the region constants is not guaranteed to keep its numbers between
+// versions. They are kept sorted alphabetically.
 const (
 	RegionUnknown Region = iota
 	RegionSource
