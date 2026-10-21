@@ -62,8 +62,17 @@ var addCloudNativeSqlServerBackupCredentialsQuery = `mutation SdkGolangAddCloudN
 }`
 
 // allAzureCloudAccountTenants GraphQL query
-var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenants($feature: CloudAccountFeature!, $includeSubscriptionDetails: Boolean!) {
-    result: allAzureCloudAccountTenants(feature: $feature, includeSubscriptionDetails: $includeSubscriptionDetails) {
+var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenants(
+    $feature:                    CloudAccountFeature!,
+    $features:                   [CloudAccountFeature!],
+    $includeSubscriptionDetails: Boolean!,
+    $includeResourceGroup:       Boolean = true
+) {
+    result: allAzureCloudAccountTenants(
+        feature:                    $feature,
+        features:                   $features,
+        includeSubscriptionDetails: $includeSubscriptionDetails
+    ) {
         cloudType
         azureCloudAccountTenantRubrikId
         clientId
@@ -80,7 +89,7 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
                 permissionsGroups
                 status
                 regions
-                resourceGroup {
+                resourceGroup @include(if: $includeResourceGroup) {
                     name
                     nativeId
                     region
