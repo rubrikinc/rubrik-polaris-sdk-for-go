@@ -242,7 +242,8 @@ func FormatFeature(feature Feature) string {
 //
 // Deprecated: use the Parse<AccountType>Feature function of the cloud account
 // type, e.g. ParseAWSCloudFormationFeature, or Feature{Name: <feature>} if no
-// validation is needed.
+// validation is needed. Note, the replacements doesn't do feature name
+// normalization.
 func ParseFeature(feature string) (Feature, error) {
 	f := ParseFeatureNoValidation(feature)
 	if _, ok := featureInfoMap[f.Name]; ok {
@@ -257,7 +258,8 @@ func ParseFeature(feature string) (Feature, error) {
 //
 // Deprecated: use the Parse<AccountType>Feature function of the cloud account
 // type, e.g. ParseAWSCloudFormationFeature, or Feature{Name: <feature>} if no
-// validation is needed.
+// validation is needed. Note, the replacements doesn't do feature name
+// normalization.
 func ParseFeatureNoValidation(feature string) Feature {
 	return Feature{Name: strings.ToUpper(strings.ReplaceAll(feature, "-", "_"))}
 }

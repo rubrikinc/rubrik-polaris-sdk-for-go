@@ -64,6 +64,7 @@ const (
 	GCPBigQueryProtection                       = "GCP_BIGQUERY_PROTECTION"
 	GCPBigQueryReservation                      = "GCP_BIGQUERY_RESERVATION"
 	GCPSharedVPCHost                            = "GCP_SHARED_VPC_HOST"
+	GitHubActionsProtection                     = "GITHUB_ACTIONS_PROTECTION"
 	GitHubDeveloperCollaborationProtection      = "GITHUB_DEVELOPER_COLLABORATION_PROTECTION"
 	GitHubPackagesProtection                    = "GITHUB_PACKAGES_PROTECTION"
 	GitHubRepositoryProtection                  = "GITHUB_REPOSITORY_PROTECTION"
@@ -82,9 +83,8 @@ const (
 	ServerAndApps                               = "SERVERS_AND_APPS"
 )
 
-// AWSCloudFormationFeatures returns the features, with permission groups, which
-// can be onboarded for an AWS account using the CloudFormation workflow, sorted
-// by name.
+// AWSCloudFormationFeatures returns the features, with permission groups,
+// supported by AWS accounts using the CloudFormation workflow, sorted by name.
 func AWSCloudFormationFeatures() []Feature {
 	return featuresFor(awsAccountCFT)
 }
@@ -95,19 +95,22 @@ func AWSCloudFormationFeatureNames() []string {
 	return FeatureNames(AWSCloudFormationFeatures())
 }
 
-// ParseAWSCloudFormationFeature returns the feature, with permission groups,
-// matching the specified feature name. Returns an error if the feature can't
-// be onboarded for an AWS account using the CloudFormation workflow.
-func ParseAWSCloudFormationFeature(featureName string) (Feature, error) {
-	if feature, ok := LookupFeatureName(AWSCloudFormationFeatures(), featureName); ok {
-		return feature, nil
-	}
-
-	return FeatureInvalid, fmt.Errorf("invalid AWS CloudFormation feature: %s", featureName)
+// CheckAWSCloudFormationFeature returns nil if the feature and all of its
+// permission groups are supported by AWS accounts using the CloudFormation
+// workflow, otherwise it returns an error.
+func CheckAWSCloudFormationFeature(feature Feature) error {
+	return checkFor(awsAccountCFT, feature)
 }
 
-// AWSIAMRolesFeatures returns the features, with permission groups, which can
-// be onboarded for an AWS account using the IAM roles workflow, sorted by name.
+// ParseAWSCloudFormationFeature returns the feature, with permission groups,
+// matching the specified feature name. Returns an error if the feature is not
+// supported by AWS accounts using the CloudFormation workflow.
+func ParseAWSCloudFormationFeature(featureName string) (Feature, error) {
+	return parseFor(awsAccountCFT, featureName)
+}
+
+// AWSIAMRolesFeatures returns the features, with permission groups, supported
+// by AWS accounts using the IAM roles workflow, sorted by name.
 func AWSIAMRolesFeatures() []Feature {
 	return featuresFor(awsAccountIAM)
 }
@@ -118,19 +121,22 @@ func AWSIAMRolesFeatureNames() []string {
 	return FeatureNames(AWSIAMRolesFeatures())
 }
 
-// ParseAWSIAMRolesFeature returns the feature, with permission groups, matching
-// the specified feature name. Returns an error if the feature can't be
-// onboarded for an AWS account using the IAM roles workflow.
-func ParseAWSIAMRolesFeature(featureName string) (Feature, error) {
-	if feature, ok := LookupFeatureName(AWSIAMRolesFeatures(), featureName); ok {
-		return feature, nil
-	}
-
-	return FeatureInvalid, fmt.Errorf("invalid AWS IAM roles feature: %s", featureName)
+// CheckAWSIAMRolesFeature returns nil if the feature and all of its permission
+// groups are supported by AWS accounts using the IAM roles workflow, otherwise
+// it returns an error.
+func CheckAWSIAMRolesFeature(feature Feature) error {
+	return checkFor(awsAccountIAM, feature)
 }
 
-// AWSManagedFeatures returns the features, with permission groups, which can be
-// onboarded for an RSC-managed (BaaS) AWS account, sorted by name.
+// ParseAWSIAMRolesFeature returns the feature, with permission groups, matching
+// the specified feature name. Returns an error if the feature is not supported
+// by AWS accounts using the IAM roles workflow.
+func ParseAWSIAMRolesFeature(featureName string) (Feature, error) {
+	return parseFor(awsAccountIAM, featureName)
+}
+
+// AWSManagedFeatures returns the features, with permission groups, supported by
+// RSC-managed (BaaS) AWS accounts, sorted by name.
 func AWSManagedFeatures() []Feature {
 	return featuresFor(awsManaged)
 }
@@ -141,19 +147,22 @@ func AWSManagedFeatureNames() []string {
 	return FeatureNames(AWSManagedFeatures())
 }
 
-// ParseAWSManagedFeature returns the feature, with permission groups, matching
-// the specified feature name. Returns an error if the feature can't be
-// onboarded for an RSC-managed (BaaS) AWS account.
-func ParseAWSManagedFeature(featureName string) (Feature, error) {
-	if feature, ok := LookupFeatureName(AWSManagedFeatures(), featureName); ok {
-		return feature, nil
-	}
-
-	return FeatureInvalid, fmt.Errorf("invalid AWS managed feature: %s", featureName)
+// CheckAWSManagedFeature returns nil if the feature and all of its permission
+// groups are supported by RSC-managed (BaaS) AWS accounts, otherwise it returns
+// an error.
+func CheckAWSManagedFeature(feature Feature) error {
+	return checkFor(awsManaged, feature)
 }
 
-// AzureSubscriptionFeatures returns the features, with permission groups, which
-// can be onboarded for an Azure subscription, sorted by name.
+// ParseAWSManagedFeature returns the feature, with permission groups, matching
+// the specified feature name. Returns an error if the feature is not supported
+// by RSC-managed (BaaS) AWS accounts.
+func ParseAWSManagedFeature(featureName string) (Feature, error) {
+	return parseFor(awsManaged, featureName)
+}
+
+// AzureSubscriptionFeatures returns the features, with permission groups,
+// supported by Azure subscriptions, sorted by name.
 func AzureSubscriptionFeatures() []Feature {
 	return featuresFor(azureSubscription)
 }
@@ -164,19 +173,22 @@ func AzureSubscriptionFeatureNames() []string {
 	return FeatureNames(AzureSubscriptionFeatures())
 }
 
-// ParseAzureSubscriptionFeature returns the feature, with permission groups,
-// matching the specified feature name. Returns an error if the feature can't
-// be onboarded for an Azure subscription.
-func ParseAzureSubscriptionFeature(featureName string) (Feature, error) {
-	if feature, ok := LookupFeatureName(AzureSubscriptionFeatures(), featureName); ok {
-		return feature, nil
-	}
+// CheckAzureSubscriptionFeature returns nil if the feature and all of its
+// permission groups are supported by Azure subscriptions, otherwise it returns
+// an error.
+func CheckAzureSubscriptionFeature(feature Feature) error {
+	return checkFor(azureSubscription, feature)
+}
 
-	return FeatureInvalid, fmt.Errorf("invalid Azure subscription feature: %s", featureName)
+// ParseAzureSubscriptionFeature returns the feature, with permission groups,
+// matching the specified feature name. Returns an error if the feature is not
+// supported by Azure subscriptions.
+func ParseAzureSubscriptionFeature(featureName string) (Feature, error) {
+	return parseFor(azureSubscription, featureName)
 }
 
 // AzureDevOpsOrganizationFeatures returns the features, with permission groups,
-// which can be onboarded for an Azure DevOps organization, sorted by name.
+// supported by Azure DevOps organizations, sorted by name.
 func AzureDevOpsOrganizationFeatures() []Feature {
 	return featuresFor(azureDevOpsOrg)
 }
@@ -187,19 +199,22 @@ func AzureDevOpsOrganizationFeatureNames() []string {
 	return FeatureNames(AzureDevOpsOrganizationFeatures())
 }
 
-// ParseAzureDevOpsOrganizationFeature returns the feature, with permission
-// groups, matching the specified feature name. Returns an error if the feature
-// can't be onboarded for an Azure DevOps organization.
-func ParseAzureDevOpsOrganizationFeature(featureName string) (Feature, error) {
-	if feature, ok := LookupFeatureName(AzureDevOpsOrganizationFeatures(), featureName); ok {
-		return feature, nil
-	}
-
-	return FeatureInvalid, fmt.Errorf("invalid Azure DevOps organization feature: %s", featureName)
+// CheckAzureDevOpsOrganizationFeature returns nil if the feature and all of its
+// permission groups are supported by the Azure DevOps organization, otherwise
+// it returns an error.
+func CheckAzureDevOpsOrganizationFeature(feature Feature) error {
+	return checkFor(azureDevOpsOrg, feature)
 }
 
-// GCPProjectFeatures returns the features, with permission groups, which can be
-// onboarded for a GCP project, sorted by name.
+// ParseAzureDevOpsOrganizationFeature returns the feature, with permission
+// groups, matching the specified feature name. Returns an error if the feature
+// is not supported by Azure DevOps organizations.
+func ParseAzureDevOpsOrganizationFeature(featureName string) (Feature, error) {
+	return parseFor(azureDevOpsOrg, featureName)
+}
+
+// GCPProjectFeatures returns the features, with permission groups, supported by
+// GCP projects, sorted by name.
 func GCPProjectFeatures() []Feature {
 	return featuresFor(gcpProject)
 }
@@ -210,19 +225,22 @@ func GCPProjectFeatureNames() []string {
 	return FeatureNames(GCPProjectFeatures())
 }
 
-// ParseGCPProjectFeature returns the feature, with permission groups, matching
-// the specified feature name. Returns an error if the feature can't be
-// onboarded for a GCP project.
-func ParseGCPProjectFeature(featureName string) (Feature, error) {
-	if feature, ok := LookupFeatureName(GCPProjectFeatures(), featureName); ok {
-		return feature, nil
-	}
+// CheckGCPProjectFeature returns nil if the feature and all of its permission
+// groups are supported by GCP projects, otherwise it returns an error
+// describing what is not supported.
+func CheckGCPProjectFeature(feature Feature) error {
+	return checkFor(gcpProject, feature)
+}
 
-	return FeatureInvalid, fmt.Errorf("invalid GCP project feature: %s", featureName)
+// ParseGCPProjectFeature returns the feature, with permission groups, matching
+// the specified feature name. Returns an error if the feature is not supported
+// by GCP projects.
+func ParseGCPProjectFeature(featureName string) (Feature, error) {
+	return parseFor(gcpProject, featureName)
 }
 
 // GitHubOrganizationFeatures returns the features, with permission groups,
-// which can be onboarded for a GitHub organization, sorted by name.
+// supported by GitHub organizations, sorted by name.
 func GitHubOrganizationFeatures() []Feature {
 	return featuresFor(githubOrg)
 }
@@ -233,15 +251,18 @@ func GitHubOrganizationFeatureNames() []string {
 	return FeatureNames(GitHubOrganizationFeatures())
 }
 
-// ParseGitHubOrganizationFeature returns the feature, with permission groups,
-// matching the specified feature name. Returns an error if the feature can't
-// be onboarded for a GitHub organization.
-func ParseGitHubOrganizationFeature(featureName string) (Feature, error) {
-	if feature, ok := LookupFeatureName(GitHubOrganizationFeatures(), featureName); ok {
-		return feature, nil
-	}
+// CheckGitHubOrganizationFeature returns nil if the feature and all of its
+// permission groups are supported by GitHub organizations, otherwise it returns
+// an error describing what is not supported.
+func CheckGitHubOrganizationFeature(feature Feature) error {
+	return checkFor(githubOrg, feature)
+}
 
-	return FeatureInvalid, fmt.Errorf("invalid GitHub organization feature: %s", featureName)
+// ParseGitHubOrganizationFeature returns the feature, with permission groups,
+// matching the specified feature name. Returns an error if the feature is not
+// supported by GitHub organizations.
+func ParseGitHubOrganizationFeature(featureName string) (Feature, error) {
+	return parseFor(githubOrg, featureName)
 }
 
 // AWSAccountAllowlistNames returns the names of the features which are kept
@@ -352,6 +373,27 @@ const (
 	gcpProject
 	githubOrg
 )
+
+func (accountType cloudAccountType) String() string {
+	switch accountType {
+	case awsAccountCFT:
+		return "AWS CloudFormation"
+	case awsAccountIAM:
+		return "AWS IAM roles"
+	case awsManaged:
+		return "AWS managed"
+	case azureSubscription:
+		return "Azure subscription"
+	case azureDevOpsOrg:
+		return "Azure DevOps organization"
+	case gcpProject:
+		return "GCP project"
+	case githubOrg:
+		return "GitHub organization"
+	default:
+		return "<unknown account type>"
+	}
+}
 
 // cloudAccountPermissionGroups maps cloud account types to the permission
 // groups a feature supports for each cloud account type.
@@ -779,6 +821,14 @@ var featureInfoMap = map[string]struct {
 		},
 		public: true,
 	},
+	GitHubActionsProtection: {
+		permissionGroups: cloudAccountPermissionGroups{
+			githubOrg: {
+				PermissionGroupBasic,
+			},
+		},
+		protection: true,
+	},
 	GitHubDeveloperCollaborationProtection: {
 		permissionGroups: cloudAccountPermissionGroups{
 			githubOrg: {
@@ -964,6 +1014,24 @@ func allowlistFor(accountTypes ...cloudAccountType) []string {
 	return names
 }
 
+// checkFor returns nil if the feature and all of its permission groups are
+// supported by the specified cloud account type, otherwise it returns an error
+// describing what is not supported.
+func checkFor(accountType cloudAccountType, feature Feature) error {
+	f, err := parseFor(accountType, feature.Name)
+	if err != nil {
+		return err
+	}
+
+	for _, group := range feature.PermissionGroups {
+		if !f.HasPermissionGroup(group) {
+			return fmt.Errorf("feature %q does not support permission group %q", feature.Name, group)
+		}
+	}
+
+	return nil
+}
+
 // featuresFor returns the public features, with permission groups, supported by
 // the specified cloud account type, sorted by name.
 func featuresFor(accountType cloudAccountType) []Feature {
@@ -984,4 +1052,15 @@ func featuresFor(accountType cloudAccountType) []Feature {
 	})
 
 	return features
+}
+
+// parseFor returns the feature, with permission groups, matching the specified
+// feature name. Returns an error if the feature can't be onboarded for the
+// specified account type.
+func parseFor(accountType cloudAccountType, featureName string) (Feature, error) {
+	if feature, ok := LookupFeature(featuresFor(accountType), Feature{Name: featureName}); ok {
+		return feature, nil
+	}
+
+	return FeatureInvalid, fmt.Errorf("feature %q is not supported by %s", featureName, accountType)
 }

@@ -79,52 +79,97 @@ const (
 	PermissionGroupSurgicalRecovery              PermissionGroup = "SURGICAL_RECOVERY"
 )
 
+// AWSCloudFormationPermissionGroups returns the permission groups of the
+// features which can be onboarded for an AWS account using the CloudFormation
+// workflow, sorted by name.
+func AWSCloudFormationPermissionGroups() []PermissionGroup {
+	return permissionGroupsFor(AWSCloudFormationFeatures())
+}
+
 // AWSCloudFormationPermissionGroupNames returns the names of the permission
 // groups of the features which can be onboarded for an AWS account using the
 // CloudFormation workflow, sorted by name.
 func AWSCloudFormationPermissionGroupNames() []string {
-	return PermissionGroupNames(permissionGroupsFor(AWSCloudFormationFeatures()))
+	return PermissionGroupNames(AWSCloudFormationPermissionGroups())
 }
 
-// AWSIAMRolesPermissionGroupNames returns the names of the permission groups of
-// the features which can be onboarded for an AWS account using the IAM roles
+// AWSIAMRolesPermissionGroups returns the permission groups of the features
+// which can be onboarded for an AWS account using the IAM roles workflow,
+// sorted by name.
+func AWSIAMRolesPermissionGroups() []PermissionGroup {
+	return permissionGroupsFor(AWSIAMRolesFeatures())
+}
+
+// AWSIAMRolesPermissionGroupNames returns the names of the permission groups
+// of the features which can be onboarded for an AWS account using the IAM roles
 // workflow, sorted by name.
 func AWSIAMRolesPermissionGroupNames() []string {
-	return PermissionGroupNames(permissionGroupsFor(AWSIAMRolesFeatures()))
+	return PermissionGroupNames(AWSIAMRolesPermissionGroups())
+}
+
+// AWSManagedPermissionGroups returns the permission groups of the features
+// which can be onboarded for an RSC-managed (BaaS) AWS account, sorted by name.
+func AWSManagedPermissionGroups() []PermissionGroup {
+	return permissionGroupsFor(AWSManagedFeatures())
 }
 
 // AWSManagedPermissionGroupNames returns the names of the permission groups of
 // the features which can be onboarded for an RSC-managed (BaaS) AWS account,
 // sorted by name.
 func AWSManagedPermissionGroupNames() []string {
-	return PermissionGroupNames(permissionGroupsFor(AWSManagedFeatures()))
+	return PermissionGroupNames(AWSManagedPermissionGroups())
+}
+
+// AzureSubscriptionPermissionGroups returns the permission groups of the
+// features which can be onboarded for an Azure subscription, sorted by name.
+func AzureSubscriptionPermissionGroups() []PermissionGroup {
+	return permissionGroupsFor(AzureSubscriptionFeatures())
 }
 
 // AzureSubscriptionPermissionGroupNames returns the names of the permission
 // groups of the features which can be onboarded for an Azure subscription,
 // sorted by name.
 func AzureSubscriptionPermissionGroupNames() []string {
-	return PermissionGroupNames(permissionGroupsFor(AzureSubscriptionFeatures()))
+	return PermissionGroupNames(AzureSubscriptionPermissionGroups())
+}
+
+// AzureDevOpsOrganizationPermissionGroups returns the permission groups of the
+// features which can be onboarded for an Azure DevOps organization, sorted by
+// name.
+func AzureDevOpsOrganizationPermissionGroups() []PermissionGroup {
+	return permissionGroupsFor(AzureDevOpsOrganizationFeatures())
 }
 
 // AzureDevOpsOrganizationPermissionGroupNames returns the names of the
 // permission groups of the features which can be onboarded for an Azure DevOps
 // organization, sorted by name.
 func AzureDevOpsOrganizationPermissionGroupNames() []string {
-	return PermissionGroupNames(permissionGroupsFor(AzureDevOpsOrganizationFeatures()))
+	return PermissionGroupNames(AzureDevOpsOrganizationPermissionGroups())
+}
+
+// GCPProjectPermissionGroups returns the permission groups of the features which
+// can be onboarded for a GCP project, sorted by name.
+func GCPProjectPermissionGroups() []PermissionGroup {
+	return permissionGroupsFor(GCPProjectFeatures())
 }
 
 // GCPProjectPermissionGroupNames returns the names of the permission groups of
 // the features which can be onboarded for a GCP project, sorted by name.
 func GCPProjectPermissionGroupNames() []string {
-	return PermissionGroupNames(permissionGroupsFor(GCPProjectFeatures()))
+	return PermissionGroupNames(GCPProjectPermissionGroups())
+}
+
+// GitHubOrganizationPermissionGroups returns the permission groups of the
+// features which can be onboarded for a GitHub organization, sorted by name.
+func GitHubOrganizationPermissionGroups() []PermissionGroup {
+	return permissionGroupsFor(GitHubOrganizationFeatures())
 }
 
 // GitHubOrganizationPermissionGroupNames returns the names of the permission
 // groups of the features which can be onboarded for a GitHub organization,
 // sorted by name.
 func GitHubOrganizationPermissionGroupNames() []string {
-	return PermissionGroupNames(permissionGroupsFor(GitHubOrganizationFeatures()))
+	return PermissionGroupNames(GitHubOrganizationPermissionGroups())
 }
 
 // PermissionGroupNames returns the names of the permission groups.
