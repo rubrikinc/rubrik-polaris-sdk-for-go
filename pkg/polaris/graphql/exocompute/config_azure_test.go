@@ -52,6 +52,12 @@ func TestValidateAzureConfiguration(t *testing.T) {
 		PodCidrRangeTooSmall      bool
 		PodSubnetSizeTooSmall     bool
 		SubnetDelegated           bool
+
+		PostgresNetworkingIncomplete  bool
+		PostgresPrivateDnsZoneInvalid bool
+		PostgresSubnetNotDelegated    bool
+		PostgresSubnetTooSmall        bool
+		SQLPrivateDnsZoneInvalid      bool
 	}{{
 		name: "NoError",
 	}, {
@@ -74,6 +80,23 @@ func TestValidateAzureConfiguration(t *testing.T) {
 		PodCidrRangeTooSmall:      true,
 		PodSubnetSizeTooSmall:     true,
 		SubnetDelegated:           true,
+	}, {
+		name:                         "PostgresNetworkingIncomplete",
+		expectedError:                "postgres flexible server subnet and private dns zone must be specified together",
+		PostgresNetworkingIncomplete: true,
+	}, {
+		name: "PostgresSubnetAndDnsZoneErrors",
+		expectedError: "multiple configuration errors:  (1) postgres flexible server subnet is not delegated to " +
+			"Microsoft.DBforPostgreSQL/flexibleServers; (2) postgres flexible server subnet is too small: size " +
+			"must be at least /28; (3) postgres flexible server private dns zone is invalid: name must end with " +
+			".postgres.database.azure.com",
+		PostgresPrivateDnsZoneInvalid: true,
+		PostgresSubnetNotDelegated:    true,
+		PostgresSubnetTooSmall:        true,
+	}, {
+		name:                     "SQLPrivateDnsZoneInvalid",
+		expectedError:            "sql private dns zone is invalid: name must be privatelink.database.windows.net",
+		SQLPrivateDnsZoneInvalid: true,
 	}, {
 		name:            "ValidationError",
 		expectedError:   "subnet is delegated",

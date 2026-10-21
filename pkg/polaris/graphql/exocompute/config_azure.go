@@ -137,6 +137,18 @@ type ValidateAzureConfigurationResult struct {
 		ExocomputePrivateDnsZoneInvalid                        bool   `json:"isAksCustomPrivateDnsZoneInvalid"`
 		ExocomputePrivateDnsZoneNotLinkedToVnet                bool   `json:"isAksCustomPrivateDnsZoneNotLinkedToVnet"`
 		ExocomputePrivateDnsZonePermissionsGroupNotEnabled     bool   `json:"isAksCustomPrivateDnsZonePermissionsGroupNotEnabled"`
+		PostgresNetworkingIncomplete                           bool   `json:"isAzurePostgresFlexServerNetworkingIncomplete"`
+		PostgresPrivateDnsZoneDoesNotExist                     bool   `json:"isAzurePostgresFlexServerPrivateDnsZoneDoesNotExist"`
+		PostgresPrivateDnsZoneInDifferentSubscription          bool   `json:"isAzurePostgresFlexServerPrivateDnsZoneInDifferentSubscription"`
+		PostgresPrivateDnsZoneInvalid                          bool   `json:"isAzurePostgresFlexServerPrivateDnsZoneInvalid"`
+		PostgresPrivateDnsZoneNotLinkedToVnet                  bool   `json:"isAzurePostgresFlexServerPrivateDnsZoneNotLinkedToVnet"`
+		PostgresSubnetNotDelegated                             bool   `json:"isAzurePostgresFlexServerSubnetNotDelegatedToPostgres"`
+		PostgresSubnetNotInExocomputeVnet                      bool   `json:"isAzurePostgresFlexServerSubnetNotInExocomputeVnet"`
+		PostgresSubnetTooSmall                                 bool   `json:"isAzurePostgresFlexServerSubnetTooSmall"`
+		SQLPrivateDnsZoneDoesNotExist                          bool   `json:"isAzureSqlPrivateDnsZoneDoesNotExist"`
+		SQLPrivateDnsZoneInDifferentSubscription               bool   `json:"isAzureSqlPrivateDnsZoneInDifferentSubscription"`
+		SQLPrivateDnsZoneInvalid                               bool   `json:"isAzureSqlPrivateDnsZoneInvalid"`
+		SQLPrivateDnsZoneNotLinkedToVnet                       bool   `json:"isAzureSqlPrivateDnsZoneNotLinkedToVnet"`
 		ClusterSubnetSizeTooSmall                              bool   `json:"isClusterSubnetSizeTooSmall"`
 		PodAndClusterSubnetSame                                bool   `json:"isPodAndClusterSubnetSame"`
 		PodAndClusterVnetDifferent                             bool   `json:"isPodAndClusterVnetDifferent" `
@@ -178,6 +190,42 @@ func (r ValidateAzureConfigurationResult) Validate() error {
 	}
 	if r.ValidationInfo[0].ExocomputePrivateDnsZonePermissionsGroupNotEnabled {
 		strs = append(strs, "exocompute private dns zone permissions group is not enabled")
+	}
+	if r.ValidationInfo[0].PostgresNetworkingIncomplete {
+		strs = append(strs, "postgres flexible server subnet and private dns zone must be specified together")
+	}
+	if r.ValidationInfo[0].PostgresSubnetNotInExocomputeVnet {
+		strs = append(strs, "postgres flexible server subnet is not in the exocompute vnet")
+	}
+	if r.ValidationInfo[0].PostgresSubnetNotDelegated {
+		strs = append(strs, "postgres flexible server subnet is not delegated to Microsoft.DBforPostgreSQL/flexibleServers")
+	}
+	if r.ValidationInfo[0].PostgresSubnetTooSmall {
+		strs = append(strs, "postgres flexible server subnet is too small: size must be at least /28")
+	}
+	if r.ValidationInfo[0].PostgresPrivateDnsZoneDoesNotExist {
+		strs = append(strs, "postgres flexible server private dns zone does not exist")
+	}
+	if r.ValidationInfo[0].PostgresPrivateDnsZoneInDifferentSubscription {
+		strs = append(strs, "postgres flexible server private dns zone is in a different subscription than the exocompute vnet")
+	}
+	if r.ValidationInfo[0].PostgresPrivateDnsZoneInvalid {
+		strs = append(strs, "postgres flexible server private dns zone is invalid: name must end with .postgres.database.azure.com")
+	}
+	if r.ValidationInfo[0].PostgresPrivateDnsZoneNotLinkedToVnet {
+		strs = append(strs, "postgres flexible server private dns zone is not linked to the exocompute vnet")
+	}
+	if r.ValidationInfo[0].SQLPrivateDnsZoneDoesNotExist {
+		strs = append(strs, "sql private dns zone does not exist")
+	}
+	if r.ValidationInfo[0].SQLPrivateDnsZoneInDifferentSubscription {
+		strs = append(strs, "sql private dns zone is in a different subscription than the exocompute vnet")
+	}
+	if r.ValidationInfo[0].SQLPrivateDnsZoneInvalid {
+		strs = append(strs, "sql private dns zone is invalid: name must be privatelink.database.windows.net")
+	}
+	if r.ValidationInfo[0].SQLPrivateDnsZoneNotLinkedToVnet {
+		strs = append(strs, "sql private dns zone is not linked to the exocompute vnet")
 	}
 	if r.ValidationInfo[0].SnapshotPrivateDnsZoneDoesNotExist {
 		strs = append(strs, "snapshot access private dns zone does not exist")
@@ -300,10 +348,15 @@ type AzureOptionalConfig struct {
 	ClusterAccess              AzureClusterAccess    `json:"aksClusterAccessType"`
 	ClusterTier                AzureClusterTier      `json:"aksClusterTier"`
 	DiskEncryptionAtHost       bool                  `json:"diskEncryptionAtHost,omitempty"`
+	DiskEncryptionSetID        string                `json:"diskEncryptionSetId,omitempty"`
 	ExocomputePrivateDnsZoneID string                `json:"aksCustomPrivateDnsZoneId,omitempty"`
+	HealthCheckVMNamePrefix    string                `json:"healthCheckVmNamePrefix,omitempty"`
 	NodeCount                  AzureClusterNodeCount `json:"aksNodeCountBucket"`
 	NodeRGPrefix               string                `json:"aksNodeRgPrefix,omitempty"`
+	PostgresPrivateDnsZoneID   string                `json:"azurePostgresFlexServerPrivateDnsZoneId,omitempty"`
+	PostgresSubnetID           string                `json:"azurePostgresFlexServerSubnetNativeId,omitempty"`
 	SnapshotPrivateDnsZoneId   string                `json:"privateDnsZoneId,omitempty"`
+	SQLPrivateDnsZoneID        string                `json:"azureSqlPrivateDnsZoneId,omitempty"`
 	UserDefinedRouting         bool                  `json:"enableUserDefinedRouting,omitempty"`
 	WhitelistRubrikIPs         bool                  `json:"shouldWhitelistRubrikIps,omitempty"`
 }
