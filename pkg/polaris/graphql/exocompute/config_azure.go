@@ -164,6 +164,9 @@ type ValidateAzureConfigurationResult struct {
 	} `json:"validationInfo"`
 }
 
+// Validate returns an error describing the validation failures which block the
+// configuration from being created. Validation results which RSC only reports as
+// warnings are not included, see Warnings.
 func (r ValidateAzureConfigurationResult) Validate() error {
 	if len(r.ValidationInfo) != 1 {
 		return errors.New("expected a single validation result")
@@ -178,9 +181,6 @@ func (r ValidateAzureConfigurationResult) Validate() error {
 	}
 	if r.ValidationInfo[0].ExocomputePrivateDnsZoneDoesNotExist {
 		strs = append(strs, "exocompute private dns zone does not exist")
-	}
-	if r.ValidationInfo[0].ExocomputePrivateDnsZoneInDifferentSubscription {
-		strs = append(strs, "exocompute private dns zone is in a different subscription than the exocompute vnet")
 	}
 	if r.ValidationInfo[0].ExocomputePrivateDnsZoneInvalid {
 		strs = append(strs, "exocompute private dns zone is invalid: name must be [subzone.]privatelink.<region>.azmk8s.io")
@@ -206,9 +206,6 @@ func (r ValidateAzureConfigurationResult) Validate() error {
 	if r.ValidationInfo[0].PostgresPrivateDnsZoneDoesNotExist {
 		strs = append(strs, "postgres flexible server private dns zone does not exist")
 	}
-	if r.ValidationInfo[0].PostgresPrivateDnsZoneInDifferentSubscription {
-		strs = append(strs, "postgres flexible server private dns zone is in a different subscription than the exocompute vnet")
-	}
 	if r.ValidationInfo[0].PostgresPrivateDnsZoneInvalid {
 		strs = append(strs, "postgres flexible server private dns zone is invalid: name must end with .postgres.database.azure.com")
 	}
@@ -218,9 +215,6 @@ func (r ValidateAzureConfigurationResult) Validate() error {
 	if r.ValidationInfo[0].SQLPrivateDnsZoneDoesNotExist {
 		strs = append(strs, "sql private dns zone does not exist")
 	}
-	if r.ValidationInfo[0].SQLPrivateDnsZoneInDifferentSubscription {
-		strs = append(strs, "sql private dns zone is in a different subscription than the exocompute vnet")
-	}
 	if r.ValidationInfo[0].SQLPrivateDnsZoneInvalid {
 		strs = append(strs, "sql private dns zone is invalid: name must be privatelink.database.windows.net")
 	}
@@ -229,9 +223,6 @@ func (r ValidateAzureConfigurationResult) Validate() error {
 	}
 	if r.ValidationInfo[0].SnapshotPrivateDnsZoneDoesNotExist {
 		strs = append(strs, "snapshot access private dns zone does not exist")
-	}
-	if r.ValidationInfo[0].SnapshotPrivateDnsZoneInDifferentSubscription {
-		strs = append(strs, "snapshot access private dns zone is in a different subscription than the exocompute vnet")
 	}
 	if r.ValidationInfo[0].SnapshotPrivateDnsZoneInvalid {
 		strs = append(strs, "snapshot access private dns zone is invalid: name must be privatelink.blob.core.windows.net")
@@ -244,9 +235,6 @@ func (r ValidateAzureConfigurationResult) Validate() error {
 	}
 	if r.ValidationInfo[0].UnsupportedCustomerManagedExocomputeConfigFieldPresent {
 		strs = append(strs, "unsupported fields for customer managed exocompute")
-	}
-	if r.ValidationInfo[0].BlockedSecurityRules {
-		strs = append(strs, "network security group has blocking security rules")
 	}
 	if r.ValidationInfo[0].ClusterSubnetSizeTooSmall {
 		strs = append(strs, "cluster subnet size is too small")
@@ -280,6 +268,37 @@ func (r ValidateAzureConfigurationResult) Validate() error {
 
 		return fmt.Errorf("multiple configuration errors: %s", str.String()[1:])
 	}
+}
+
+// Warnings returns the validation results which RSC reports as warnings. These
+// do not block the configuration from being created, the RSC UI lets the user
+// continue past them. For the private DNS zone warnings, RSC cannot read zones
+// in other subscriptions, so the caller must ensure the zone is linked to the
+// exocompute VNet and that RSC has the required permissions in the other
+// subscription.
+func (r ValidateAzureConfigurationResult) Warnings() []string {
+	if len(r.ValidationInfo) != 1 {
+		return nil
+	}
+
+	var warnings []string
+	if r.ValidationInfo[0].ExocomputePrivateDnsZoneInDifferentSubscription {
+		warnings = append(warnings, "exocompute private dns zone is in a different subscription than the exocompute vnet")
+	}
+	if r.ValidationInfo[0].PostgresPrivateDnsZoneInDifferentSubscription {
+		warnings = append(warnings, "postgres flexible server private dns zone is in a different subscription than the exocompute vnet")
+	}
+	if r.ValidationInfo[0].SQLPrivateDnsZoneInDifferentSubscription {
+		warnings = append(warnings, "sql private dns zone is in a different subscription than the exocompute vnet")
+	}
+	if r.ValidationInfo[0].SnapshotPrivateDnsZoneInDifferentSubscription {
+		warnings = append(warnings, "snapshot access private dns zone is in a different subscription than the exocompute vnet")
+	}
+	if r.ValidationInfo[0].BlockedSecurityRules {
+		warnings = append(warnings, "network security group has blocking security rules")
+	}
+
+	return warnings
 }
 
 // DeleteAzureConfigurationParams holds the parameters for an Azure exocompute
