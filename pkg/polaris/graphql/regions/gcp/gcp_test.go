@@ -22,193 +22,238 @@ package gcp
 
 import (
 	"encoding/json"
-	"fmt"
-	"slices"
 	"testing"
 )
 
 func TestRegion(t *testing.T) {
-	unsupported := []Region{}
-
 	for region, info := range regionInfoMap {
-		want := region
-		if slices.Contains(unsupported, region) {
-			want = RegionUnknown
-		}
-
 		// Lookup.
-		if r := RegionFromName(info.name); r != want {
-			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		if r := RegionFromName(info.name); r != region {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
 		}
 
 		// Marshal/unmarshal.
-		var r Region
 		buf, err := json.Marshal(region)
 		if err != nil {
 			t.Fatal(err)
 		}
+		var r Region
 		if err := json.Unmarshal(buf, &r); err != nil {
 			t.Fatal(err)
 		}
-		if r != want {
-			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+		if r != region {
+			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
 		}
 	}
 }
 
 func TestRegionEnum(t *testing.T) {
-	unsupported := []Region{}
-
 	for region, info := range regionInfoMap {
-		want := region
-		if slices.Contains(unsupported, region) {
-			want = RegionUnknown
-		}
+		regionSupported := info.regionEnum != ""
 
-		// Lookup.
-		if r := RegionFromRegionEnum(info.regionEnum); r != want {
-			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
-		}
-
-		// Marshal/unmarshal. Regions without a value for the enum fail to
-		// marshal.
-		buf, err := json.Marshal(region.ToRegionEnum())
-		if want != region {
-			if err == nil {
-				t.Errorf("got %s want a marshal error for %q", buf, region)
+		// Lookup. The correct region should be returned or RegionUnknown for
+		// unsupported regions.
+		if r := RegionFromRegionEnum(info.regionEnum); regionSupported {
+			if r != region {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
 			}
 		} else {
+			if r != RegionUnknown {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), RegionUnknown, RegionUnknown.DisplayName())
+			}
+		}
+
+		// Marshal/unmarshal. Unsupported regions should fail to marshal.
+		buf, err := json.Marshal(region.ToRegionEnum())
+		if regionSupported {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			var enum RegionEnum
 			if err := json.Unmarshal(buf, &enum); err != nil {
 				t.Fatal(err)
 			}
-			if r := enum.Region; r != want {
-				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+			if r := enum.Region; r != region {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
+			}
+		} else {
+			if err == nil {
+				t.Errorf("got %s want a marshal error for %q", buf, region)
 			}
 		}
 
-		// ToPtr.
-		if r := region.ToRegionEnumPtr(); (r == nil && want != RegionUnknown) || (r != nil && *r != want.ToRegionEnum()) {
-			got := "<nil>"
-			if r != nil {
-				got = fmt.Sprintf("%q", r.Name())
+		// ToPtr. The correct region should be returned or nil for unsupported
+		// regions. Note, RegionUnknown can be a supported region but should
+		// still return nil.
+		if r := region.ToRegionEnumPtr(); regionSupported && region != RegionUnknown {
+			if r == nil {
+				t.Errorf("got <nil> want %q [%s]", region, region.DisplayName())
+			} else if r.Region != region {
+				t.Fatalf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
 			}
-			t.Errorf("got %s want %q", got, want)
+		} else {
+			if r != nil {
+				t.Fatalf("got %q [%s] want <nil>", r, r.DisplayName())
+			}
 		}
 	}
 }
 
 func TestCloudAccountRegionEnum(t *testing.T) {
-	unsupported := []Region{
-		RegionAsia,
-		RegionAsia1,
-		RegionEU,
-		RegionEur4,
-		RegionEur5,
-		RegionEur7,
-		RegionEur8,
-		RegionNAM4,
-		RegionUS,
-	}
-
 	for region, info := range regionInfoMap {
-		want := region
-		if slices.Contains(unsupported, region) {
-			want = RegionUnknown
-		}
+		regionSupported := info.cloudAccountRegionEnum != ""
 
-		// Lookup.
-		if r := RegionFromCloudAccountRegionEnum(info.cloudAccountRegionEnum); r != want {
-			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
-		}
-
-		// Marshal/unmarshal. Regions without a value for the enum fail to
-		// marshal.
-		buf, err := json.Marshal(region.ToCloudAccountRegionEnum())
-		if want != region {
-			if err == nil {
-				t.Errorf("got %s want a marshal error for %q", buf, region)
+		// Lookup. The correct region should be returned or RegionUnknown for
+		// unsupported regions.
+		if r := RegionFromCloudAccountRegionEnum(info.cloudAccountRegionEnum); regionSupported {
+			if r != region {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
 			}
 		} else {
+			if r != RegionUnknown {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), RegionUnknown, RegionUnknown.DisplayName())
+			}
+		}
+
+		// Marshal/unmarshal. Unsupported regions should fail to marshal.
+		buf, err := json.Marshal(region.ToCloudAccountRegionEnum())
+		if regionSupported {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			var enum CloudAccountRegionEnum
 			if err := json.Unmarshal(buf, &enum); err != nil {
 				t.Fatal(err)
 			}
-			if r := enum.Region; r != want {
-				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+			if r := enum.Region; r != region {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
+			}
+		} else {
+			if err == nil {
+				t.Errorf("got %s want a marshal error for %q", buf, region)
 			}
 		}
 
-		// ToPtr.
-		if r := region.ToCloudAccountRegionEnumPtr(); (r == nil && want != RegionUnknown) || (r != nil && *r != want.ToCloudAccountRegionEnum()) {
-			got := "<nil>"
-			if r != nil {
-				got = fmt.Sprintf("%q", r.Name())
+		// ToPtr. The correct region should be returned or nil for unsupported
+		// regions. Note, RegionUnknown can be a supported region but should
+		// still return nil.
+		if r := region.ToCloudAccountRegionEnumPtr(); regionSupported && region != RegionUnknown {
+			if r == nil {
+				t.Errorf("got <nil> want %q [%s]", region, region.DisplayName())
+			} else if r.Region != region {
+				t.Fatalf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
 			}
-			t.Errorf("got %s want %q", got, want)
+		} else {
+			if r != nil {
+				t.Fatalf("got %q [%s] want <nil>", r, r.DisplayName())
+			}
 		}
 	}
 }
 
 func TestRCSRegionEnum(t *testing.T) {
-	unsupported := []Region{
-		RegionAsia,
-		RegionAsia1,
-		RegionAsiaSouthEast3,
-		RegionEU,
-		RegionEur4,
-		RegionEur5,
-		RegionEur7,
-		RegionEur8,
-		RegionEuropeNorth2,
-		RegionNAM4,
-		RegionUS,
-	}
-
 	for region, info := range regionInfoMap {
-		want := region
-		if slices.Contains(unsupported, region) {
-			want = RegionUnknown
-		}
+		regionSupported := info.rcsRegionEnum != ""
 
-		// Lookup.
-		if r := RegionFromRCSRegionEnum(info.rcsRegionEnum); r != want {
-			t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
-		}
-
-		// Marshal/unmarshal. Regions without a value for the enum fail to
-		// marshal.
-		buf, err := json.Marshal(region.ToRCSRegionEnum())
-		if want != region {
-			if err == nil {
-				t.Errorf("got %s want a marshal error for %q", buf, region)
+		// Lookup. The correct region should be returned or RegionUnknown for
+		// unsupported regions.
+		if r := RegionFromRCSRegionEnum(info.rcsRegionEnum); regionSupported {
+			if r != region {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
 			}
 		} else {
+			if r != RegionUnknown {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), RegionUnknown, RegionUnknown.DisplayName())
+			}
+		}
+
+		// Marshal/unmarshal. Unsupported regions should fail to marshal.
+		buf, err := json.Marshal(region.ToRCSRegionEnum())
+		if regionSupported {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			var enum RCSRegionEnum
 			if err := json.Unmarshal(buf, &enum); err != nil {
 				t.Fatal(err)
 			}
-			if r := enum.Region; r != want {
-				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), want, want.DisplayName())
+			if r := enum.Region; r != region {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
+			}
+		} else {
+			if err == nil {
+				t.Errorf("got %s want a marshal error for %q", buf, region)
 			}
 		}
 
-		// ToPtr.
-		if r := region.ToRCSRegionEnumPtr(); (r == nil && want != RegionUnknown) || (r != nil && *r != want.ToRCSRegionEnum()) {
-			got := "<nil>"
-			if r != nil {
-				got = fmt.Sprintf("%q", r.Name())
+		// ToPtr. The correct region should be returned or nil for unsupported
+		// regions. Note, RegionUnknown can be a supported region but should
+		// still return nil.
+		if r := region.ToRCSRegionEnumPtr(); regionSupported && region != RegionUnknown {
+			if r == nil {
+				t.Errorf("got <nil> want %q [%s]", region, region.DisplayName())
+			} else if r.Region != region {
+				t.Fatalf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
 			}
-			t.Errorf("got %s want %q", got, want)
+		} else {
+			if r != nil {
+				t.Fatalf("got %q [%s] want <nil>", r, r.DisplayName())
+			}
+		}
+	}
+}
+
+func TestKMSLocationEnum(t *testing.T) {
+	for region, info := range regionInfoMap {
+		regionSupported := info.kmsLocationEnum != ""
+
+		// Lookup. The correct region should be returned or RegionUnknown for
+		// unsupported regions.
+		if r := RegionFromKMSLocationEnum(info.kmsLocationEnum); regionSupported {
+			if r != region {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
+			}
+		} else {
+			if r != RegionUnknown {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), RegionUnknown, RegionUnknown.DisplayName())
+			}
+		}
+
+		// Marshal/unmarshal. Unsupported regions should fail to marshal.
+		buf, err := json.Marshal(region.ToKMSLocationEnum())
+		if regionSupported {
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var enum KMSLocationEnum
+			if err := json.Unmarshal(buf, &enum); err != nil {
+				t.Fatal(err)
+			}
+			if r := enum.Region; r != region {
+				t.Errorf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
+			}
+		} else {
+			if err == nil {
+				t.Errorf("got %s want a marshal error for %q", buf, region)
+			}
+		}
+
+		// ToPtr. The correct region should be returned or nil for unsupported
+		// regions.
+		if r := region.ToKMSLocationEnumPtr(); regionSupported && region != RegionUnknown {
+			if r == nil {
+				t.Errorf("got <nil> want %q [%s]", region, region.DisplayName())
+			} else if r.Region != region {
+				t.Fatalf("got %q [%s] want %q [%s]", r, r.DisplayName(), region, region.DisplayName())
+			}
+		} else {
+			if r != nil {
+				t.Fatalf("got %q [%s] want <nil>", r, r.DisplayName())
+			}
 		}
 	}
 }

@@ -1109,3 +1109,13 @@ func allAzureCloudAccountTenantsResponse() ([]azure.CloudAccountTenant, error) {
 
 	return payload.Data.Result, nil
 }
+
+// TestSupportedFeaturesIncludesUEMKeyManagement guards against the unified
+// encryption key management feature being dropped from SupportedFeatures.
+// Features missing from the list are silently discarded when a cloud account
+// is read, hiding a feature the account actually has enabled.
+func TestSupportedFeaturesIncludesUEMKeyManagement(t *testing.T) {
+	if _, ok := core.LookupFeature(SupportedFeatures(), core.FeatureCloudNativeUEMKeyManagement); !ok {
+		t.Error("CLOUD_NATIVE_UEM_KEY_MANAGEMENT missing from SupportedFeatures")
+	}
+}

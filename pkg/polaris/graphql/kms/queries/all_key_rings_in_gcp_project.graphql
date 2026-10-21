@@ -1,0 +1,5 @@
+query RubrikPolarisSDKRequest($cloudAccountId: UUID!, $location: GcpKmsLocation!) {
+    result: allKeyRingsInGcpProject(cloudAccountId: $cloudAccountId, location: $location) {
+        keyRing
+    }
+}

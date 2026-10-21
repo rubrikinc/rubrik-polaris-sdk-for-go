@@ -1,0 +1,17 @@
+mutation RubrikPolarisSDKRequest(
+    $clientId:     String!,
+    $tenantId:     String!,
+    $vaultUrl:     URL!,
+    $instanceName: String!,
+    $description:  String,
+) {
+    result: addSecureAuthAzureKeyVault(input: {
+        clientId:     $clientId,
+        tenantId:     $tenantId,
+        vaultUrl:     $vaultUrl,
+        instanceName: $instanceName,
+        description:  $description,
+    }) {
+        kmsKeyVaultId
+    }
+}

@@ -81,8 +81,10 @@ func TestRegionEnumCanary(t *testing.T) {
 	}
 
 	sdkValues := make(map[string]struct{}, len(regionInfoMap))
-	for _, info := range regionInfoMap {
-		if info.regionEnum != "" {
+	for region, info := range regionInfoMap {
+		// The unknown region sentinel value has been deprecated in the GraphQL
+		// API and is not returned by the introspection query.
+		if region != RegionUnknown && info.regionEnum != "" {
 			sdkValues[info.regionEnum] = struct{}{}
 		}
 	}
@@ -115,6 +117,28 @@ func TestCloudAccountRegionEnumCanary(t *testing.T) {
 	}
 
 	assertEnumValues(t, "GcpCloudAccountRegion", sdkValues, rscValues)
+}
+
+// TestKMSLocationEnumCanary acts as a canary test to catch changes to the
+// GcpKmsLocation enum in RSC early.
+func TestKMSLocationEnumCanary(t *testing.T) {
+	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		t.Skipf("skipping due to env TEST_INTEGRATION not set")
+	}
+
+	sdkValues := make(map[string]struct{}, len(regionInfoMap))
+	for _, info := range regionInfoMap {
+		if info.kmsLocationEnum != "" {
+			sdkValues[info.kmsLocationEnum] = struct{}{}
+		}
+	}
+
+	rscValues, err := graphql.EnumValuesAsSet(t.Context(), client.GQL, "GcpKmsLocation")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assertEnumValues(t, "GcpKmsLocation", sdkValues, rscValues)
 }
 
 // assertEnumValues checks that sdkValues and rscValues contain the same set of

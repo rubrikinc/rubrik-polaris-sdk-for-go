@@ -1,0 +1,12 @@
+query RubrikPolarisSDKRequest($kmsKeyVaultId: UUID!, $keyName: String!, $locationId: String) {
+    result: keyVersionsForKeyNameInAzureKeyVault(input: {
+        kmsKeyVaultId: $kmsKeyVaultId,
+        keyName:       $keyName,
+        locationId:    $locationId,
+    }) {
+        keyVersion
+        keyState
+        createdAt
+        expirationAt
+    }
+}
