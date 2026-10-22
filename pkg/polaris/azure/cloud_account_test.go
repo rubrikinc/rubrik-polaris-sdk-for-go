@@ -1006,6 +1006,10 @@ func TestFeatureOnboardingRequirements(t *testing.T) {
 		supportResourceGroup:   false,
 		supportManagedIdentity: false,
 	}, {
+		feature:                core.FeatureCloudNativeUEMKeyManagement,
+		supportResourceGroup:   false,
+		supportManagedIdentity: false,
+	}, {
 		feature:                core.FeatureCloudNativeProtection,
 		supportResourceGroup:   true,
 		supportManagedIdentity: false,

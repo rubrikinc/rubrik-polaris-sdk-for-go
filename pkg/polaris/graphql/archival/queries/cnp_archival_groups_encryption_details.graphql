@@ -1,0 +1,62 @@
+query RubrikPolarisSDKRequest(
+    $first:            Int,
+    $after:            String,
+    $nameSearchPrefix: String,
+    $cloudTypeFilter:  [TargetType!]
+) {
+    result: cnpArchivalGroupsEncryptionDetails(
+        first:            $first,
+        after:            $after,
+        nameSearchPrefix: $nameSearchPrefix,
+        cloudTypeFilter:  $cloudTypeFilter
+    ) {
+        nodes {
+            archivalGroupId
+            name
+            rekeyStatus
+            encryptionType
+            kmsKey {
+                keyVaultId
+                kmsType
+                key {
+                    akvKey {
+                        keyName
+                        keyVersion
+                    }
+                    awsKmsKey {
+                        keyId
+                    }
+                    gcpKmsKey {
+                        keyName
+                        keyVersion
+                    }
+                }
+            }
+            archivalLocations {
+                archivalLocationId
+                region
+                encryptionJobsSummary {
+                    lastMasterKeyRekeyStatus {
+                        status
+                        lastSuccessfulAt
+                        errorMessage
+                    }
+                }
+                kmsKey {
+                    keyVaultId
+                    kmsType
+                    key {
+                        gcpKmsKey {
+                            keyName
+                            keyVersion
+                        }
+                    }
+                }
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}
