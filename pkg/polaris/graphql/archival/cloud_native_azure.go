@@ -66,7 +66,7 @@ func (AzureTargetMapping) ListQuery(filters []ListTargetMappingFilter) (string, 
 	}}
 
 	return allTargetMappingsQuery, struct {
-		Filters []ListTargetMappingFilter `json:"filters,omitempty"`
+		Filters []ListTargetMappingFilter `json:"filter,omitempty"`
 	}{Filters: append(filters, extraFilters...)}
 }
 
