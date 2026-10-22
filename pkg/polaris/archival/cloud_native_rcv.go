@@ -321,6 +321,12 @@ func (a API) RCVGCPTargetMappings(ctx context.Context, nameFilter string) ([]arc
 func (a API) CreateRCVGCPStorageSetting(ctx context.Context, createParams archival.CreateRCVGCPStorageSettingParams) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
+	// GCP requires the tier to be explicitly specified. Default it to backup
+	// which is the default used by AWS and Azure.
+	if createParams.Tier == "" {
+		createParams.Tier = archival.RCVTierBackup
+	}
+
 	if createParams.LocTemplate == "" {
 		createParams.LocTemplate = archival.LocTemplateSpecificRegion
 		if createParams.Region.Region == gcp.RegionUnknown {

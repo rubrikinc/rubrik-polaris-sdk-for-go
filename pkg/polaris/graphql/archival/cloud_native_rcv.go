@@ -21,8 +21,6 @@
 package archival
 
 import (
-	"slices"
-
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
@@ -30,15 +28,35 @@ import (
 type RCVTier string
 
 const (
-	RCVTierBackup   RCVTier = "BACKUP"
 	RCVTierArchive  RCVTier = "ARCHIVE"
+	RCVTierBackup   RCVTier = "BACKUP"
 	RCVTierRecovery RCVTier = "RECOVERY"
 )
 
 // RCVTierValues returns the tiers RCV archival locations support. RECOVERY is
 // part of the RSC enum but the create API documents Backup and Archive only.
-func RCVTierValues() []RCVTier {
-	return slices.Clone([]RCVTier{RCVTierBackup, RCVTierArchive})
+func RCVTierValues(cloudVendor core.CloudVendor) []RCVTier {
+	switch cloudVendor {
+	case core.CloudVendorAWS:
+		return []RCVTier{
+			RCVTierArchive,
+			RCVTierBackup,
+			RCVTierRecovery,
+		}
+	case core.CloudVendorAzure:
+		return []RCVTier{
+			RCVTierArchive,
+			RCVTierBackup,
+			RCVTierRecovery,
+		}
+	case core.CloudVendorGCP:
+		return []RCVTier{
+			RCVTierArchive,
+			RCVTierBackup,
+		}
+	default:
+		return nil
+	}
 }
 
 // RCVRedundancy represents the RSC GraphQL RcvRedundancy enum type.
@@ -54,11 +72,11 @@ const (
 // RCVRedundancyValues returns the redundancy levels which can be requested when
 // creating an archival location. REDUNDANCY_UNKNOWN is only ever read back.
 func RCVRedundancyValues() []RCVRedundancy {
-	return slices.Clone([]RCVRedundancy{
+	return []RCVRedundancy{
 		RCVRedundancySingleZone,
 		RCVRedundancyMultiZone,
 		RCVRedundancyMultiRegion,
-	})
+	}
 }
 
 // SourceWorkloadCloud represents the RSC GraphQL SourceWorkloadCloud enum type.
@@ -74,11 +92,11 @@ const (
 
 // SourceWorkloadCloudValues returns all source workload clouds.
 func SourceWorkloadCloudValues() []SourceWorkloadCloud {
-	return slices.Clone([]SourceWorkloadCloud{
+	return []SourceWorkloadCloud{
 		SourceWorkloadCloudAWS,
 		SourceWorkloadCloudAzure,
 		SourceWorkloadCloudGCP,
-	})
+	}
 }
 
 // LocTemplateType represents the RSC GraphQL CloudNativeLocTemplateType enum
@@ -95,7 +113,10 @@ const (
 // LocTemplateTypeValues returns the location templates an archival location can
 // be created with. INVALID is only ever read back.
 func LocTemplateTypeValues() []LocTemplateType {
-	return slices.Clone([]LocTemplateType{LocTemplateSourceRegion, LocTemplateSpecificRegion})
+	return []LocTemplateType{
+		LocTemplateSourceRegion,
+		LocTemplateSpecificRegion,
+	}
 }
 
 // TargetEncryptionType represents the RSC GraphQL TargetEncryptionTypeEnum enum
@@ -130,22 +151,22 @@ const (
 func RCVTargetEncryptionTypeValues(cloudVendor core.CloudVendor) []TargetEncryptionType {
 	switch cloudVendor {
 	case core.CloudVendorAWS:
-		return slices.Clone([]TargetEncryptionType{
+		return []TargetEncryptionType{
 			TargetEncryptionSSECustomerKey,
 			TargetEncryptionUEKMAWSKMSBased,
-		})
+		}
 	case core.CloudVendorAzure:
-		return slices.Clone([]TargetEncryptionType{
+		return []TargetEncryptionType{
 			TargetEncryptionSSEDefaultPMK,
 			TargetEncryptionSSECustomerKey,
 			TargetEncryptionRSAKeyBased,
 			TargetEncryptionUEKMAKVBased,
-		})
+		}
 	case core.CloudVendorGCP:
-		return slices.Clone([]TargetEncryptionType{
+		return []TargetEncryptionType{
 			TargetEncryptionSSEDefaultPMK,
 			TargetEncryptionUEKMGCPKMSBased,
-		})
+		}
 	default:
 		return nil
 	}
