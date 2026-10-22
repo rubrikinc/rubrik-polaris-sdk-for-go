@@ -98,7 +98,8 @@ func (f Feature) HasRegion(region string) bool {
 func (f Feature) SupportResourceGroup() bool {
 	return !f.Equal(core.FeatureAzureSQLMIProtection) &&
 		!f.Equal(core.FeatureCloudNativeBlobProtection) &&
-		!f.Equal(core.FeatureCloudDiscovery)
+		!f.Equal(core.FeatureCloudDiscovery) &&
+		!f.Equal(core.FeatureCloudNativeUEMKeyManagement)
 }
 
 // SupportUserAssignedManagedIdentity returns true if the feature supports

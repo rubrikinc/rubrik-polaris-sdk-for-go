@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($archivalGroupId: UUID!) {
+    result: rekeyCnpArchivalGroupRootKey(input: {
+        archivalGroupId: $archivalGroupId
+    })
+}
