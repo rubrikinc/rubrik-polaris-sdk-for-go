@@ -2,6 +2,7 @@ package testsetup
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -157,10 +158,19 @@ type testK8SConfig struct {
 	KubeconfigFilePath string    `json:"kubeconfigFilePath"`
 }
 
+// ErrK8SConfigNotSet is returned by K8SConfig when the TEST_K8SCONFIG_FILE
+// environment variable is not set.
+var ErrK8SConfigNotSet = errors.New("TEST_K8SCONFIG_FILE not set")
+
 // K8SConfig loads test configuration information from the file pointed to by
-// the TEST_K8SCONFIG_FILE environment variable.
+// the TEST_K8SCONFIG_FILE environment variable. Returns ErrK8SConfigNotSet if
+// the environment variable is not set.
 func K8SConfig() (testK8SConfig, error) {
-	buf, err := os.ReadFile(os.Getenv("TEST_K8SCONFIG_FILE"))
+	file := os.Getenv("TEST_K8SCONFIG_FILE")
+	if file == "" {
+		return testK8SConfig{}, ErrK8SConfigNotSet
+	}
+	buf, err := os.ReadFile(file)
 	if err != nil {
 		return testK8SConfig{}, fmt.Errorf("failed to read file pointed to by TEST_K8SCONFIG_FILE: %v", err)
 	}

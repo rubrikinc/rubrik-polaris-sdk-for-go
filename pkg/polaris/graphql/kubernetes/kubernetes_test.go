@@ -22,6 +22,7 @@ package kubernetes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -76,6 +77,9 @@ func TestK8sProtectionSetLifecycle(t *testing.T) {
 	}
 
 	k8sConfig, err := testsetup.K8SConfig()
+	if errors.Is(err, testsetup.ErrK8SConfigNotSet) {
+		t.Skip("skipping due to missing TEST_K8SCONFIG_FILE")
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
