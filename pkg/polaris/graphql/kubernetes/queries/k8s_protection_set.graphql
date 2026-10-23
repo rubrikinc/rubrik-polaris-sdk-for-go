@@ -22,7 +22,7 @@ query RubrikPolarisSDKRequest($fid: UUID!) {
         id
         isRelic
         k8sClusterUuid
-        Name
+        name
         namespace
         objectType
         pendingSla {

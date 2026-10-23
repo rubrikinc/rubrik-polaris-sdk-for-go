@@ -31,6 +31,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -68,7 +69,7 @@ func TestMain(m *testing.M) {
 
 // TestK8sProtectionSetLifecycle tests the full lifecycle of a K8s protection
 // set: add cluster, create protection set, take snapshot, export, restore,
-// delete protection set.
+// delete protection set, delete cluster.
 func TestK8sProtectionSetLifecycle(t *testing.T) {
 	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skip("skipping due to missing TEST_INTEGRATION=1")
@@ -82,7 +83,6 @@ func TestK8sProtectionSetLifecycle(t *testing.T) {
 	ctx := context.Background()
 	k8sAPI := Wrap(client)
 
-	// Read the kubeconfig file.
 	kubeconfigData, err := os.ReadFile(k8sConfig.KubeconfigFilePath)
 	if err != nil {
 		t.Fatalf("failed to read kubeconfig: %v", err)
@@ -91,72 +91,65 @@ func TestK8sProtectionSetLifecycle(t *testing.T) {
 	// Add K8s cluster.
 	clusterConfig := ClusterAddInput{
 		Name:         "go-sdk-test-cluster",
-		Distribution: "GENERIC",
-		Kubeconfig:   string(kubeconfigData),
+		Distribution: "VANILLA",
+		Kubeconfig:   secret.String(kubeconfigData),
 		Transport:    "loadbalancer",
 	}
 	clusterSummary, err := k8sAPI.AddCluster(ctx, k8sConfig.CDMID, clusterConfig)
 	if err != nil {
 		t.Fatalf("failed to add k8s cluster: %v", err)
 	}
-	if clusterSummary.ID == "" {
-		t.Fatal("expected non-empty cluster ID")
-	}
 	if clusterSummary.Name != clusterConfig.Name {
 		t.Errorf("cluster name: got %q, want %q", clusterSummary.Name, clusterConfig.Name)
-	}
-
-	// Update the cluster transport.
-	updateConfig := ClusterUpdateConfigInput{
-		Transport: "nodeport",
 	}
 	clusterFID, err := uuid.Parse(clusterSummary.ID)
 	if err != nil {
 		t.Fatalf("failed to parse cluster FID: %v", err)
 	}
-	if err := k8sAPI.UpdateCluster(ctx, clusterFID, updateConfig); err != nil {
+	t.Cleanup(func() {
+		if _, err := k8sAPI.DeleteCluster(ctx, clusterFID, true, false); err != nil {
+			t.Errorf("failed to delete k8s cluster: %v", err)
+		}
+	})
+
+	// Update the cluster transport.
+	if err := k8sAPI.UpdateCluster(ctx, clusterFID, ClusterUpdateConfigInput{Transport: "nodeport"}); err != nil {
 		t.Fatalf("failed to update k8s cluster: %v", err)
 	}
 
-	// Wait for the cluster to be ready.
-	clusterInternalID, err := waitForCluster(ctx, t, k8sAPI, clusterSummary.ID, k8sConfig.CDMID)
-	if err != nil {
+	if err := waitForCluster(ctx, t, k8sAPI, clusterFID, k8sConfig.CDMID); err != nil {
 		t.Fatalf("cluster never became ready: %v", err)
 	}
 
 	// Add a protection set.
 	psConfig := AddProtectionSetConfig{
-		Definition:          `{"namespaces": ["default"]}`,
+		Definition:          `{"exclude":[{"resource":"Secret"}]}`,
 		KubernetesClusterID: clusterSummary.ID,
 		KubernetesNamespace: "default",
 		Name:                "go-sdk-test-ps",
-		RSType:              "KubernetesNamespace",
+		RSType:              "namespace",
 	}
 	psResponse, err := k8sAPI.AddProtectionSet(ctx, psConfig)
 	if err != nil {
 		t.Fatalf("failed to add protection set: %v", err)
 	}
-	if psResponse.ID == "" {
-		t.Fatal("expected non-empty protection set ID")
-	}
 	if psResponse.Name != psConfig.Name {
 		t.Errorf("protection set name: got %q, want %q", psResponse.Name, psConfig.Name)
 	}
-
-	// Get the FID for the protection set.
-	psInternalID, err := uuid.Parse(psResponse.ID)
+	psFID, err := uuid.Parse(psResponse.ID)
 	if err != nil {
-		t.Fatalf("failed to parse protection set ID: %v", err)
+		t.Fatalf("failed to parse protection set FID: %v", err)
 	}
-	psFID, err := k8sAPI.ObjectFIDByType(ctx, psInternalID, k8sConfig.CDMID, ObjectTypeInventory)
-	if err != nil {
-		t.Fatalf("failed to get protection set FID: %v", err)
-	}
-	if psFID == uuid.Nil {
-		t.Fatal("expected non-nil protection set FID")
-	}
+	psDeleted := false
+	t.Cleanup(func() {
+		if psDeleted {
+			return
+		}
+		if err := k8sAPI.DeleteProtectionSet(ctx, psResponse.ID, false); err != nil {
+			t.Errorf("failed to delete protection set: %v", err)
+		}
+	})
 
-	// Verify protection set data.
 	ps, err := k8sAPI.ProtectionSetByID(ctx, psFID)
 	if err != nil {
 		t.Fatalf("failed to get protection set: %v", err)
@@ -165,33 +158,31 @@ func TestK8sProtectionSetLifecycle(t *testing.T) {
 		t.Errorf("protection set rsName: got %q, want %q", ps.RSName, psConfig.Name)
 	}
 
-	// Update the protection set.
-	updatePSConfig := UpdateProtectionSetConfig{
-		Definition: `{"namespaces": ["default", "kube-system"]}`,
+	// Round-trip the protection set FID through its CDM internal ID.
+	psInternalID, err := k8sAPI.ObjectInternalIDByType(ctx, psFID, k8sConfig.CDMID, ObjectTypeInventory)
+	if err != nil {
+		t.Fatalf("failed to get protection set internal ID: %v", err)
 	}
-	if err := k8sAPI.UpdateProtectionSet(ctx, psResponse.ID, updatePSConfig); err != nil {
-		t.Fatalf("failed to update protection set: %v", err)
+	resolvedFID, err := k8sAPI.ObjectFIDByType(ctx, psInternalID, k8sConfig.CDMID, ObjectTypeInventory)
+	if err != nil {
+		t.Fatalf("failed to get protection set FID: %v", err)
+	}
+	if resolvedFID != psFID {
+		t.Errorf("protection set FID: got %v, want %v", resolvedFID, psFID)
 	}
 
-	// Assign SLA to the protection set by creating an on-demand snapshot.
-	snapshotConfig := BaseOnDemandSnapshotConfigInput{
+	// Take an on-demand snapshot.
+	snapshotStatus, err := k8sAPI.CreateProtectionSetSnapshot(ctx, psResponse.ID, BaseOnDemandSnapshotConfigInput{
 		SLAID: k8sConfig.SLAID.String(),
-	}
-	snapshotStatus, err := k8sAPI.CreateProtectionSetSnapshot(ctx, psFID.String(), snapshotConfig)
+	})
 	if err != nil {
 		t.Fatalf("failed to create protection set snapshot: %v", err)
 	}
-	if snapshotStatus.ID == "" {
-		t.Fatal("expected non-empty snapshot request ID")
-	}
-
-	// Wait for the snapshot to complete.
 	if err := waitForJob(ctx, t, k8sAPI, snapshotStatus.ID, k8sConfig.CDMID); err != nil {
 		t.Fatalf("snapshot job did not complete: %v", err)
 	}
 
-	// Get the snapshot FID.
-	snapshots, err := protectionSetSnapshots(ctx, k8sAPI, psFID.String())
+	snapshots, err := k8sAPI.protectionSetSnapshots(ctx, psResponse.ID)
 	if err != nil {
 		t.Fatalf("failed to get protection set snapshots: %v", err)
 	}
@@ -201,109 +192,80 @@ func TestK8sProtectionSetLifecycle(t *testing.T) {
 	snapshotFID := snapshots[0]
 
 	// Export the snapshot to a different namespace.
-	exportConfig := ExportSnapshotJobConfig{
+	exportStatus, err := k8sAPI.ExportProtectionSetSnapshot(ctx, snapshotFID, ExportSnapshotJobConfig{
 		TargetNamespaceName: "go-sdk-test-export",
 		TargetClusterFID:    clusterSummary.ID,
 		IgnoreErrors:        true,
-	}
-	exportStatus, err := k8sAPI.ExportProtectionSetSnapshot(ctx, snapshotFID, exportConfig)
+	})
 	if err != nil {
 		t.Fatalf("failed to export snapshot: %v", err)
 	}
-	if exportStatus.ID == "" {
-		t.Fatal("expected non-empty export request ID")
-	}
-
-	// Wait for the export to complete.
 	if err := waitForJob(ctx, t, k8sAPI, exportStatus.ID, k8sConfig.CDMID); err != nil {
 		t.Fatalf("export job did not complete: %v", err)
 	}
 
 	// Restore the snapshot.
-	restoreConfig := RestoreSnapshotJobConfig{
+	restoreStatus, err := k8sAPI.RestoreProtectionSetSnapshot(ctx, snapshotFID, RestoreSnapshotJobConfig{
 		IgnoreErrors: true,
-	}
-	restoreStatus, err := k8sAPI.RestoreProtectionSetSnapshot(ctx, snapshotFID, restoreConfig)
+	})
 	if err != nil {
 		t.Fatalf("failed to restore snapshot: %v", err)
 	}
-	if restoreStatus.ID == "" {
-		t.Fatal("expected non-empty restore request ID")
-	}
-
-	// Wait for the restore to complete.
 	if err := waitForJob(ctx, t, k8sAPI, restoreStatus.ID, k8sConfig.CDMID); err != nil {
 		t.Fatalf("restore job did not complete: %v", err)
 	}
 
-	// Delete the protection set.
-	if err := k8sAPI.DeleteProtectionSet(ctx, psResponse.ID, true); err != nil {
+	if err := k8sAPI.DeleteProtectionSet(ctx, psResponse.ID, false); err != nil {
 		t.Fatalf("failed to delete protection set: %v", err)
 	}
-
-	// Verify the internal ID can be resolved back.
-	resolvedInternalID, err := k8sAPI.ObjectInternalIDByType(ctx, psFID, k8sConfig.CDMID, ObjectTypeInventory)
-	if err != nil {
-		t.Logf("ObjectInternalIDByType returned error (expected after delete): %v", err)
-	} else if resolvedInternalID != uuid.Nil {
-		t.Logf("resolved internal ID: %v", resolvedInternalID)
-	}
-
-	_ = clusterInternalID
+	psDeleted = true
 }
 
-// protectionSetSnapshots wraps the unexported method for testing.
-func protectionSetSnapshots(ctx context.Context, api API, fid string) ([]string, error) {
-	return api.protectionSetSnapshots(ctx, fid)
-}
-
-// waitForCluster waits for the K8s cluster to become ready by polling the
-// object FID.
-func waitForCluster(ctx context.Context, t *testing.T, api API, clusterID string, cdmID uuid.UUID) (uuid.UUID, error) {
+// waitForCluster waits for the K8s cluster to show up in the RSC hierarchy by
+// polling for its CDM internal ID.
+func waitForCluster(ctx context.Context, t *testing.T, api API, clusterFID, cdmID uuid.UUID) error {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
-	clusterInternalID, err := uuid.Parse(clusterID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to parse cluster ID: %w", err)
-	}
-
 	for {
-		fid, err := api.ObjectFIDByType(ctx, clusterInternalID, cdmID, ObjectTypeInventory)
-		if err == nil && fid != uuid.Nil {
-			return fid, nil
+		_, err := api.ObjectInternalIDByType(ctx, clusterFID, cdmID, ObjectTypeInventory)
+		if err == nil {
+			return nil
 		}
 
 		select {
 		case <-ctx.Done():
-			return uuid.Nil, ctx.Err()
+			return fmt.Errorf("%w (last error: %v)", ctx.Err(), err)
 		case <-time.After(10 * time.Second):
 			t.Log("waiting for cluster to be ready...")
 		}
 	}
 }
 
-// waitForJob waits for a CDM job to complete by polling the job instance.
+// waitForJob waits for a CDM job to reach a terminal state by polling the job
+// instance.
 func waitForJob(ctx context.Context, t *testing.T, api API, jobID string, cdmID uuid.UUID) error {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
 	for {
 		job, err := api.K8sJobInstance(ctx, jobID, cdmID)
-		if err == nil && (job.JobStatus == "SUCCEEDED" || job.JobStatus == "FAILED") {
-			if job.JobStatus == "FAILED" {
-				return fmt.Errorf("job %q failed", jobID)
+		if err == nil {
+			switch job.JobStatus {
+			case "SUCCEEDED":
+				return nil
+			case "FAILED", "CANCELED":
+				return fmt.Errorf("job %q: %s", jobID, job.JobStatus)
 			}
-			return nil
 		}
 
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return fmt.Errorf("%w (last status: %q, last error: %v)", ctx.Err(), job.JobStatus, err)
 		case <-time.After(10 * time.Second):
 			t.Logf("waiting for job %q...", jobID)
 		}

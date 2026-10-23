@@ -1,0 +1,17 @@
+mutation RubrikPolarisSDKRequest($id: String!, $forceDelete: Boolean, $preserveSnapshots: Boolean) {
+    result: deleteK8sCluster(input: {id: $id, forceDelete: $forceDelete, preserveSnapshots: $preserveSnapshots}) {
+        status
+        startTime
+        progress
+        nodeId
+        links {
+            rel
+            href
+        }
+        id
+        error {
+            message
+        }
+        endTime
+    }
+}

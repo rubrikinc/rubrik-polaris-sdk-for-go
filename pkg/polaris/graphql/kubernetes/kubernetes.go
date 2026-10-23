@@ -33,6 +33,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -48,24 +49,6 @@ func Wrap(gql *graphql.Client) API {
 	return API{GQL: gql, log: gql.Log()}
 }
 
-// JobInstanceDetail describes the state of a CDM job.
-type JobInstanceDetail struct {
-	Status             string  `json:"status"`
-	StartTime          string  `json:"startTime,omitempty"`
-	Result             string  `json:"result,omitempty"`
-	OpentracingContext string  `json:"opentracingContext,omitempty"`
-	NodeID             string  `json:"nodeId"`
-	JobType            string  `json:"jobType"`
-	JobProgress        float64 `json:"jobProgress,omitempty"`
-	IsDisabled         bool    `json:"isDisabled"`
-	ID                 string  `json:"id"`
-	ErrorInfo          string  `json:"errorInfo,omitempty"`
-	EventSeriesID      string  `json:"eventSeriesId,omitempty"`
-	EndTime            string  `json:"endTime,omitempty"`
-	ChildJobDebugInfo  string  `json:"childJobDebugInfo,omitempty"`
-	Archived           bool    `json:"archived"`
-}
-
 // K8sJobInstanceDetail describes the state of a K8s CDM job. It is limited to
 // the fields that are used by the K8s job CRDs.
 type K8sJobInstanceDetail struct {
@@ -77,7 +60,10 @@ type K8sJobInstanceDetail struct {
 }
 
 // AddProtectionSetConfig defines the input parameters required to create a
-// ProtectionSet.
+// ProtectionSet. KubernetesClusterID is the RSC FID of the K8s cluster. RSType
+// is either "namespace" or "cluster". Definition is a JSON object with
+// optional include and exclude resource lists, e.g.
+// {"exclude":[{"resource":"Secret"}]}.
 type AddProtectionSetConfig struct {
 	Definition          string   `json:"definition"`
 	HookConfigs         []string `json:"hookConfigs,omitempty"`
@@ -217,7 +203,7 @@ type ProtectionSet struct {
 	ID                          uuid.UUID      `json:"id"`
 	IsRelic                     bool           `json:"isRelic"`
 	K8sClusterUUID              uuid.UUID      `json:"k8sClusterUuid"`
-	Name                        string         `json:"Name"`
+	Name                        string         `json:"name"`
 	Namespace                   string         `json:"namespace,omitempty"`
 	ObjectType                  string         `json:"objectType"`
 	PendingSLA                  sla.DomainRef  `json:"pendingSla,omitempty"`
@@ -249,57 +235,59 @@ type KuprServerProxyConfigInput struct {
 	Port      int    `json:"port,omitempty"`
 }
 
-// ClusterAddInput is the input for adding a K8s cluster.
+// ClusterAddInput is the input for adding a K8s cluster. Distribution is
+// "VANILLA" for upstream Kubernetes.
 type ClusterAddInput struct {
-	ID                      string                     `json:"id,omitempty"`
-	Name                    string                     `json:"name"`
-	Distribution            string                     `json:"distribution"`
-	Kubeconfig              string                     `json:"kubeconfig,omitempty"`
-	Transport               string                     `json:"transport,omitempty"`
-	Registry                string                     `json:"registry,omitempty"`
-	PullSecret              string                     `json:"pullSecret,omitempty"`
-	Region                  string                     `json:"region,omitempty"`
-	EKSConfig               EksConfigInput             `json:"eksConfig,omitempty"`
-	ServiceAccountName      string                     `json:"serviceAccountName,omitempty"`
-	AccessToken             string                     `json:"accessToken,omitempty"`
-	ClientID                string                     `json:"clientId,omitempty"`
-	ClientSecret            string                     `json:"clientSecret,omitempty"`
-	IsAutoPsCreationEnabled bool                       `json:"isAutoPsCreationEnabled,omitempty"`
-	OnboardingType          string                     `json:"onboardingType,omitempty"`
-	KuprServerProxyConfig   KuprServerProxyConfigInput `json:"kuprServerProxyConfig,omitempty"`
-	NadNamespace            string                     `json:"nadNamespace,omitempty"`
-	NadName                 string                     `json:"nadName,omitempty"`
+	ID                      string                      `json:"id,omitempty"`
+	Name                    string                      `json:"name"`
+	Distribution            string                      `json:"distribution"`
+	Kubeconfig              secret.String               `json:"kubeconfig,omitempty"`
+	Transport               string                      `json:"transport,omitempty"`
+	Registry                string                      `json:"registry,omitempty"`
+	PullSecret              secret.String               `json:"pullSecret,omitempty"`
+	Region                  string                      `json:"region,omitempty"`
+	EKSConfig               *EksConfigInput             `json:"eksConfig,omitempty"`
+	ServiceAccountName      string                      `json:"serviceAccountName,omitempty"`
+	AccessToken             secret.String               `json:"accessToken,omitempty"`
+	ClientID                string                      `json:"clientId,omitempty"`
+	ClientSecret            secret.String               `json:"clientSecret,omitempty"`
+	IsAutoPsCreationEnabled *bool                       `json:"isAutoPsCreationEnabled,omitempty"`
+	OnboardingType          string                      `json:"onboardingType,omitempty"`
+	KuprServerProxyConfig   *KuprServerProxyConfigInput `json:"kuprServerProxyConfig,omitempty"`
+	NadNamespace            string                      `json:"nadNamespace,omitempty"`
+	NadName                 string                      `json:"nadName,omitempty"`
 }
 
-// ClusterSummary is the response for the addK8sCluster query.
+// ClusterSummary is the response for the addK8sCluster query. ID is the RSC
+// FID of the K8s cluster.
 type ClusterSummary struct {
-	ID                    string                     `json:"id"`
-	Name                  string                     `json:"name"`
-	Registry              string                     `json:"registry,omitempty"`
-	Distribution          string                     `json:"distribution,omitempty"`
-	KuprServerProxyConfig KuprServerProxyConfigInput `json:"kuprServerProxyConfig,omitempty"`
-	Transport             string                     `json:"transport,omitempty"`
-	LastRefreshTime       time.Time                  `json:"lastRefreshTime,omitempty"`
-	Region                string                     `json:"region,omitempty"`
-	OnboardingType        string                     `json:"onboardingType,omitempty"`
-	Status                string                     `json:"status"`
+	ID                    string                      `json:"id"`
+	Name                  string                      `json:"name"`
+	Registry              string                      `json:"registry,omitempty"`
+	Distribution          string                      `json:"distribution,omitempty"`
+	KuprServerProxyConfig *KuprServerProxyConfigInput `json:"kuprServerProxyConfig,omitempty"`
+	Transport             string                      `json:"transport,omitempty"`
+	LastRefreshTime       time.Time                   `json:"lastRefreshTime,omitempty"`
+	Region                string                      `json:"region,omitempty"`
+	OnboardingType        string                      `json:"onboardingType,omitempty"`
+	Status                string                      `json:"status"`
 }
 
 // ClusterUpdateConfigInput is the input for updating a K8s cluster.
 type ClusterUpdateConfigInput struct {
-	Kubeconfig              string                     `json:"kubeconfig,omitempty"`
-	Transport               string                     `json:"transport,omitempty"`
-	Registry                string                     `json:"registry,omitempty"`
-	PullSecret              string                     `json:"pullSecret,omitempty"`
-	CloudAccountID          string                     `json:"cloudAccountId,omitempty"`
-	IsAutoPsCreationEnabled bool                       `json:"isAutoPsCreationEnabled,omitempty"`
-	ServiceAccountName      string                     `json:"serviceAccountName,omitempty"`
-	AccessToken             string                     `json:"accessToken,omitempty"`
-	ClientID                string                     `json:"clientId,omitempty"`
-	ClientSecret            string                     `json:"clientSecret,omitempty"`
-	KuprServerProxyConfig   KuprServerProxyConfigInput `json:"kuprServerProxyConfig,omitempty"`
-	NadNamespace            string                     `json:"nadNamespace,omitempty"`
-	NadName                 string                     `json:"nadName,omitempty"`
+	Kubeconfig              secret.String               `json:"kubeconfig,omitempty"`
+	Transport               string                      `json:"transport,omitempty"`
+	Registry                string                      `json:"registry,omitempty"`
+	PullSecret              secret.String               `json:"pullSecret,omitempty"`
+	CloudAccountID          string                      `json:"cloudAccountId,omitempty"`
+	IsAutoPsCreationEnabled *bool                       `json:"isAutoPsCreationEnabled,omitempty"`
+	ServiceAccountName      string                      `json:"serviceAccountName,omitempty"`
+	AccessToken             secret.String               `json:"accessToken,omitempty"`
+	ClientID                string                      `json:"clientId,omitempty"`
+	ClientSecret            secret.String               `json:"clientSecret,omitempty"`
+	KuprServerProxyConfig   *KuprServerProxyConfigInput `json:"kuprServerProxyConfig,omitempty"`
+	NadNamespace            string                      `json:"nadNamespace,omitempty"`
+	NadName                 string                      `json:"nadName,omitempty"`
 }
 
 // handleGraphQLError processes GraphQL errors and wraps 404 errors with
@@ -576,11 +564,11 @@ func (a API) CreateProtectionSetSnapshot(
 		ctx,
 		createK8sProtectionSetSnapshotQuery,
 		struct {
-			ProtectionSetID string                          `json:"protectionSetId"`
-			JobConfig       BaseOnDemandSnapshotConfigInput `json:"jobConfig"`
+			ID     string                          `json:"id"`
+			Config BaseOnDemandSnapshotConfigInput `json:"config"`
 		}{
-			ProtectionSetID: protectionSetFID,
-			JobConfig:       jobConfig,
+			ID:     protectionSetFID,
+			Config: jobConfig,
 		},
 	)
 	if err != nil {
@@ -697,131 +685,6 @@ func (a API) ObjectInternalIDByType(
 	return payload.Data.ObjectInternalID, nil
 }
 
-// ObjectFID fetches the RSC FID for the K8s object corresponding to the
-// provided internal id and CDM cluster id. Unlike ObjectFIDByType, this
-// variant does not require specifying the object type.
-func (a API) ObjectFID(
-	ctx context.Context,
-	internalID uuid.UUID,
-	cdmClusterID uuid.UUID,
-) (uuid.UUID, error) {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(
-		ctx,
-		k8sObjectFidQuery,
-		struct {
-			InternalID  uuid.UUID `json:"k8SObjectInternalIdArg"`
-			ClusterUUID uuid.UUID `json:"clusterUuid"`
-		}{
-			InternalID:  internalID,
-			ClusterUUID: cdmClusterID,
-		},
-	)
-	if err != nil {
-		return uuid.Nil, handleGraphQLError(err, "k8sObjectFid")
-	}
-	a.log.Printf(
-		log.Debug, "k8sObjectFid(%v, %v): %s",
-		internalID, cdmClusterID, string(buf),
-	)
-
-	var payload struct {
-		Data struct {
-			ObjectFID uuid.UUID `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to unmarshal k8sObjectFid: %v", err)
-	}
-
-	return payload.Data.ObjectFID, nil
-}
-
-// ObjectInternalID fetches the CDM internal ID for the K8s object
-// corresponding to the provided RSC FID. Unlike ObjectInternalIDByType, this
-// variant does not require specifying the cluster UUID or object type.
-func (a API) ObjectInternalID(
-	ctx context.Context,
-	fid uuid.UUID,
-) (uuid.UUID, error) {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(
-		ctx,
-		k8sObjectInternalIdQuery,
-		struct {
-			FID uuid.UUID `json:"fid"`
-		}{
-			FID: fid,
-		},
-	)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf(
-			"failed to request k8sObjectInternalId: %w", err,
-		)
-	}
-	a.log.Printf(log.Debug, "k8sObjectInternalId(%v): %s", fid, string(buf))
-
-	var payload struct {
-		Data struct {
-			ObjectInternalID uuid.UUID `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, fmt.Errorf(
-			"failed to unmarshal k8sObjectInternalId: %v", err,
-		)
-	}
-
-	return payload.Data.ObjectInternalID, nil
-}
-
-// JobInstance fetches information about a generic CDM job corresponding to the
-// given jobID and cdmClusterID. This returns the full JobInstanceDetail with
-// all fields, unlike K8sJobInstance which returns a K8s-specific subset.
-func (a API) JobInstance(
-	ctx context.Context,
-	jobID string,
-	cdmClusterID string,
-) (JobInstanceDetail, error) {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(
-		ctx,
-		jobInstanceQuery,
-		struct {
-			JobID        string `json:"id"`
-			CDMClusterID string `json:"clusterUuid"`
-		}{
-			JobID:        jobID,
-			CDMClusterID: cdmClusterID,
-		},
-	)
-	if err != nil {
-		return JobInstanceDetail{}, fmt.Errorf(
-			"failed to request jobInstance: %w", err,
-		)
-	}
-	a.log.Printf(
-		log.Debug, "jobInstance(%q, %q): %s",
-		jobID, cdmClusterID, string(buf),
-	)
-
-	var payload struct {
-		Data struct {
-			Response JobInstanceDetail `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return JobInstanceDetail{}, fmt.Errorf(
-			"failed to unmarshal jobInstance response: %v", err,
-		)
-	}
-
-	return payload.Data.Response, nil
-}
-
 // protectionSetSnapshots gets initial snapshots for a given fid. Only used
 // internally for testing purposes.
 func (a API) protectionSetSnapshots(
@@ -834,9 +697,9 @@ func (a API) protectionSetSnapshots(
 		ctx,
 		getProtectionSetSnapshotQuery,
 		struct {
-			FID string `json:"fid"`
+			ID string `json:"id"`
 		}{
-			FID: fid,
+			ID: fid,
 		},
 	)
 	if err != nil {
@@ -880,11 +743,11 @@ func (a API) UpdateProtectionSet(
 		ctx,
 		updateK8sProtectionSetQuery,
 		struct {
-			ID           string                    `json:"id"`
-			UpdateConfig UpdateProtectionSetConfig `json:"updateConfig"`
+			ID     string                    `json:"id"`
+			Config UpdateProtectionSetConfig `json:"config"`
 		}{
-			ID:           fid,
-			UpdateConfig: config,
+			ID:     fid,
+			Config: config,
 		},
 	)
 	if err != nil {
@@ -912,7 +775,8 @@ func (a API) UpdateProtectionSet(
 	return nil
 }
 
-// AddCluster adds the K8s cluster for the given config.
+// AddCluster adds the K8s cluster for the given config. The ID of the returned
+// ClusterSummary is the RSC FID of the K8s cluster.
 func (a API) AddCluster(
 	ctx context.Context,
 	cdmClusterID uuid.UUID,
@@ -937,8 +801,8 @@ func (a API) AddCluster(
 		)
 	}
 	a.log.Printf(
-		log.Debug, "addK8sCluster(%s, %v): %s",
-		cdmClusterID.String(), config, string(buf),
+		log.Debug, "addK8sCluster(%s, %q): %s",
+		cdmClusterID.String(), config.Name, string(buf),
 	)
 
 	var payload struct {
@@ -977,8 +841,7 @@ func (a API) UpdateCluster(
 		return fmt.Errorf("failed to request updateK8sCluster: %w", err)
 	}
 	a.log.Printf(
-		log.Debug, "updateK8sCluster(%s, %v): %s",
-		k8sClusterFID.String(), config, string(buf),
+		log.Debug, "updateK8sCluster(%s): %s", k8sClusterFID.String(), string(buf),
 	)
 
 	var payload struct {
@@ -996,4 +859,49 @@ func (a API) UpdateCluster(
 	}
 
 	return nil
+}
+
+// DeleteCluster starts an async job deleting the K8s cluster with the given
+// FID. When forceDelete is true, the cluster is deleted even if it is not
+// reachable. Note, RSC translates the ID of the returned AsyncRequestStatus
+// as if it were a cluster ID, so it cannot be passed to K8sJobInstance.
+func (a API) DeleteCluster(
+	ctx context.Context,
+	k8sClusterFID uuid.UUID,
+	forceDelete bool,
+	preserveSnapshots bool,
+) (AsyncRequestStatus, error) {
+	a.log.Print(log.Trace)
+
+	buf, err := a.GQL.Request(
+		ctx,
+		deleteK8sClusterQuery,
+		struct {
+			ID                string `json:"id"`
+			ForceDelete       bool   `json:"forceDelete"`
+			PreserveSnapshots bool   `json:"preserveSnapshots"`
+		}{
+			ID:                k8sClusterFID.String(),
+			ForceDelete:       forceDelete,
+			PreserveSnapshots: preserveSnapshots,
+		},
+	)
+	if err != nil {
+		return AsyncRequestStatus{}, fmt.Errorf("failed to request deleteK8sCluster: %w", err)
+	}
+	a.log.Printf(
+		log.Debug, "deleteK8sCluster(%s, %v, %v): %s",
+		k8sClusterFID.String(), forceDelete, preserveSnapshots, string(buf),
+	)
+
+	var payload struct {
+		Data struct {
+			Response AsyncRequestStatus `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return AsyncRequestStatus{}, fmt.Errorf("failed to unmarshal deleteK8sCluster: %v", err)
+	}
+
+	return payload.Data.Response, nil
 }

@@ -66,12 +66,12 @@ var addK8sProtectionSetQuery = `mutation SdkGolangAddK8sProtectionSet($config: K
 
 // createK8sProtectionSetSnapshot GraphQL query
 var createK8sProtectionSetSnapshotQuery = `mutation SdkGolangCreateK8sProtectionSetSnapshot(
-    $protectionSetId: String!,
-    $jobConfig: BaseOnDemandSnapshotConfigInput!) {
+    $id: String!,
+    $config: BaseOnDemandSnapshotConfigInput) {
     result: createK8sProtectionSetSnapshot(
         input: {
-            protectionSetId: $protectionSetId,
-            jobConfig: $jobConfig
+            id: $id,
+            config: $config
         }
     ) {
         status
@@ -90,8 +90,27 @@ var createK8sProtectionSetSnapshotQuery = `mutation SdkGolangCreateK8sProtection
     }
 }`
 
+// deleteK8sCluster GraphQL query
+var deleteK8sClusterQuery = `mutation SdkGolangDeleteK8sCluster($id: String!, $forceDelete: Boolean, $preserveSnapshots: Boolean) {
+    result: deleteK8sCluster(input: {id: $id, forceDelete: $forceDelete, preserveSnapshots: $preserveSnapshots}) {
+        status
+        startTime
+        progress
+        nodeId
+        links {
+            rel
+            href
+        }
+        id
+        error {
+            message
+        }
+        endTime
+    }
+}`
+
 // deleteK8sProtectionSet GraphQL query
-var deleteK8sProtectionSetQuery = `mutation SdkGolangDeleteK8sProtectionSet($id: UUID!, $preserveSnapshots: Boolean!) {
+var deleteK8sProtectionSetQuery = `mutation SdkGolangDeleteK8sProtectionSet($id: String!, $preserveSnapshots: Boolean!) {
     result: deleteK8sProtectionSet(input: {id: $id, preserveSnapshots: $preserveSnapshots}) {
         success
     }
@@ -100,7 +119,7 @@ var deleteK8sProtectionSetQuery = `mutation SdkGolangDeleteK8sProtectionSet($id:
 // exportK8sProtectionSetSnapshot GraphQL query
 var exportK8sProtectionSetSnapshotQuery = `mutation SdkGolangExportK8sProtectionSetSnapshot(
     $id: String!,
-    $jobConfig: ExportK8sProtectionSetSnapshotJobConfigInput!) {
+    $jobConfig: K8sExportParametersInput!) {
     result: exportK8sProtectionSetSnapshot(
         input: {
             id: $id,
@@ -124,38 +143,14 @@ var exportK8sProtectionSetSnapshotQuery = `mutation SdkGolangExportK8sProtection
 }`
 
 // getProtectionSetSnapshot GraphQL query
-var getProtectionSetSnapshotQuery = `query SdkGolangGetProtectionSetSnapshot($fid: UUID!) {
-    result: k8sProtectionSetSnapshots(
-        k8sProtectionSetFid: $fid,
-        first: 1,
-        sortOrder: DESC
-    ) {
+var getProtectionSetSnapshotQuery = `query SdkGolangGetProtectionSetSnapshot($id: String!) {
+    result: k8sProtectionSetSnapshots(input: {id: $id}) {
         data {
             baseSnapshotSummary {
                 id
                 slaId
             }
         }
-    }
-}`
-
-// jobInstance GraphQL query
-var jobInstanceQuery = `query SdkGolangJobInstance($id: String!, $clusterUuid: String!) {
-    result: jobInstance(input: {id: $id, clusterUuid: $clusterUuid}) {
-        archived
-        endTime
-        errorInfo
-        eventSeriesId
-        id
-        isDisabled
-        jobProgress
-        jobType
-        nodeId
-        result
-        startTime
-        status
-        childJobDebugInfo
-        opentracingContext
     }
 }`
 
@@ -170,19 +165,9 @@ var k8sJobInstanceQuery = `query SdkGolangK8sJobInstance($k8sJobId: String!, $cl
     }
 }`
 
-// k8sObjectFid GraphQL query
-var k8sObjectFidQuery = `query SdkGolangK8sObjectFid($k8SObjectInternalIdArg: UUID!, $clusterUuid: UUID!) {
-    result: k8sObjectFid(K8sObjectInternalIDArg: $k8SObjectInternalIdArg, clusterUuid: $clusterUuid)
-}`
-
 // k8sObjectFidByType GraphQL query
 var k8sObjectFidByTypeQuery = `query SdkGolangK8sObjectFidByType($k8SObjectInternalIdArg: UUID!, $clusterUuid: UUID!, $kubernetesObjectType: KubernetesObjectType!) {
-    result: k8sObjectFidByType(k8SObjectInternalIdArg: $k8SObjectInternalIdArg, clusterUuid: $clusterUuid, kubernetesObjectType: $kubernetesObjectType)
-}`
-
-// k8sObjectInternalId GraphQL query
-var k8sObjectInternalIdQuery = `query SdkGolangK8sObjectInternalId($fid: UUID!) {
-    result: k8sObjectInternalId(fid: $fid)
+    result: k8sObjectFidByType(K8sObjectInternalIDArg: $k8SObjectInternalIdArg, clusterUuid: $clusterUuid, kubernetesObjectType: $kubernetesObjectType)
 }`
 
 // k8sObjectInternalIdByType GraphQL query
@@ -215,7 +200,7 @@ var k8sProtectionSetQuery = `query SdkGolangK8sProtectionSet($fid: UUID!) {
         id
         isRelic
         k8sClusterUuid
-        Name
+        name
         namespace
         objectType
         pendingSla {
@@ -243,7 +228,7 @@ var k8sProtectionSetQuery = `query SdkGolangK8sProtectionSet($fid: UUID!) {
 // restoreK8sProtectionSetSnapshot GraphQL query
 var restoreK8sProtectionSetSnapshotQuery = `mutation SdkGolangRestoreK8sProtectionSetSnapshot(
     $id: String!,
-    $jobConfig: RestoreK8sProtectionSetSnapshotJobConfigInput!) {
+    $jobConfig: K8sRestoreParametersInput!) {
     result: restoreK8sProtectionSetSnapshot(
         input: {
             id: $id,
@@ -267,15 +252,15 @@ var restoreK8sProtectionSetSnapshotQuery = `mutation SdkGolangRestoreK8sProtecti
 }`
 
 // updateK8sCluster GraphQL query
-var updateK8sClusterQuery = `mutation SdkGolangUpdateK8sCluster($id: UUID!, $config: K8sClusterUpdateInput!) {
+var updateK8sClusterQuery = `mutation SdkGolangUpdateK8sCluster($id: String!, $config: K8sClusterUpdateConfigInput!) {
     result: updateK8sCluster(input: {id: $id, config: $config}) {
         success
     }
 }`
 
 // updateK8sProtectionSet GraphQL query
-var updateK8sProtectionSetQuery = `mutation SdkGolangUpdateK8sProtectionSet($id: UUID!, $updateConfig: K8sProtectionSetUpdateInput!) {
-    result: updateK8sProtectionSet(input: {id: $id, updateConfig: $updateConfig}) {
+var updateK8sProtectionSetQuery = `mutation SdkGolangUpdateK8sProtectionSet($id: String!, $config: K8sProtectionSetUpdateConfigInput!) {
+    result: updateK8sProtectionSet(input: {id: $id, config: $config}) {
         success
     }
 }`

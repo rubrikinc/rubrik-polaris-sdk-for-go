@@ -1,10 +1,10 @@
 mutation RubrikPolarisSDKRequest(
-    $protectionSetId: String!,
-    $jobConfig: BaseOnDemandSnapshotConfigInput!) {
+    $id: String!,
+    $config: BaseOnDemandSnapshotConfigInput) {
     result: createK8sProtectionSetSnapshot(
         input: {
-            protectionSetId: $protectionSetId,
-            jobConfig: $jobConfig
+            id: $id,
+            config: $config
         }
     ) {
         status

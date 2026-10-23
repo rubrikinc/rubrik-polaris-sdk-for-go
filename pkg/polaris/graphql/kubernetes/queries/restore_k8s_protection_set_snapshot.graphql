@@ -1,6 +1,6 @@
 mutation RubrikPolarisSDKRequest(
     $id: String!,
-    $jobConfig: RestoreK8sProtectionSetSnapshotJobConfigInput!) {
+    $jobConfig: K8sRestoreParametersInput!) {
     result: restoreK8sProtectionSetSnapshot(
         input: {
             id: $id,

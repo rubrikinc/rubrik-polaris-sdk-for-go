@@ -1,9 +1,5 @@
-query RubrikPolarisSDKRequest($fid: UUID!) {
-    result: k8sProtectionSetSnapshots(
-        k8sProtectionSetFid: $fid,
-        first: 1,
-        sortOrder: DESC
-    ) {
+query RubrikPolarisSDKRequest($id: String!) {
+    result: k8sProtectionSetSnapshots(input: {id: $id}) {
         data {
             baseSnapshotSummary {
                 id
