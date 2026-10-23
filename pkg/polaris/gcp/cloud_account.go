@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -309,14 +310,10 @@ func (a API) RemoveProject(ctx context.Context, cloudAccountID uuid.UUID, featur
 		}
 	}
 
-	var cloudDiscovery, others []core.Feature
-	for _, feature := range features {
-		if feature.Equal(core.FeatureCloudDiscovery) {
-			cloudDiscovery = append(cloudDiscovery, feature)
-		} else {
-			others = append(others, feature)
-		}
-	}
+	// DeleteFunc modifies its input, so the caller's slice is cloned first.
+	isCloudDiscovery := func(f core.Feature) bool { return f.Equal(core.FeatureCloudDiscovery) }
+	cloudDiscovery := slices.DeleteFunc(slices.Clone(features), func(f core.Feature) bool { return !isCloudDiscovery(f) })
+	others := slices.DeleteFunc(slices.Clone(features), isCloudDiscovery)
 
 	// RSC rejects removing Cloud Discovery while a protection feature is
 	// connected, but only after accepting the request, in the task chain that
