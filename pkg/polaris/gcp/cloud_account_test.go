@@ -23,6 +23,7 @@ package gcp
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -57,9 +58,20 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Cloud Discovery is only onboarded when its feature flag is enabled, since
+	// RSC rejects the feature otherwise.
+	flag, err := core.Wrap(client.GQL).FeatureFlag(ctx, core.FeatureFlagGCPCloudDiscovery)
+	if err != nil {
+		t.Fatal(err)
+	}
+	features := []core.Feature{core.FeatureCloudNativeProtection}
+	if flag.Enabled {
+		features = append(features, core.FeatureCloudDiscovery)
+	}
+
 	// Add the default GCP project to RSC. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
-	id, err := gcpClient.AddProject(ctx, Default(), []core.Feature{core.FeatureCloudNativeProtection})
+	id, err := gcpClient.AddProject(ctx, Default(), features)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,14 +92,17 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 	if account.ProjectNumber != testProject.ProjectNumber {
 		t.Fatalf("invalid project number: %v", account.ProjectNumber)
 	}
-	if n := len(account.Features); n != 1 {
+	if n := len(account.Features); n != len(features) {
 		t.Fatalf("invalid number of features: %v", n)
 	}
-	if !account.Features[0].Equal(core.FeatureCloudNativeProtection) {
-		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
-	}
-	if status := account.Features[0].Status; status != core.StatusConnected {
-		t.Fatalf("invalid feature status: %v", status)
+	for _, feature := range features {
+		f, ok := account.Feature(feature)
+		if !ok {
+			t.Fatalf("missing feature: %v", feature)
+		}
+		if f.Status != core.StatusConnected {
+			t.Fatalf("invalid status for feature %v: %v", feature, f.Status)
+		}
 	}
 
 	// Verify that the Project function does not return a project given a prefix
@@ -98,8 +113,27 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 		t.Fatalf("invalid error: %v", err)
 	}
 
-	// Remove GCP project from RSC keeping the snapshots.
-	err = gcpClient.RemoveProject(ctx, id, []core.Feature{core.FeatureCloudNativeProtection}, false)
+	// Verify that Cloud Discovery cannot be removed on its own while Cloud
+	// Native Protection is enabled, and that nothing was removed.
+	if flag.Enabled {
+		err = gcpClient.RemoveProject(ctx, id, []core.Feature{core.FeatureCloudDiscovery}, false)
+		if err == nil {
+			t.Fatal("expected removing Cloud Discovery while Cloud Native Protection is enabled to fail")
+		}
+		account, err = gcpClient.ProjectByID(ctx, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n := len(account.Features); n != len(features) {
+			t.Fatalf("invalid number of features after refused removal: %v", n)
+		}
+	}
+
+	// Remove GCP project from RSC keeping the snapshots. The features are
+	// reversed to list Cloud Discovery first, when it was added, to verify that
+	// it is still removed last.
+	slices.Reverse(features)
+	err = gcpClient.RemoveProject(ctx, id, features, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,10 +178,21 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Cloud Discovery is only onboarded when its feature flag is enabled, since
+	// RSC rejects the feature otherwise.
+	flag, err := core.Wrap(client.GQL).FeatureFlag(ctx, core.FeatureFlagGCPCloudDiscovery)
+	if err != nil {
+		t.Fatal(err)
+	}
+	features := []core.Feature{core.FeatureCloudNativeProtection}
+	if flag.Enabled {
+		features = append(features, core.FeatureCloudDiscovery)
+	}
+
 	// Add the default GCP project to RSC. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
 	id, err := gcpClient.AddProject(ctx, Project(testProject.ProjectID, testProject.ProjectNumber),
-		[]core.Feature{core.FeatureCloudNativeProtection}, Name(testProject.ProjectName), Organization(testProject.OrganizationName))
+		features, Name(testProject.ProjectName), Organization(testProject.OrganizationName))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,18 +211,21 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 	if account.ProjectNumber != testProject.ProjectNumber {
 		t.Fatalf("invalid project number: %v", account.ProjectNumber)
 	}
-	if n := len(account.Features); n != 1 {
+	if n := len(account.Features); n != len(features) {
 		t.Fatalf("invalid number of features: %v", n)
 	}
-	if !account.Features[0].Equal(core.FeatureCloudNativeProtection) {
-		t.Fatalf("invalid feature name: %v", account.Features[0].Name)
-	}
-	if status := account.Features[0].Status; status != core.StatusConnected {
-		t.Fatalf("invalid feature status: %v", status)
+	for _, feature := range features {
+		f, ok := account.Feature(feature)
+		if !ok {
+			t.Fatalf("missing feature: %v", feature)
+		}
+		if f.Status != core.StatusConnected {
+			t.Fatalf("invalid status for feature %v: %v", feature, f.Status)
+		}
 	}
 
 	// Remove GCP project from RSC keeping the snapshots.
-	err = gcpClient.RemoveProject(ctx, id, []core.Feature{core.FeatureCloudNativeProtection}, false)
+	err = gcpClient.RemoveProject(ctx, id, features, false)
 	if err != nil {
 		t.Fatal(err)
 	}

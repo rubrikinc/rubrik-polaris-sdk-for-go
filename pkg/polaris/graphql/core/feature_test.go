@@ -148,8 +148,8 @@ func TestAllowlists(t *testing.T) {
 		"GCPProjectAllowlistNames": {
 			names: GCPProjectAllowlistNames(),
 			want: []string{
-				CloudNativeArchival, CloudNativeProtection, CloudNativeUEMKeyManagement, CloudSQLProtection, Exocompute,
-				GCPBigQueryProtection, GCPBigQueryReservation, GCPSharedVPCHost, ServerAndApps,
+				CloudDiscovery, CloudNativeArchival, CloudNativeProtection, CloudNativeUEMKeyManagement, CloudSQLProtection,
+				Exocompute, GCPBigQueryProtection, GCPBigQueryReservation, GCPSharedVPCHost, ServerAndApps,
 			},
 		},
 	} {
