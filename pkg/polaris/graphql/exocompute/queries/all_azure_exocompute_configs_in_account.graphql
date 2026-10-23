@@ -34,10 +34,15 @@ query RubrikPolarisSDKRequest(
                 additionalWhitelistIps
                 aksClusterAccessType
                 aksClusterTier
+                azurePostgresFlexServerPrivateDnsZoneId
+                azurePostgresFlexServerSubnetNativeId
+                azureSqlPrivateDnsZoneId
                 diskEncryptionAtHost
+                diskEncryptionSetId
                 aksCustomPrivateDnsZoneId
                 aksNodeCountBucket
                 aksNodeRgPrefix
+                healthCheckVmNamePrefix
                 privateDnsZoneId
                 enableUserDefinedRouting
                 shouldWhitelistRubrikIps

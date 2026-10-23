@@ -161,8 +161,12 @@ func (a API) AddAzureConfiguration(ctx context.Context, cloudAccountID uuid.UUID
 		return uuid.Nil, fmt.Errorf("failed to parse exocompute configuration: %s", err)
 	}
 
-	if err := exocompute.ValidateConfiguration(ctx, a.client, exoConfig); err != nil {
+	warnings, err := exocompute.ValidateConfigurationWithWarnings(ctx, a.client, exoConfig)
+	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to validate exocompute configuration: %s", err)
+	}
+	for _, warning := range warnings {
+		a.log.Printf(log.Warn, "exocompute configuration validation warning (proceeding anyway): %s", warning)
 	}
 
 	configID, err := exocompute.CreateConfiguration(ctx, a.client, exoConfig)

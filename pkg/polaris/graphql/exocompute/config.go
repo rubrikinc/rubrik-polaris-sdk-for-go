@@ -196,16 +196,29 @@ type ValidateConfigurationParams[R ValidateConfigurationResult] interface {
 type ValidateConfigurationResult interface {
 	ValidateAzureConfigurationResult
 	Validate() error
+	Warnings() []string
 }
 
-// ValidateConfiguration validates the exocompute configuration.
+// ValidateConfiguration validates the exocompute configuration. Validation
+// results which RSC reports as warnings are ignored, use
+// ValidateConfigurationWithWarnings to get them.
 func ValidateConfiguration[P ValidateConfigurationParams[R], R ValidateConfigurationResult](ctx context.Context, gql *graphql.Client, params P) error {
+	_, err := ValidateConfigurationWithWarnings(ctx, gql, params)
+	return err
+}
+
+// ValidateConfigurationWithWarnings validates the exocompute configuration.
+// The returned error describes the validation failures which block the
+// configuration from being created. The returned warnings describe the
+// validation results which RSC only reports as warnings, they do not block the
+// configuration from being created.
+func ValidateConfigurationWithWarnings[P ValidateConfigurationParams[R], R ValidateConfigurationResult](ctx context.Context, gql *graphql.Client, params P) ([]string, error) {
 	gql.Log().Print(log.Trace)
 
 	query, queryParams, _ := params.ValidateQuery()
 	buf, err := gql.Request(ctx, query, queryParams)
 	if err != nil {
-		return graphql.RequestError(query, err)
+		return nil, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
@@ -214,11 +227,11 @@ func ValidateConfiguration[P ValidateConfigurationParams[R], R ValidateConfigura
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return graphql.UnmarshalError(query, err)
+		return nil, graphql.UnmarshalError(query, err)
 	}
 	if err := payload.Data.Result.Validate(); err != nil {
-		return graphql.ResponseError(query, err)
+		return nil, graphql.ResponseError(query, err)
 	}
 
-	return nil
+	return payload.Data.Result.Warnings(), nil
 }
