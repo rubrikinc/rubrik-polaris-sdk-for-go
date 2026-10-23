@@ -40,7 +40,7 @@ type GetRegistryParams[R GetRegistryResult] interface {
 // GetRegistryResult holds the result of a private container registry get
 // operation.
 type GetRegistryResult interface {
-	AWSRegistry | AzureRegistry
+	AWSRegistry | AzureRegistry | GCPRegistry
 }
 
 // GetRegistry returns the private container registry details.
@@ -74,7 +74,7 @@ type SetRegistryParams[R SetRegistryResult] interface {
 // SetRegistryResult holds the result of a private container registry set
 // operation.
 type SetRegistryResult interface {
-	SetAWSRegistryResult | SetAzureRegistryResult
+	SetAWSRegistryResult | SetAzureRegistryResult | SetGCPRegistryResult
 }
 
 // SetRegistry sets the private container registry.
