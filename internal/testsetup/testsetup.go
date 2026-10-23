@@ -2,6 +2,7 @@ package testsetup
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -145,6 +146,37 @@ func RSCConfig() (testRSCConfig, error) {
 	testConfig := testRSCConfig{}
 	if err := json.Unmarshal(buf, &testConfig); err != nil {
 		return testRSCConfig{}, err
+	}
+	return testConfig, nil
+}
+
+// testK8SConfig holds K8s configuration information used in the integration
+// tests.
+type testK8SConfig struct {
+	CDMID              uuid.UUID `json:"cdmID"`
+	SLAID              uuid.UUID `json:"slaID"`
+	KubeconfigFilePath string    `json:"kubeconfigFilePath"`
+}
+
+// ErrK8SConfigNotSet is returned by K8SConfig when the TEST_K8SCONFIG_FILE
+// environment variable is not set.
+var ErrK8SConfigNotSet = errors.New("TEST_K8SCONFIG_FILE not set")
+
+// K8SConfig loads test configuration information from the file pointed to by
+// the TEST_K8SCONFIG_FILE environment variable. Returns ErrK8SConfigNotSet if
+// the environment variable is not set.
+func K8SConfig() (testK8SConfig, error) {
+	file := os.Getenv("TEST_K8SCONFIG_FILE")
+	if file == "" {
+		return testK8SConfig{}, ErrK8SConfigNotSet
+	}
+	buf, err := os.ReadFile(file)
+	if err != nil {
+		return testK8SConfig{}, fmt.Errorf("failed to read file pointed to by TEST_K8SCONFIG_FILE: %v", err)
+	}
+	testConfig := testK8SConfig{}
+	if err := json.Unmarshal(buf, &testConfig); err != nil {
+		return testK8SConfig{}, err
 	}
 	return testConfig, nil
 }

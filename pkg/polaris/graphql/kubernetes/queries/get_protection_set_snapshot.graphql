@@ -1,0 +1,10 @@
+query RubrikPolarisSDKRequest($id: String!) {
+    result: k8sProtectionSetSnapshots(input: {id: $id}) {
+        data {
+            baseSnapshotSummary {
+                id
+                slaId
+            }
+        }
+    }
+}
