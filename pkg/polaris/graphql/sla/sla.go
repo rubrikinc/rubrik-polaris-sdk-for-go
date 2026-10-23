@@ -157,6 +157,7 @@ const (
 	ObjectGCPBigQuery                 ObjectType = "GCP_BIGQUERY_OBJECT_TYPE"
 	ObjectGCPCloudSQL                 ObjectType = "GCP_CLOUD_SQL_OBJECT_TYPE"
 	ObjectGitHub                      ObjectType = "GITHUB_OBJECT_TYPE"
+	ObjectGlueIcebergTable            ObjectType = "GLUE_ICEBERG_TABLE_OBJECT_TYPE"
 	ObjectGoogleWorkspace             ObjectType = "GOOGLE_WORKSPACE_OBJECT_TYPE"
 	ObjectHyperV                      ObjectType = "HYPERV_OBJECT_TYPE"
 	ObjectInformixInstance            ObjectType = "INFORMIX_INSTANCE_OBJECT_TYPE"
@@ -178,6 +179,7 @@ const (
 	ObjectOracle                      ObjectType = "ORACLE_OBJECT_TYPE"
 	ObjectPostgresDBCluster           ObjectType = "POSTGRES_DB_CLUSTER_OBJECT_TYPE"
 	ObjectProxmox                     ObjectType = "PROXMOX_OBJECT_TYPE"
+	ObjectS3TablesIcebergTable        ObjectType = "S3_TABLES_ICEBERG_TABLE_OBJECT_TYPE"
 	ObjectSalesforce                  ObjectType = "SALESFORCE_OBJECT_TYPE"
 	ObjectSAPHANA                     ObjectType = "SAP_HANA_OBJECT_TYPE"
 	ObjectSnapMirrorCloud             ObjectType = "SNAPMIRROR_CLOUD_OBJECT_TYPE"
@@ -212,6 +214,7 @@ func AllObjectTypesAsStrings() []string {
 		string(ObjectGCPBigQuery),
 		string(ObjectGCPCloudSQL),
 		string(ObjectGitHub),
+		string(ObjectGlueIcebergTable),
 		string(ObjectGoogleWorkspace),
 		string(ObjectHyperV),
 		string(ObjectInformixInstance),
@@ -233,6 +236,7 @@ func AllObjectTypesAsStrings() []string {
 		string(ObjectOracle),
 		string(ObjectPostgresDBCluster),
 		string(ObjectProxmox),
+		string(ObjectS3TablesIcebergTable),
 		string(ObjectSalesforce),
 		string(ObjectSAPHANA),
 		string(ObjectSnapMirrorCloud),

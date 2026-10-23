@@ -133,8 +133,8 @@ func TestAllowlists(t *testing.T) {
 				Archival, CloudCostReport, CloudDiscovery, CloudNativeArchival, CloudNativeConfigProtection,
 				CloudNativeDynamoDBProtection, CloudNativeProtection, CloudNativeS3Protection, CloudNativeUEMKeyManagement,
 				CyberRecoveryDataClassificationData, CyberRecoveryDataClassificationMetadata, DSPMData, DSPMMetadata,
-				Exocompute, KubernetesProtection, LaminarCrossAccount, LaminarInternal, Outpost, RDSProtection,
-				RoleChaining, ServerAndApps,
+				Exocompute, GlueIcebergProtection, KubernetesProtection, LaminarCrossAccount, LaminarInternal, Outpost,
+				RDSProtection, RoleChaining, S3TablesIcebergProtection, ServerAndApps,
 			},
 		},
 		"AzureSubscriptionAllowlistNames": {
@@ -156,6 +156,36 @@ func TestAllowlists(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			if got := tc.names; !slices.Equal(got, tc.want) {
 				t.Errorf("unexpected features\n got: %v\nwant: %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestIcebergProtectionFeatures(t *testing.T) {
+	tests := []struct {
+		feature Feature
+		name    string
+	}{
+		{feature: FeatureGlueIcebergProtection, name: "GLUE_ICEBERG_PROTECTION"},
+		{feature: FeatureS3TablesIcebergProtection, name: "S3_TABLES_ICEBERG_PROTECTION"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.feature.Name != tt.name {
+				t.Errorf("invalid feature name: %s", tt.feature.Name)
+			}
+			if !tt.feature.IsProtectionFeature() {
+				t.Errorf("%s should be a protection feature", tt.name)
+			}
+			if !slices.ContainsFunc(AllProtectionFeatures(CloudVendorAWS), tt.feature.Equal) {
+				t.Errorf("%s should be an AWS protection feature", tt.name)
+			}
+			feature, err := ParseFeature(tt.name)
+			if err != nil {
+				t.Fatalf("failed to parse feature: %v", err)
+			}
+			if !feature.Equal(tt.feature) {
+				t.Errorf("invalid feature: %s", feature)
 			}
 		})
 	}

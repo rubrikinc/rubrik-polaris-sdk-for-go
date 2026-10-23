@@ -110,6 +110,7 @@ type ObjectSpecificConfigs struct {
 	NcdSlaConfig                      *NcdSlaConfig                      `json:"ncdConfigInput,omitempty"`
 	InformixSlaConfig                 *InformixSlaConfig                 `json:"informixConfigInput,omitempty"`
 	GcpCloudSqlConfig                 *GcpCloudSqlConfig                 `json:"gcpCloudSqlConfigInput,omitempty"`
+	IcebergConfig                     *IcebergConfig                     `json:"icebergSlaConfigInput,omitempty"`
 }
 
 // AWSDynamoDBConfig represents the configuration specific for an AWS DynamoDB
@@ -299,6 +300,55 @@ type InformixSlaConfig struct {
 // object.
 type GcpCloudSqlConfig struct {
 	LogRetention RetentionDuration `json:"logRetention,omitzero"`
+}
+
+// IcebergConfig represents the configuration specific for Apache Iceberg table
+// objects, i.e., AWS Glue Iceberg tables and Amazon S3 Tables Iceberg tables.
+// Note, RSC only honours the configuration for AWS Glue Iceberg tables. Backups
+// of Amazon S3 Tables Iceberg tables always capture the latest snapshot.
+type IcebergConfig struct {
+	// SnapshotSelectionStrategy selects which native Iceberg snapshot a backup
+	// captures. When empty, RSC uses IcebergSnapshotLatest.
+	SnapshotSelectionStrategy IcebergSnapshotSelectionStrategy `json:"snapshotSelectionStrategy,omitempty"`
+
+	// TagRegex is an RE2 regular expression matched against tag ref names. It
+	// is only used by IcebergSnapshotLatestTagged, where an empty pattern
+	// matches all tags.
+	TagRegex string `json:"tagRegex"`
+
+	// FallbackToLatest makes the backup capture the latest snapshot when the
+	// selected snapshot cannot be resolved. When false, an unresolvable
+	// selection fails the backup. It is ignored by IcebergSnapshotLatest,
+	// which always resolves.
+	FallbackToLatest bool `json:"fallbackToLatest"`
+}
+
+// IcebergSnapshotSelectionStrategy represents the strategy used to choose which
+// native Iceberg snapshot a backup captures.
+type IcebergSnapshotSelectionStrategy string
+
+const (
+	// IcebergSnapshotLatest backs up the table's latest snapshot by commit
+	// time.
+	IcebergSnapshotLatest IcebergSnapshotSelectionStrategy = "ICEBERG_SNAPSHOT_LATEST"
+
+	// IcebergSnapshotLatestCompacted backs up the newest compacted (overwrite)
+	// snapshot.
+	IcebergSnapshotLatestCompacted IcebergSnapshotSelectionStrategy = "ICEBERG_SNAPSHOT_LATEST_COMPACTED"
+
+	// IcebergSnapshotLatestTagged backs up the newest snapshot whose tag ref
+	// name matches the tag regex.
+	IcebergSnapshotLatestTagged IcebergSnapshotSelectionStrategy = "ICEBERG_SNAPSHOT_LATEST_TAGGED"
+)
+
+// AllIcebergSnapshotSelectionStrategiesAsStrings returns all Iceberg snapshot
+// selection strategies as a slice of strings.
+func AllIcebergSnapshotSelectionStrategiesAsStrings() []string {
+	return []string{
+		string(IcebergSnapshotLatest),
+		string(IcebergSnapshotLatestCompacted),
+		string(IcebergSnapshotLatestTagged),
+	}
 }
 
 // SnapshotSchedule holds the snapshot schedule for an RSC global SLA domain.

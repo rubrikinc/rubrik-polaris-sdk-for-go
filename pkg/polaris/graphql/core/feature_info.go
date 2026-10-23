@@ -871,6 +871,7 @@ var featureInfoMap = map[string]struct {
 			},
 		},
 		protection: true,
+		public:     true,
 	},
 	KubernetesProtection: {
 		permissionGroups: cloudAccountPermissionGroups{
@@ -975,6 +976,7 @@ var featureInfoMap = map[string]struct {
 			},
 		},
 		protection: true,
+		public:     true,
 	},
 	ServerAndApps: {
 		permissionGroups: cloudAccountPermissionGroups{
