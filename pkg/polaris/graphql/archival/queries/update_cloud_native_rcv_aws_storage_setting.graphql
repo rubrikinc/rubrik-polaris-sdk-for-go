@@ -1,0 +1,15 @@
+mutation RubrikPolarisSDKRequest(
+    $id:   UUID!,
+    $name: String!,
+    $tier: RcsTierEnumType
+) {
+    result: updateCloudNativeRcvAwsStorageSetting(input: {
+        id:         $id,
+        name:       $name,
+        rcvTierOpt: $tier
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}

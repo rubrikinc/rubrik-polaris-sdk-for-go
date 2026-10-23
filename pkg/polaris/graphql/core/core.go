@@ -26,7 +26,7 @@ package core
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
@@ -90,33 +90,18 @@ func FormatTimestamp(t time.Time) string {
 	return t.UTC().Format("2006-01-02T15:04:05.000Z")
 }
 
-// ValuesByEnum returns the enum values for the specified enum name in the RSC GraphQL API.
+// ValuesByEnum returns the enum values for the specified enum name in the RSC
+// GraphQL API.
 func (a API) ValuesByEnum(ctx context.Context, enumName string) ([]string, error) {
 	a.log.Print(log.Trace)
 
-	query := enumValuesQuery
-	buf, err := a.GQL.Request(ctx, query, struct {
-		EnumName string `json:"enumName"`
-	}{EnumName: enumName})
-	if err != nil {
-		return nil, graphql.RequestError(query, err)
-	}
-
-	var payload struct {
-		Data struct {
-			Result struct {
-				EnumValues []struct {
-					Name string `json:"name"`
-				} `json:"enumValues"`
-			} `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, graphql.UnmarshalError(query, err)
+	values, err := graphql.EnumValues(ctx, a.GQL, enumName)
+	if err != nil && !errors.Is(err, graphql.ErrNotFound) {
+		return nil, err
 	}
 
 	var enumValues []string
-	for _, v := range payload.Data.Result.EnumValues {
+	for _, v := range values {
 		enumValues = append(enumValues, v.Name)
 	}
 	return enumValues, nil

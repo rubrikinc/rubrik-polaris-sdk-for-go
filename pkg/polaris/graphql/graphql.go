@@ -167,7 +167,7 @@ func (c *Client) Request(ctx context.Context, query string, variables any) ([]by
 	// Log query and variables.
 	buf, err := json.MarshalIndent(secret.Redact(variables), "", "    ")
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal query variables for logging: %s", err)
+		return nil, fmt.Errorf("failed to marshal query variables: %s", err)
 	}
 	c.log.Printf(log.Debug, "%s request:\n%s\n%s", QueryName(query), query, string(buf))
 

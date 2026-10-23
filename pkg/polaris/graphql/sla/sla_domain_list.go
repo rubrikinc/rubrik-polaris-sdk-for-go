@@ -104,6 +104,7 @@ type Domain struct {
 		NcdSlaConfig                      *NcdSlaConfig                      `json:"ncdSlaConfig"`
 		InformixSlaConfig                 *InformixSlaConfig                 `json:"informixSlaConfig"`
 		GcpCloudSqlConfig                 *GcpCloudSqlConfig                 `json:"gcpCloudSqlConfig"`
+		IcebergConfig                     *IcebergConfig                     `json:"icebergSlaConfig"`
 	} `json:"objectSpecificConfigs"`
 	ObjectTypes      []ObjectType `json:"objectTypes"`
 	ReplicationSpecs []struct {

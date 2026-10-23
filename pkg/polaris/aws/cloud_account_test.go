@@ -27,19 +27,38 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
-// TestToCloudAccountKeepsConfigProtection guards against the Cloud Native
-// Config Protection feature being dropped from SupportedFeatures. The list
-// filters every account read, so a missing entry makes an onboarded feature
-// invisible to AccountByID and friends rather than failing loudly.
-func TestToCloudAccountKeepsConfigProtection(t *testing.T) {
-	account := toCloudAccount(aws.CloudAccountWithFeatures{
-		Features: []aws.Feature{{
-			Feature: core.FeatureCloudNativeConfigProtection.Name,
-			Status:  core.StatusConnecting,
-		}},
-	})
-	if _, ok := account.Feature(core.FeatureCloudNativeConfigProtection); !ok {
-		t.Error("CLOUD_NATIVE_CONFIG_PROTECTION dropped by toCloudAccount")
+// TestToCloudAccountKeepsFeatures guards against features being dropped from
+// SupportedFeatures. The list filters every account read, so a missing entry
+// makes an onboarded feature invisible to AccountByID and friends rather than
+// failing loudly.
+func TestToCloudAccountKeepsFeatures(t *testing.T) {
+	features := []core.Feature{
+		core.FeatureCloudNativeConfigProtection,
+		core.FeatureGlueIcebergProtection,
+		core.FeatureS3TablesIcebergProtection,
+	}
+	for _, feature := range features {
+		t.Run(feature.Name, func(t *testing.T) {
+			account := toCloudAccount(aws.CloudAccountWithFeatures{
+				Features: []aws.Feature{{
+					Feature: feature.Name,
+					Status:  core.StatusConnecting,
+				}},
+			})
+			if _, ok := account.Feature(feature); !ok {
+				t.Errorf("%s dropped by toCloudAccount", feature.Name)
+			}
+		})
+	}
+}
+
+// TestSupportedFeaturesIncludesUEMKeyManagement guards against the unified
+// encryption key management feature being dropped from SupportedFeatures.
+// Features missing from the list are silently discarded when a cloud account
+// is read, hiding a feature the account actually has enabled.
+func TestSupportedFeaturesIncludesUEMKeyManagement(t *testing.T) {
+	if _, ok := core.LookupFeature(SupportedFeatures(), core.FeatureCloudNativeUEMKeyManagement); !ok {
+		t.Error("CLOUD_NATIVE_UEM_KEY_MANAGEMENT missing from SupportedFeatures")
 	}
 }
 

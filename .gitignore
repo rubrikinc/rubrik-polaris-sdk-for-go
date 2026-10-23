@@ -3,6 +3,7 @@
 /aws_account
 /aws_cross_account_role
 /aws_exocompute
+/aws_kms_key_manager
 /aws_shared_exocompute
 /aws_storage_setting
 /azure_devops_organization
@@ -17,6 +18,7 @@
 /examples/aws_account/aws_account
 /examples/aws_cross_account_role/aws_cross_account_role
 /examples/aws_exocompute/aws_exocompute
+/examples/aws_kms_key_manager/aws_kms_key_manager
 /examples/aws_shared_exocompute/aws_shared_exocompute
 /examples/aws_storage_setting/aws_storage_setting
 /examples/azure_devops_organization/azure_devops_organization

@@ -1,0 +1,19 @@
+mutation RubrikPolarisSDKRequest(
+    $cloudAccountId: String!,
+    $instanceName:   String!,
+    $keyRing:        String!,
+    $location:       GcpKmsLocation!,
+    $description:    String,
+) {
+    result: addGcpKmsWithCloudAccount(input: {
+        gcpKms: {
+            cloudAccountId: $cloudAccountId,
+            instanceName:   $instanceName,
+            keyRing:        $keyRing,
+            location:       $location,
+            description:    $description,
+        },
+    }) {
+        kmsKeyVaultId
+    }
+}

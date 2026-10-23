@@ -47,6 +47,15 @@ const (
 	// Config is the native protection feature backing Cloud Applications,
 	// onboarded as the CLOUD_NATIVE_CONFIG_PROTECTION cloud account feature.
 	Config ProtectionFeature = "CONFIG"
+
+	// GlueIceberg is the native protection feature backing AWS Glue Iceberg
+	// tables, onboarded as the GLUE_ICEBERG_PROTECTION cloud account feature.
+	GlueIceberg ProtectionFeature = "GLUE_ICEBERG"
+
+	// S3TablesIceberg is the native protection feature backing Amazon S3
+	// Tables Iceberg tables, onboarded as the S3_TABLES_ICEBERG_PROTECTION
+	// cloud account feature.
+	S3TablesIceberg ProtectionFeature = "S3_TABLES_ICEBERG"
 )
 
 var allProtectionFeatures = []ProtectionFeature{
@@ -57,6 +66,8 @@ var allProtectionFeatures = []ProtectionFeature{
 	EKS,
 	CloudDiscovery,
 	Config,
+	GlueIceberg,
+	S3TablesIceberg,
 }
 
 // NativeAccount represents an RSC native account. NativeAccount are connected

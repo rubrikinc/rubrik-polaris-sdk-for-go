@@ -52,6 +52,18 @@ func (a API) AllPermissionPolicies(ctx context.Context, cloud Cloud, features []
 		return nil, err
 	}
 
+	// Workaround: RSC decides whether CLOUD_COST_REPORT applies to a request
+	// from the features list alone, ignoring featuresWithPermissionsGroups, so
+	// a request using permission groups never gets the cost report policy back,
+	// not even when the feature is named. The RSC UI sends the feature names in
+	// both lists, so do the same. RSC renders the policies from
+	// featuresWithPermissionsGroups whenever it is present, the features list
+	// only takes part in the applicability check. Remove the workaround once
+	// RSC reads both lists.
+	if len(featuresWithPG) > 0 {
+		featuresWithoutPG = core.FeatureNames(featuresWithPG)
+	}
+
 	query := allAwsPermissionPoliciesQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
 		Cloud          Cloud          `json:"cloudType"`

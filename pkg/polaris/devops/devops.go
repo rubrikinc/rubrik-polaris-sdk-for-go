@@ -27,9 +27,6 @@
 package devops
 
 import (
-	"fmt"
-	"slices"
-
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -52,130 +49,84 @@ func WrapGQL(client *graphql.Client) API {
 	return API{client: client, log: client.Log()}
 }
 
-// azureSupportedFeatures contains all features and permission groups supported
-// by Azure DevOps organizations.
-//
-// Note, the AZURE_DEVOPS_PROTECTION feature is deprecated and should not be
-// used. The AZURE_DEVOPS_DEVELOPER_COLLABORATION_PROTECTION is not GA and due
-// to issues with the GraphQL API it cannot be supported yet.
-var azureSupportedFeatures = []core.Feature{
-	core.FeatureAzureDevOpsRepositoryProtection.WithPermissionGroups(
-		core.PermissionGroupBasic,
-		core.PermissionGroupRecovery,
-	),
-}
-
 // AzureSupportedFeatures returns the features and permission groups supported
 // by Azure DevOps organizations.
+//
+// Deprecated: use core.AzureDevOpsOrganizationFeatures instead.
 func AzureSupportedFeatures() []core.Feature {
-	return slices.Clone(azureSupportedFeatures)
+	return core.AzureDevOpsOrganizationFeatures()
 }
 
 // AzureSupportedFeatureNames returns the name of all features supported by
 // Azure DevOps organizations.
+//
+// Deprecated: use core.AzureDevOpsOrganizationFeatureNames instead.
 func AzureSupportedFeatureNames() []string {
-	return core.FeatureNames(azureSupportedFeatures)
+	return core.AzureDevOpsOrganizationFeatureNames()
 }
 
 // AzureSupportedPermissionGroups returns the deduplicated set of permission
 // groups across all features supported by Azure DevOps organizations.
+//
+// Deprecated: use core.AzureDevOpsOrganizationPermissionGroups instead
 func AzureSupportedPermissionGroups() []core.PermissionGroup {
-	var groups []core.PermissionGroup
-	for _, feature := range azureSupportedFeatures {
-		groups = append(groups, feature.PermissionGroups...)
-	}
-
-	slices.Sort(groups)
-	return slices.Compact(groups)
+	return core.AzureDevOpsOrganizationPermissionGroups()
 }
 
 // AzureSupportedPermissionGroupNames returns the name of all permission groups
 // supported by Azure DevOps organizations.
+//
+// Deprecated: use core.AzureDevOpsOrganizationPermissionGroupNames instead.
 func AzureSupportedPermissionGroupNames() []string {
-	var groupNames []string
-	for _, group := range AzureSupportedPermissionGroups() {
-		groupNames = append(groupNames, string(group))
-	}
-
-	return groupNames
+	return core.AzureDevOpsOrganizationPermissionGroupNames()
 }
 
 // AzureCheckFeature returns nil if the feature and all of its permission groups
 // are supported by Azure DevOps organizations, otherwise it returns an error
 // describing what is not supported.
+//
+// Deprecated: use core.CheckAzureDevOpsOrganizationFeature instead.
 func AzureCheckFeature(feature core.Feature) error {
-	f, ok := core.LookupFeature(azureSupportedFeatures, feature)
-	if !ok {
-		return fmt.Errorf("feature %q is not supported", feature.Name)
-	}
-
-	for _, group := range feature.PermissionGroups {
-		if !f.HasPermissionGroup(group) {
-			return fmt.Errorf("feature %q does not support permission group %q", feature.Name, group)
-		}
-	}
-
-	return nil
-}
-
-// githubSupportedFeatures contains all features and permission groups supported
-// by GitHub organizations.
-var githubSupportedFeatures = []core.Feature{
-	core.FeatureGitHubRepositoryProtection.WithPermissionGroups(
-		core.PermissionGroupBasic,
-		core.PermissionGroupRecovery,
-	),
+	return core.CheckAzureDevOpsOrganizationFeature(feature)
 }
 
 // GitHubSupportedFeatures returns the features and permission groups supported
 // by GitHub organizations.
+//
+// Deprecated: use core.GitHubOrganizationFeatures instead.
 func GitHubSupportedFeatures() []core.Feature {
-	return slices.Clone(githubSupportedFeatures)
+	return core.GitHubOrganizationFeatures()
 }
 
 // GitHubSupportedFeatureNames returns the name of all features supported by
 // GitHub organizations.
+//
+// Deprecated: use core.GitHubOrganizationFeatureNames instead.
 func GitHubSupportedFeatureNames() []string {
-	return core.FeatureNames(githubSupportedFeatures)
+	return core.GitHubOrganizationFeatureNames()
 }
 
 // GitHubSupportedPermissionGroups returns the deduplicated set of permission
 // groups across all features supported by GitHub organizations.
+//
+// Deprecated: use core.GitHubOrganizationPermissionGroups instead
 func GitHubSupportedPermissionGroups() []core.PermissionGroup {
-	var groups []core.PermissionGroup
-	for _, feature := range githubSupportedFeatures {
-		groups = append(groups, feature.PermissionGroups...)
-	}
-
-	slices.Sort(groups)
-	return slices.Compact(groups)
+	return core.GitHubOrganizationPermissionGroups()
 }
 
 // GitHubSupportedPermissionGroupNames returns the name of all permission groups
 // supported by GitHub organizations.
+//
+// Deprecated: use core.GitHubOrganizationPermissionGroupNames instead.
 func GitHubSupportedPermissionGroupNames() []string {
-	var groupNames []string
-	for _, group := range GitHubSupportedPermissionGroups() {
-		groupNames = append(groupNames, string(group))
-	}
-
-	return groupNames
+	return core.GitHubOrganizationPermissionGroupNames()
 }
 
 // GitHubCheckFeature returns nil if the feature and all of its permission groups
 // are supported by GitHub organizations, otherwise it returns an error
 // describing what is not supported.
+//
+// Deprecated: use core.CheckGitHubOrganizationFeature instead
 func GitHubCheckFeature(feature core.Feature) error {
-	f, ok := core.LookupFeature(githubSupportedFeatures, feature)
-	if !ok {
-		return fmt.Errorf("feature %q is not supported", feature.Name)
-	}
-
-	for _, group := range feature.PermissionGroups {
-		if !f.HasPermissionGroup(group) {
-			return fmt.Errorf("feature %q does not support permission group %q", feature.Name, group)
-		}
-	}
-
-	return nil
+	return core.CheckGitHubOrganizationFeature(feature)
 }

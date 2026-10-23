@@ -1,0 +1,7 @@
+query RubrikPolarisSDKRequest($kmsKeyVaultId: UUID!, $cryptoKeyName: String!) {
+    result: allKeyVersionsForCryptoKeyInGcpKms(kmsKeyVaultId: $kmsKeyVaultId, cryptoKeyName: $cryptoKeyName) {
+        cryptoKeyVersion
+        state
+        createdAt
+    }
+}

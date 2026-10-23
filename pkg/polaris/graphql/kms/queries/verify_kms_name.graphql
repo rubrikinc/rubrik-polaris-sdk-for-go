@@ -1,0 +1,5 @@
+query RubrikPolarisSDKRequest($kmsName: String!) {
+    result: verifyKmsName(kmsName: $kmsName) {
+        isVerified
+    }
+}

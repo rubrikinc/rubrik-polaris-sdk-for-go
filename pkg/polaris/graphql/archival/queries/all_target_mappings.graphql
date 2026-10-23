@@ -64,6 +64,35 @@ query RubrikPolarisSDKRequest($filter: [TargetMappingFilterInput!]) {
                     value
                 }
             }
+            ... on RcvAwsTargetTemplate {
+                rcvAwsRegion: region
+                rcvAwsTier: tier
+                rcvAwsRedundancy: redundancy
+                rcvAwsEncryptionType: encryptionType
+                cloudNativeLocTemplateType
+                templateLocationId
+                sourceWorkloadCloud
+            }
+            ... on RcsAzureTargetTemplate {
+                rcvAzureRegion: region
+                rcvAzureTier: tier
+                rcvAzureRedundancy: redundancy
+                rcvAzureEncryptionType: encryptionType
+                immutabilitySettings {
+                    lockDurationDays
+                }
+                cloudNativeLocTemplateType
+                templateLocationId
+                sourceWorkloadCloud
+            }
+            ... on RcvGcpTargetTemplate {
+                rcvGcpRegion: region
+                rcvGcpTier: tier
+                rcvGcpEncryptionType: encryptionType
+                cloudNativeLocTemplateType
+                templateLocationId
+                sourceWorkloadCloud
+            }
         }
     }
 }

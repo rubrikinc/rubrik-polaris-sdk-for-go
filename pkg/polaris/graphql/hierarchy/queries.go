@@ -185,6 +185,54 @@ var inventoryRootQuery = `query SdkGolangInventoryRoot($after: String, $filter: 
                         }
                     }
                 }
+                ... on GlueIcebergCatalog {
+                    region
+                    physicalPath {
+                        fid
+                        name
+                        objectType
+                    }
+                }
+                ... on GlueIcebergDatabase {
+                    region
+                    physicalPath {
+                        fid
+                        name
+                        objectType
+                    }
+                }
+                ... on GlueIcebergTable {
+                    region
+                    physicalPath {
+                        fid
+                        name
+                        objectType
+                    }
+                }
+                ... on S3TablesIcebergCatalog {
+                    region
+                    physicalPath {
+                        fid
+                        name
+                        objectType
+                    }
+                }
+                ... on S3TablesIcebergNamespace {
+                    region
+                    physicalPath {
+                        fid
+                        name
+                        objectType
+                    }
+                }
+                ... on S3TablesIcebergTable {
+                    region
+                    physicalPath {
+                        fid
+                        name
+                        objectType
+                    }
+                }
             }
             count
             pageInfo {

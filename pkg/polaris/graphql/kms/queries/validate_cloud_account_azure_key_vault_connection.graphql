@@ -1,0 +1,12 @@
+query RubrikPolarisSDKRequest($cloudAccountId: String!, $vaultName: String!) {
+    result: validateKmsConnection(input: {
+        kmsDetails: {
+            cloudAccountAzureKeyVault: {
+                cloudAccountId: $cloudAccountId,
+                vaultName:      $vaultName,
+            },
+        },
+    }) {
+        errorString
+    }
+}

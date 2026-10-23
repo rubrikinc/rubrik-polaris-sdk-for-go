@@ -1,0 +1,11 @@
+mutation RubrikPolarisSDKRequest(
+    $kmsKeyVaultId: String!,
+    $instanceName:  String,
+    $description:   String,
+) {
+    result: updateGcpKmsWithCloudAccount(input: {
+        kmsKeyVaultId: $kmsKeyVaultId,
+        instanceName:  $instanceName,
+        description:   $description,
+    })
+}
