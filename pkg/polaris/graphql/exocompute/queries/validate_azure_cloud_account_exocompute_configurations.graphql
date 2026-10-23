@@ -15,6 +15,18 @@ query RubrikPolarisSDKRequest(
             isAksCustomPrivateDnsZoneInvalid
             isAksCustomPrivateDnsZoneNotLinkedToVnet
             isAksCustomPrivateDnsZonePermissionsGroupNotEnabled
+            isAzurePostgresFlexServerNetworkingIncomplete
+            isAzurePostgresFlexServerPrivateDnsZoneDoesNotExist
+            isAzurePostgresFlexServerPrivateDnsZoneInDifferentSubscription
+            isAzurePostgresFlexServerPrivateDnsZoneInvalid
+            isAzurePostgresFlexServerPrivateDnsZoneNotLinkedToVnet
+            isAzurePostgresFlexServerSubnetNotDelegatedToPostgres
+            isAzurePostgresFlexServerSubnetNotInExocomputeVnet
+            isAzurePostgresFlexServerSubnetTooSmall
+            isAzureSqlPrivateDnsZoneDoesNotExist
+            isAzureSqlPrivateDnsZoneInDifferentSubscription
+            isAzureSqlPrivateDnsZoneInvalid
+            isAzureSqlPrivateDnsZoneNotLinkedToVnet
             isClusterSubnetSizeTooSmall
             isPodAndClusterSubnetSame
             isPodAndClusterVnetDifferent

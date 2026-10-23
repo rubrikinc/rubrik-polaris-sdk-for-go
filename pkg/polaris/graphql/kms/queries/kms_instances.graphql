@@ -24,7 +24,7 @@ query RubrikPolarisSDKRequest(
                     provisioningMethod
                     cloudAccountId
                     iamRoleArn
-                    awsRegion: region
+                    awsRegion: regionEnum
                     stsRegionEndpoint
                     kmsRegionEndpoint
                 }
@@ -42,7 +42,7 @@ query RubrikPolarisSDKRequest(
                     provisioningMethod
                     cloudAccountId
                     keyRing
-                    displayLocationName
+                    gcpLocation: location
                 }
                 ... on KmipServerInfo {
                     address

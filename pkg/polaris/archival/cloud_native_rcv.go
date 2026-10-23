@@ -24,6 +24,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -276,6 +277,144 @@ func (a API) RCVGCPTargetMappingByID(ctx context.Context, id uuid.UUID) (archiva
 	}
 
 	return archival.RCVGCPTargetMapping{}, fmt.Errorf("target mapping for %q %w", id, graphql.ErrNotFound)
+}
+
+// rekeyPollInterval is the interval between checks of the rekey status when
+// waiting for a rekey to complete.
+const rekeyPollInterval = 10 * time.Second
+
+// RekeyRCVGCPMasterKey rekeys the master key of the RCV GCP archival location
+// with the specified target mapping ID, moving it to the specified GCP Cloud
+// KMS key. The function returns once the rekey has completed. If the rekey
+// fails for any of the group's archival locations, an error holding the error
+// message reported by RSC is returned.
+func (a API) RekeyRCVGCPMasterKey(ctx context.Context, targetMappingID uuid.UUID, params archival.RekeyArchivalGroupMasterKeyParams) error {
+	a.log.Print(log.Trace)
+
+	if err := archival.RekeyArchivalGroupMasterKey(ctx, a.client, targetMappingID, params); err != nil {
+		return fmt.Errorf("failed to rekey master key: %s", err)
+	}
+
+	if err := a.waitForRekey(ctx, targetMappingID); err != nil {
+		return fmt.Errorf("failed to wait for rekey: %s", err)
+	}
+
+	return nil
+}
+
+// RekeyRCVAWSMasterKey rekeys the master key of the RCV AWS archival location
+// with the specified target mapping ID, moving it to the AWS KMS key given in
+// the parameters. The function returns once the rekey has completed. If the
+// rekey fails for any of the group's archival locations, an error holding the
+// error message reported by RSC is returned.
+func (a API) RekeyRCVAWSMasterKey(ctx context.Context, targetMappingID uuid.UUID, params archival.RekeyArchivalGroupMasterKeyParams) error {
+	a.log.Print(log.Trace)
+
+	if err := archival.RekeyArchivalGroupMasterKey(ctx, a.client, targetMappingID, params); err != nil {
+		return fmt.Errorf("failed to rekey master key: %s", err)
+	}
+
+	if err := a.waitForRekey(ctx, targetMappingID); err != nil {
+		return fmt.Errorf("failed to wait for rekey: %s", err)
+	}
+
+	return nil
+}
+
+// RekeyRCVAzureMasterKey rekeys the master key of the RCV Azure archival
+// location with the specified target mapping ID, moving it to the Azure Key
+// Vault key given in the parameters. The function returns once the rekey has
+// completed. If the rekey fails for any of the group's archival locations, an
+// error holding the error message reported by RSC is returned.
+func (a API) RekeyRCVAzureMasterKey(ctx context.Context, targetMappingID uuid.UUID, params archival.RekeyArchivalGroupMasterKeyParams) error {
+	a.log.Print(log.Trace)
+
+	if err := archival.RekeyArchivalGroupMasterKey(ctx, a.client, targetMappingID, params); err != nil {
+		return fmt.Errorf("failed to rekey master key: %s", err)
+	}
+
+	if err := a.waitForRekey(ctx, targetMappingID); err != nil {
+		return fmt.Errorf("failed to wait for rekey: %s", err)
+	}
+
+	return nil
+}
+
+// ArchivalGroupEncryptionDetails returns the encryption details of the cloud
+// native archival groups with a name containing the specified name filter. All
+// groups are returned when the name filter is empty. RSC only lists the groups
+// encrypted with a key from a key manager.
+func (a API) ArchivalGroupEncryptionDetails(ctx context.Context, nameFilter string) ([]archival.ArchivalGroupEncryptionDetails, error) {
+	a.log.Print(log.Trace)
+
+	groups, err := archival.ListArchivalGroupEncryptionDetails(ctx, a.client, nameFilter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get encryption details: %s", err)
+	}
+
+	return groups, nil
+}
+
+// ArchivalGroupEncryptionDetailsByID returns the encryption details of the
+// cloud native archival group with the specified ID. RSC only lists the groups
+// encrypted with a key from a key manager, so graphql.ErrNotFound is returned
+// both when the group doesn't exist and when it has no such key. The details
+// can only be filtered by name, so all groups are listed.
+func (a API) ArchivalGroupEncryptionDetailsByID(ctx context.Context, id uuid.UUID) (archival.ArchivalGroupEncryptionDetails, error) {
+	a.log.Print(log.Trace)
+
+	groups, err := a.ArchivalGroupEncryptionDetails(ctx, "")
+	if err != nil {
+		return archival.ArchivalGroupEncryptionDetails{}, err
+	}
+
+	for _, group := range groups {
+		if group.ID == id {
+			return group, nil
+		}
+	}
+
+	return archival.ArchivalGroupEncryptionDetails{}, fmt.Errorf("encryption details for %q %w", id, graphql.ErrNotFound)
+}
+
+// waitForRekey waits for the master key rekey of the archival group with the
+// specified ID to complete. A failed rekey of any of the group's archival
+// locations is returned as an error. RSC rekeys the group's own archival
+// location when the rekey is requested and only the child archival locations
+// are rekeyed in the background, so a group without child archival locations
+// has completed its rekey as soon as the request returns, and its rekey status
+// is never reported as successful.
+func (a API) waitForRekey(ctx context.Context, groupID uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	for {
+		group, err := a.ArchivalGroupEncryptionDetailsByID(ctx, groupID)
+		if err != nil {
+			return err
+		}
+
+		if len(group.Locations) == 0 {
+			return nil
+		}
+
+		// A failed location keeps the group in progress, so failures must be
+		// checked before the group status.
+		for _, location := range group.Locations {
+			job := location.EncryptionJobs.LastMasterKeyRekey
+			if job != nil && job.Status == archival.EncryptionJobFailed {
+				return fmt.Errorf("rekey of archival location %q failed: %s", location.ID, job.ErrorMessage)
+			}
+		}
+		if group.RekeyStatus == archival.RekeyStatusSuccess {
+			return nil
+		}
+
+		select {
+		case <-time.After(rekeyPollInterval):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }
 
 // RCVGCPTargetMappingByName returns the RCV GCP target mapping with the

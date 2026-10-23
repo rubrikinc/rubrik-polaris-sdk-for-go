@@ -565,6 +565,9 @@ var featureInfoMap = map[string]struct {
 			azureSubscription: {
 				PermissionGroupBasic,
 			},
+			gcpProject: {
+				PermissionGroupBasic,
+			},
 		},
 		protection: true,
 		public:     true,

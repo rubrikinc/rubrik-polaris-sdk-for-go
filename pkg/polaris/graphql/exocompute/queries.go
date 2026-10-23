@@ -134,10 +134,15 @@ var allAzureExocomputeConfigsInAccountQuery = `query SdkGolangAllAzureExocompute
                 additionalWhitelistIps
                 aksClusterAccessType
                 aksClusterTier
+                azurePostgresFlexServerPrivateDnsZoneId
+                azurePostgresFlexServerSubnetNativeId
+                azureSqlPrivateDnsZoneId
                 diskEncryptionAtHost
+                diskEncryptionSetId
                 aksCustomPrivateDnsZoneId
                 aksNodeCountBucket
                 aksNodeRgPrefix
+                healthCheckVmNamePrefix
                 privateDnsZoneId
                 enableUserDefinedRouting
                 shouldWhitelistRubrikIps
@@ -411,6 +416,18 @@ var validateAzureCloudAccountExocomputeConfigurationsQuery = `query SdkGolangVal
             isAksCustomPrivateDnsZoneInvalid
             isAksCustomPrivateDnsZoneNotLinkedToVnet
             isAksCustomPrivateDnsZonePermissionsGroupNotEnabled
+            isAzurePostgresFlexServerNetworkingIncomplete
+            isAzurePostgresFlexServerPrivateDnsZoneDoesNotExist
+            isAzurePostgresFlexServerPrivateDnsZoneInDifferentSubscription
+            isAzurePostgresFlexServerPrivateDnsZoneInvalid
+            isAzurePostgresFlexServerPrivateDnsZoneNotLinkedToVnet
+            isAzurePostgresFlexServerSubnetNotDelegatedToPostgres
+            isAzurePostgresFlexServerSubnetNotInExocomputeVnet
+            isAzurePostgresFlexServerSubnetTooSmall
+            isAzureSqlPrivateDnsZoneDoesNotExist
+            isAzureSqlPrivateDnsZoneInDifferentSubscription
+            isAzureSqlPrivateDnsZoneInvalid
+            isAzureSqlPrivateDnsZoneNotLinkedToVnet
             isClusterSubnetSizeTooSmall
             isPodAndClusterSubnetSame
             isPodAndClusterVnetDifferent

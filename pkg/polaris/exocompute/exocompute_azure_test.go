@@ -23,11 +23,18 @@ package exocompute
 import (
 	"context"
 	"errors"
+	"io"
 	"maps"
+	"net/http"
+	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
@@ -195,5 +202,81 @@ func TestAzureExocompute(t *testing.T) {
 	// Verify that the account was successfully removed.
 	if _, err := azureClient.SubscriptionByID(ctx, accountID); !errors.Is(err, graphql.ErrNotFound) {
 		t.Fatal(err)
+	}
+}
+
+// TestAddAzureConfigurationValidation verifies that validation warnings do not
+// block an Azure exocompute configuration from being created, while validation
+// errors do.
+func TestAddAzureConfigurationValidation(t *testing.T) {
+	configID := uuid.MustParse("5f1b8c0e-4a1d-4c53-9d57-1d1f4a3f2b10")
+	cloudAccountID := uuid.MustParse("b48e7ad0-7b86-4c96-b6ba-97eb6a82f765")
+
+	testCases := []struct {
+		name           string
+		validationInfo string
+		expectCreate   bool
+	}{{
+		name:           "NoValidationResults",
+		validationInfo: `{}`,
+		expectCreate:   true,
+	}, {
+		name:           "PrivateDnsZoneInDifferentSubscriptionIsWarning",
+		validationInfo: `{"isAksCustomPrivateDnsZoneInDifferentSubscription": true}`,
+		expectCreate:   true,
+	}, {
+		name:           "BlockedSecurityRulesIsWarning",
+		validationInfo: `{"hasBlockedSecurityRules": true}`,
+		expectCreate:   true,
+	}, {
+		name:           "SubnetDelegatedIsError",
+		validationInfo: `{"isSubnetDelegated": true}`,
+		expectCreate:   false,
+	}, {
+		name:           "WarningDoesNotMaskError",
+		validationInfo: `{"isAksCustomPrivateDnsZoneInDifferentSubscription": true, "isSubnetDelegated": true}`,
+		expectCreate:   false,
+	}}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var created bool
+			srv := httptest.NewTLSServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+				body, err := io.ReadAll(req.Body)
+				if err != nil {
+					t.Error(err)
+					return
+				}
+
+				switch {
+				case strings.Contains(string(body), "validateAzureCloudAccountExocomputeConfigurations"):
+					_, err = io.WriteString(w, `{"data": {"result": {"validationInfo": [`+tc.validationInfo+`]}}}`)
+				case strings.Contains(string(body), "addAzureCloudAccountExocomputeConfigurations"):
+					created = true
+					_, err = io.WriteString(w, `{"data": {"result": {"configs": [{"configUuid": "`+configID.String()+`", "message": ""}]}}}`)
+				default:
+					t.Errorf("unexpected request: %s", body)
+				}
+				if err != nil {
+					t.Error(err)
+				}
+			}))
+			defer srv.Close()
+
+			id, err := Wrap(&polaris.Client{GQL: graphql.NewTestClient(srv)}).AddAzureConfiguration(
+				t.Context(), cloudAccountID, AzureManaged(gqlazure.RegionEastUS2, "subnet-id", false))
+			if tc.expectCreate {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if id != configID {
+					t.Errorf("invalid configuration id: %s, expected: %s", id, configID)
+				}
+			} else if err == nil {
+				t.Error("expected add configuration call to fail")
+			}
+			if created != tc.expectCreate {
+				t.Errorf("configuration created: %t, expected: %t", created, tc.expectCreate)
+			}
+		})
 	}
 }

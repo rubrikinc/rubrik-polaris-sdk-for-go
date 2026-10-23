@@ -24,6 +24,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"text/template"
@@ -43,8 +44,10 @@ func TestValidateAzureConfiguration(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name                      string
-		expectedError             string
+		name             string
+		expectedError    string
+		expectedWarnings []string
+
 		ErrorMessage              string
 		BlockedSecurityRules      bool
 		ClusterSubnetSizeTooSmall bool
@@ -52,6 +55,16 @@ func TestValidateAzureConfiguration(t *testing.T) {
 		PodCidrRangeTooSmall      bool
 		PodSubnetSizeTooSmall     bool
 		SubnetDelegated           bool
+
+		ExocomputePrivateDnsZoneInDifferentSubscription bool
+		PostgresNetworkingIncomplete                    bool
+		PostgresPrivateDnsZoneInDifferentSubscription   bool
+		PostgresPrivateDnsZoneInvalid                   bool
+		PostgresSubnetNotDelegated                      bool
+		PostgresSubnetTooSmall                          bool
+		SQLPrivateDnsZoneInDifferentSubscription        bool
+		SQLPrivateDnsZoneInvalid                        bool
+		SnapshotPrivateDnsZoneInDifferentSubscription   bool
 	}{{
 		name: "NoError",
 	}, {
@@ -65,30 +78,69 @@ func TestValidateAzureConfiguration(t *testing.T) {
 		SubnetDelegated: true,
 	}, {
 		name: "ErrorMessageAndMultipleValidationErrors",
-		expectedError: "multiple configuration errors:  (1) subnet is delegated; (2) network security group has " +
-			"blocking security rules; (3) cluster subnet size is too small; (4) pod and cluster subnets must be " +
-			"different; (5) pod cidr range is too small; (6) pod subnet size is too small",
+		expectedError: "multiple configuration errors:  (1) subnet is delegated; (2) cluster subnet size is too " +
+			"small; (3) pod and cluster subnets must be different; (4) pod cidr range is too small; (5) pod subnet " +
+			"size is too small",
 		BlockedSecurityRules:      true,
 		ClusterSubnetSizeTooSmall: true,
 		PodAndClusterSubnetSame:   true,
 		PodCidrRangeTooSmall:      true,
 		PodSubnetSizeTooSmall:     true,
 		SubnetDelegated:           true,
+	}, {
+		name:                         "PostgresNetworkingIncomplete",
+		expectedError:                "postgres flexible server subnet and private dns zone must be specified together",
+		PostgresNetworkingIncomplete: true,
+	}, {
+		name: "PostgresSubnetAndDnsZoneErrors",
+		expectedError: "multiple configuration errors:  (1) postgres flexible server subnet is not delegated to " +
+			"Microsoft.DBforPostgreSQL/flexibleServers; (2) postgres flexible server subnet is too small: size " +
+			"must be at least /28; (3) postgres flexible server private dns zone is invalid: name must end with " +
+			".postgres.database.azure.com",
+		PostgresPrivateDnsZoneInvalid: true,
+		PostgresSubnetNotDelegated:    true,
+		PostgresSubnetTooSmall:        true,
+	}, {
+		name:                     "SQLPrivateDnsZoneInvalid",
+		expectedError:            "sql private dns zone is invalid: name must be privatelink.database.windows.net",
+		SQLPrivateDnsZoneInvalid: true,
 	}, {
 		name:            "ValidationError",
 		expectedError:   "subnet is delegated",
 		SubnetDelegated: true,
 	}, {
 		name: "MultipleValidationErrors",
-		expectedError: "multiple configuration errors:  (1) subnet is delegated; (2) network security group has " +
-			"blocking security rules; (3) cluster subnet size is too small; (4) pod and cluster subnets must be " +
-			"different; (5) pod cidr range is too small; (6) pod subnet size is too small",
+		expectedError: "multiple configuration errors:  (1) subnet is delegated; (2) cluster subnet size is too " +
+			"small; (3) pod and cluster subnets must be different; (4) pod cidr range is too small; (5) pod subnet " +
+			"size is too small",
 		BlockedSecurityRules:      true,
 		ClusterSubnetSizeTooSmall: true,
 		PodAndClusterSubnetSame:   true,
 		PodCidrRangeTooSmall:      true,
 		PodSubnetSizeTooSmall:     true,
 		SubnetDelegated:           true,
+		expectedWarnings:          []string{"network security group has blocking security rules"},
+	}, {
+		name:                 "BlockedSecurityRulesIsWarning",
+		BlockedSecurityRules: true,
+		expectedWarnings:     []string{"network security group has blocking security rules"},
+	}, {
+		name: "DifferentSubscriptionPrivateDnsZonesAreWarnings",
+		ExocomputePrivateDnsZoneInDifferentSubscription: true,
+		PostgresPrivateDnsZoneInDifferentSubscription:   true,
+		SQLPrivateDnsZoneInDifferentSubscription:        true,
+		SnapshotPrivateDnsZoneInDifferentSubscription:   true,
+		expectedWarnings: []string{
+			"exocompute private dns zone is in a different subscription than the exocompute vnet",
+			"postgres flexible server private dns zone is in a different subscription than the exocompute vnet",
+			"sql private dns zone is in a different subscription than the exocompute vnet",
+			"snapshot access private dns zone is in a different subscription than the exocompute vnet",
+		},
+	}, {
+		name:            "ErrorsAreNotWarnings",
+		expectedError:   "subnet is delegated",
+		SubnetDelegated: true,
+		PostgresPrivateDnsZoneInDifferentSubscription: true,
 	}}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -99,15 +151,21 @@ func TestValidateAzureConfiguration(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			err = ValidateConfiguration(ctx, graphql.NewTestClient(srv), CreateAzureConfigurationParams{})
-			if err == nil {
-				if tc.expectedError != "" {
-					t.Fatal("expected validate configuration call to fail")
+			warnings, err := ValidateConfigurationWithWarnings(ctx, graphql.NewTestClient(srv), CreateAzureConfigurationParams{})
+			if err != nil {
+				if tc.expectedError == "" {
+					t.Fatalf("unexpected error: %s", err)
+				}
+				if msg := err.Error(); !strings.HasSuffix(msg, tc.expectedError) {
+					t.Errorf("invalid error: %s", err)
 				}
 				return
 			}
-			if msg := err.Error(); !strings.HasSuffix(msg, tc.expectedError) {
-				t.Errorf("invalid error: %s", err)
+			if tc.expectedError != "" {
+				t.Fatal("expected validate configuration call to fail")
+			}
+			if !slices.Equal(warnings, tc.expectedWarnings) {
+				t.Errorf("invalid warnings: %q, expected: %q", warnings, tc.expectedWarnings)
 			}
 		})
 	}
