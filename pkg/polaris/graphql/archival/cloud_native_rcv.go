@@ -151,7 +151,10 @@ const (
 func RCVTargetEncryptionTypeValues(cloudVendor core.CloudVendor) []TargetEncryptionType {
 	switch cloudVendor {
 	case core.CloudVendorAWS:
+		// RSC reports an unknown encryption type, rather than the default
+		// platform managed keys, for an AWS location where RCV manages the key.
 		return []TargetEncryptionType{
+			TargetEncryptionUnknown,
 			TargetEncryptionSSECustomerKey,
 			TargetEncryptionUEKMAWSKMSBased,
 		}

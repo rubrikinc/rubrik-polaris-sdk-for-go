@@ -205,7 +205,7 @@ var kmsInstancesQuery = `query SdkGolangKmsInstances(
                     provisioningMethod
                     cloudAccountId
                     iamRoleArn
-                    awsRegion: region
+                    awsRegion: regionEnum
                     stsRegionEndpoint
                     kmsRegionEndpoint
                 }
@@ -223,7 +223,7 @@ var kmsInstancesQuery = `query SdkGolangKmsInstances(
                     provisioningMethod
                     cloudAccountId
                     keyRing
-                    displayLocationName
+                    gcpLocation: location
                 }
                 ... on KmipServerInfo {
                     address

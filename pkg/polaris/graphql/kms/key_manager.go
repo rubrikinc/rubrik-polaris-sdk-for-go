@@ -26,6 +26,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/gcp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -58,20 +61,20 @@ type KeyManager struct {
 		CloudAccountID string `json:"cloudAccountId"`
 
 		// AWS.
-		IAMRoleARN        string `json:"iamRoleArn"`
-		AWSRegion         string `json:"awsRegion"`
-		STSRegionEndpoint string `json:"stsRegionEndpoint"`
-		KMSRegionEndpoint string `json:"kmsRegionEndpoint"`
+		IAMRoleARN        string         `json:"iamRoleArn"`
+		AWSRegion         aws.RegionEnum `json:"awsRegion"`
+		STSRegionEndpoint string         `json:"stsRegionEndpoint"`
+		KMSRegionEndpoint string         `json:"kmsRegionEndpoint"`
 
 		// Azure.
-		KeyVaultURL string `json:"keyVaultUrl"`
-		TenantID    string `json:"tenantId"`
-		ClientID    string `json:"clientId"`
-		AzureRegion string `json:"azureRegion"`
+		KeyVaultURL string                       `json:"keyVaultUrl"`
+		TenantID    string                       `json:"tenantId"`
+		ClientID    string                       `json:"clientId"`
+		AzureRegion azure.CloudAccountRegionEnum `json:"azureRegion"`
 
 		// GCP.
-		KeyRing     string `json:"keyRing"`
-		GCPLocation string `json:"displayLocationName"`
+		KeyRing     string              `json:"keyRing"`
+		GCPLocation gcp.KMSLocationEnum `json:"gcpLocation"`
 
 		// KMIP server.
 		Address string `json:"address"`

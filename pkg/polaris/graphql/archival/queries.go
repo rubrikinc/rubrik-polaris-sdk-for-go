@@ -142,6 +142,70 @@ var allTargetMappingsQuery = `query SdkGolangAllTargetMappings($filter: [TargetM
     }
 }`
 
+// cnpArchivalGroupsEncryptionDetails GraphQL query
+var cnpArchivalGroupsEncryptionDetailsQuery = `query SdkGolangCnpArchivalGroupsEncryptionDetails(
+    $first:            Int,
+    $after:            String,
+    $nameSearchPrefix: String,
+    $cloudTypeFilter:  [TargetType!]
+) {
+    result: cnpArchivalGroupsEncryptionDetails(
+        first:            $first,
+        after:            $after,
+        nameSearchPrefix: $nameSearchPrefix,
+        cloudTypeFilter:  $cloudTypeFilter
+    ) {
+        nodes {
+            archivalGroupId
+            name
+            rekeyStatus
+            encryptionType
+            kmsKey {
+                keyVaultId
+                kmsType
+                key {
+                    akvKey {
+                        keyName
+                        keyVersion
+                    }
+                    awsKmsKey {
+                        keyId
+                    }
+                    gcpKmsKey {
+                        keyName
+                        keyVersion
+                    }
+                }
+            }
+            archivalLocations {
+                archivalLocationId
+                region
+                encryptionJobsSummary {
+                    lastMasterKeyRekeyStatus {
+                        status
+                        lastSuccessfulAt
+                        errorMessage
+                    }
+                }
+                kmsKey {
+                    keyVaultId
+                    kmsType
+                    key {
+                        gcpKmsKey {
+                            keyName
+                            keyVersion
+                        }
+                    }
+                }
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
 // createAwsAccount GraphQL query
 var createAwsAccountQuery = `mutation SdkGolangCreateAwsAccount($name: String!, $description: String, $accessKey: String!, $secretKey: String!) {
     result: createAwsAccount(input: {
@@ -415,6 +479,36 @@ var disableTargetQuery = `mutation SdkGolangDisableTarget($id: String!) {
     }) {
         locationId
     }
+}`
+
+// rekeyCnpArchivalGroupMasterKey GraphQL query
+var rekeyCnpArchivalGroupMasterKeyQuery = `mutation SdkGolangRekeyCnpArchivalGroupMasterKey(
+    $archivalGroupId: UUID!,
+    $keyVaultId:      String,
+    $kmsType:         KmsType,
+    $awsKmsKey:       AwsKmsKey,
+    $azureKey:        AzureKeyVaultKey,
+    $gcpKmsKey:       GcpKmsKey
+) {
+    result: rekeyCnpArchivalGroupMasterKey(input: {
+        archivalGroupId: $archivalGroupId,
+        newKeyVaultKeyIdentifier: {
+            keyVaultId: $keyVaultId,
+            kmsType:    $kmsType,
+            key: {
+                awsKmsKey: $awsKmsKey,
+                akvKey:    $azureKey,
+                gcpKmsKey: $gcpKmsKey
+            }
+        }
+    })
+}`
+
+// rekeyCnpArchivalGroupRootKey GraphQL query
+var rekeyCnpArchivalGroupRootKeyQuery = `mutation SdkGolangRekeyCnpArchivalGroupRootKey($archivalGroupId: UUID!) {
+    result: rekeyCnpArchivalGroupRootKey(input: {
+        archivalGroupId: $archivalGroupId
+    })
 }`
 
 // target GraphQL query
