@@ -103,7 +103,7 @@ func (a API) AzureKeyManagerByName(ctx context.Context, name string) (kms.KeyMan
 func (a API) CreateAzureKeyManager(ctx context.Context, params kms.CreateAzureKeyManagerParams) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	switch params.Region {
+	switch params.Region.Region {
 	case azure.RegionUnknown:
 		return uuid.Nil, errors.New("region is required")
 	case azure.RegionSource:

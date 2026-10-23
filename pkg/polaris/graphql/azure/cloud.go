@@ -24,6 +24,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -133,14 +135,90 @@ type FeatureSpecificInfo struct {
 // CloudAccountTenants return all tenants for the specified feature. If
 // includeSubscription is true, all cloud accounts for each tenant are also
 // returned.
+//
+// The UEM key management feature is always returned without a resource group.
 func (a API) CloudAccountTenants(ctx context.Context, feature core.Feature, includeSubscriptions bool) ([]CloudAccountTenant, error) {
 	a.log.Print(log.Trace)
 
+	// RSC fails the request when the resource group of the UEM key management
+	// feature is requested, since the feature has no resource group. So we need
+	// to handle the request a bit differently depending on which feature is
+	// requested.
+
+	// Handle the UEM Key Management feature.
+	if feature.Equal(core.FeatureCloudNativeUEMKeyManagement) {
+		return a.cloudAccountTenants(ctx, []string{feature.Name}, includeSubscriptions, false)
+	}
+
+	// Handle a specific feature or all features without subscriptions.
+	if !feature.Equal(core.FeatureAll) || !includeSubscriptions {
+		return a.cloudAccountTenants(ctx, []string{feature.Name}, includeSubscriptions, true)
+	}
+
+	// Handle all features with subscriptions included. First read the features
+	// without the resource groups. The features found, except the UEM Key
+	// Management feature, are then read again with the resource groups.
+	tenants, err := a.cloudAccountTenants(ctx, []string{feature.Name}, true, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Collect which features are onboarded except for the UEM Key Management
+	// feature.
+	featureSet := make(map[string]struct{})
+	for _, tenant := range tenants {
+		for _, account := range tenant.Accounts {
+			if featureName := account.Feature.Feature; featureName != core.CloudNativeUEMKeyManagement {
+				featureSet[featureName] = struct{}{}
+			}
+		}
+	}
+	if len(featureSet) == 0 {
+		return tenants, nil
+	}
+
+	// Collect the UEM tenants and accounts so they can be merged with the
+	// tenants and accounts of the other features. Note, the query already
+	// returns multiple tenants and accounts for the features of a subscription,
+	// so the upper layer will take care of the merging.
+	var uemTenants []CloudAccountTenant
+	for _, tenant := range tenants {
+		var uemAccounts []CloudAccount
+		for _, account := range tenant.Accounts {
+			if account.Feature.Feature == core.CloudNativeUEMKeyManagement {
+				uemAccounts = append(uemAccounts, account)
+			}
+		}
+		if len(uemAccounts) > 0 {
+			tenant.Accounts = uemAccounts
+			uemTenants = append(uemTenants, tenant)
+		}
+	}
+
+	tenants, err = a.cloudAccountTenants(ctx, slices.Sorted(maps.Keys(featureSet)), includeSubscriptions, true)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(tenants, uemTenants...), nil
+}
+
+func (a API) cloudAccountTenants(ctx context.Context, featureNames []string, subscriptions, resourceGroup bool) ([]CloudAccountTenant, error) {
+	a.log.Print(log.Trace)
+
+	if len(featureNames) == 0 {
+		return []CloudAccountTenant{}, nil
+	}
+
+	featureName, featureNames := featureNames[0], featureNames[1:]
+
 	query := allAzureCloudAccountTenantsQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		Feature              string `json:"feature"`
-		IncludeSubscriptions bool   `json:"includeSubscriptionDetails"`
-	}{Feature: feature.Name, IncludeSubscriptions: includeSubscriptions})
+		Feature       string   `json:"feature"`
+		Features      []string `json:"features,omitempty"`
+		Subscriptions bool     `json:"includeSubscriptionDetails"`
+		ResourceGroup bool     `json:"includeResourceGroup"`
+	}{Feature: featureName, Features: featureNames, Subscriptions: subscriptions, ResourceGroup: resourceGroup})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}

@@ -109,6 +109,99 @@ var allTargetMappingsQuery = `query SdkGolangAllTargetMappings($filter: [TargetM
                     value
                 }
             }
+            ... on RcvAwsTargetTemplate {
+                rcvAwsRegion: region
+                rcvAwsTier: tier
+                rcvAwsRedundancy: redundancy
+                rcvAwsEncryptionType: encryptionType
+                cloudNativeLocTemplateType
+                templateLocationId
+                sourceWorkloadCloud
+            }
+            ... on RcsAzureTargetTemplate {
+                rcvAzureRegion: region
+                rcvAzureTier: tier
+                rcvAzureRedundancy: redundancy
+                rcvAzureEncryptionType: encryptionType
+                immutabilitySettings {
+                    lockDurationDays
+                }
+                cloudNativeLocTemplateType
+                templateLocationId
+                sourceWorkloadCloud
+            }
+            ... on RcvGcpTargetTemplate {
+                rcvGcpRegion: region
+                rcvGcpTier: tier
+                rcvGcpEncryptionType: encryptionType
+                cloudNativeLocTemplateType
+                templateLocationId
+                sourceWorkloadCloud
+            }
+        }
+    }
+}`
+
+// cnpArchivalGroupsEncryptionDetails GraphQL query
+var cnpArchivalGroupsEncryptionDetailsQuery = `query SdkGolangCnpArchivalGroupsEncryptionDetails(
+    $first:            Int,
+    $after:            String,
+    $nameSearchPrefix: String,
+    $cloudTypeFilter:  [TargetType!]
+) {
+    result: cnpArchivalGroupsEncryptionDetails(
+        first:            $first,
+        after:            $after,
+        nameSearchPrefix: $nameSearchPrefix,
+        cloudTypeFilter:  $cloudTypeFilter
+    ) {
+        nodes {
+            archivalGroupId
+            name
+            rekeyStatus
+            encryptionType
+            kmsKey {
+                keyVaultId
+                kmsType
+                key {
+                    akvKey {
+                        keyName
+                        keyVersion
+                    }
+                    awsKmsKey {
+                        keyId
+                    }
+                    gcpKmsKey {
+                        keyName
+                        keyVersion
+                    }
+                }
+            }
+            archivalLocations {
+                archivalLocationId
+                region
+                encryptionJobsSummary {
+                    lastMasterKeyRekeyStatus {
+                        status
+                        lastSuccessfulAt
+                        errorMessage
+                    }
+                }
+                kmsKey {
+                    keyVaultId
+                    kmsType
+                    key {
+                        gcpKmsKey {
+                            keyName
+                            keyVersion
+                        }
+                    }
+                }
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
         }
     }
 }`
@@ -274,6 +367,83 @@ var createCloudNativeGcpStorageSettingQuery = `mutation SdkGolangCreateCloudNati
     }
 }`
 
+// createCloudNativeRcvAwsStorageSetting GraphQL query
+var createCloudNativeRcvAwsStorageSettingQuery = `mutation SdkGolangCreateCloudNativeRcvAwsStorageSetting(
+    $name:               String!,
+    $region:             RcsRegionEnumType!,
+    $tier:               RcsTierEnumType,
+    $locTemplateType:    CloudNativeLocTemplateType!,
+    $redundancy:         RcvRedundancy,
+    $enableSseWithCpk:   Boolean,
+    $encryptionKeyInDer: String,
+    $awsKmsKey:          AwsKmsKeyIdentifierInput
+) {
+    result: createCloudNativeRcvAwsStorageSetting(input: {
+        name:                       $name,
+        region:                     $region,
+        tier:                       $tier,
+        cloudNativeLocTemplateType: $locTemplateType,
+        redundancy:                 $redundancy,
+        enableSseWithCpk:           $enableSseWithCpk,
+        encryptionKeyInDer:         $encryptionKeyInDer,
+        awsKmsKey:                  $awsKmsKey
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}`
+
+// createCloudNativeRcvAzureStorageSetting GraphQL query
+var createCloudNativeRcvAzureStorageSettingQuery = `mutation SdkGolangCreateCloudNativeRcvAzureStorageSetting(
+    $name:                String!,
+    $region:              AzureRegion!,
+    $rcvRegion:           RcsRegionEnumType,
+    $rcvTier:             RcsTierEnumType,
+    $locTemplateType:     CloudNativeLocTemplateType!,
+    $sourceWorkloadCloud: SourceWorkloadCloud,
+    $redundancy:          RcvRedundancy,
+    $rsaKey:              String,
+    $azureKeyVaultKey:    AzureKeyVaultKeyIdentifierInput
+) {
+    result: createCloudNativeRcvAzureStorageSetting(input: {
+        name:                       $name,
+        region:                     $region,
+        rcvRegion:                  $rcvRegion,
+        rcvTier:                    $rcvTier,
+        cloudNativeLocTemplateType: $locTemplateType,
+        sourceWorkloadCloud:        $sourceWorkloadCloud,
+        redundancy:                 $redundancy,
+        rsaKey:                     $rsaKey,
+        azureKeyVaultKey:           $azureKeyVaultKey
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}`
+
+// createCloudNativeRcvGcpStorageSetting GraphQL query
+var createCloudNativeRcvGcpStorageSettingQuery = `mutation SdkGolangCreateCloudNativeRcvGcpStorageSetting(
+    $name:            String!,
+    $region:          RcsRegionEnumType!,
+    $tier:            RcsTierEnumType!,
+    $locTemplateType: CloudNativeLocTemplateType!,
+    $gcpKmsKey:       GcpKmsKeyIdentifierInput
+) {
+    result: createCloudNativeRcvGcpStorageSetting(input: {
+        name:                       $name,
+        region:                     $region,
+        tier:                       $tier,
+        cloudNativeLocTemplateType: $locTemplateType,
+        gcpKmsKey:                  $gcpKmsKey
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}`
+
 // deleteAwsDataCenterKeyBasedCloudAccount GraphQL query
 var deleteAwsDataCenterKeyBasedCloudAccountQuery = `mutation SdkGolangDeleteAwsDataCenterKeyBasedCloudAccount($cloudAccountId: UUID!) {
     result: deleteAwsDataCenterKeyBasedCloudAccount(input: {
@@ -309,6 +479,36 @@ var disableTargetQuery = `mutation SdkGolangDisableTarget($id: String!) {
     }) {
         locationId
     }
+}`
+
+// rekeyCnpArchivalGroupMasterKey GraphQL query
+var rekeyCnpArchivalGroupMasterKeyQuery = `mutation SdkGolangRekeyCnpArchivalGroupMasterKey(
+    $archivalGroupId: UUID!,
+    $keyVaultId:      String,
+    $kmsType:         KmsType,
+    $awsKmsKey:       AwsKmsKey,
+    $azureKey:        AzureKeyVaultKey,
+    $gcpKmsKey:       GcpKmsKey
+) {
+    result: rekeyCnpArchivalGroupMasterKey(input: {
+        archivalGroupId: $archivalGroupId,
+        newKeyVaultKeyIdentifier: {
+            keyVaultId: $keyVaultId,
+            kmsType:    $kmsType,
+            key: {
+                awsKmsKey: $awsKmsKey,
+                akvKey:    $azureKey,
+                gcpKmsKey: $gcpKmsKey
+            }
+        }
+    })
+}`
+
+// rekeyCnpArchivalGroupRootKey GraphQL query
+var rekeyCnpArchivalGroupRootKeyQuery = `mutation SdkGolangRekeyCnpArchivalGroupRootKey($archivalGroupId: UUID!) {
+    result: rekeyCnpArchivalGroupRootKey(input: {
+        archivalGroupId: $archivalGroupId
+    })
 }`
 
 // target GraphQL query
@@ -586,6 +786,59 @@ var updateCloudNativeGcpStorageSettingQuery = `mutation SdkGolangUpdateCloudNati
         storageClass: $storageClass,
         bucketLabels: $bucketLabels,
         cmkInfo:      $cmkInfo,
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}`
+
+// updateCloudNativeRcvAwsStorageSetting GraphQL query
+var updateCloudNativeRcvAwsStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeRcvAwsStorageSetting(
+    $id:   UUID!,
+    $name: String!,
+    $tier: RcsTierEnumType
+) {
+    result: updateCloudNativeRcvAwsStorageSetting(input: {
+        id:         $id,
+        name:       $name,
+        rcvTierOpt: $tier
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}`
+
+// updateCloudNativeRcvAzureStorageSetting GraphQL query
+var updateCloudNativeRcvAzureStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeRcvAzureStorageSetting(
+    $id:                UUID!,
+    $name:              String!,
+    $tier:              RcsTierEnumType,
+    $redundancy:        RcvRedundancy,
+    $updateChildVaults: Boolean
+) {
+    result: updateCloudNativeRcvAzureStorageSetting(input: {
+        id:                   $id,
+        name:                 $name,
+        rcvTierOpt:           $tier,
+        redundancyOpt:        $redundancy,
+        updateChildVaultsOpt: $updateChildVaults
+    }) {
+        targetMapping {
+            id
+        }
+    }
+}`
+
+// updateCloudNativeRcvGcpStorageSetting GraphQL query
+var updateCloudNativeRcvGcpStorageSettingQuery = `mutation SdkGolangUpdateCloudNativeRcvGcpStorageSetting(
+    $id:   UUID!,
+    $name: String!
+) {
+    result: updateCloudNativeRcvGcpStorageSetting(input: {
+        id:   $id,
+        name: $name
     }) {
         targetMapping {
             id

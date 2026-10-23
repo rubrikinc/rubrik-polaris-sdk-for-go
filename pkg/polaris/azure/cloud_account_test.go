@@ -1006,6 +1006,10 @@ func TestFeatureOnboardingRequirements(t *testing.T) {
 		supportResourceGroup:   false,
 		supportManagedIdentity: false,
 	}, {
+		feature:                core.FeatureCloudNativeUEMKeyManagement,
+		supportResourceGroup:   false,
+		supportManagedIdentity: false,
+	}, {
 		feature:                core.FeatureCloudNativeProtection,
 		supportResourceGroup:   true,
 		supportManagedIdentity: false,
@@ -1029,7 +1033,7 @@ func TestFeatureOnboardingRequirements(t *testing.T) {
 // list doubles as a read filter in toSubscriptions, so a missing entry silently
 // omits the feature from the returned cloud account rather than failing loudly.
 func TestSupportedFeaturesIncludesPostgresFlexibleServer(t *testing.T) {
-	if _, ok := core.LookupFeature(SupportedFeatures(), core.FeatureAzurePostgresFlexibleServerProtection); !ok {
+	if _, ok := core.LookupFeature(core.AzureSubscriptionFeatures(), core.FeatureAzurePostgresFlexibleServerProtection); !ok {
 		t.Error("AZURE_POSTGRES_FLEXIBLE_SERVER_PROTECTION missing from SupportedFeatures")
 	}
 }

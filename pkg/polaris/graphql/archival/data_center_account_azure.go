@@ -40,7 +40,7 @@ func (AzureCloudAccount) ListQuery(filters []ListAccountFilter) (string, any) {
 		Text:  "CLOUD_ACCOUNT_AZURE",
 	}}
 	return allCloudAccountsQuery, struct {
-		Filters []ListAccountFilter `json:"filters"`
+		Filters []ListAccountFilter `json:"filter"`
 	}{Filters: append(filters, extraFilters...)}
 }
 
