@@ -58,16 +58,7 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Cloud Discovery is only onboarded when its feature flag is enabled, since
-	// RSC rejects the feature otherwise.
-	flag, err := core.Wrap(client.GQL).FeatureFlag(ctx, "REL_ENABLE_CNP_GCP_CLOUD_DISCOVERY_MODE")
-	if err != nil {
-		t.Fatal(err)
-	}
-	features := []core.Feature{core.FeatureCloudNativeProtection}
-	if flag.Enabled {
-		features = append(features, core.FeatureCloudDiscovery)
-	}
+	features := []core.Feature{core.FeatureCloudNativeProtection, core.FeatureCloudDiscovery}
 
 	// Add the default GCP project to RSC. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
@@ -115,18 +106,16 @@ func TestGcpProjectAddAndRemove(t *testing.T) {
 
 	// Verify that Cloud Discovery cannot be removed on its own while Cloud
 	// Native Protection is enabled, and that nothing was removed.
-	if flag.Enabled {
-		err = gcpClient.RemoveProject(ctx, id, []core.Feature{core.FeatureCloudDiscovery}, false)
-		if err == nil {
-			t.Fatal("expected removing Cloud Discovery while Cloud Native Protection is enabled to fail")
-		}
-		account, err = gcpClient.ProjectByID(ctx, id)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if n := len(account.Features); n != len(features) {
-			t.Fatalf("invalid number of features after refused removal: %v", n)
-		}
+	err = gcpClient.RemoveProject(ctx, id, []core.Feature{core.FeatureCloudDiscovery}, false)
+	if err == nil {
+		t.Fatal("expected removing Cloud Discovery while Cloud Native Protection is enabled to fail")
+	}
+	account, err = gcpClient.ProjectByID(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(account.Features); n != len(features) {
+		t.Fatalf("invalid number of features after refused removal: %v", n)
 	}
 
 	// Remove GCP project from RSC keeping the snapshots. The features are
@@ -178,16 +167,7 @@ func TestGcpProjectAddAndRemoveWithServiceAccountSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Cloud Discovery is only onboarded when its feature flag is enabled, since
-	// RSC rejects the feature otherwise.
-	flag, err := core.Wrap(client.GQL).FeatureFlag(ctx, "REL_ENABLE_CNP_GCP_CLOUD_DISCOVERY_MODE")
-	if err != nil {
-		t.Fatal(err)
-	}
-	features := []core.Feature{core.FeatureCloudNativeProtection}
-	if flag.Enabled {
-		features = append(features, core.FeatureCloudDiscovery)
-	}
+	features := []core.Feature{core.FeatureCloudNativeProtection, core.FeatureCloudDiscovery}
 
 	// Add the default GCP project to RSC. Usually resolved using the
 	// environment variable GOOGLE_APPLICATION_CREDENTIALS.
