@@ -33,7 +33,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/hierarchy"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -151,36 +153,6 @@ type BaseOnDemandSnapshotConfigInput struct {
 	SLAID string `json:"slaId"`
 }
 
-// Link has the REST link to the job.
-type Link struct {
-	Rel  string `json:"rel"`
-	Href string `json:"href"`
-}
-
-// RequestErrorInfo contains request error message if any.
-type RequestErrorInfo struct {
-	Message string `json:"message"`
-}
-
-// AsyncRequestStatus is the status of the submitted jobs.
-type AsyncRequestStatus struct {
-	Status    string           `json:"status"`
-	StartTime time.Time        `json:"startTime,omitempty"`
-	Progress  float64          `json:"progress,omitempty"`
-	NodeID    string           `json:"nodeId,omitempty"`
-	Links     []Link           `json:"links"`
-	ID        string           `json:"id"`
-	Error     RequestErrorInfo `json:"error,omitempty"`
-	EndTime   time.Time        `json:"endTime,omitempty"`
-}
-
-// PathNode is the path description of the Snappable.
-type PathNode struct {
-	FID        uuid.UUID `json:"fid"`
-	Name       string    `json:"name"`
-	ObjectType string    `json:"objectType"`
-}
-
 // DataLocation defines the primary location of a Snappable.
 type DataLocation struct {
 	ClusterUUID uuid.UUID `json:"clusterUuid"`
@@ -194,26 +166,26 @@ type DataLocation struct {
 
 // ProtectionSet contains fields contained in a ProtectionSet snappable.
 type ProtectionSet struct {
-	CDMID                       string         `json:"cdmId"`
-	ClusterUUID                 string         `json:"clusterUuid"`
-	ConfiguredSLADomain         sla.DomainRef  `json:"configuredSlaDomain"`
-	EffectiveRetentionSLADomain sla.DomainRef  `json:"effectiveRetentionSlaDomain,omitempty"`
-	EffectiveSLADomain          sla.DomainRef  `json:"effectiveSlaDomain"`
-	EffectiveSLASourceObject    PathNode       `json:"effectiveSlaSourceObject"`
-	ID                          uuid.UUID      `json:"id"`
-	IsRelic                     bool           `json:"isRelic"`
-	K8sClusterUUID              uuid.UUID      `json:"k8sClusterUuid"`
-	Name                        string         `json:"name"`
-	Namespace                   string         `json:"namespace,omitempty"`
-	ObjectType                  string         `json:"objectType"`
-	PendingSLA                  sla.DomainRef  `json:"pendingSla,omitempty"`
-	PrimaryClusterLocation      DataLocation   `json:"primaryClusterLocation"`
-	PrimaryClusterUUID          uuid.UUID      `json:"primaryClusterUuid"`
-	ReplicatedObjectCount       int            `json:"replicatedObjectCount"`
-	RSName                      string         `json:"rsName"`
-	RSType                      string         `json:"rsType"`
-	SLAAssignment               sla.Assignment `json:"slaAssignment"`
-	SLAPauseStatus              bool           `json:"slaPauseStatus"`
+	CDMID                       string             `json:"cdmId"`
+	ClusterUUID                 string             `json:"clusterUuid"`
+	ConfiguredSLADomain         sla.DomainRef      `json:"configuredSlaDomain"`
+	EffectiveRetentionSLADomain sla.DomainRef      `json:"effectiveRetentionSlaDomain,omitempty"`
+	EffectiveSLADomain          sla.DomainRef      `json:"effectiveSlaDomain"`
+	EffectiveSLASourceObject    hierarchy.PathNode `json:"effectiveSlaSourceObject"`
+	ID                          uuid.UUID          `json:"id"`
+	IsRelic                     bool               `json:"isRelic"`
+	K8sClusterUUID              uuid.UUID          `json:"k8sClusterUuid"`
+	Name                        string             `json:"name"`
+	Namespace                   string             `json:"namespace,omitempty"`
+	ObjectType                  string             `json:"objectType"`
+	PendingSLA                  sla.DomainRef      `json:"pendingSla,omitempty"`
+	PrimaryClusterLocation      DataLocation       `json:"primaryClusterLocation"`
+	PrimaryClusterUUID          uuid.UUID          `json:"primaryClusterUuid"`
+	ReplicatedObjectCount       int                `json:"replicatedObjectCount"`
+	RSName                      string             `json:"rsName"`
+	RSType                      string             `json:"rsType"`
+	SLAAssignment               sla.Assignment     `json:"slaAssignment"`
+	SLAPauseStatus              bool               `json:"slaPauseStatus"`
 }
 
 // BaseSnapshotSummary picks ID and SLAID fields from the GetSnapshot response.
@@ -469,7 +441,7 @@ func (a API) ExportProtectionSetSnapshot(
 	ctx context.Context,
 	snapshotFID string,
 	jobConfig ExportSnapshotJobConfig,
-) (AsyncRequestStatus, error) {
+) (core.AsyncRequestStatus, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(
@@ -484,7 +456,7 @@ func (a API) ExportProtectionSetSnapshot(
 		},
 	)
 	if err != nil {
-		return AsyncRequestStatus{}, fmt.Errorf(
+		return core.AsyncRequestStatus{}, fmt.Errorf(
 			"failed to request exportK8sProtectionSetSnapshot: %w", err,
 		)
 	}
@@ -495,11 +467,11 @@ func (a API) ExportProtectionSetSnapshot(
 
 	var payload struct {
 		Data struct {
-			Response AsyncRequestStatus `json:"result"`
+			Response core.AsyncRequestStatus `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return AsyncRequestStatus{}, fmt.Errorf(
+		return core.AsyncRequestStatus{}, fmt.Errorf(
 			"failed to unmarshal exportK8sProtectionSetSnapshot response: %v", err,
 		)
 	}
@@ -513,7 +485,7 @@ func (a API) RestoreProtectionSetSnapshot(
 	ctx context.Context,
 	snapshotFID string,
 	jobConfig RestoreSnapshotJobConfig,
-) (AsyncRequestStatus, error) {
+) (core.AsyncRequestStatus, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(
@@ -528,7 +500,7 @@ func (a API) RestoreProtectionSetSnapshot(
 		},
 	)
 	if err != nil {
-		return AsyncRequestStatus{}, fmt.Errorf(
+		return core.AsyncRequestStatus{}, fmt.Errorf(
 			"failed to request restoreK8sProtectionSetSnapshot: %w", err,
 		)
 	}
@@ -539,11 +511,11 @@ func (a API) RestoreProtectionSetSnapshot(
 
 	var payload struct {
 		Data struct {
-			Response AsyncRequestStatus `json:"result"`
+			Response core.AsyncRequestStatus `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return AsyncRequestStatus{}, fmt.Errorf(
+		return core.AsyncRequestStatus{}, fmt.Errorf(
 			"failed to unmarshal restoreK8sProtectionSetSnapshot response: %v", err,
 		)
 	}
@@ -557,7 +529,7 @@ func (a API) CreateProtectionSetSnapshot(
 	ctx context.Context,
 	protectionSetFID string,
 	jobConfig BaseOnDemandSnapshotConfigInput,
-) (AsyncRequestStatus, error) {
+) (core.AsyncRequestStatus, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(
@@ -572,7 +544,7 @@ func (a API) CreateProtectionSetSnapshot(
 		},
 	)
 	if err != nil {
-		return AsyncRequestStatus{}, fmt.Errorf(
+		return core.AsyncRequestStatus{}, fmt.Errorf(
 			"failed to request createK8sProtectionSetSnapshot: %w", err,
 		)
 	}
@@ -583,11 +555,11 @@ func (a API) CreateProtectionSetSnapshot(
 
 	var payload struct {
 		Data struct {
-			Response AsyncRequestStatus `json:"result"`
+			Response core.AsyncRequestStatus `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return AsyncRequestStatus{}, fmt.Errorf(
+		return core.AsyncRequestStatus{}, fmt.Errorf(
 			"failed to unmarshal createK8sProtectionSetSnapshot response: %v", err,
 		)
 	}
@@ -870,7 +842,7 @@ func (a API) DeleteCluster(
 	k8sClusterFID uuid.UUID,
 	forceDelete bool,
 	preserveSnapshots bool,
-) (AsyncRequestStatus, error) {
+) (core.AsyncRequestStatus, error) {
 	a.log.Print(log.Trace)
 
 	buf, err := a.GQL.Request(
@@ -887,7 +859,7 @@ func (a API) DeleteCluster(
 		},
 	)
 	if err != nil {
-		return AsyncRequestStatus{}, fmt.Errorf("failed to request deleteK8sCluster: %w", err)
+		return core.AsyncRequestStatus{}, fmt.Errorf("failed to request deleteK8sCluster: %w", err)
 	}
 	a.log.Printf(
 		log.Debug, "deleteK8sCluster(%s, %v, %v): %s",
@@ -896,11 +868,11 @@ func (a API) DeleteCluster(
 
 	var payload struct {
 		Data struct {
-			Response AsyncRequestStatus `json:"result"`
+			Response core.AsyncRequestStatus `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return AsyncRequestStatus{}, fmt.Errorf("failed to unmarshal deleteK8sCluster: %v", err)
+		return core.AsyncRequestStatus{}, fmt.Errorf("failed to unmarshal deleteK8sCluster: %v", err)
 	}
 
 	return payload.Data.Response, nil
