@@ -94,10 +94,10 @@ type AddProtectionSetResponse struct {
 	RSType                string   `json:"rsType"`
 }
 
-// PvcStorageClassMappingEntry represents an entry mapping a PVC name to a
+// PVCStorageClassMappingEntry represents an entry mapping a PVC name to a
 // target storage class.
-type PvcStorageClassMappingEntry struct {
-	PvcName            string `json:"pvcName"`
+type PVCStorageClassMappingEntry struct {
+	PVCName            string `json:"pvcName"`
 	TargetStorageClass string `json:"targetStorageClass"`
 }
 
@@ -108,9 +108,9 @@ type StorageClassMappingEntry struct {
 	TargetStorageClass string `json:"targetStorageClass"`
 }
 
-// PvcStorageClassMappings wraps the list of PVC storage class mappings.
-type PvcStorageClassMappings struct {
-	PvcStorageClassMappingList []PvcStorageClassMappingEntry `json:"pvcStorageClassMappingList,omitempty"`
+// PVCStorageClassMappings wraps the list of PVC storage class mappings.
+type PVCStorageClassMappings struct {
+	PVCStorageClassMappingList []PVCStorageClassMappingEntry `json:"pvcStorageClassMappingList,omitempty"`
 }
 
 // StorageClassMappings wraps the list of storage class mappings.
@@ -121,9 +121,9 @@ type StorageClassMappings struct {
 // StorageMapping defines storage class mappings for restore and export
 // operations.
 type StorageMapping struct {
-	// PvcStorageClassMappings maps specific PVC names to target storage
+	// PVCStorageClassMappings maps specific PVC names to target storage
 	// classes. Takes precedence over StorageClassMappings.
-	PvcStorageClassMappings *PvcStorageClassMappings `json:"pvcStorageClassMappings,omitempty"`
+	PVCStorageClassMappings *PVCStorageClassMappings `json:"pvcStorageClassMappings,omitempty"`
 	// StorageClassMappings maps source storage classes to target storage
 	// classes.
 	StorageClassMappings *StorageClassMappings `json:"storageClassMappings,omitempty"`
@@ -194,8 +194,8 @@ type BaseSnapshotSummary struct {
 	SLAID string `json:"slaId"`
 }
 
-// EksConfigInput is the input for the EKS config.
-type EksConfigInput struct {
+// EKSConfigInput is the input for the EKS config.
+type EKSConfigInput struct {
 	CloudAccountID string `json:"cloudAccountId"`
 	EKSClusterArn  string `json:"eksClusterArn"`
 }
@@ -218,7 +218,7 @@ type ClusterAddInput struct {
 	Registry                string                      `json:"registry,omitempty"`
 	PullSecret              secret.String               `json:"pullSecret,omitempty"`
 	Region                  string                      `json:"region,omitempty"`
-	EKSConfig               *EksConfigInput             `json:"eksConfig,omitempty"`
+	EKSConfig               *EKSConfigInput             `json:"eksConfig,omitempty"`
 	ServiceAccountName      string                      `json:"serviceAccountName,omitempty"`
 	AccessToken             secret.String               `json:"accessToken,omitempty"`
 	ClientID                string                      `json:"clientId,omitempty"`
@@ -226,8 +226,8 @@ type ClusterAddInput struct {
 	IsAutoPsCreationEnabled *bool                       `json:"isAutoPsCreationEnabled,omitempty"`
 	OnboardingType          string                      `json:"onboardingType,omitempty"`
 	KuprServerProxyConfig   *KuprServerProxyConfigInput `json:"kuprServerProxyConfig,omitempty"`
-	NadNamespace            string                      `json:"nadNamespace,omitempty"`
-	NadName                 string                      `json:"nadName,omitempty"`
+	NADNamespace            string                      `json:"nadNamespace,omitempty"`
+	NADName                 string                      `json:"nadName,omitempty"`
 }
 
 // ClusterSummary is the response for the addK8sCluster query. ID is the RSC
@@ -258,18 +258,8 @@ type ClusterUpdateConfigInput struct {
 	ClientID                string                      `json:"clientId,omitempty"`
 	ClientSecret            secret.String               `json:"clientSecret,omitempty"`
 	KuprServerProxyConfig   *KuprServerProxyConfigInput `json:"kuprServerProxyConfig,omitempty"`
-	NadNamespace            string                      `json:"nadNamespace,omitempty"`
-	NadName                 string                      `json:"nadName,omitempty"`
-}
-
-// handleGraphQLError processes GraphQL errors and wraps 404 errors with
-// graphql.ErrNotFound. It returns a formatted error with the operation name.
-func handleGraphQLError(err error, operation string) error {
-	var gqlErr graphql.GQLError
-	if errors.As(err, &gqlErr) && gqlErr.Code() == 404 {
-		err = fmt.Errorf("%s: %w", gqlErr.Error(), graphql.ErrNotFound)
-	}
-	return fmt.Errorf("failed to request %s: %w", operation, err)
+	NADNamespace            string                      `json:"nadNamespace,omitempty"`
+	NADName                 string                      `json:"nadName,omitempty"`
 }
 
 // ObjectType is the type of the Kubernetes object. One of SLA, INVENTORY or
@@ -282,97 +272,76 @@ const (
 	ObjectTypeSnapshot  ObjectType = "SNAPSHOT"
 )
 
-// AddProtectionSet adds the K8s protection set for the given config.
-func (a API) AddProtectionSet(
-	ctx context.Context,
-	config AddProtectionSetConfig,
-) (AddProtectionSetResponse, error) {
+// notFoundError wraps a 404 GraphQL error with graphql.ErrNotFound.
+func notFoundError(query string, err error) error {
+	var gqlErr graphql.GQLError
+	if errors.As(err, &gqlErr) && gqlErr.Code() == 404 {
+		err = fmt.Errorf("%s: %w", gqlErr.Error(), graphql.ErrNotFound)
+	}
+	return graphql.RequestError(query, err)
+}
+
+// AddProtectionSet adds the K8s protection set for the given config. The ID of
+// the returned AddProtectionSetResponse is the RSC FID of the protection set.
+func (a API) AddProtectionSet(ctx context.Context, config AddProtectionSetConfig) (AddProtectionSetResponse, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(
-		ctx, addK8sProtectionSetQuery, struct {
-			Config AddProtectionSetConfig `json:"config"`
-		}{Config: config},
-	)
+	query := addK8sProtectionSetQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		Config AddProtectionSetConfig `json:"config"`
+	}{Config: config})
 	if err != nil {
-		return AddProtectionSetResponse{}, fmt.Errorf(
-			"failed to request addK8sProtectionSet: %w", err,
-		)
+		return AddProtectionSetResponse{}, graphql.RequestError(query, err)
 	}
-	a.log.Printf(log.Debug, "addK8sProtectionSet(%v): %s", config, string(buf))
 
 	var payload struct {
 		Data struct {
-			Config AddProtectionSetResponse `json:"result"`
+			Result AddProtectionSetResponse `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return AddProtectionSetResponse{}, fmt.Errorf(
-			"failed to unmarshal addK8sProtectionSet: %v", err,
-		)
+		return AddProtectionSetResponse{}, graphql.UnmarshalError(query, err)
 	}
 
-	return payload.Data.Config, nil
+	return payload.Data.Result, nil
 }
 
-// ProtectionSetByID gets the K8s protection set corresponding to the given fid.
-func (a API) ProtectionSetByID(
-	ctx context.Context,
-	fid uuid.UUID,
-) (ProtectionSet, error) {
+// ProtectionSetByID returns the K8s protection set with the specified FID.
+func (a API) ProtectionSetByID(ctx context.Context, fid uuid.UUID) (ProtectionSet, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(
-		ctx, k8sProtectionSetQuery, struct {
-			FID uuid.UUID `json:"fid"`
-		}{FID: fid},
-	)
+	query := k8sProtectionSetQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		FID uuid.UUID `json:"fid"`
+	}{FID: fid})
 	if err != nil {
-		return ProtectionSet{}, handleGraphQLError(err, "kubernetesProtectionSet")
+		return ProtectionSet{}, notFoundError(query, err)
 	}
-	a.log.Printf(log.Debug, "kubernetesProtectionSet(%v): %s", fid, string(buf))
 
 	var payload struct {
 		Data struct {
-			ProtectionSet ProtectionSet `json:"result"`
+			Result ProtectionSet `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return ProtectionSet{}, fmt.Errorf(
-			"failed to unmarshal kubernetesProtectionSet: %v", err,
-		)
+		return ProtectionSet{}, graphql.UnmarshalError(query, err)
 	}
 
-	return payload.Data.ProtectionSet, nil
+	return payload.Data.Result, nil
 }
 
-// DeleteProtectionSet deletes the K8s protection set corresponding to the
-// provided fid.
-func (a API) DeleteProtectionSet(
-	ctx context.Context,
-	fid string,
-	preserveSnapshots bool,
-) error {
+// UpdateProtectionSet updates the K8s protection set with the specified FID.
+func (a API) UpdateProtectionSet(ctx context.Context, fid string, config UpdateProtectionSetConfig) error {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(
-		ctx,
-		deleteK8sProtectionSetQuery,
-		struct {
-			ID                string `json:"id"`
-			PreserveSnapshots bool   `json:"preserveSnapshots"`
-		}{
-			ID:                fid,
-			PreserveSnapshots: preserveSnapshots,
-		},
-	)
+	query := updateK8sProtectionSetQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ID     string                    `json:"id"`
+		Config UpdateProtectionSetConfig `json:"config"`
+	}{ID: fid, Config: config})
 	if err != nil {
-		return fmt.Errorf("failed to request deleteK8sProtectionSet: %w", err)
+		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(
-		log.Debug, "deleteK8sProtectionSet(%q, %v): %s",
-		fid, preserveSnapshots, string(buf),
-	)
 
 	var payload struct {
 		Data struct {
@@ -382,308 +351,139 @@ func (a API) DeleteProtectionSet(
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal deleteK8sProtectionSet response: %v", err)
+		return graphql.UnmarshalError(query, err)
 	}
 	if !payload.Data.Result.Success {
-		return fmt.Errorf("failed to delete k8s protection set with fid %q", fid)
+		return graphql.ResponseError(query, fmt.Errorf("failed to update k8s protection set %q", fid))
 	}
 
 	return nil
 }
 
-// K8sJobInstance fetches information about the K8s CDM job corresponding to
-// the given jobID and cdmClusterID.
-func (a API) K8sJobInstance(
-	ctx context.Context,
-	jobID string,
-	cdmClusterID uuid.UUID,
-) (K8sJobInstanceDetail, error) {
+// DeleteProtectionSet deletes the K8s protection set with the specified FID.
+func (a API) DeleteProtectionSet(ctx context.Context, fid string, preserveSnapshots bool) error {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(
-		ctx,
-		k8sJobInstanceQuery,
-		struct {
-			K8sJobID     string    `json:"k8sJobId"`
-			CDMClusterID uuid.UUID `json:"clusterUuid"`
-		}{
-			K8sJobID:     jobID,
-			CDMClusterID: cdmClusterID,
-		},
-	)
+	query := deleteK8sProtectionSetQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ID                string `json:"id"`
+		PreserveSnapshots bool   `json:"preserveSnapshots"`
+	}{ID: fid, PreserveSnapshots: preserveSnapshots})
 	if err != nil {
-		return K8sJobInstanceDetail{}, fmt.Errorf(
-			"failed to request k8sJobInstance: %w", err,
-		)
+		return graphql.RequestError(query, err)
 	}
-	a.log.Printf(
-		log.Debug, "k8sJobInstance(%q, %q): %s",
-		jobID, cdmClusterID, string(buf),
-	)
 
 	var payload struct {
 		Data struct {
-			Response K8sJobInstanceDetail `json:"result"`
+			Result struct {
+				Success bool `json:"success"`
+			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return K8sJobInstanceDetail{}, fmt.Errorf(
-			"failed to unmarshal k8sJobInstance response: %v", err,
-		)
+		return graphql.UnmarshalError(query, err)
+	}
+	if !payload.Data.Result.Success {
+		return graphql.ResponseError(query, fmt.Errorf("failed to delete k8s protection set %q", fid))
 	}
 
-	return payload.Data.Response, nil
+	return nil
 }
 
-// ExportProtectionSetSnapshot takes a snapshot FID, the export job config
-// and starts an on-demand export job in CDM.
-func (a API) ExportProtectionSetSnapshot(
-	ctx context.Context,
-	snapshotFID string,
-	jobConfig ExportSnapshotJobConfig,
-) (core.AsyncRequestStatus, error) {
+// CreateProtectionSetSnapshot starts an on-demand snapshot job for the K8s
+// protection set with the specified FID.
+func (a API) CreateProtectionSetSnapshot(ctx context.Context, protectionSetFID string, config BaseOnDemandSnapshotConfigInput) (core.AsyncRequestStatus, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(
-		ctx,
-		exportK8sProtectionSetSnapshotQuery,
-		struct {
-			SnapshotFID string                  `json:"id"`
-			JobConfig   ExportSnapshotJobConfig `json:"jobConfig"`
-		}{
-			SnapshotFID: snapshotFID,
-			JobConfig:   jobConfig,
-		},
-	)
+	query := createK8sProtectionSetSnapshotQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ID     string                          `json:"id"`
+		Config BaseOnDemandSnapshotConfigInput `json:"config"`
+	}{ID: protectionSetFID, Config: config})
 	if err != nil {
-		return core.AsyncRequestStatus{}, fmt.Errorf(
-			"failed to request exportK8sProtectionSetSnapshot: %w", err,
-		)
+		return core.AsyncRequestStatus{}, graphql.RequestError(query, err)
 	}
-	a.log.Printf(
-		log.Debug, "exportK8sProtectionSetSnapshot(%q, %v): %s",
-		snapshotFID, jobConfig, string(buf),
-	)
 
 	var payload struct {
 		Data struct {
-			Response core.AsyncRequestStatus `json:"result"`
+			Result core.AsyncRequestStatus `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return core.AsyncRequestStatus{}, fmt.Errorf(
-			"failed to unmarshal exportK8sProtectionSetSnapshot response: %v", err,
-		)
+		return core.AsyncRequestStatus{}, graphql.UnmarshalError(query, err)
 	}
 
-	return payload.Data.Response, nil
+	return payload.Data.Result, nil
 }
 
-// RestoreProtectionSetSnapshot takes a snapshot FID, the restore job config
-// and starts an on-demand restore job in CDM.
-func (a API) RestoreProtectionSetSnapshot(
-	ctx context.Context,
-	snapshotFID string,
-	jobConfig RestoreSnapshotJobConfig,
-) (core.AsyncRequestStatus, error) {
+// ExportProtectionSetSnapshot starts an export job for the K8s protection set
+// snapshot with the specified FID.
+func (a API) ExportProtectionSetSnapshot(ctx context.Context, snapshotFID string, jobConfig ExportSnapshotJobConfig) (core.AsyncRequestStatus, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(
-		ctx,
-		restoreK8sProtectionSetSnapshotQuery,
-		struct {
-			SnapshotFID string                   `json:"id"`
-			JobConfig   RestoreSnapshotJobConfig `json:"jobConfig"`
-		}{
-			SnapshotFID: snapshotFID,
-			JobConfig:   jobConfig,
-		},
-	)
+	query := exportK8sProtectionSetSnapshotQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ID        string                  `json:"id"`
+		JobConfig ExportSnapshotJobConfig `json:"jobConfig"`
+	}{ID: snapshotFID, JobConfig: jobConfig})
 	if err != nil {
-		return core.AsyncRequestStatus{}, fmt.Errorf(
-			"failed to request restoreK8sProtectionSetSnapshot: %w", err,
-		)
+		return core.AsyncRequestStatus{}, graphql.RequestError(query, err)
 	}
-	a.log.Printf(
-		log.Debug, "restoreK8sProtectionSetSnapshot(%q, %v): %s",
-		snapshotFID, jobConfig, string(buf),
-	)
 
 	var payload struct {
 		Data struct {
-			Response core.AsyncRequestStatus `json:"result"`
+			Result core.AsyncRequestStatus `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return core.AsyncRequestStatus{}, fmt.Errorf(
-			"failed to unmarshal restoreK8sProtectionSetSnapshot response: %v", err,
-		)
+		return core.AsyncRequestStatus{}, graphql.UnmarshalError(query, err)
 	}
 
-	return payload.Data.Response, nil
+	return payload.Data.Result, nil
 }
 
-// CreateProtectionSetSnapshot takes a ProtectionSetFID, the snapshot job
-// config and starts an on-demand snapshot job in CDM.
-func (a API) CreateProtectionSetSnapshot(
-	ctx context.Context,
-	protectionSetFID string,
-	jobConfig BaseOnDemandSnapshotConfigInput,
-) (core.AsyncRequestStatus, error) {
+// RestoreProtectionSetSnapshot starts a restore job for the K8s protection set
+// snapshot with the specified FID.
+func (a API) RestoreProtectionSetSnapshot(ctx context.Context, snapshotFID string, jobConfig RestoreSnapshotJobConfig) (core.AsyncRequestStatus, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(
-		ctx,
-		createK8sProtectionSetSnapshotQuery,
-		struct {
-			ID     string                          `json:"id"`
-			Config BaseOnDemandSnapshotConfigInput `json:"config"`
-		}{
-			ID:     protectionSetFID,
-			Config: jobConfig,
-		},
-	)
+	query := restoreK8sProtectionSetSnapshotQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ID        string                   `json:"id"`
+		JobConfig RestoreSnapshotJobConfig `json:"jobConfig"`
+	}{ID: snapshotFID, JobConfig: jobConfig})
 	if err != nil {
-		return core.AsyncRequestStatus{}, fmt.Errorf(
-			"failed to request createK8sProtectionSetSnapshot: %w", err,
-		)
+		return core.AsyncRequestStatus{}, graphql.RequestError(query, err)
 	}
-	a.log.Printf(
-		log.Debug, "createK8sProtectionSetSnapshot(%q, %v): %s",
-		protectionSetFID, jobConfig, string(buf),
-	)
 
 	var payload struct {
 		Data struct {
-			Response core.AsyncRequestStatus `json:"result"`
+			Result core.AsyncRequestStatus `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return core.AsyncRequestStatus{}, fmt.Errorf(
-			"failed to unmarshal createK8sProtectionSetSnapshot response: %v", err,
-		)
+		return core.AsyncRequestStatus{}, graphql.UnmarshalError(query, err)
 	}
 
-	return payload.Data.Response, nil
+	return payload.Data.Result, nil
 }
 
-// ObjectFIDByType fetches the RSC FID for the object corresponding to the
-// provided internal id, CDM cluster id and object type.
-func (a API) ObjectFIDByType(
-	ctx context.Context,
-	internalID uuid.UUID,
-	cdmClusterID uuid.UUID,
-	objectType ObjectType,
-) (uuid.UUID, error) {
+// protectionSetSnapshots returns the snapshot FIDs of the K8s protection set
+// with the specified FID. Only used by the integration tests.
+func (a API) protectionSetSnapshots(ctx context.Context, fid string) ([]string, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(
-		ctx,
-		k8sObjectFidByTypeQuery,
-		struct {
-			InternalID    uuid.UUID  `json:"k8SObjectInternalIdArg"`
-			ClusterUUID   uuid.UUID  `json:"clusterUuid"`
-			K8sObjectType ObjectType `json:"kubernetesObjectType"`
-		}{
-			InternalID:    internalID,
-			ClusterUUID:   cdmClusterID,
-			K8sObjectType: objectType,
-		},
-	)
+	query := getProtectionSetSnapshotQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ID string `json:"id"`
+	}{ID: fid})
 	if err != nil {
-		return uuid.Nil, handleGraphQLError(err, "k8sObjectFidByType")
+		return nil, graphql.RequestError(query, err)
 	}
-	a.log.Printf(
-		log.Debug, "k8sObjectFidByType(%v, %v, %v): %s",
-		internalID, cdmClusterID, objectType, string(buf),
-	)
 
 	var payload struct {
 		Data struct {
-			ObjectFID uuid.UUID `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to unmarshal k8sObjectFidByType: %v", err)
-	}
-
-	return payload.Data.ObjectFID, nil
-}
-
-// ObjectInternalIDByType fetches the object Internal ID on CDM for the
-// given RSC FID by type.
-func (a API) ObjectInternalIDByType(
-	ctx context.Context,
-	fid uuid.UUID,
-	clusterUUID uuid.UUID,
-	objectType ObjectType,
-) (uuid.UUID, error) {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(
-		ctx,
-		k8sObjectInternalIdByTypeQuery,
-		struct {
-			ClusterUUID          uuid.UUID  `json:"clusterUuid"`
-			FID                  uuid.UUID  `json:"fid"`
-			KubernetesObjectType ObjectType `json:"kubernetesObjectType"`
-		}{
-			FID:                  fid,
-			ClusterUUID:          clusterUUID,
-			KubernetesObjectType: objectType,
-		},
-	)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf(
-			"failed to request k8sObjectInternalIdByType: %w", err,
-		)
-	}
-	a.log.Printf(
-		log.Debug, "k8sObjectInternalIdByType(%v, %v, %v): %s",
-		fid, clusterUUID, objectType, string(buf),
-	)
-
-	var payload struct {
-		Data struct {
-			ObjectInternalID uuid.UUID `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return uuid.Nil, fmt.Errorf(
-			"failed to unmarshal k8sObjectInternalIdByType: %v", err,
-		)
-	}
-
-	return payload.Data.ObjectInternalID, nil
-}
-
-// protectionSetSnapshots gets initial snapshots for a given fid. Only used
-// internally for testing purposes.
-func (a API) protectionSetSnapshots(
-	ctx context.Context,
-	fid string,
-) ([]string, error) {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(
-		ctx,
-		getProtectionSetSnapshotQuery,
-		struct {
-			ID string `json:"id"`
-		}{
-			ID: fid,
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to request k8sProtectionSetSnapshots: %w", err,
-		)
-	}
-	a.log.Printf(log.Debug, "k8sProtectionSetSnapshots(%v): %s", fid, string(buf))
-
-	var payload struct {
-		Data struct {
-			K8sProtectionSetSnapshots struct {
+			Result struct {
 				Data []struct {
 					BaseSnapshotSummary BaseSnapshotSummary `json:"baseSnapshotSummary"`
 				} `json:"data"`
@@ -691,44 +491,134 @@ func (a API) protectionSetSnapshots(
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return nil, fmt.Errorf(
-			"failed to unmarshal k8sProtectionSetSnapshots: %v", err,
-		)
+		return nil, graphql.UnmarshalError(query, err)
 	}
-	snaps := make([]string, len(payload.Data.K8sProtectionSetSnapshots.Data))
-	for i, item := range payload.Data.K8sProtectionSetSnapshots.Data {
-		snaps[i] = item.BaseSnapshotSummary.ID
+
+	snapshots := make([]string, 0, len(payload.Data.Result.Data))
+	for _, snapshot := range payload.Data.Result.Data {
+		snapshots = append(snapshots, snapshot.BaseSnapshotSummary.ID)
 	}
-	return snaps, nil
+
+	return snapshots, nil
 }
 
-// UpdateProtectionSet updates the K8s protection set corresponding to fid
-// with the config.
-func (a API) UpdateProtectionSet(
-	ctx context.Context,
-	fid string,
-	config UpdateProtectionSetConfig,
-) error {
+// K8sJobInstance returns the K8s CDM job with the specified job ID.
+func (a API) K8sJobInstance(ctx context.Context, jobID string, cdmClusterID uuid.UUID) (K8sJobInstanceDetail, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(
-		ctx,
-		updateK8sProtectionSetQuery,
-		struct {
-			ID     string                    `json:"id"`
-			Config UpdateProtectionSetConfig `json:"config"`
-		}{
-			ID:     fid,
-			Config: config,
-		},
-	)
+	query := k8sJobInstanceQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		JobID       string    `json:"k8sJobId"`
+		ClusterUUID uuid.UUID `json:"clusterUuid"`
+	}{JobID: jobID, ClusterUUID: cdmClusterID})
 	if err != nil {
-		return fmt.Errorf("failed to request updateK8sProtectionSet: %w", err)
+		return K8sJobInstanceDetail{}, graphql.RequestError(query, err)
 	}
-	a.log.Printf(
-		log.Debug, "updateK8sProtectionSet(%q, %v): %s",
-		fid, config, string(buf),
-	)
+
+	var payload struct {
+		Data struct {
+			Result K8sJobInstanceDetail `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return K8sJobInstanceDetail{}, graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result, nil
+}
+
+// ObjectFIDByType returns the RSC FID of the K8s object with the specified CDM
+// internal ID.
+func (a API) ObjectFIDByType(ctx context.Context, internalID, cdmClusterID uuid.UUID, objectType ObjectType) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	query := k8sObjectFidByTypeQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		InternalID  uuid.UUID  `json:"k8SObjectInternalIdArg"`
+		ClusterUUID uuid.UUID  `json:"clusterUuid"`
+		ObjectType  ObjectType `json:"kubernetesObjectType"`
+	}{InternalID: internalID, ClusterUUID: cdmClusterID, ObjectType: objectType})
+	if err != nil {
+		return uuid.Nil, notFoundError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result uuid.UUID `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result, nil
+}
+
+// ObjectInternalIDByType returns the CDM internal ID of the K8s object with
+// the specified RSC FID.
+func (a API) ObjectInternalIDByType(ctx context.Context, fid, cdmClusterID uuid.UUID, objectType ObjectType) (uuid.UUID, error) {
+	a.log.Print(log.Trace)
+
+	query := k8sObjectInternalIdByTypeQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		FID         uuid.UUID  `json:"fid"`
+		ClusterUUID uuid.UUID  `json:"clusterUuid"`
+		ObjectType  ObjectType `json:"kubernetesObjectType"`
+	}{FID: fid, ClusterUUID: cdmClusterID, ObjectType: objectType})
+	if err != nil {
+		return uuid.Nil, notFoundError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result uuid.UUID `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return uuid.Nil, graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result, nil
+}
+
+// AddCluster adds the K8s cluster to the Rubrik cluster with the specified
+// ID. The ID of the returned ClusterSummary is the RSC FID of the K8s cluster.
+func (a API) AddCluster(ctx context.Context, cdmClusterID uuid.UUID, config ClusterAddInput) (ClusterSummary, error) {
+	a.log.Print(log.Trace)
+
+	query := addK8sClusterQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ClusterUUID uuid.UUID       `json:"clusterUuid"`
+		Config      ClusterAddInput `json:"config"`
+	}{ClusterUUID: cdmClusterID, Config: config})
+	if err != nil {
+		return ClusterSummary{}, graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result ClusterSummary `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return ClusterSummary{}, graphql.UnmarshalError(query, err)
+	}
+
+	return payload.Data.Result, nil
+}
+
+// UpdateCluster updates the K8s cluster with the specified FID.
+func (a API) UpdateCluster(ctx context.Context, k8sClusterFID uuid.UUID, config ClusterUpdateConfigInput) error {
+	a.log.Print(log.Trace)
+
+	query := updateK8sClusterQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ID     uuid.UUID                `json:"id"`
+		Config ClusterUpdateConfigInput `json:"config"`
+	}{ID: k8sClusterFID, Config: config})
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
 
 	var payload struct {
 		Data struct {
@@ -738,142 +628,40 @@ func (a API) UpdateProtectionSet(
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal updateK8sProtectionSet: %v", err)
+		return graphql.UnmarshalError(query, err)
 	}
 	if !payload.Data.Result.Success {
-		return fmt.Errorf("failed to update k8s protection set with fid %q", fid)
+		return graphql.ResponseError(query, fmt.Errorf("failed to update k8s cluster %q", k8sClusterFID))
 	}
 
 	return nil
 }
 
-// AddCluster adds the K8s cluster for the given config. The ID of the returned
-// ClusterSummary is the RSC FID of the K8s cluster.
-func (a API) AddCluster(
-	ctx context.Context,
-	cdmClusterID uuid.UUID,
-	config ClusterAddInput,
-) (ClusterSummary, error) {
+// DeleteCluster starts a job deleting the K8s cluster with the specified FID.
+// When forceDelete is true, the cluster is deleted even if it is not
+// reachable. Note, RSC translates the ID of the returned AsyncRequestStatus as
+// if it were a cluster ID, so it cannot be passed to K8sJobInstance.
+func (a API) DeleteCluster(ctx context.Context, k8sClusterFID uuid.UUID, forceDelete, preserveSnapshots bool) (core.AsyncRequestStatus, error) {
 	a.log.Print(log.Trace)
 
-	buf, err := a.GQL.Request(
-		ctx,
-		addK8sClusterQuery,
-		struct {
-			ClusterUUID string          `json:"clusterUuid"`
-			Config      ClusterAddInput `json:"config"`
-		}{
-			ClusterUUID: cdmClusterID.String(),
-			Config:      config,
-		},
-	)
+	query := deleteK8sClusterQuery
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ID                uuid.UUID `json:"id"`
+		ForceDelete       bool      `json:"forceDelete"`
+		PreserveSnapshots bool      `json:"preserveSnapshots"`
+	}{ID: k8sClusterFID, ForceDelete: forceDelete, PreserveSnapshots: preserveSnapshots})
 	if err != nil {
-		return ClusterSummary{}, fmt.Errorf(
-			"failed to request addK8sCluster: %w", err,
-		)
+		return core.AsyncRequestStatus{}, graphql.RequestError(query, err)
 	}
-	a.log.Printf(
-		log.Debug, "addK8sCluster(%s, %q): %s",
-		cdmClusterID.String(), config.Name, string(buf),
-	)
 
 	var payload struct {
 		Data struct {
-			Response ClusterSummary `json:"result"`
+			Result core.AsyncRequestStatus `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return ClusterSummary{}, fmt.Errorf(
-			"failed to unmarshal addK8sCluster: %v", err,
-		)
-	}
-	return payload.Data.Response, nil
-}
-
-// UpdateCluster updates the K8s cluster for the given config.
-func (a API) UpdateCluster(
-	ctx context.Context,
-	k8sClusterFID uuid.UUID,
-	config ClusterUpdateConfigInput,
-) error {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(
-		ctx,
-		updateK8sClusterQuery,
-		struct {
-			ID     string                   `json:"id"`
-			Config ClusterUpdateConfigInput `json:"config"`
-		}{
-			ID:     k8sClusterFID.String(),
-			Config: config,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to request updateK8sCluster: %w", err)
-	}
-	a.log.Printf(
-		log.Debug, "updateK8sCluster(%s): %s", k8sClusterFID.String(), string(buf),
-	)
-
-	var payload struct {
-		Data struct {
-			Result struct {
-				Success bool `json:"success"`
-			} `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal updateK8sCluster: %v", err)
-	}
-	if !payload.Data.Result.Success {
-		return fmt.Errorf("failed to update k8s cluster with fid %q", k8sClusterFID)
+		return core.AsyncRequestStatus{}, graphql.UnmarshalError(query, err)
 	}
 
-	return nil
-}
-
-// DeleteCluster starts an async job deleting the K8s cluster with the given
-// FID. When forceDelete is true, the cluster is deleted even if it is not
-// reachable. Note, RSC translates the ID of the returned AsyncRequestStatus
-// as if it were a cluster ID, so it cannot be passed to K8sJobInstance.
-func (a API) DeleteCluster(
-	ctx context.Context,
-	k8sClusterFID uuid.UUID,
-	forceDelete bool,
-	preserveSnapshots bool,
-) (core.AsyncRequestStatus, error) {
-	a.log.Print(log.Trace)
-
-	buf, err := a.GQL.Request(
-		ctx,
-		deleteK8sClusterQuery,
-		struct {
-			ID                string `json:"id"`
-			ForceDelete       bool   `json:"forceDelete"`
-			PreserveSnapshots bool   `json:"preserveSnapshots"`
-		}{
-			ID:                k8sClusterFID.String(),
-			ForceDelete:       forceDelete,
-			PreserveSnapshots: preserveSnapshots,
-		},
-	)
-	if err != nil {
-		return core.AsyncRequestStatus{}, fmt.Errorf("failed to request deleteK8sCluster: %w", err)
-	}
-	a.log.Printf(
-		log.Debug, "deleteK8sCluster(%s, %v, %v): %s",
-		k8sClusterFID.String(), forceDelete, preserveSnapshots, string(buf),
-	)
-
-	var payload struct {
-		Data struct {
-			Response core.AsyncRequestStatus `json:"result"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(buf, &payload); err != nil {
-		return core.AsyncRequestStatus{}, fmt.Errorf("failed to unmarshal deleteK8sCluster: %v", err)
-	}
-
-	return payload.Data.Response, nil
+	return payload.Data.Result, nil
 }
