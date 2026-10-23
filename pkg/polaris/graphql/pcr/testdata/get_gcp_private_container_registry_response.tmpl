@@ -1,0 +1,14 @@
+{
+  "data": {
+    "result": {
+      "pcrLatestApprovedBundleVersion": "{{ .BundleVersion }}",
+      "pcrDetails": {
+        "registryUrl": "{{ .RegistryURL }}",
+        "imagePullDetails": {
+          "__typename": "PcrGcpImagePullDetails",
+          "serviceAccountEmail": "{{ .ServiceAccountEmail }}"
+        }
+      }
+    }
+  }
+}
