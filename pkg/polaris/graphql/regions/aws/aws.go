@@ -385,12 +385,12 @@ func AllRegionNames() []string {
 	return regions
 }
 
-// AllRCSRegionNames returns all the recognized RCS/RCV region names.
+// AllRCSRegionNames returns the names of all regions supported by RCS/RCV.
 func AllRCSRegionNames() []string {
 	regions := make([]string, 0, len(regionInfoMap))
-	for _, info := range regionInfoMap {
-		if info.rcsRegionEnum != "" {
-			regions = append(regions, info.rcsRegionEnum)
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && info.rcsRegionEnum != "" {
+			regions = append(regions, info.name)
 		}
 	}
 
