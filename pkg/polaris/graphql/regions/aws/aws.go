@@ -21,6 +21,7 @@
 package aws
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -77,6 +78,12 @@ const (
 // document or writing a Region to a JSON document, use one of the specialized
 // region enum types, to guarantee that the correct enum value is used.
 type Region int
+
+// BaaSSupported returns true if the region is supported by the RSC-managed AWS
+// (BaaS) onboarding flow.
+func (region Region) BaaSSupported() bool {
+	return regionInfoMap[region].baasSupported
+}
 
 // Name returns the name of the region.
 func (region Region) Name() string {
@@ -380,34 +387,175 @@ func AllRegionNames() []string {
 			regions = append(regions, info.name)
 		}
 	}
-
 	slices.Sort(regions)
+
 	return regions
 }
 
-// AllRCSRegionNames returns the names of all regions supported by RCS/RCV.
-func AllRCSRegionNames() []string {
+// RegionEnumRegions returns the regions supported by the GraphQL AwsRegion enum
+// type. This includes any RSC sentinel regions.
+func RegionEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.regionEnum != "" {
+			regions = append(regions, region)
+		}
+	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
+
+	return regions
+}
+
+// RegionEnumRegionNames returns the names of the regions supported by the
+// GraphQL AwsRegion enum type. This does not include any RSC sentinel regions.
+func RegionEnumRegionNames() []string {
 	regions := make([]string, 0, len(regionInfoMap))
 	for region, info := range regionInfoMap {
-		if region != RegionUnknown && info.rcsRegionEnum != "" {
+		if region != RegionUnknown && region != RegionSource && info.regionEnum != "" {
 			regions = append(regions, info.name)
 		}
 	}
-
 	slices.Sort(regions)
+
 	return regions
 }
 
-// BaaSSupported returns true if the region is supported by the RSC-managed AWS
-// (BaaS) onboarding flow.
-func (region Region) BaaSSupported() bool {
-	return regionInfoMap[region].baasSupported
+// NativeRegionEnumRegions returns the regions supported by the GraphQL
+// AwsNativeRegion enum type. This includes any RSC sentinel regions.
+func NativeRegionEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.nativeRegionEnum != "" {
+			regions = append(regions, region)
+		}
+	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
+
+	return regions
+}
+
+// NativeRegionEnumRegionNames returns the names of the regions supported by the
+// GraphQL AwsNativeRegion enum type. This does not include any RSC sentinel
+// regions.
+func NativeRegionEnumRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && region != RegionSource && info.nativeRegionEnum != "" {
+			regions = append(regions, info.name)
+		}
+	}
+	slices.Sort(regions)
+
+	return regions
+}
+
+// RegionForReplicationEnumRegions returns the regions supported by the GraphQL
+// AwsNativeRegionForReplication enum type. This includes any RSC sentinel
+// regions.
+func RegionForReplicationEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.regionForReplicationEnum != "" {
+			regions = append(regions, region)
+		}
+	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
+
+	return regions
+}
+
+// RegionForReplicationEnumRegionNames returns the names of the regions
+// supported by the GraphQL AwsNativeRegionForReplication enum type. This does
+// not include any RSC sentinel regions.
+func RegionForReplicationEnumRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && region != RegionSource && info.regionForReplicationEnum != "" {
+			regions = append(regions, info.name)
+		}
+	}
+	slices.Sort(regions)
+
+	return regions
+}
+
+// RCSRegionEnumRegions returns the regions supported by the GraphQL
+// RcsRegionEnumType enum type. This includes any RSC sentinel regions.
+func RCSRegionEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.rcsRegionEnum != "" {
+			regions = append(regions, region)
+		}
+	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
+
+	return regions
+}
+
+// RCSRegionEnumRegionNames returns the names of the regions supported by the
+// GraphQL RcsRegionEnumType enum type. This does not include any RSC sentinel
+// regions.
+func RCSRegionEnumRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && region != RegionSource && info.rcsRegionEnum != "" {
+			regions = append(regions, info.name)
+		}
+	}
+	slices.Sort(regions)
+
+	return regions
+}
+
+// BaaSRegions returns the regions supported by the RSC-managed AWS (BaaS)
+// onboarding flow, sorted by name. This is a curated allow-list (RSC exposes
+// no API for it) and is not simply the commercial partition - GovCloud, China,
+// ISO and the Middle East regions are excluded.
+func BaaSRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.baasSupported {
+			regions = append(regions, region)
+		}
+	}
+	sort.Slice(regions, func(i, j int) bool {
+		return regions[i].Name() < regions[j].Name()
+	})
+
+	return regions
+}
+
+// BaaSRegionNames returns the names of the regions supported by the RSC-managed
+// AWS (BaaS) onboarding flow, sorted by name. This is a curated allow-list (RSC
+// exposes no API for it) and is not simply the commercial partition - GovCloud,
+// China, ISO and the Middle East regions are excluded.
+func BaaSRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for _, info := range regionInfoMap {
+		if info.baasSupported {
+			regions = append(regions, info.name)
+		}
+	}
+	slices.Sort(regions)
+
+	return regions
 }
 
 // BaaSSupportedRegions returns all the regions supported by the RSC-managed AWS
 // (BaaS) onboarding flow, sorted by name. This is a curated allow-list (RSC
 // exposes no API for it) and is not simply the commercial partition - GovCloud,
 // China, ISO and the Middle East regions are excluded.
+//
+// Deprecated: use BaaSRegions instead.
 func BaaSSupportedRegions() []Region {
 	regions := make([]Region, 0)
 	for region, info := range regionInfoMap {

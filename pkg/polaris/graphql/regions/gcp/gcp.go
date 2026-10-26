@@ -21,6 +21,7 @@
 package gcp
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -411,33 +412,130 @@ func AllRegionNames() []string {
 			regions = append(regions, info.name)
 		}
 	}
-
 	slices.Sort(regions)
+
 	return regions
 }
 
-// AllRCSRegionNames returns the names of all regions supported by RCS/RCV.
-func AllRCSRegionNames() []string {
+// RegionEnumRegions returns the regions supported by the GraphQL GcpRegion enum
+// type. This includes any RSC sentinel regions.
+func RegionEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.regionEnum != "" {
+			regions = append(regions, region)
+		}
+	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
+
+	return regions
+}
+
+// RegionEnumRegionNames returns the names of the regions supported by the
+// GraphQL GcpRegion enum type. This does not include any RSC sentinel regions.
+func RegionEnumRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && info.regionEnum != "" {
+			regions = append(regions, info.name)
+		}
+	}
+	slices.Sort(regions)
+
+	return regions
+}
+
+// CloudAccountRegionEnumRegions returns the regions supported by the GraphQL
+// GcpCloudAccountRegion enum type. This includes any RSC sentinel regions.
+func CloudAccountRegionEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.cloudAccountRegionEnum != "" {
+			regions = append(regions, region)
+		}
+	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
+
+	return regions
+}
+
+// CloudAccountRegionEnumRegionNames returns the names of the regions supported
+// by the GraphQL GcpCloudAccountRegion enum type. This does not include any RSC
+// sentinel regions.
+func CloudAccountRegionEnumRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && info.cloudAccountRegionEnum != "" {
+			regions = append(regions, info.name)
+		}
+	}
+	slices.Sort(regions)
+
+	return regions
+}
+
+// RCSRegionEnumRegions returns the regions supported by the GraphQL
+// RcsRegionEnumType enum type. This includes any RSC sentinel regions.
+func RCSRegionEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.rcsRegionEnum != "" {
+			regions = append(regions, region)
+		}
+	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
+
+	return regions
+}
+
+// RCSRegionEnumRegionNames returns the names of the regions supported by the
+// GraphQL RcsRegionEnumType enum type. This does not include any RSC sentinel
+// regions.
+func RCSRegionEnumRegionNames() []string {
 	regions := make([]string, 0, len(regionInfoMap))
 	for region, info := range regionInfoMap {
 		if region != RegionUnknown && info.rcsRegionEnum != "" {
 			regions = append(regions, info.name)
 		}
 	}
-
 	slices.Sort(regions)
+
 	return regions
 }
 
-// AllKMSLocationNames returns the names of all regions which are GCP KMS
-// locations, e.g. us-east1, europe and global.
-func AllKMSLocationNames() []string {
-	regions := make([]string, 0, len(regionInfoMap))
-	for _, info := range regionInfoMap {
+// KMSLocationEnumRegions returns the regions supported by the GraphQL
+// GcpKmsLocation enum type. This includes any RSC sentinel regions.
+func KMSLocationEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
 		if info.kmsLocationEnum != "" {
+			regions = append(regions, region)
+		}
+	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
+
+	return regions
+}
+
+// KMSLocationEnumRegionNames returns the names of the regions supported by the
+// GraphQL GcpKmsLocation enum type. This does not include any RSC sentinel
+// regions.
+func KMSLocationEnumRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && info.kmsLocationEnum != "" {
 			regions = append(regions, info.name)
 		}
 	}
+	slices.Sort(regions)
 
 	return regions
 }

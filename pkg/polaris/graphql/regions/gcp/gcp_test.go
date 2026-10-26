@@ -22,7 +22,6 @@ package gcp
 
 import (
 	"encoding/json"
-	"slices"
 	"testing"
 )
 
@@ -256,18 +255,5 @@ func TestKMSLocationEnum(t *testing.T) {
 				t.Fatalf("got %q [%s] want <nil>", r, r.DisplayName())
 			}
 		}
-	}
-}
-
-func TestAllRCSRegionNames(t *testing.T) {
-	names := AllRCSRegionNames()
-	if !slices.Contains(names, "us-west1") {
-		t.Errorf("expected us-west1 in %v", names)
-	}
-	if slices.Contains(names, "US_WEST_1") {
-		t.Errorf("expected region names, not RCS region enum values, got %v", names)
-	}
-	if slices.Contains(names, "") {
-		t.Errorf("expected no unknown region in %v", names)
 	}
 }

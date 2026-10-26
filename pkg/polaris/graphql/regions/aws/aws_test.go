@@ -22,7 +22,6 @@ package aws
 
 import (
 	"encoding/json"
-	"slices"
 	"testing"
 )
 
@@ -274,7 +273,7 @@ func TestRCSRegionEnum(t *testing.T) {
 }
 
 func TestBaaSSupportedRegions(t *testing.T) {
-	regions := BaaSSupportedRegions()
+	regions := BaaSRegions()
 	if len(regions) == 0 {
 		t.Fatal("expected a non-empty BaaS supported region set")
 	}
@@ -339,18 +338,5 @@ func TestRegionsForReplication(t *testing.T) {
 
 	if region := RegionFromName("n/a"); region != RegionUnknown {
 		t.Errorf("invalid region: %v", region)
-	}
-}
-
-func TestAllRCSRegionNames(t *testing.T) {
-	names := AllRCSRegionNames()
-	if !slices.Contains(names, "us-east-1") {
-		t.Errorf("expected us-east-1 in %v", names)
-	}
-	if slices.Contains(names, "US_EAST") {
-		t.Errorf("expected region names, not RCS region enum values, got %v", names)
-	}
-	if slices.Contains(names, "") {
-		t.Errorf("expected no unknown region in %v", names)
 	}
 }

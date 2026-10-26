@@ -22,7 +22,6 @@ package azure
 
 import (
 	"encoding/json"
-	"slices"
 	"strings"
 	"testing"
 )
@@ -545,18 +544,5 @@ func TestRegionMarshalUnmarshalRoundTrip(t *testing.T) {
 		if original != unmarshaled {
 			t.Errorf("round trip failed for region %s: got %s", original, unmarshaled)
 		}
-	}
-}
-
-func TestAllRCSRegionNames(t *testing.T) {
-	names := AllRCSRegionNames()
-	if !slices.Contains(names, "eastus2") {
-		t.Errorf("expected eastus2 in %v", names)
-	}
-	if slices.Contains(names, "US_EAST_2_VIRGINIA") {
-		t.Errorf("expected region names, not RCS region enum values, got %v", names)
-	}
-	if slices.Contains(names, "") {
-		t.Errorf("expected no unknown region in %v", names)
 	}
 }

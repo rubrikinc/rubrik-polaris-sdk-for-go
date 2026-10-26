@@ -66,7 +66,7 @@ func ManagedAccountDefaultFeatureNames() []string {
 // when the caller does not specify regions explicitly. The allow-list is
 // maintained on the region table itself (see awsregions.BaaSSupportedRegions).
 func ManagedAccountSupportedRegions() []awsregions.Region {
-	return awsregions.BaaSSupportedRegions()
+	return awsregions.BaaSRegions()
 }
 
 // managedAccountFeatures expands the given features into features with all of
