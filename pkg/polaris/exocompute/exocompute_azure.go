@@ -225,8 +225,14 @@ func (a API) UpdateAzureHealthCheckVMNamePrefix(ctx context.Context, configID uu
 			input.OptionalConfig = &optionalConfig
 		}
 		if c.ID == configID {
+			// RSC stores no optional configuration for a configuration created
+			// without one, and rejects an empty enum value.
 			if input.OptionalConfig == nil {
-				input.OptionalConfig = &exocompute.AzureOptionalConfig{}
+				input.OptionalConfig = &exocompute.AzureOptionalConfig{
+					ClusterAccess: exocompute.AzureClusterAccessUnspecified,
+					ClusterTier:   exocompute.AzureClusterTierUnspecified,
+					NodeCount:     exocompute.AzureClusterNodeCountUnspecified,
+				}
 			}
 			input.OptionalConfig.HealthCheckVMNamePrefix = prefix
 		}

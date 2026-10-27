@@ -439,3 +439,72 @@ func TestUpdateAzureHealthCheckVMNamePrefix(t *testing.T) {
 		})
 	}
 }
+
+// TestUpdateAzureHealthCheckVMNamePrefixWithoutOptionalConfig verifies that a
+// configuration which RSC stores no optional configuration for is sent with
+// valid enum values. RSC rejects an empty enum value, so sending the zero
+// value of the optional config would fail the whole update.
+func TestUpdateAzureHealthCheckVMNamePrefixWithoutOptionalConfig(t *testing.T) {
+	cloudAccountID := uuid.MustParse("b48e7ad0-7b86-4c96-b6ba-97eb6a82f765")
+	targetID := uuid.MustParse("5f1b8c0e-4a1d-4c53-9d57-1d1f4a3f2b10")
+
+	var sent string
+	srv := httptest.NewTLSServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		switch {
+		case strings.Contains(string(body), "allAzureExocomputeConfigsInAccount"):
+			_, err = io.WriteString(w, `{"data": {"result": [{"azureCloudAccount": {"id": "`+cloudAccountID.String()+`"}, "configs": [{
+				"configUuid": "`+targetID.String()+`", "region": "WESTUS2", "isRscManaged": true,
+				"subnetNativeId": "subnet", "optionalConfig": null}]}]}}`)
+		case strings.Contains(string(body), "allAzureCloudAccountTenants"):
+			_, err = io.WriteString(w, `{"data": {"result": [{"cloudType": "AZUREPUBLICCLOUD",
+				"azureCloudAccountTenantRubrikId": "`+uuid.Nil.String()+`", "domainName": "example.onmicrosoft.com",
+				"subscriptionCount": 1, "subscriptions": [{"id": "`+cloudAccountID.String()+`", "name": "sub",
+				"nativeId": "`+uuid.Nil.String()+`", "featureDetail": {"feature": "EXOCOMPUTE",
+				"permissionsGroups": ["BASIC"], "status": "CONNECTED", "regions": ["WESTUS2"]}}]}]}}`)
+		case strings.Contains(string(body), "updateAzureExocomputeConfigs"):
+			sent = string(body)
+			_, err = io.WriteString(w, `{"data": {"result": {"deleteStatus": [], "exocomputeConfigs": []}}}`)
+		default:
+			t.Errorf("unexpected request: %s", body)
+		}
+		if err != nil {
+			t.Error(err)
+		}
+	}))
+	defer srv.Close()
+
+	err := Wrap(&polaris.Client{GQL: graphql.NewTestClient(srv)}).UpdateAzureHealthCheckVMNamePrefix(t.Context(), targetID, "prefix")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var request struct {
+		Variables struct {
+			Configs []struct {
+				OptionalConfig map[string]any `json:"optionalConfig"`
+			} `json:"azureExocomputeRegionConfigs"`
+		} `json:"variables"`
+	}
+	if err := json.Unmarshal([]byte(sent), &request); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(request.Variables.Configs); n != 1 {
+		t.Fatalf("expected one configuration, got: %d", n)
+	}
+	for field, want := range map[string]string{
+		"aksClusterAccessType":    "AKS_CLUSTER_ACCESS_TYPE_UNSPECIFIED",
+		"aksClusterTier":          "AKS_CLUSTER_TIER_UNSPECIFIED",
+		"aksNodeCountBucket":      "AKS_NODE_COUNT_BUCKET_UNSPECIFIED",
+		"healthCheckVmNamePrefix": "prefix",
+	} {
+		if got := request.Variables.Configs[0].OptionalConfig[field]; got != want {
+			t.Errorf("%s: %v, expected: %s", field, got, want)
+		}
+	}
+}
