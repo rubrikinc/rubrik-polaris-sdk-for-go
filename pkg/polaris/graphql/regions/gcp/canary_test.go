@@ -80,12 +80,12 @@ func TestRegionEnumCanary(t *testing.T) {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
-	sdkValues := make(map[string]struct{})
-	for _, region := range RegionEnumRegions() {
+	sdkValues := make(map[string]struct{}, len(regionInfoMap))
+	for region, info := range regionInfoMap {
 		// The unknown region sentinel value has been deprecated in the GraphQL
 		// API and is not returned by the introspection query.
-		if region != RegionUnknown {
-			sdkValues[region.ToRegionEnum().String()] = struct{}{}
+		if region != RegionUnknown && info.regionEnum != "" {
+			sdkValues[info.regionEnum] = struct{}{}
 		}
 	}
 
@@ -104,9 +104,11 @@ func TestCloudAccountRegionEnumCanary(t *testing.T) {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
-	sdkValues := make(map[string]struct{})
-	for _, region := range CloudAccountRegionEnumRegions() {
-		sdkValues[region.ToCloudAccountRegionEnum().String()] = struct{}{}
+	sdkValues := make(map[string]struct{}, len(regionInfoMap))
+	for _, info := range regionInfoMap {
+		if info.cloudAccountRegionEnum != "" {
+			sdkValues[info.cloudAccountRegionEnum] = struct{}{}
+		}
 	}
 
 	rscValues, err := graphql.EnumValuesAsSet(t.Context(), client.GQL, "GcpCloudAccountRegion")
@@ -124,9 +126,11 @@ func TestKMSLocationEnumCanary(t *testing.T) {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
-	sdkValues := make(map[string]struct{})
-	for _, region := range KMSLocationEnumRegions() {
-		sdkValues[region.ToKMSLocationEnum().String()] = struct{}{}
+	sdkValues := make(map[string]struct{}, len(regionInfoMap))
+	for _, info := range regionInfoMap {
+		if info.kmsLocationEnum != "" {
+			sdkValues[info.kmsLocationEnum] = struct{}{}
+		}
 	}
 
 	rscValues, err := graphql.EnumValuesAsSet(t.Context(), client.GQL, "GcpKmsLocation")

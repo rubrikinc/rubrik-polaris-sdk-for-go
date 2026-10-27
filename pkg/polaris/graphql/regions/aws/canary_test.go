@@ -80,9 +80,11 @@ func TestRegionEnumCanary(t *testing.T) {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
-	sdkValues := make(map[string]struct{})
-	for _, region := range RegionEnumRegions() {
-		sdkValues[region.ToRegionEnum().String()] = struct{}{}
+	sdkValues := make(map[string]struct{}, len(regionInfoMap))
+	for _, info := range regionInfoMap {
+		if info.regionEnum != "" {
+			sdkValues[info.regionEnum] = struct{}{}
+		}
 	}
 
 	rscValues, err := graphql.EnumValuesAsSet(t.Context(), client.GQL, "AwsRegion")
@@ -100,9 +102,11 @@ func TestNativeRegionEnumCanary(t *testing.T) {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
-	sdkValues := make(map[string]struct{})
-	for _, region := range NativeRegionEnumRegions() {
-		sdkValues[region.ToNativeRegionEnum().String()] = struct{}{}
+	sdkValues := make(map[string]struct{}, len(regionInfoMap))
+	for _, info := range regionInfoMap {
+		if info.nativeRegionEnum != "" {
+			sdkValues[info.nativeRegionEnum] = struct{}{}
+		}
 	}
 
 	rscValues, err := graphql.EnumValuesAsSet(t.Context(), client.GQL, "AwsNativeRegion")
@@ -120,9 +124,11 @@ func TestRegionForReplicationEnumCanary(t *testing.T) {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
-	sdkValues := make(map[string]struct{})
-	for _, region := range RegionForReplicationEnumRegions() {
-		sdkValues[region.ToRegionForReplicationEnum().String()] = struct{}{}
+	sdkValues := make(map[string]struct{}, len(regionInfoMap))
+	for _, info := range regionInfoMap {
+		if info.regionForReplicationEnum != "" {
+			sdkValues[info.regionForReplicationEnum] = struct{}{}
+		}
 	}
 
 	rscValues, err := graphql.EnumValuesAsSet(t.Context(), client.GQL, "AwsNativeRegionForReplication")
