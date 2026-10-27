@@ -398,6 +398,28 @@ var unmapCloudAccountExocomputeAccountQuery = `mutation SdkGolangUnmapCloudAccou
     }
 }`
 
+// updateAzureExocomputeConfigs GraphQL query
+var updateAzureExocomputeConfigsQuery = `mutation SdkGolangUpdateAzureExocomputeConfigs(
+    $cloudAccountId:               UUID!,
+    $azureExocomputeRegionConfigs: [AzureExocomputeAddConfigInputType!]!,
+    $triggerHealthCheck:           Boolean,
+) {
+    result: updateAzureExocomputeConfigs(input: {
+        cloudAccountId:               $cloudAccountId,
+        azureExocomputeRegionConfigs: $azureExocomputeRegionConfigs,
+        triggerHealthCheck:           $triggerHealthCheck,
+    }) {
+        deleteStatus {
+            exocomputeConfigId
+            success
+        }
+        exocomputeConfigs {
+            configUuid
+            message
+        }
+    }
+}`
+
 // validateAzureCloudAccountExocomputeConfigurations GraphQL query
 var validateAzureCloudAccountExocomputeConfigurationsQuery = `query SdkGolangValidateAzureCloudAccountExocomputeConfigurations(
     $cloudAccountId:              UUID!

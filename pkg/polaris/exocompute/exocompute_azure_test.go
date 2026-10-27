@@ -22,6 +22,7 @@ package exocompute
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"maps"
@@ -276,6 +277,164 @@ func TestAddAzureConfigurationValidation(t *testing.T) {
 			}
 			if created != tc.expectCreate {
 				t.Errorf("configuration created: %t, expected: %t", created, tc.expectCreate)
+			}
+		})
+	}
+}
+
+// TestUpdateAzureHealthCheckVMNamePrefix verifies that the prefix of a single
+// configuration is changed while the other configurations of the cloud account
+// are sent back unchanged, and that the update is refused when RSC manages the
+// configurations of the account itself.
+func TestUpdateAzureHealthCheckVMNamePrefix(t *testing.T) {
+	cloudAccountID := uuid.MustParse("b48e7ad0-7b86-4c96-b6ba-97eb6a82f765")
+	targetID := uuid.MustParse("5f1b8c0e-4a1d-4c53-9d57-1d1f4a3f2b10")
+	otherID := uuid.MustParse("0c6d2f3a-8d1e-4b0f-9a55-2e1d0d6f7a11")
+
+	configs := `[{"azureCloudAccount": {"id": "` + cloudAccountID.String() + `"}, "configs": [{
+		"configUuid": "` + targetID.String() + `", "region": "EASTUS2", "isRscManaged": true,
+		"subnetNativeId": "subnet-east",
+		"optionalConfig": {"aksClusterAccessType": "AKS_CLUSTER_ACCESS_TYPE_PUBLIC", "aksClusterTier": "AKS_CLUSTER_TIER_FREE",
+			"aksNodeCountBucket": "AKS_NODE_COUNT_BUCKET_MEDIUM", "healthCheckVmNamePrefix": "old", "diskEncryptionSetId": "des"}
+	}, {
+		"configUuid": "` + otherID.String() + `", "region": "WESTUS", "isRscManaged": true,
+		"subnetNativeId": "subnet-west", "optionalConfig": null
+	}]}]`
+
+	testCases := []struct {
+		name           string
+		permissions    string
+		updateReply    string
+		prefix         string
+		expectUpdate   bool
+		expectError    bool
+		wantTargetOpts string
+	}{{
+		name:           "ChangesOnlyTheTarget",
+		permissions:    `["BASIC"]`,
+		updateReply:    `{"deleteStatus": [], "exocomputeConfigs": []}`,
+		prefix:         "new",
+		expectUpdate:   true,
+		wantTargetOpts: `"healthCheckVmNamePrefix":"new"`,
+	}, {
+		name:           "EmptyPrefixClearsIt",
+		permissions:    `["BASIC"]`,
+		updateReply:    `{"deleteStatus": [], "exocomputeConfigs": []}`,
+		prefix:         "",
+		expectUpdate:   true,
+		wantTargetOpts: `"aksNodeCountBucket":"AKS_NODE_COUNT_BUCKET_MEDIUM"`,
+	}, {
+		name:         "RefusedWithAutomatedNetworkingSetup",
+		permissions:  `["BASIC", "AUTOMATED_NETWORKING_SETUP"]`,
+		prefix:       "new",
+		expectUpdate: false,
+		expectError:  true,
+	}, {
+		name:         "DeletedConfigurationIsAnError",
+		permissions:  `["BASIC"]`,
+		updateReply:  `{"deleteStatus": [{"exocomputeConfigId": "` + otherID.String() + `", "success": true}], "exocomputeConfigs": []}`,
+		prefix:       "new",
+		expectUpdate: true,
+		expectError:  true,
+	}, {
+		name:         "CreatedConfigurationIsAnError",
+		permissions:  `["BASIC"]`,
+		updateReply:  `{"deleteStatus": [], "exocomputeConfigs": [{"configUuid": "` + targetID.String() + `", "message": ""}]}`,
+		prefix:       "new",
+		expectUpdate: true,
+		expectError:  true,
+	}, {
+		name:         "ConfigurationMessageIsAnError",
+		permissions:  `["BASIC"]`,
+		updateReply:  `{"deleteStatus": [], "exocomputeConfigs": [{"configUuid": "", "message": "boom"}]}`,
+		prefix:       "new",
+		expectUpdate: true,
+		expectError:  true,
+	}}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var sent string
+			srv := httptest.NewTLSServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+				body, err := io.ReadAll(req.Body)
+				if err != nil {
+					t.Error(err)
+					return
+				}
+
+				switch {
+				case strings.Contains(string(body), "allAzureExocomputeConfigsInAccount"):
+					_, err = io.WriteString(w, `{"data": {"result": `+configs+`}}`)
+				case strings.Contains(string(body), "allAzureCloudAccountTenants"):
+					_, err = io.WriteString(w, `{"data": {"result": [{"cloudType": "AZUREPUBLICCLOUD",
+						"azureCloudAccountTenantRubrikId": "`+uuid.Nil.String()+`", "domainName": "example.onmicrosoft.com",
+						"subscriptionCount": 1, "subscriptions": [{"id": "`+cloudAccountID.String()+`", "name": "sub",
+						"nativeId": "`+uuid.Nil.String()+`", "featureDetail": {"feature": "EXOCOMPUTE",
+						"permissionsGroups": `+tc.permissions+`, "status": "CONNECTED", "regions": ["EASTUS2"]}}]}]}}`)
+				case strings.Contains(string(body), "updateAzureExocomputeConfigs"):
+					sent = string(body)
+					_, err = io.WriteString(w, `{"data": {"result": `+tc.updateReply+`}}`)
+				default:
+					t.Errorf("unexpected request: %s", body)
+				}
+				if err != nil {
+					t.Error(err)
+				}
+			}))
+			defer srv.Close()
+
+			err := Wrap(&polaris.Client{GQL: graphql.NewTestClient(srv)}).UpdateAzureHealthCheckVMNamePrefix(t.Context(), targetID, tc.prefix)
+			if tc.expectError && err == nil {
+				t.Error("expected update to fail")
+			}
+			if !tc.expectError && err != nil {
+				t.Fatal(err)
+			}
+			if updated := sent != ""; updated != tc.expectUpdate {
+				t.Fatalf("update sent: %t, expected: %t", updated, tc.expectUpdate)
+			}
+			if !tc.expectUpdate || tc.wantTargetOpts == "" {
+				return
+			}
+
+			// Every configuration of the account must be sent back, the target with
+			// the new prefix and the other one unchanged.
+			var request struct {
+				Variables struct {
+					CloudAccountID uuid.UUID        `json:"cloudAccountId"`
+					Configs        []map[string]any `json:"azureExocomputeRegionConfigs"`
+				} `json:"variables"`
+			}
+			if err := json.Unmarshal([]byte(sent), &request); err != nil {
+				t.Fatal(err)
+			}
+			if request.Variables.CloudAccountID != cloudAccountID {
+				t.Errorf("invalid cloud account id: %s", request.Variables.CloudAccountID)
+			}
+			if n := len(request.Variables.Configs); n != 2 {
+				t.Fatalf("expected both configurations to be sent, got: %d", n)
+			}
+			east, west := request.Variables.Configs[0], request.Variables.Configs[1]
+			if east["region"] != "EASTUS2" || east["subnetNativeId"] != "subnet-east" || east["isRscManaged"] != true {
+				t.Errorf("target configuration changed: %v", east)
+			}
+			eastOpts, err := json.Marshal(east["optionalConfig"])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(eastOpts), tc.wantTargetOpts) {
+				t.Errorf("target optional config %s does not contain %s", eastOpts, tc.wantTargetOpts)
+			}
+			if tc.prefix == "" && strings.Contains(string(eastOpts), "healthCheckVmNamePrefix") {
+				t.Errorf("prefix not cleared: %s", eastOpts)
+			}
+			if !strings.Contains(string(eastOpts), `"diskEncryptionSetId":"des"`) {
+				t.Errorf("other optional config fields not preserved: %s", eastOpts)
+			}
+			if west["region"] != "WESTUS" || west["subnetNativeId"] != "subnet-west" {
+				t.Errorf("other configuration changed: %v", west)
+			}
+			if _, ok := west["optionalConfig"]; ok {
+				t.Errorf("other configuration gained an optional config: %v", west)
 			}
 		})
 	}

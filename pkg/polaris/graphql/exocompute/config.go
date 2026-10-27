@@ -115,7 +115,7 @@ type UpdateConfigurationParams[R UpdateConfigurationResult] interface {
 // UpdateConfigurationResult holds the result of an exocompute configuration
 // update operation.
 type UpdateConfigurationResult interface {
-	UpdateGCPConfigurationResult
+	UpdateAzureConfigurationsResult | UpdateGCPConfigurationResult
 	Validate() (uuid.UUID, error)
 }
 

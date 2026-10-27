@@ -301,6 +301,63 @@ func (r ValidateAzureConfigurationResult) Warnings() []string {
 	return warnings
 }
 
+// UpdateAzureConfigurationsParams holds the parameters for an Azure exocompute
+// configuration update operation. RSC replaces the configurations of the cloud
+// account with the specified ones: a region which is not included is deleted,
+// and a region where anything other than the health check VM name prefix
+// differs from the stored configuration is deleted and created again.
+type UpdateAzureConfigurationsParams struct {
+	CloudAccountID uuid.UUID                      `json:"cloudAccountId"`
+	Configs        []UpdateAzureRegionConfigInput `json:"azureExocomputeRegionConfigs"`
+}
+
+// UpdateAzureRegionConfigInput holds the configuration of a single region in
+// an Azure exocompute configuration update operation.
+type UpdateAzureRegionConfigInput struct {
+	Region                azure.CloudAccountRegionEnum `json:"region"`
+	IsManagedByRubrik     bool                         `json:"isRscManaged"`
+	SubnetID              string                       `json:"subnetNativeId,omitempty"`
+	PodOverlayNetworkCIDR string                       `json:"podOverlayNetworkCidr,omitempty"`
+	PodSubnetID           string                       `json:"podSubnetNativeId,omitempty"`
+	OptionalConfig        *AzureOptionalConfig         `json:"optionalConfig,omitempty"`
+}
+
+func (p UpdateAzureConfigurationsParams) UpdateQuery() (string, any, UpdateAzureConfigurationsResult) {
+	return updateAzureExocomputeConfigsQuery, p, UpdateAzureConfigurationsResult{}
+}
+
+// UpdateAzureConfigurationsResult holds the result of an Azure exocompute
+// configuration update operation.
+type UpdateAzureConfigurationsResult struct {
+	DeleteStatus []struct {
+		ID      string `json:"exocomputeConfigId"`
+		Success bool   `json:"success"`
+	} `json:"deleteStatus"`
+	Configs []struct {
+		ID      string `json:"configUuid"`
+		Message string `json:"message"`
+	} `json:"exocomputeConfigs"`
+}
+
+// Validate returns an error if RSC deleted or created any configuration, or
+// reported a problem with one. An update which only changes the health check VM
+// name prefix is applied in place and does neither.
+func (r UpdateAzureConfigurationsResult) Validate() (uuid.UUID, error) {
+	if n := len(r.DeleteStatus); n > 0 {
+		return uuid.Nil, fmt.Errorf("RSC deleted %d exocompute configuration(s), the update was not applied in place", n)
+	}
+	for _, config := range r.Configs {
+		if config.Message != "" {
+			return uuid.Nil, errors.New(config.Message)
+		}
+	}
+	if n := len(r.Configs); n > 0 {
+		return uuid.Nil, fmt.Errorf("RSC created %d exocompute configuration(s), the update was not applied in place", n)
+	}
+
+	return uuid.Nil, nil
+}
+
 // DeleteAzureConfigurationParams holds the parameters for an Azure exocompute
 // configuration delete operation.
 type DeleteAzureConfigurationParams struct {

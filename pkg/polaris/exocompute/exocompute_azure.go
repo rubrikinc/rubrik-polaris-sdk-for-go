@@ -26,6 +26,7 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
+	azurepkg "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/exocompute"
@@ -175,6 +176,68 @@ func (a API) AddAzureConfiguration(ctx context.Context, cloudAccountID uuid.UUID
 	}
 
 	return configID, nil
+}
+
+// UpdateAzureHealthCheckVMNamePrefix sets the health check VM name prefix of
+// the Azure exocompute configuration with the specified ID. An empty prefix
+// makes RSC use its default prefix. The configuration is updated in place, the
+// exocompute cluster is not recreated.
+//
+// RSC replaces all the exocompute configurations of the cloud account in one
+// request, so the other configurations of the account are read and sent back
+// unchanged. The update is rejected for cloud accounts which have the
+// AUTOMATED_NETWORKING_SETUP permission group, since RSC then manages the
+// configurations of all regions itself.
+func (a API) UpdateAzureHealthCheckVMNamePrefix(ctx context.Context, configID uuid.UUID, prefix string) error {
+	a.log.Print(log.Trace)
+
+	config, err := a.AzureConfigurationByID(ctx, configID)
+	if err != nil {
+		return err
+	}
+
+	account, err := azurepkg.WrapGQL(a.client).SubscriptionByID(ctx, config.CloudAccountID)
+	if err != nil {
+		return fmt.Errorf("failed to get cloud account %s: %s", config.CloudAccountID, err)
+	}
+	if feature, ok := account.Feature(core.FeatureExocompute); ok &&
+		slices.Contains(feature.PermissionGroups, core.PermissionGroupAutomatedNetworkingSetup) {
+		return fmt.Errorf("cloud account %s has the %s permission group, the health check VM name prefix can't be updated",
+			config.CloudAccountID, core.PermissionGroupAutomatedNetworkingSetup)
+	}
+
+	configs, err := a.AzureConfigurationsByCloudAccountID(ctx, config.CloudAccountID)
+	if err != nil {
+		return err
+	}
+
+	params := exocompute.UpdateAzureConfigurationsParams{CloudAccountID: config.CloudAccountID}
+	for _, c := range configs {
+		input := exocompute.UpdateAzureRegionConfigInput{
+			Region:                c.Region,
+			IsManagedByRubrik:     c.ManagedByRubrik,
+			SubnetID:              c.SubnetID,
+			PodOverlayNetworkCIDR: c.PodOverlayNetworkCIDR,
+			PodSubnetID:           c.PodSubnetID,
+		}
+		if c.OptionalConfig != nil {
+			optionalConfig := *c.OptionalConfig
+			input.OptionalConfig = &optionalConfig
+		}
+		if c.ID == configID {
+			if input.OptionalConfig == nil {
+				input.OptionalConfig = &exocompute.AzureOptionalConfig{}
+			}
+			input.OptionalConfig.HealthCheckVMNamePrefix = prefix
+		}
+		params.Configs = append(params.Configs, input)
+	}
+
+	if _, err := exocompute.UpdateConfiguration(ctx, a.client, params); err != nil {
+		return fmt.Errorf("failed to update exocompute configuration %s: %s", configID, err)
+	}
+
+	return nil
 }
 
 // RemoveAzureConfiguration removes the Azure exocompute configuration with the
