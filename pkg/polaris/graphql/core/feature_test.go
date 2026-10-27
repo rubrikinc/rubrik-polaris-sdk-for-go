@@ -177,6 +177,9 @@ func TestIcebergProtectionFeatures(t *testing.T) {
 			if !tt.feature.IsProtectionFeature() {
 				t.Errorf("%s should be a protection feature", tt.name)
 			}
+			if slices.ContainsFunc(AllProtectionFeatures(CloudVendorAWS), tt.feature.Equal) {
+				t.Errorf("%s should not be a public AWS protection feature", tt.name)
+			}
 			feature, err := ParseFeature(tt.name)
 			if err != nil {
 				t.Fatalf("failed to parse feature: %v", err)
