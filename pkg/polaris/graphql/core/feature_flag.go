@@ -33,14 +33,22 @@ import (
 type FeatureFlagName string
 
 const (
-	FeatureFlagPolicyEngineEnabled             FeatureFlagName = "POLICY_ENGINE_ENABLED"
 	FeatureFlagAWSManualRoleChaining           FeatureFlagName = "REL_ENABLE_AWS_MANUAL_ROLE_CHAINING"
-	FeatureFlagAzureDevOpsProtection           FeatureFlagName = "AZURE_DEVOPS_PROTECTION_ENABLED"
-	FeatureFlagAzurePostgresFlexibleServer     FeatureFlagName = "REL_ENABLE_AZURE_POSTGRES_FLEXIBLE_SERVER"
-	FeatureFlagAzureSQLDBCopyBackup            FeatureFlagName = "CNP_AZURE_SQL_DB_COPY_BACKUP"
-	FeatureFlagAzureSQLSLARevamp               FeatureFlagName = "CNP_AZURE_SQL_SLA_REVAMP"
 	FeatureFlagGCPCloudDiscovery               FeatureFlagName = "REL_ENABLE_CNP_GCP_CLOUD_DISCOVERY_MODE"
 	FeatureFlagMultipleKeyValuePairsInTagRules FeatureFlagName = "CNP_MULTIPLE_KEY_VALUE_PAIRS_IN_TAG_RULES_ENABLED"
+	FeatureFlagPolicyEngineEnabled             FeatureFlagName = "POLICY_ENGINE_ENABLED"
+
+	// Deprecated: not used by the Go SDK.
+	FeatureFlagAzureDevOpsProtection FeatureFlagName = "AZURE_DEVOPS_PROTECTION_ENABLED"
+
+	// Deprecated: not used by the Go SDK.
+	FeatureFlagAzurePostgresFlexibleServer FeatureFlagName = "REL_ENABLE_AZURE_POSTGRES_FLEXIBLE_SERVER"
+
+	// Deprecated: not used by the Go SDK.
+	FeatureFlagAzureSQLDBCopyBackup FeatureFlagName = "CNP_AZURE_SQL_DB_COPY_BACKUP"
+
+	// Deprecated: not used by the Go SDK.
+	FeatureFlagAzureSQLSLARevamp FeatureFlagName = "CNP_AZURE_SQL_SLA_REVAMP"
 )
 
 // FeatureFlag holds the name and state of a single RSC feature flag.
