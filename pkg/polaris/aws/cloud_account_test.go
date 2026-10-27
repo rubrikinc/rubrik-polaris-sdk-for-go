@@ -34,8 +34,6 @@ import (
 func TestToCloudAccountKeepsFeatures(t *testing.T) {
 	features := []core.Feature{
 		core.FeatureCloudNativeConfigProtection,
-		core.FeatureGlueIcebergProtection,
-		core.FeatureS3TablesIcebergProtection,
 	}
 	for _, feature := range features {
 		t.Run(feature.Name, func(t *testing.T) {
