@@ -133,8 +133,8 @@ func TestAllowlists(t *testing.T) {
 				Archival, CloudCostReport, CloudDiscovery, CloudNativeArchival, CloudNativeConfigProtection,
 				CloudNativeDynamoDBProtection, CloudNativeProtection, CloudNativeS3Protection, CloudNativeUEMKeyManagement,
 				CyberRecoveryDataClassificationData, CyberRecoveryDataClassificationMetadata, DSPMData, DSPMMetadata,
-				Exocompute, GlueIcebergProtection, KubernetesProtection, LaminarCrossAccount, LaminarInternal, Outpost,
-				RDSProtection, RoleChaining, S3TablesIcebergProtection, ServerAndApps,
+				Exocompute, KubernetesProtection, LaminarCrossAccount, LaminarInternal, Outpost, RDSProtection,
+				RoleChaining, ServerAndApps,
 			},
 		},
 		"AzureSubscriptionAllowlistNames": {
@@ -177,8 +177,8 @@ func TestIcebergProtectionFeatures(t *testing.T) {
 			if !tt.feature.IsProtectionFeature() {
 				t.Errorf("%s should be a protection feature", tt.name)
 			}
-			if !slices.ContainsFunc(AllProtectionFeatures(CloudVendorAWS), tt.feature.Equal) {
-				t.Errorf("%s should be an AWS protection feature", tt.name)
+			if slices.ContainsFunc(AllProtectionFeatures(CloudVendorAWS), tt.feature.Equal) {
+				t.Errorf("%s should not be a public AWS protection feature", tt.name)
 			}
 			feature, err := ParseFeature(tt.name)
 			if err != nil {

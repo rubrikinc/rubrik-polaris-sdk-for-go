@@ -860,6 +860,7 @@ var featureInfoMap = map[string]struct {
 		protection: true,
 		public:     true,
 	},
+	// Behind an RSC feature flag. Known to the SDK but not public yet.
 	GlueIcebergProtection: {
 		permissionGroups: cloudAccountPermissionGroups{
 			awsAccountCFT: {
@@ -872,7 +873,6 @@ var featureInfoMap = map[string]struct {
 			},
 		},
 		protection: true,
-		public:     true,
 	},
 	KubernetesProtection: {
 		permissionGroups: cloudAccountPermissionGroups{
@@ -965,6 +965,7 @@ var featureInfoMap = map[string]struct {
 		},
 		public: true,
 	},
+	// Behind an RSC feature flag. Known to the SDK but not public yet.
 	S3TablesIcebergProtection: {
 		permissionGroups: cloudAccountPermissionGroups{
 			awsAccountCFT: {
@@ -977,7 +978,6 @@ var featureInfoMap = map[string]struct {
 			},
 		},
 		protection: true,
-		public:     true,
 	},
 	ServerAndApps: {
 		permissionGroups: cloudAccountPermissionGroups{
