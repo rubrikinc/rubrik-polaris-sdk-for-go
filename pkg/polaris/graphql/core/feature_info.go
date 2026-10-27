@@ -786,6 +786,7 @@ var featureInfoMap = map[string]struct {
 				PermissionGroupAKSCustomPrivateDNSZone,
 				PermissionGroupAutomatedNetworkingSetup,
 				PermissionGroupCustomerManagedCluster,
+				PermissionGroupEncryption,
 				PermissionGroupPrivateEndpoints,
 				PermissionGroupServiceEndpointAutomation,
 			},
