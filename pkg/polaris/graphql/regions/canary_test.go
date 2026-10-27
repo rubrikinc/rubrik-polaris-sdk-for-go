@@ -85,14 +85,14 @@ func TestRCSRegionEnumCanary(t *testing.T) {
 	}
 
 	sdkValues := make(map[string]struct{})
-	for _, name := range aws.AllRCSRegionNames() {
-		sdkValues[name] = struct{}{}
+	for _, region := range aws.RCSRegionEnumRegions() {
+		sdkValues[region.ToRCSRegionEnum().String()] = struct{}{}
 	}
-	for _, name := range azure.AllRCSRegionNames() {
-		sdkValues[name] = struct{}{}
+	for _, region := range azure.RCSRegionEnumRegions() {
+		sdkValues[region.ToRCSRegionEnum().String()] = struct{}{}
 	}
-	for _, name := range gcp.AllRCSRegionNames() {
-		sdkValues[name] = struct{}{}
+	for _, region := range gcp.RCSRegionEnumRegions() {
+		sdkValues[region.ToRCSRegionEnum().String()] = struct{}{}
 	}
 
 	rscValues, err := graphql.EnumValuesAsSet(t.Context(), client.GQL, "RcsRegionEnumType")

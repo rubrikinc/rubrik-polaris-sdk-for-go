@@ -273,7 +273,7 @@ func TestRCSRegionEnum(t *testing.T) {
 }
 
 func TestBaaSSupportedRegions(t *testing.T) {
-	regions := BaaSSupportedRegions()
+	regions := BaaSRegions()
 	if len(regions) == 0 {
 		t.Fatal("expected a non-empty BaaS supported region set")
 	}

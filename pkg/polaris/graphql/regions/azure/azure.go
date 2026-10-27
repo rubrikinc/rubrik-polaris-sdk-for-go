@@ -21,6 +21,7 @@
 package azure
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -538,21 +539,195 @@ func AllRegionNames() []string {
 			regions = append(regions, info.name)
 		}
 	}
-
 	slices.Sort(regions)
+
 	return regions
 }
 
-// AllRCSRegionNames returns all the recognized RCS/RCV region names.
-func AllRCSRegionNames() []string {
-	regions := make([]string, 0, len(regionInfoMap))
-	for _, info := range regionInfoMap {
-		if info.rcsRegionEnum != "" {
-			regions = append(regions, info.rcsRegionEnum)
+// RegionEnumRegions returns the regions supported by the GraphQL AzureRegion
+// enum type. This includes any RSC sentinel regions.
+func RegionEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.regionEnum != "" {
+			regions = append(regions, region)
 		}
 	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
 
+	return regions
+}
+
+// RegionEnumRegionNames returns the names of the regions supported by the
+// GraphQL AzureRegion enum type. This does not include any RSC sentinel
+// regions.
+func RegionEnumRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && region != RegionSource && info.regionEnum != "" {
+			regions = append(regions, info.name)
+		}
+	}
 	slices.Sort(regions)
+
+	return regions
+}
+
+// CloudAccountRegionEnumRegions returns the regions supported by the GraphQL
+// AzureCloudAccountRegion enum type. This includes any RSC sentinel regions.
+func CloudAccountRegionEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.cloudAccountRegionEnum != "" {
+			regions = append(regions, region)
+		}
+	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
+
+	return regions
+}
+
+// CloudAccountRegionEnumRegionNames returns the names of the regions supported
+// by the GraphQL AzureCloudAccountRegion enum type. This does not include any
+// RSC sentinel regions.
+func CloudAccountRegionEnumRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && region != RegionSource && info.cloudAccountRegionEnum != "" {
+			regions = append(regions, info.name)
+		}
+	}
+	slices.Sort(regions)
+
+	return regions
+}
+
+// CommonRegionEnumRegions returns the regions supported by the GraphQL
+// AzureCommonRegion enum type. This includes any RSC sentinel regions.
+func CommonRegionEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.commonRegionEnum != "" {
+			regions = append(regions, region)
+		}
+	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
+
+	return regions
+}
+
+// CommonRegionEnumRegionNames returns the names of the regions supported by the
+// GraphQL AzureCommonRegion enum type. This does not include any RSC sentinel
+// regions.
+func CommonRegionEnumRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && region != RegionSource && info.commonRegionEnum != "" {
+			regions = append(regions, info.name)
+		}
+	}
+	slices.Sort(regions)
+
+	return regions
+}
+
+// NativeRegionEnumRegions returns the regions supported by the GraphQL
+// AzureNativeRegion enum type. This includes any RSC sentinel regions.
+func NativeRegionEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.nativeRegionEnum != "" {
+			regions = append(regions, region)
+		}
+	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
+
+	return regions
+}
+
+// NativeRegionEnumRegionNames returns the names of the regions supported by the
+// GraphQL AzureNativeRegion enum type. This does not include any RSC sentinel
+// regions.
+func NativeRegionEnumRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && region != RegionSource && info.nativeRegionEnum != "" {
+			regions = append(regions, info.name)
+		}
+	}
+	slices.Sort(regions)
+
+	return regions
+}
+
+// RegionForReplicationEnumRegions returns the regions supported by the GraphQL
+// AzureNativeRegionForReplication enum type. This includes any RSC sentinel
+// regions.
+func RegionForReplicationEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.regionForReplicationEnum != "" {
+			regions = append(regions, region)
+		}
+	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
+
+	return regions
+}
+
+// RegionForReplicationEnumRegionNames returns the names of the regions
+// supported by the GraphQL AzureNativeRegionForReplication enum type. This does
+// not include any RSC sentinel regions.
+func RegionForReplicationEnumRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && region != RegionSource && info.regionForReplicationEnum != "" {
+			regions = append(regions, info.name)
+		}
+	}
+	slices.Sort(regions)
+
+	return regions
+}
+
+// RCSRegionEnumRegions returns the regions supported by the GraphQL
+// RcsRegionEnumType enum type. This includes any RSC sentinel regions.
+func RCSRegionEnumRegions() []Region {
+	regions := make([]Region, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if info.rcsRegionEnum != "" {
+			regions = append(regions, region)
+		}
+	}
+	slices.SortFunc(regions, func(a, b Region) int {
+		return cmp.Compare(a.Name(), b.Name())
+	})
+
+	return regions
+}
+
+// RCSRegionEnumRegionNames returns the names of the regions supported by the
+// GraphQL RcsRegionEnumType enum type. This does not include any RSC sentinel
+// regions.
+func RCSRegionEnumRegionNames() []string {
+	regions := make([]string, 0, len(regionInfoMap))
+	for region, info := range regionInfoMap {
+		if region != RegionUnknown && region != RegionSource && info.rcsRegionEnum != "" {
+			regions = append(regions, info.name)
+		}
+	}
+	slices.Sort(regions)
+
 	return regions
 }
 
