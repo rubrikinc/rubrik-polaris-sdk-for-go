@@ -182,20 +182,47 @@ const (
 )
 
 // Artifacts returns the artifacts, instance profiles and roles, required by RSC
-// for the specified features.
+// for the specified features. The artifacts are those of a single-role
+// account, use ArtifactsWithParams with a native ID to get the artifacts of an
+// onboarded account.
 func (a API) Artifacts(ctx context.Context, cloud string, features []core.Feature) ([]string, []string, error) {
+	return a.ArtifactsWithParams(ctx, ArtifactsParams{Cloud: cloud, Features: features})
+}
+
+// ArtifactsParams holds the parameters for an ArtifactsWithParams operation.
+// NativeID is optional.
+//
+// NativeID is the AWS account ID of an account onboarded to RSC. When given,
+// the artifacts are those required by the role mode of that account, e.g. one
+// role per feature for a multi-role account. When empty, the artifacts are
+// those of a single-role account. RSC returns an error if no account with the
+// native ID has been onboarded.
+type ArtifactsParams struct {
+	Cloud    string
+	Features []core.Feature
+	NativeID string
+}
+
+// ArtifactsWithParams returns the artifacts, instance profiles and roles,
+// required by RSC for the specified parameters.
+func (a API) ArtifactsWithParams(ctx context.Context, params ArtifactsParams) ([]string, []string, error) {
 	a.log.Print(log.Trace)
 
+	features := params.Features
 	if err := core.ValidateRoleChaining(features); err != nil {
 		return nil, nil, err
 	}
 
-	c, err := aws.ParseCloud(cloud)
+	c, err := aws.ParseCloud(params.Cloud)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse cloud: %s", err)
 	}
 
-	artifacts, err := aws.Wrap(a.client).AllPermissionPolicies(ctx, c, features, "")
+	artifacts, err := aws.Wrap(a.client).AllPermissionPoliciesWithParams(ctx, aws.AllPermissionPoliciesParams{
+		Cloud:    c,
+		Features: features,
+		NativeID: params.NativeID,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
