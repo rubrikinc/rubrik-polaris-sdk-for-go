@@ -5,6 +5,7 @@ mutation RubrikPolarisSDKRequest(
     $storageClass:    GcpStorageClass!,
     $region:          GcpRegion,
     $cmkInfo:         [GcpCmkInput!],
+    $gcpKmsKey:       GcpKmsKeyIdentifierInput,
     $locTemplateType: CloudNativeLocTemplateType!,
     $bucketLabels:    TagsInput
 ) {
@@ -15,6 +16,7 @@ mutation RubrikPolarisSDKRequest(
         storageClass:               $storageClass,
         region:                     $region,
         cmkInfo:                    $cmkInfo,
+        gcpKmsKey:                  $gcpKmsKey,
         cloudNativeLocTemplateType: $locTemplateType,
         bucketLabels:               $bucketLabels
     }) {

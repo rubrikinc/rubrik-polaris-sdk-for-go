@@ -64,7 +64,9 @@ func (GCPTargetMapping) ListQuery(filters []ListTargetMappingFilter) (string, an
 
 // CreateGCPStorageSettingParams holds the parameters for a GCP storage setting
 // create operation.
-// Region, customer managed keys and bucket labels are optional.
+// Region, customer managed keys, KMS key and bucket labels are optional. The
+// KMS key selects client-side encryption, RSC rejects it together with
+// customer managed keys.
 // GCP storage settings are also referred to as GCP target mappings.
 type CreateGCPStorageSettingParams struct {
 	CloudAccountID uuid.UUID        `json:"cloudAccountId"`
@@ -75,6 +77,7 @@ type CreateGCPStorageSettingParams struct {
 	LocTemplate    string           `json:"locTemplateType"`
 	BucketLabels   *core.Tags       `json:"bucketLabels,omitempty"`
 	CMKInfo        []GCPCustomerKey `json:"cmkInfo,omitempty"`
+	KMSKey         *GCPKMSKey       `json:"gcpKmsKey,omitempty"`
 }
 
 // CreateGCPStorageSettingResult holds the result of a GCP storage setting

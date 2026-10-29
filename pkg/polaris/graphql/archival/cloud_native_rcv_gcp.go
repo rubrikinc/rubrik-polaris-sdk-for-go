@@ -38,8 +38,8 @@ import (
 // encryption. There is no redundancy option.
 
 // GCPKMSKey identifies a GCP Cloud KMS key used for client-side encryption of
-// an RCV GCP archival location. The key manager must already be registered in
-// RSC.
+// a GCP or an RCV GCP archival location. The key manager must already be
+// registered in RSC.
 type GCPKMSKey struct {
 	KeyManagerID uuid.UUID `json:"keyManagerId"`
 	KeyName      string    `json:"keyName"`
