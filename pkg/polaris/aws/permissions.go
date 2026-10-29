@@ -57,19 +57,52 @@ func (policy ManagedPolicy) lessThan(other ManagedPolicy) bool {
 }
 
 // Permissions returns the policies required by RSC for the specified features.
+// The policies are those of a single-role account, use PermissionsWithParams
+// with a native ID to get the policies of an onboarded account.
 func (a API) Permissions(ctx context.Context, cloud string, features []core.Feature, ec2RecoveryRolePath string) ([]CustomerManagedPolicy, []ManagedPolicy, error) {
+	return a.PermissionsWithParams(ctx, PermissionsParams{
+		Cloud:               cloud,
+		Features:            features,
+		EC2RecoveryRolePath: ec2RecoveryRolePath,
+	})
+}
+
+// PermissionsParams holds the parameters for a PermissionsWithParams
+// operation. EC2RecoveryRolePath and NativeID are optional.
+//
+// NativeID is the AWS account ID of an account onboarded to RSC. When given,
+// the policies are those required by the role mode of that account, e.g. the
+// policies of each feature are returned under the role of that feature for a
+// multi-role account. When empty, the policies are those of a single-role
+// account. RSC returns an error if no account with the native ID has been
+// onboarded.
+type PermissionsParams struct {
+	Cloud               string
+	Features            []core.Feature
+	EC2RecoveryRolePath string
+	NativeID            string
+}
+
+// PermissionsWithParams returns the policies required by RSC for the specified
+// parameters.
+func (a API) PermissionsWithParams(ctx context.Context, params PermissionsParams) ([]CustomerManagedPolicy, []ManagedPolicy, error) {
 	a.log.Print(log.Trace)
 
-	if err := core.ValidateRoleChaining(features); err != nil {
+	if err := core.ValidateRoleChaining(params.Features); err != nil {
 		return nil, nil, err
 	}
 
-	c, err := aws.ParseCloud(cloud)
+	c, err := aws.ParseCloud(params.Cloud)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse cloud: %s", err)
 	}
 
-	artifacts, err := aws.Wrap(a.client).AllPermissionPolicies(ctx, c, features, ec2RecoveryRolePath)
+	artifacts, err := aws.Wrap(a.client).AllPermissionPoliciesWithParams(ctx, aws.AllPermissionPoliciesParams{
+		Cloud:               c,
+		Features:            params.Features,
+		EC2RecoveryRolePath: params.EC2RecoveryRolePath,
+		NativeID:            params.NativeID,
+	})
 	if err != nil {
 		return nil, nil, err
 	}

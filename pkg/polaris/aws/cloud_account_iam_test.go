@@ -162,3 +162,105 @@ func TestAccountArtifactsFiltersForRoleChaining(t *testing.T) {
 		})
 	}
 }
+
+// TestArtifactsAndPermissionsWithNativeID verifies that the artifacts and the
+// policies of a multi-role account are keyed by the role of each feature when
+// a native ID is given, and by the CROSSACCOUNT role when it is not. The test
+// server answers like RSC, which renders the policies for a single-role
+// account unless the request names an onboarded account.
+func TestArtifactsAndPermissionsWithNativeID(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+		buf, err := io.ReadAll(req.Body)
+		if err != nil {
+			cancel(err)
+			return
+		}
+		var payload struct {
+			Variables struct {
+				NativeID string `json:"awsNativeId"`
+			} `json:"variables"`
+		}
+		if err := json.Unmarshal(buf, &payload); err != nil {
+			cancel(err)
+			return
+		}
+		response := `{"data":{"result":[
+			{"externalArtifactKey":"CROSSACCOUNT_ROLE_ARN","awsManagedPolicies":[],"customerManagedPolicies":[
+				{"feature":"CLOUDACCOUNTS","policyName":"CloudAccountsPolicy","policyDocumentJson":"{}"},
+				{"feature":"CLOUD_NATIVE_PROTECTION","policyName":"EC2ProtectionPolicy","policyDocumentJson":"{}"}
+			]}
+		]}}`
+		if payload.Variables.NativeID == "123456789012" {
+			response = `{"data":{"result":[
+				{"externalArtifactKey":"CLOUDACCOUNTS_ROLE_ARN","awsManagedPolicies":[],"customerManagedPolicies":[
+					{"feature":"CLOUDACCOUNTS","policyName":"CloudAccountsPolicy","policyDocumentJson":"{}"}
+				]},
+				{"externalArtifactKey":"CLOUD_NATIVE_PROTECTION_ROLE_ARN","awsManagedPolicies":[],"customerManagedPolicies":[
+					{"feature":"CLOUD_NATIVE_PROTECTION","policyName":"EC2ProtectionPolicy","policyDocumentJson":"{}"}
+				]}
+			]}}`
+		}
+		if _, err := fmt.Fprint(w, response); err != nil {
+			cancel(err)
+		}
+	}))
+	defer srv.Close()
+
+	features := []core.Feature{core.FeatureCloudNativeProtection.WithPermissionGroups(core.PermissionGroupBasic)}
+	tests := []struct {
+		name         string
+		nativeID     string
+		wantRoles    []string
+		wantPolicies map[string]string
+	}{{
+		name:      "native ID gives one role per feature",
+		nativeID:  "123456789012",
+		wantRoles: []string{"CLOUDACCOUNTS", "CLOUD_NATIVE_PROTECTION"},
+		wantPolicies: map[string]string{
+			"CloudAccountsPolicy": "CLOUDACCOUNTS",
+			"EC2ProtectionPolicy": "CLOUD_NATIVE_PROTECTION",
+		},
+	}, {
+		name:      "no native ID gives the CROSSACCOUNT role",
+		wantRoles: []string{"CROSSACCOUNT"},
+		wantPolicies: map[string]string{
+			"CloudAccountsPolicy": "CROSSACCOUNT",
+			"EC2ProtectionPolicy": "CROSSACCOUNT",
+		},
+	}}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, roles, err := Wrap(mockClient(srv)).ArtifactsWithParams(ctx, ArtifactsParams{
+				Cloud:    string(aws.CloudStandard),
+				Features: features,
+				NativeID: tc.nativeID,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(roles, tc.wantRoles) {
+				t.Errorf("expected roles %v, got %v", tc.wantRoles, roles)
+			}
+
+			policies, _, err := Wrap(mockClient(srv)).PermissionsWithParams(ctx, PermissionsParams{
+				Cloud:    string(aws.CloudStandard),
+				Features: features,
+				NativeID: tc.nativeID,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(policies) != len(tc.wantPolicies) {
+				t.Fatalf("expected %d policies, got %d", len(tc.wantPolicies), len(policies))
+			}
+			for _, policy := range policies {
+				if want := tc.wantPolicies[policy.Name]; policy.Artifact != want {
+					t.Errorf("expected policy %s under role %q, got %q", policy.Name, want, policy.Artifact)
+				}
+			}
+		})
+	}
+}
