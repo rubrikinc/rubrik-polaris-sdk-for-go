@@ -376,6 +376,19 @@ var setGcpExocomputeConfigsQuery = `mutation SdkGolangSetGcpExocomputeConfigs(
     })
 }`
 
+// triggerExocomputeHealthCheck GraphQL query
+var triggerExocomputeHealthCheckQuery = `mutation SdkGolangTriggerExocomputeHealthCheck(
+    $cloudVendor:        CloudVendor!,
+    $exocomputeConfigId: UUID!
+) {
+    result: triggerExocomputeHealthCheck(input: {
+        cloudVendor:        $cloudVendor,
+        exocomputeConfigId: $exocomputeConfigId
+    }) {
+        healthCheckJobId
+    }
+}`
+
 // unmapAzureCloudAccountExocomputeSubscription GraphQL query
 var unmapAzureCloudAccountExocomputeSubscriptionQuery = `mutation SdkGolangUnmapAzureCloudAccountExocomputeSubscription($cloudAccountIds: [UUID!]!) {
     result: unmapAzureCloudAccountExocomputeSubscription(input: {
