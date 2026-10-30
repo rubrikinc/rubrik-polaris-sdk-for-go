@@ -66,9 +66,9 @@ func (a API) TriggerHealthCheck(ctx context.Context, cloudVendor core.CloudVendo
 //
 // RSC reports the health check status of the latest exocompute cluster in the
 // configuration's region, so the status is only considered once its
-// TaskchainID matches the job ID. RSC only reports the health check status
-// when the CNP_EXOCOMPUTE_HEALTH_CHECK_UI_ENABLED feature flag is enabled, if
-// it isn't, WaitForHealthCheck blocks until the context is done.
+// TaskchainID matches the job ID. If RSC never reports a status for the job,
+// WaitForHealthCheck blocks until the context is done, so the context should
+// have a deadline.
 //
 // Returns an error if the context is done before the health check has
 // finished, together with the last health check status seen for the job, or

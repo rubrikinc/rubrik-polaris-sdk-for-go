@@ -118,8 +118,8 @@ func TestTriggerHealthCheck(t *testing.T) {
 // TestWaitForHealthCheck verifies that WaitForHealthCheck ignores health check
 // statuses produced by other jobs, keeps waiting while the job is verifying,
 // and returns the final status of the job. It also verifies that a status
-// which never matches the job, e.g. because RSC doesn't report health check
-// statuses for the account, waits until the context is done.
+// which never matches the job, or stays verifying, waits until the context is
+// done.
 func TestWaitForHealthCheck(t *testing.T) {
 	origInterval := healthCheckPollInterval
 	healthCheckPollInterval = time.Millisecond
