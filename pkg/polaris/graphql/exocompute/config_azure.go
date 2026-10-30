@@ -58,12 +58,7 @@ type AzureConfiguration struct {
 	OptionalConfig        *AzureOptionalConfig         `json:"optionalConfig"`
 
 	// HealthCheckStatus represents the health status of an exocompute cluster.
-	HealthCheckStatus struct {
-		Status        string `json:"status"`
-		FailureReason string `json:"failureReason"`
-		LastUpdatedAt string `json:"lastUpdatedAt"`
-		TaskchainID   string `json:"taskchainId"`
-	} `json:"healthCheckStatus"`
+	HealthCheckStatus HealthCheckStatus `json:"healthCheckStatus"`
 }
 
 // CreateAzureConfigurationParams holds the parameters for an Azure exocompute
