@@ -1,0 +1,10 @@
+query RubrikPolarisSDKRequest($id: UUID!) {
+    result: cloudNativeApplication(id: $id) {
+        ...CloudNativeApplicationFragment
+    }
+    hierarchy: hierarchyObject(fid: $id, workloadHierarchy: AllSubHierarchyType) {
+        ... on AwsNativeConfig {
+            isRelic
+        }
+    }
+}

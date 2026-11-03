@@ -1,0 +1,38 @@
+fragment CloudNativeApplicationFragment on CloudNativeApplication {
+    id
+    name
+    cloudNativeAccountId
+    targetCloudNativeAccountId
+    region {
+        region {
+            awsRegion
+        }
+    }
+    matchingTags {
+        matchingTagsList {
+            key
+            value
+        }
+    }
+    resourceInclusionList
+    resourceExclusionList
+    serviceConfigured {
+        applicationCloudConfig {
+            awsConfig {
+                ec2Enabled
+                ecrEnabled
+                eksEnabled
+                elasticacheEnabled
+                elbEnabled
+                isEcsEnabled
+                lambdaEnabled
+                rdsEnabled
+                s3Enabled
+                secretsEnabled
+            }
+        }
+    }
+    refreshStatus
+    lastRefreshAt
+    protectionStatus
+}

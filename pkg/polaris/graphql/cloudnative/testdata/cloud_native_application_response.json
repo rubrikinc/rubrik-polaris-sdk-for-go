@@ -1,0 +1,49 @@
+{
+    "data": {
+        "result": {
+            "id": "c7ec46ba-d419-4a9d-88e2-26665e1479db",
+            "name": "my-application",
+            "cloudNativeAccountId": "22bf439e-9922-486e-a32c-ae9009987924",
+            "targetCloudNativeAccountId": "ce09d0e4-d0a5-4201-9db2-97f0b6644514",
+            "region": {
+                "region": {
+                    "awsRegion": "US_EAST_1"
+                }
+            },
+            "matchingTags": {
+                "matchingTagsList": [
+                    {
+                        "key": "Application",
+                        "value": "web"
+                    }
+                ]
+            },
+            "resourceInclusionList": [
+                "arn:aws:lambda:us-east-1:123456789012:function:my-function"
+            ],
+            "resourceExclusionList": [],
+            "serviceConfigured": {
+                "applicationCloudConfig": {
+                    "awsConfig": {
+                        "ec2Enabled": true,
+                        "ecrEnabled": true,
+                        "eksEnabled": true,
+                        "elasticacheEnabled": true,
+                        "elbEnabled": true,
+                        "isEcsEnabled": true,
+                        "lambdaEnabled": true,
+                        "rdsEnabled": true,
+                        "s3Enabled": true,
+                        "secretsEnabled": true
+                    }
+                }
+            },
+            "refreshStatus": "APP_REFRESH_SUCCESS",
+            "lastRefreshAt": "2026-11-03T14:42:58.000Z",
+            "protectionStatus": "PROTECTION_STATUS_PROTECTED_WITH_WARNINGS"
+        },
+        "hierarchy": {
+            "isRelic": false
+        }
+    }
+}

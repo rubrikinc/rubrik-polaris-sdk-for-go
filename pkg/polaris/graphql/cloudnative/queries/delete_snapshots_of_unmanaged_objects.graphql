@@ -1,0 +1,7 @@
+mutation RubrikPolarisSDKRequest($objectIds: [UUID!]!) {
+    result: deleteSnapshotsOfUnmanagedObjects(input: {
+        objectIds: $objectIds,
+    }) {
+        success
+    }
+}
