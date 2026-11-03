@@ -62,13 +62,18 @@ type AzureCDMVersions struct {
 	Version                string                           `json:"version"`
 }
 
-// AllAzureCdmVersions returns all the available CDM versions for the specified cloud account.
+// AllAzureCdmVersions returns all the available CDM versions for the specified
+// cloud account in the specified region. The region is sent as the native Azure
+// location name, since RSC passes the location through to Azure.
 func (a API) AllAzureCdmVersions(ctx context.Context, cloudAccountID uuid.UUID, region azure.Region) ([]AzureCDMVersions, error) {
 	query := azureCcCdmVersionsQuery
+	if region == azure.RegionUnknown {
+		return nil, graphql.RequestError(query, errors.New("unknown region"))
+	}
 	buf, err := a.GQL.Request(ctx, query, struct {
-		CloudAccountID uuid.UUID                    `json:"cloudAccountId"`
-		Location       azure.CloudAccountRegionEnum `json:"location"`
-	}{CloudAccountID: cloudAccountID, Location: region.ToCloudAccountRegionEnum()})
+		CloudAccountID uuid.UUID    `json:"cloudAccountId"`
+		Location       azure.Region `json:"location"`
+	}{CloudAccountID: cloudAccountID, Location: region})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
