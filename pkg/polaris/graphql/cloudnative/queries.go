@@ -86,6 +86,23 @@ var cloudNativeApplicationSnapshotsQuery = `query SdkGolangCloudNativeApplicatio
     }
 }`
 
+// cloudNativeApplications GraphQL query
+var cloudNativeApplicationsQuery = `query SdkGolangCloudNativeApplications($first: Int, $after: String, $applicationName: String) {
+    result: cloudNativeApplications(first: $first, after: $after, filter: {
+        applicationName: $applicationName,
+        cloudTypes:      [AWS],
+    }) {
+        nodes {
+            id
+            name
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
 // createCloudNativeApplication GraphQL query
 var createCloudNativeApplicationQuery = `mutation SdkGolangCreateCloudNativeApplication(
     $cloudNativeAccountId:       UUID!,

@@ -169,6 +169,56 @@ func ApplicationByID(ctx context.Context, gql *graphql.Client, id uuid.UUID) (Ap
 	return payload.Data.Result.toApplication(), nil
 }
 
+// ApplicationRef identifies an application by ID and name.
+type ApplicationRef struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+// ListAWSApplications returns the IDs and names of the AWS cloud native
+// applications whose name contains nameFilter. An empty nameFilter returns all
+// applications. Deleted applications are not returned. Use ApplicationByID to
+// read an application in full, the list doesn't always hold the resource
+// lists while an application refreshes.
+func ListAWSApplications(ctx context.Context, gql *graphql.Client, nameFilter string) ([]ApplicationRef, error) {
+	gql.Log().Print(log.Trace)
+
+	query := cloudNativeApplicationsQuery
+	var refs []ApplicationRef
+	var cursor string
+	for {
+		buf, err := gql.Request(ctx, query, struct {
+			After           string `json:"after,omitempty"`
+			ApplicationName string `json:"applicationName,omitempty"`
+		}{After: cursor, ApplicationName: nameFilter})
+		if err != nil {
+			return nil, graphql.RequestError(query, err)
+		}
+
+		var payload struct {
+			Data struct {
+				Result struct {
+					Nodes    []ApplicationRef `json:"nodes"`
+					PageInfo struct {
+						EndCursor   string `json:"endCursor"`
+						HasNextPage bool   `json:"hasNextPage"`
+					} `json:"pageInfo"`
+				} `json:"result"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(buf, &payload); err != nil {
+			return nil, graphql.UnmarshalError(query, err)
+		}
+		refs = append(refs, payload.Data.Result.Nodes...)
+		if !payload.Data.Result.PageInfo.HasNextPage {
+			break
+		}
+		cursor = payload.Data.Result.PageInfo.EndCursor
+	}
+
+	return refs, nil
+}
+
 // CreateAWSApplicationParams holds the parameters for creating an AWS cloud
 // native application. At least one of MatchingTags and ResourceARNs must be
 // non-empty.

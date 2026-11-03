@@ -213,3 +213,53 @@ func TestHasConfigSnapshot(t *testing.T) {
 		})
 	}
 }
+
+// TestListAWSApplications verifies that the list follows the page cursor
+// until the last page and passes the name filter through.
+func TestListAWSApplications(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	pages := []string{
+		`{"data":{"result":{"nodes":[{"id":"9a8a7c63-0ae4-4be8-b0a2-1ab8b28a4f45","name":"app-1"}],` +
+			`"pageInfo":{"endCursor":"cursor-1","hasNextPage":true}}}}`,
+		`{"data":{"result":{"nodes":[{"id":"5d1e1f0e-7d0c-4a9e-9a52-4ac3a3d5f0e2","name":"app-2"}],` +
+			`"pageInfo":{"endCursor":"cursor-2","hasNextPage":false}}}}`,
+	}
+	var requests int
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+		var body struct {
+			Variables struct {
+				After           string `json:"after"`
+				ApplicationName string `json:"applicationName"`
+			} `json:"variables"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+			cancel(err)
+			return
+		}
+		if body.Variables.ApplicationName != "app" {
+			t.Errorf("invalid name filter: %q", body.Variables.ApplicationName)
+		}
+		if wantAfter := []string{"", "cursor-1"}[min(requests, 1)]; body.Variables.After != wantAfter {
+			t.Errorf("request %d: invalid cursor: %q", requests, body.Variables.After)
+		}
+		if requests >= len(pages) {
+			t.Errorf("unexpected request %d", requests)
+			return
+		}
+		if _, err := w.Write([]byte(pages[requests])); err != nil {
+			cancel(err)
+		}
+		requests++
+	}))
+	defer srv.Close()
+
+	refs, err := ListAWSApplications(ctx, graphql.NewTestClient(srv), "app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(refs) != 2 || refs[0].Name != "app-1" || refs[1].Name != "app-2" {
+		t.Errorf("invalid applications: %v", refs)
+	}
+}

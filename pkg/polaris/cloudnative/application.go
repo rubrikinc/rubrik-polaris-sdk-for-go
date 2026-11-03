@@ -73,6 +73,20 @@ func (a API) ApplicationByID(ctx context.Context, id uuid.UUID) (gqlcloudnative.
 	return app, nil
 }
 
+// ListAWSApplications returns the IDs and names of the AWS cloud native
+// applications whose name contains nameFilter. An empty nameFilter returns all
+// applications.
+func (a API) ListAWSApplications(ctx context.Context, nameFilter string) ([]gqlcloudnative.ApplicationRef, error) {
+	a.log.Print(log.Trace)
+
+	refs, err := gqlcloudnative.ListAWSApplications(ctx, a.client, nameFilter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list cloud native applications: %s", err)
+	}
+
+	return refs, nil
+}
+
 // CreateAWSApplication creates an AWS cloud native application and returns
 // its ID.
 //
