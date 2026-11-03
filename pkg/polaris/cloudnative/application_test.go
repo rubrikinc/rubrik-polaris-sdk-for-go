@@ -34,7 +34,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlcloudnative "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudnative"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
+	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
 
 // TestCreateAWSApplicationInvalidParams verifies that parameters RSC would
@@ -50,12 +50,12 @@ func TestCreateAWSApplicationInvalidParams(t *testing.T) {
 		CloudAccountID:       accountID,
 		TargetCloudAccountID: uuid.MustParse("ce09d0e4-d0a5-4201-9db2-97f0b6644514"),
 		Name:                 "app",
-		Region:               aws.RegionUsEast1,
+		Region:               gqlaws.RegionUsEast1,
 		MatchingTags:         []gqlcloudnative.Tag{{Key: "Version", Value: "1.0"}},
 	}
 
 	unknownRegion := valid
-	unknownRegion.Region = aws.RegionUnknown
+	unknownRegion.Region = gqlaws.RegionUnknown
 	sameAccount := valid
 	sameAccount.TargetCloudAccountID = accountID
 	noSelection := valid
@@ -140,5 +140,61 @@ func TestRemoveApplicationDeleteSnapshots(t *testing.T) {
 	}
 	if !slices.Equal(operations, want) {
 		t.Errorf("invalid operation order: %v", operations)
+	}
+}
+
+// TestCreateAWSApplicationAccountNotConnected verifies that an application
+// isn't created in a cloud account whose CLOUD_NATIVE_CONFIG_PROTECTION
+// feature isn't connected, or doesn't cover the application region. RSC
+// persists such an application without returning its ID.
+func TestCreateAWSApplicationAccountNotConnected(t *testing.T) {
+	accountID := uuid.MustParse("22bf439e-9922-486e-a32c-ae9009987924")
+	tests := []struct {
+		name    string
+		status  string
+		regions string
+	}{
+		{name: "NotConnected", status: "CONNECTING", regions: `["US_EAST_1"]`},
+		{name: "OtherRegion", status: "CONNECTED", regions: `["EU_WEST_1"]`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancelCause(context.Background())
+			defer assert.Context(t, ctx, cancel)
+
+			srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+				var body struct {
+					Query string `json:"query"`
+				}
+				if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+					cancel(err)
+					return
+				}
+				if graphql.QueryName(body.Query) != "allAwsCloudAccountsWithFeatures" {
+					t.Errorf("unexpected operation: %s", graphql.QueryName(body.Query))
+					return
+				}
+				_, err := w.Write([]byte(`{"data":{"result":[{"awsCloudAccount":{"cloudType":"STANDARD",` +
+					`"id":"` + accountID.String() + `","nativeId":"123456789012","accountName":"source","message":""},` +
+					`"featureDetails":[{"feature":"CLOUD_NATIVE_CONFIG_PROTECTION","permissionsGroups":[],` +
+					`"awsRegions":` + tc.regions + `,"roleArn":"","stackArn":"","status":"` + tc.status + `",` +
+					`"mappedAccounts":[],"roleChainingDetails":null}],"roleChainingAccount":null}]}}`))
+				if err != nil {
+					cancel(err)
+				}
+			}))
+			defer srv.Close()
+
+			_, err := WrapGQL(graphql.NewTestClient(srv)).CreateAWSApplication(ctx, gqlcloudnative.CreateAWSApplicationParams{
+				CloudAccountID:       accountID,
+				TargetCloudAccountID: uuid.MustParse("ce09d0e4-d0a5-4201-9db2-97f0b6644514"),
+				Name:                 "app",
+				Region:               gqlaws.RegionUsEast1,
+				MatchingTags:         []gqlcloudnative.Tag{{Key: "Version", Value: "1.0"}},
+			})
+			if err == nil {
+				t.Fatal("expected CreateAWSApplication to fail")
+			}
+		})
 	}
 }

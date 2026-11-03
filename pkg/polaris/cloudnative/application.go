@@ -36,9 +36,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlcloudnative "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudnative"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
+	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	gqlsla "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
@@ -97,7 +99,7 @@ func (a API) ListAWSApplications(ctx context.Context, nameFilter string) ([]gqlc
 func (a API) CreateAWSApplication(ctx context.Context, params gqlcloudnative.CreateAWSApplicationParams) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	if params.Region == aws.RegionUnknown {
+	if params.Region == gqlaws.RegionUnknown {
 		return uuid.Nil, errors.New("invalid AWS region")
 	}
 	if params.TargetCloudAccountID == params.CloudAccountID {
@@ -105,6 +107,24 @@ func (a API) CreateAWSApplication(ctx context.Context, params gqlcloudnative.Cre
 	}
 	if len(params.MatchingTags) == 0 && len(params.ResourceARNs) == 0 {
 		return uuid.Nil, errors.New("at least one matching tag or resource ARN is required")
+	}
+
+	// RSC persists the application before it checks the cloud account, so an
+	// application created in an account without a connected
+	// CLOUD_NATIVE_CONFIG_PROTECTION feature is left behind, without an ID,
+	// and breaks the application list once the account is removed.
+	account, err := aws.WrapGQL(a.client).AccountByID(ctx, params.CloudAccountID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to get cloud account %q: %s", params.CloudAccountID, err)
+	}
+	feature, ok := account.Feature(core.FeatureCloudNativeConfigProtection)
+	if !ok || feature.Status != core.StatusConnected {
+		return uuid.Nil, fmt.Errorf("the %s feature of cloud account %q is not connected",
+			core.FeatureCloudNativeConfigProtection.Name, params.CloudAccountID)
+	}
+	if !feature.HasRegion(params.Region.Name()) {
+		return uuid.Nil, fmt.Errorf("the %s feature of cloud account %q is not enabled in region %s",
+			core.FeatureCloudNativeConfigProtection.Name, params.CloudAccountID, params.Region.Name())
 	}
 
 	id, err := gqlcloudnative.CreateAWSApplication(ctx, a.client, params)
