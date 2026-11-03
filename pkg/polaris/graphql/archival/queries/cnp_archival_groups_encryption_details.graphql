@@ -46,6 +46,13 @@ query RubrikPolarisSDKRequest(
                     keyVaultId
                     kmsType
                     key {
+                        akvKey {
+                            keyName
+                            keyVersion
+                        }
+                        awsKmsKey {
+                            keyId
+                        }
                         gcpKmsKey {
                             keyName
                             keyVersion

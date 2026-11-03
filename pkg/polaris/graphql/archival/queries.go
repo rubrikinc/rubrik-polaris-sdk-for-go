@@ -191,6 +191,13 @@ var cnpArchivalGroupsEncryptionDetailsQuery = `query SdkGolangCnpArchivalGroupsE
                     keyVaultId
                     kmsType
                     key {
+                        akvKey {
+                            keyName
+                            keyVersion
+                        }
+                        awsKmsKey {
+                            keyId
+                        }
                         gcpKmsKey {
                             keyName
                             keyVersion

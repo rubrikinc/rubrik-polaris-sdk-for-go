@@ -99,6 +99,13 @@ type ArchivalLocationEncryptionDetails struct {
 		KeyManagerID string   `json:"keyVaultId"`
 		Type         kms.Type `json:"kmsType"`
 		Key          *struct {
+			AzureKey *struct {
+				KeyName    string `json:"keyName"`
+				KeyVersion string `json:"keyVersion"`
+			} `json:"akvKey"`
+			AWSKMSKey *struct {
+				KeyID string `json:"keyId"`
+			} `json:"awsKmsKey"`
 			GCPKMSKey *struct {
 				KeyName    string `json:"keyName"`
 				KeyVersion string `json:"keyVersion"`
