@@ -22,6 +22,7 @@ package cloudcluster
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -30,6 +31,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlcloudcluster "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	gqlazure "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
@@ -88,11 +90,11 @@ func TestMain(m *testing.M) {
 //   - TEST_AZURESUBSCRIPTION_FILE=<path-to-test-azure-subscription-file>
 //   - AZURE_SERVICEPRINCIPAL_LOCATION=<path-to-azure-service-principal-file>
 func TestAzureCdmVersionsRegionCanary(t *testing.T) {
-	ctx := context.Background()
-
 	if !testsetup.BoolEnvSet("TEST_INTEGRATION") {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
+
+	ctx := context.Background()
 
 	flag, err := core.Wrap(client.GQL).FeatureFlag(ctx, core.FeatureFlagCloudClusterES)
 	if err != nil {
@@ -125,7 +127,14 @@ func TestAzureCdmVersionsRegionCanary(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		azureClient.RemoveSubscription(ctx, accountID, core.FeatureServerAndApps, false)
+		if err := azureClient.RemoveSubscription(ctx, accountID, core.FeatureServerAndApps, false); err != nil {
+			t.Error(err)
+		}
+
+		// Verify that the subscription was successfully removed.
+		if _, err := azureClient.SubscriptionByID(ctx, accountID); !errors.Is(err, graphql.ErrNotFound) {
+			t.Error(err)
+		}
 	})
 
 	gqlClient := gqlcloudcluster.Wrap(client.GQL)
