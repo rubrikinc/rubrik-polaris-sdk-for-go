@@ -64,6 +64,12 @@ func WrapGQL(client *graphql.Client) API {
 // ApplicationByID returns the application with the specified ID. If the
 // application doesn't exist, or has been deleted, graphql.ErrNotFound is
 // returned.
+//
+// RSC deletes an application by archiving it, and an archived application can
+// still be read by ID, so the application is also looked up in the
+// application list, which doesn't return archived applications. The list is
+// filtered by the application's own name and cloud account to keep it short,
+// and matched by ID since the name filter matches substrings.
 func (a API) ApplicationByID(ctx context.Context, id uuid.UUID) (gqlcloudapp.Application, error) {
 	a.log.Print(log.Trace)
 
@@ -72,7 +78,17 @@ func (a API) ApplicationByID(ctx context.Context, id uuid.UUID) (gqlcloudapp.App
 		return gqlcloudapp.Application{}, fmt.Errorf("failed to get cloud native application %q: %w", id, err)
 	}
 
-	return app, nil
+	refs, err := gqlcloudapp.ListAWSApplications(ctx, a.client, app.Name, app.CloudAccountID)
+	if err != nil {
+		return gqlcloudapp.Application{}, fmt.Errorf("failed to list cloud native applications: %s", err)
+	}
+	for _, ref := range refs {
+		if ref.ID == id {
+			return app, nil
+		}
+	}
+
+	return gqlcloudapp.Application{}, fmt.Errorf("cloud native application %q %w", id, graphql.ErrNotFound)
 }
 
 // ListAWSApplications returns the IDs and names of the AWS cloud native

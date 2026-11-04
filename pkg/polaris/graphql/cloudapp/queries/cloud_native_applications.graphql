@@ -1,7 +1,8 @@
-query RubrikPolarisSDKRequest($first: Int, $after: String, $applicationName: String) {
+query RubrikPolarisSDKRequest($first: Int, $after: String, $applicationName: String, $cloudNativeAccountIds: [String!]) {
     result: cloudNativeApplications(first: $first, after: $after, filter: {
-        applicationName: $applicationName,
-        cloudTypes:      [AWS],
+        applicationName:       $applicationName,
+        cloudNativeAccountIds: $cloudNativeAccountIds,
+        cloudTypes:            [AWS],
     }) {
         nodes {
             id

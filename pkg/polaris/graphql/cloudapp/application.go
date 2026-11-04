@@ -98,13 +98,13 @@ type Application struct {
 	ProtectionStatus     ProtectionStatus `json:"protectionStatus"`
 }
 
-// ApplicationByID returns the application with the specified ID. If the
-// application doesn't exist, graphql.ErrNotFound is returned.
+// ApplicationByID returns the application with the specified ID. An ID that
+// never belonged to an application, which RSC rejects with a 403 error and no
+// data, is reported as graphql.ErrNotFound.
 //
-// RSC deletes an application by archiving it, after which the application can
-// still be read by ID. An archived application is reported as a relic by the
-// hierarchy, which is how it's detected. An ID that never belonged to an
-// application is rejected by RSC with a 403 error and no data.
+// RSC deletes an application by archiving it, and an archived application can
+// still be read by ID. Use ListAWSApplications, which doesn't return archived
+// applications, to tell whether an application has been deleted.
 func ApplicationByID(ctx context.Context, gql *graphql.Client, id uuid.UUID) (Application, error) {
 	gql.Log().Print(log.Trace)
 
@@ -122,16 +122,13 @@ func ApplicationByID(ctx context.Context, gql *graphql.Client, id uuid.UUID) (Ap
 
 	var payload struct {
 		Data struct {
-			Result    *Application `json:"result"`
-			Hierarchy *struct {
-				IsRelic bool `json:"isRelic"`
-			} `json:"hierarchy"`
+			Result *Application `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return Application{}, graphql.UnmarshalError(query, err)
 	}
-	if payload.Data.Result == nil || (payload.Data.Hierarchy != nil && payload.Data.Hierarchy.IsRelic) {
+	if payload.Data.Result == nil {
 		return Application{}, fmt.Errorf("cloud native application %q %w", id, graphql.ErrNotFound)
 	}
 
@@ -145,21 +142,28 @@ type ApplicationRef struct {
 }
 
 // ListAWSApplications returns the IDs and names of the AWS cloud native
-// applications whose name contains nameFilter. An empty nameFilter returns all
-// applications. Deleted applications are not returned. Use ApplicationByID to
-// read an application in full, the list doesn't always hold the resource
-// lists while an application refreshes.
-func ListAWSApplications(ctx context.Context, gql *graphql.Client, nameFilter string) ([]ApplicationRef, error) {
+// applications whose name contains nameFilter, case-insensitively, in the
+// specified cloud accounts. An empty nameFilter matches every name, and no
+// cloud account IDs match every cloud account. Deleted applications are never
+// returned. Use ApplicationByID to read an application in full: the list
+// doesn't return the resource selection lists.
+func ListAWSApplications(ctx context.Context, gql *graphql.Client, nameFilter string, cloudAccountIDs ...uuid.UUID) ([]ApplicationRef, error) {
 	gql.Log().Print(log.Trace)
+
+	var accountIDs []string
+	for _, id := range cloudAccountIDs {
+		accountIDs = append(accountIDs, id.String())
+	}
 
 	query := cloudNativeApplicationsQuery
 	var refs []ApplicationRef
 	var cursor string
 	for {
 		buf, err := gql.Request(ctx, query, struct {
-			After           string `json:"after,omitempty"`
-			ApplicationName string `json:"applicationName,omitempty"`
-		}{After: cursor, ApplicationName: nameFilter})
+			After           string   `json:"after,omitempty"`
+			ApplicationName string   `json:"applicationName,omitempty"`
+			CloudAccountIDs []string `json:"cloudNativeAccountIds,omitempty"`
+		}{After: cursor, ApplicationName: nameFilter, CloudAccountIDs: accountIDs})
 		if err != nil {
 			return nil, graphql.RequestError(query, err)
 		}

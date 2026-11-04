@@ -41,9 +41,6 @@
             "refreshStatus": "APP_REFRESH_SUCCESS",
             "lastRefreshAt": "2026-11-03T14:42:58.000Z",
             "protectionStatus": "PROTECTION_STATUS_PROTECTED_WITH_WARNINGS"
-        },
-        "hierarchy": {
-            "isRelic": false
         }
     }
 }

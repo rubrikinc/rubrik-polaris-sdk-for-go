@@ -97,8 +97,8 @@ func TestCreateAWSApplicationRequest(t *testing.T) {
 }
 
 // TestApplicationByID verifies that an application is read from a captured
-// RSC response, and that a deleted (relic) application and an unknown ID,
-// which RSC rejects with a 403 error, are reported as not found.
+// RSC response, and that an unknown ID, which RSC rejects with a 403 error,
+// is reported as not found.
 func TestApplicationByID(t *testing.T) {
 	appID := uuid.MustParse("c7ec46ba-d419-4a9d-88e2-26665e1479db")
 
@@ -108,7 +108,6 @@ func TestApplicationByID(t *testing.T) {
 		notFound bool
 	}{
 		{name: "Live", response: "testdata/cloud_native_application_response.json"},
-		{name: "Relic", response: "testdata/cloud_native_application_relic_response.json", notFound: true},
 		{name: "Unknown", notFound: true},
 	}
 	for _, test := range tests {

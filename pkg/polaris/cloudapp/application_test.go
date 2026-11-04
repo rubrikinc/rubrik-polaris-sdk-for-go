@@ -23,6 +23,7 @@ package cloudapp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -199,6 +200,89 @@ func TestCreateAWSApplicationChecks(t *testing.T) {
 			})
 			if err == nil {
 				t.Fatal("expected CreateAWSApplication to fail")
+			}
+		})
+	}
+}
+
+// TestApplicationByID verifies that an application is only reported as found
+// when it's in the application list, which doesn't return archived
+// applications, and that the list is filtered by the application's own name
+// and cloud account and matched by ID, since the name filter matches
+// substrings.
+func TestApplicationByID(t *testing.T) {
+	appID := uuid.MustParse("c7ec46ba-d419-4a9d-88e2-26665e1479db")
+	accountID := uuid.MustParse("22bf439e-9922-486e-a32c-ae9009987924")
+	otherID := uuid.MustParse("9a8a7c63-0ae4-4be8-b0a2-1ab8b28a4f45")
+	app := `{"data":{"result":{"id":"` + appID.String() + `","name":"web","cloudNativeAccountId":"` +
+		accountID.String() + `","targetCloudNativeAccountId":"ce09d0e4-d0a5-4201-9db2-97f0b6644514",` +
+		`"region":{"region":{"awsRegion":"US_EAST_1"}},"matchingTags":{"matchingTagsList":[]},` +
+		`"resourceInclusionList":["arn:aws:lambda:us-east-1:123456789012:function:my-function"],` +
+		`"resourceExclusionList":[],"refreshStatus":"APP_REFRESH_SUCCESS","protectionStatus":"PROTECTION_STATUS_UNPROTECTED"}}}`
+	list := func(nodes string) string {
+		return `{"data":{"result":{"nodes":[` + nodes + `],"pageInfo":{"endCursor":"","hasNextPage":false}}}}`
+	}
+
+	tests := []struct {
+		name     string
+		read     string
+		list     string
+		notFound bool
+	}{
+		{name: "Live", read: app, list: list(`{"id":"` + appID.String() + `","name":"web"}`)},
+		{name: "Deleted", read: app, list: list(``), notFound: true},
+		{name: "OtherNameMatch", read: app, list: list(`{"id":"` + otherID.String() + `","name":"web-store"}`), notFound: true},
+		{name: "Unknown", read: `{"data":{"result":null},"errors":[{"message":"Objects are not authorized.",` +
+			`"path":["result"],"extensions":{"code":403}}]}`, notFound: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancelCause(context.Background())
+			defer assert.Context(t, ctx, cancel)
+
+			srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+				var body struct {
+					Query     string                     `json:"query"`
+					Variables map[string]json.RawMessage `json:"variables"`
+				}
+				if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+					cancel(err)
+					return
+				}
+				var response string
+				switch name := graphql.QueryName(body.Query); name {
+				case "cloudNativeApplication":
+					response = tc.read
+				case "cloudNativeApplications":
+					if got := string(body.Variables["applicationName"]); got != `"web"` {
+						t.Errorf("invalid name filter: %s", got)
+					}
+					if got := string(body.Variables["cloudNativeAccountIds"]); got != `["`+accountID.String()+`"]` {
+						t.Errorf("invalid cloud account filter: %s", got)
+					}
+					response = tc.list
+				default:
+					t.Errorf("unexpected operation: %s", name)
+					return
+				}
+				if _, err := w.Write([]byte(response)); err != nil {
+					cancel(err)
+				}
+			}))
+			defer srv.Close()
+
+			got, err := WrapGQL(graphql.NewTestClient(srv)).ApplicationByID(ctx, appID)
+			if tc.notFound {
+				if !errors.Is(err, graphql.ErrNotFound) {
+					t.Fatalf("expected graphql.ErrNotFound, got: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.ID != appID || len(got.ResourceARNs) != 1 {
+				t.Errorf("invalid application: %s %v", got.ID, got.ResourceARNs)
 			}
 		})
 	}

@@ -29,11 +29,6 @@ var cloudNativeApplicationQuery = `query SdkGolangCloudNativeApplication($id: UU
     result: cloudNativeApplication(id: $id) {
         ...CloudNativeApplicationFragment
     }
-    hierarchy: hierarchyObject(fid: $id, workloadHierarchy: AllSubHierarchyType) {
-        ... on AwsNativeConfig {
-            isRelic
-        }
-    }
 }
 fragment CloudNativeApplicationFragment on CloudNativeApplication {
     id
@@ -87,10 +82,11 @@ var cloudNativeApplicationSnapshotsQuery = `query SdkGolangCloudNativeApplicatio
 }`
 
 // cloudNativeApplications GraphQL query
-var cloudNativeApplicationsQuery = `query SdkGolangCloudNativeApplications($first: Int, $after: String, $applicationName: String) {
+var cloudNativeApplicationsQuery = `query SdkGolangCloudNativeApplications($first: Int, $after: String, $applicationName: String, $cloudNativeAccountIds: [String!]) {
     result: cloudNativeApplications(first: $first, after: $after, filter: {
-        applicationName: $applicationName,
-        cloudTypes:      [AWS],
+        applicationName:       $applicationName,
+        cloudNativeAccountIds: $cloudNativeAccountIds,
+        cloudTypes:            [AWS],
     }) {
         nodes {
             id
