@@ -1,0 +1,11 @@
+mutation RubrikPolarisSDKRequest(
+    $cloudVendor:        CloudVendor!,
+    $exocomputeConfigId: UUID!
+) {
+    result: triggerExocomputeHealthCheck(input: {
+        cloudVendor:        $cloudVendor,
+        exocomputeConfigId: $exocomputeConfigId
+    }) {
+        healthCheckJobId
+    }
+}

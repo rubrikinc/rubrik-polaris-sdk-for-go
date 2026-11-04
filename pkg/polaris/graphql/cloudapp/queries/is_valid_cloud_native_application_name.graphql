@@ -1,0 +1,7 @@
+query RubrikPolarisSDKRequest($name: String!) {
+    result: isValidCloudNativeApplicationName(input: {
+        name: $name,
+    }) {
+        status
+    }
+}

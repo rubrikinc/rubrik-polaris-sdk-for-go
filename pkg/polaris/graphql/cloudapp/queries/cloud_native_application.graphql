@@ -1,0 +1,5 @@
+query RubrikPolarisSDKRequest($id: UUID!) {
+    result: cloudNativeApplication(id: $id) {
+        ...CloudNativeApplicationFragment
+    }
+}
