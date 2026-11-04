@@ -54,7 +54,7 @@ func (GCPTargetMapping) ListQuery(filters []ListTargetMappingFilter) (string, an
 		Text:  "CLOUD_NATIVE_ARCHIVAL_GROUP",
 	}, {
 		Field: "ARCHIVAL_LOCATION_TYPE",
-		Text:  "GCP",
+		Text:  "GOOGLE",
 	}}
 
 	return allTargetMappingsQuery, struct {
