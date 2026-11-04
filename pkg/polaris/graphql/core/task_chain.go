@@ -200,14 +200,22 @@ func (a API) WaitForTaskChainWithStatus(ctx context.Context, taskChainID uuid.UU
 		}
 
 		taskChain, err := a.KorgTaskChainStatus(ctx, taskChainID)
-		switch {
-		case err != nil && ctx.Err() != nil:
-			return ctx.Err()
-		case err != nil && isTaskChainStatusUnavailable(err):
+		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			var gqlErr graphql.GQLError
+			if !errors.As(err, &gqlErr) || len(gqlErr.Errors) < 1 {
+				return fmt.Errorf("failed to get task chain status for %s: %w", taskChainID, err)
+			}
+			for _, e := range gqlErr.Errors {
+				if e.Extensions.Code == 403 || e.Extensions.Code == 500 {
+					continue // RBAC not ready or event series not found, rely on the status.
+				}
+				return fmt.Errorf("failed to get task chain status for %s: %w", taskChainID, err)
+			}
 			a.log.Printf(log.Debug, "Task chain %s status not available: %s", taskChainID, err)
-		case err != nil:
-			return fmt.Errorf("failed to get task chain status for %s: %w", taskChainID, err)
-		case taskChain.State == TaskChainSucceeded || taskChain.State == TaskChainFailed || taskChain.State == TaskChainCanceled:
+		} else if taskChain.State == TaskChainSucceeded || taskChain.State == TaskChainFailed || taskChain.State == TaskChainCanceled {
 			if done, err := status(ctx); done || err != nil {
 				return err
 			}
@@ -221,22 +229,4 @@ func (a API) WaitForTaskChainWithStatus(ctx context.Context, taskChainID uuid.UU
 		case <-time.After(wait):
 		}
 	}
-}
-
-// isTaskChainStatusUnavailable returns true if the error is a GraphQL error
-// where every error has the code 403 or 500. RSC returns these when the RBAC of
-// a task chain isn't ready yet, or when the task chain's event series can't be
-// found.
-func isTaskChainStatusUnavailable(err error) bool {
-	var gqlErr graphql.GQLError
-	if !errors.As(err, &gqlErr) || len(gqlErr.Errors) == 0 {
-		return false
-	}
-	for _, e := range gqlErr.Errors {
-		if e.Extensions.Code != 403 && e.Extensions.Code != 500 {
-			return false
-		}
-	}
-
-	return true
 }
