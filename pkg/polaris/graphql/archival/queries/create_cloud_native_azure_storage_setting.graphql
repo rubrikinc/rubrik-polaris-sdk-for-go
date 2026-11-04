@@ -11,6 +11,7 @@ mutation RubrikPolarisSDKRequest(
     $storageAccountName:         String!,
     $storageAccountRegion:       AzureRegion,
     $storageAccountTags:         TagsInput,
+    $azureKeyVaultKey:           AzureKeyVaultKeyIdentifierInput,
 ) {
     result: createCloudNativeAzureStorageSetting(input: {
         cloudAccountId:              $cloudAccountId,
@@ -25,6 +26,7 @@ mutation RubrikPolarisSDKRequest(
         storageAccountName:          $storageAccountName,
         storageAccountRegion:        $storageAccountRegion,
         storageAccountTags:          $storageAccountTags,
+        azureKeyVaultKey:            $azureKeyVaultKey,
     }) {
         targetMapping {
             id

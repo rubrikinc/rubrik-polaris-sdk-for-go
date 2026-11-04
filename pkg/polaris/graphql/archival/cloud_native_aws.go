@@ -65,7 +65,9 @@ func (AWSTargetMapping) ListQuery(filters []ListTargetMappingFilter) (string, an
 // CreateAWSStorageSettingParams holds the parameters for an AWS storage setting
 // create operation.
 // The KMS master key can be either a key alias or a key ID. Region, KMS master
-// key and bucket tags are optional.
+// key, KMS key and bucket tags are optional. RSC requires exactly one of the
+// KMS master key, for server-side encryption, and the KMS key, for client-side
+// encryption.
 // AWS storage settings are also referred to as AWS target mappings.
 type CreateAWSStorageSettingParams struct {
 	CloudAccountID uuid.UUID      `json:"cloudAccountId"`
@@ -73,7 +75,8 @@ type CreateAWSStorageSettingParams struct {
 	BucketPrefix   string         `json:"bucketPrefix"`
 	StorageClass   string         `json:"storageClass"`
 	Region         aws.RegionEnum `json:"region"`
-	KmsMasterKey   string         `json:"kmsMasterKeyId"`
+	KmsMasterKey   string         `json:"kmsMasterKeyId,omitempty"`
+	KMSKey         *AWSKMSKey     `json:"awsKmsKey,omitempty"`
 	LocTemplate    string         `json:"locTemplateType"`
 	BucketTags     *core.Tags     `json:"bucketTags,omitempty"`
 }

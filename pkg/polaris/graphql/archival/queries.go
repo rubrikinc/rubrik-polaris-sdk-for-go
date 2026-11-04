@@ -191,6 +191,13 @@ var cnpArchivalGroupsEncryptionDetailsQuery = `query SdkGolangCnpArchivalGroupsE
                     keyVaultId
                     kmsType
                     key {
+                        akvKey {
+                            keyName
+                            keyVersion
+                        }
+                        awsKmsKey {
+                            keyId
+                        }
                         gcpKmsKey {
                             keyName
                             keyVersion
@@ -285,7 +292,8 @@ var createCloudNativeAwsStorageSettingQuery = `mutation SdkGolangCreateCloudNati
     $bucketPrefix:    String!,
     $storageClass:    AwsStorageClass!,
     $region:          AwsRegion,
-    $kmsMasterKeyId:  String!,
+    $kmsMasterKeyId:  String,
+    $awsKmsKey:       AwsKmsKeyIdentifierInput,
     $locTemplateType: CloudNativeLocTemplateType!,
     $bucketTags:      TagsInput
 ) {
@@ -296,6 +304,7 @@ var createCloudNativeAwsStorageSettingQuery = `mutation SdkGolangCreateCloudNati
         storageClass:               $storageClass,
         region:                     $region,
         kmsMasterKeyId:             $kmsMasterKeyId,
+        awsKmsKey:                  $awsKmsKey,
         cloudNativeLocTemplateType: $locTemplateType,
         bucketTags:                 $bucketTags
     }) {
@@ -319,6 +328,7 @@ var createCloudNativeAzureStorageSettingQuery = `mutation SdkGolangCreateCloudNa
     $storageAccountName:         String!,
     $storageAccountRegion:       AzureRegion,
     $storageAccountTags:         TagsInput,
+    $azureKeyVaultKey:           AzureKeyVaultKeyIdentifierInput,
 ) {
     result: createCloudNativeAzureStorageSetting(input: {
         cloudAccountId:              $cloudAccountId,
@@ -333,6 +343,7 @@ var createCloudNativeAzureStorageSettingQuery = `mutation SdkGolangCreateCloudNa
         storageAccountName:          $storageAccountName,
         storageAccountRegion:        $storageAccountRegion,
         storageAccountTags:          $storageAccountTags,
+        azureKeyVaultKey:            $azureKeyVaultKey,
     }) {
         targetMapping {
             id
@@ -348,6 +359,7 @@ var createCloudNativeGcpStorageSettingQuery = `mutation SdkGolangCreateCloudNati
     $storageClass:    GcpStorageClass!,
     $region:          GcpRegion,
     $cmkInfo:         [GcpCmkInput!],
+    $gcpKmsKey:       GcpKmsKeyIdentifierInput,
     $locTemplateType: CloudNativeLocTemplateType!,
     $bucketLabels:    TagsInput
 ) {
@@ -358,6 +370,7 @@ var createCloudNativeGcpStorageSettingQuery = `mutation SdkGolangCreateCloudNati
         storageClass:               $storageClass,
         region:                     $region,
         cmkInfo:                    $cmkInfo,
+        gcpKmsKey:                  $gcpKmsKey,
         cloudNativeLocTemplateType: $locTemplateType,
         bucketLabels:               $bucketLabels
     }) {
