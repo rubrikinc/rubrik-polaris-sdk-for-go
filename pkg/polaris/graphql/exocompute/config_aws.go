@@ -73,12 +73,8 @@ type AWSConfiguration struct {
 	// Optional configuration for the EKS cluster.
 	OptionalConfig *AWSOptionalConfig `json:"optionalConfig,omitempty"`
 
-	HealthCheckStatus struct {
-		Status        string `json:"status"`
-		FailureReason string `json:"failureReason"`
-		LastUpdatedAt string `json:"lastUpdatedAt"`
-		TaskchainID   string `json:"taskchainId"`
-	}
+	// HealthCheckStatus represents the health status of an exocompute cluster.
+	HealthCheckStatus HealthCheckStatus `json:"healthCheckStatus"`
 }
 
 // CreateAWSConfigurationParams holds the parameters for an AWS exocompute
