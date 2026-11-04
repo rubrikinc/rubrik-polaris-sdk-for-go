@@ -26,7 +26,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
-	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -82,7 +81,6 @@ func TestRemoveApplicationDeleteSnapshots(t *testing.T) {
 	defer assert.Context(t, ctx, cancel)
 
 	appID := uuid.MustParse("c7ec46ba-d419-4a9d-88e2-26665e1479db")
-	var mu sync.Mutex
 	var operations []string
 	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
 		var body struct {
@@ -94,9 +92,7 @@ func TestRemoveApplicationDeleteSnapshots(t *testing.T) {
 			return
 		}
 		name := graphql.QueryName(body.Query)
-		mu.Lock()
 		operations = append(operations, name)
-		mu.Unlock()
 
 		var response string
 		switch {
