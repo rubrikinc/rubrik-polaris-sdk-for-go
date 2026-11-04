@@ -18,7 +18,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package cloudnative provides a high level interface for working with cloud
+// Package cloudapp provides a high level interface for working with cloud
 // native applications.
 //
 // A cloud native application, shown as a Cloud Application in the RSC UI,
@@ -26,7 +26,7 @@
 // configuration can be protected by an SLA Domain with the
 // AWS_CONFIG_OBJECT_TYPE object type. The application ID is also the object ID
 // used when assigning the SLA Domain.
-package cloudnative
+package cloudapp
 
 import (
 	"context"
@@ -38,7 +38,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	gqlcloudnative "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudnative"
+	gqlcloudapp "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudapp"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	gqlsla "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/sla"
@@ -64,12 +64,12 @@ func WrapGQL(client *graphql.Client) API {
 // ApplicationByID returns the application with the specified ID. If the
 // application doesn't exist, or has been deleted, graphql.ErrNotFound is
 // returned.
-func (a API) ApplicationByID(ctx context.Context, id uuid.UUID) (gqlcloudnative.Application, error) {
+func (a API) ApplicationByID(ctx context.Context, id uuid.UUID) (gqlcloudapp.Application, error) {
 	a.log.Print(log.Trace)
 
-	app, err := gqlcloudnative.ApplicationByID(ctx, a.client, id)
+	app, err := gqlcloudapp.ApplicationByID(ctx, a.client, id)
 	if err != nil {
-		return gqlcloudnative.Application{}, fmt.Errorf("failed to get cloud native application %q: %w", id, err)
+		return gqlcloudapp.Application{}, fmt.Errorf("failed to get cloud native application %q: %w", id, err)
 	}
 
 	return app, nil
@@ -78,10 +78,10 @@ func (a API) ApplicationByID(ctx context.Context, id uuid.UUID) (gqlcloudnative.
 // ListAWSApplications returns the IDs and names of the AWS cloud native
 // applications whose name contains nameFilter. An empty nameFilter returns all
 // applications.
-func (a API) ListAWSApplications(ctx context.Context, nameFilter string) ([]gqlcloudnative.ApplicationRef, error) {
+func (a API) ListAWSApplications(ctx context.Context, nameFilter string) ([]gqlcloudapp.ApplicationRef, error) {
 	a.log.Print(log.Trace)
 
-	refs, err := gqlcloudnative.ListAWSApplications(ctx, a.client, nameFilter)
+	refs, err := gqlcloudapp.ListAWSApplications(ctx, a.client, nameFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list cloud native applications: %s", err)
 	}
@@ -96,7 +96,7 @@ func (a API) ListAWSApplications(ctx context.Context, nameFilter string) ([]gqlc
 // create. The target cloud account must differ from the cloud account, as the
 // RSC UI requires, which is checked here. Use ValidateApplicationName to check
 // the name before creating the application.
-func (a API) CreateAWSApplication(ctx context.Context, params gqlcloudnative.CreateAWSApplicationParams) (uuid.UUID, error) {
+func (a API) CreateAWSApplication(ctx context.Context, params gqlcloudapp.CreateAWSApplicationParams) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
 	if params.Region == gqlaws.RegionUnknown {
@@ -127,7 +127,7 @@ func (a API) CreateAWSApplication(ctx context.Context, params gqlcloudnative.Cre
 			core.FeatureCloudNativeConfigProtection.Name, params.CloudAccountID, params.Region.Name())
 	}
 
-	id, err := gqlcloudnative.CreateAWSApplication(ctx, a.client, params)
+	id, err := gqlcloudapp.CreateAWSApplication(ctx, a.client, params)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create cloud native application %q: %s", params.Name, err)
 	}
@@ -138,14 +138,14 @@ func (a API) CreateAWSApplication(ctx context.Context, params gqlcloudnative.Cre
 // UpdateAWSApplication updates the AWS cloud native application with the
 // specified ID. The parameters must hold the complete desired state of the
 // application.
-func (a API) UpdateAWSApplication(ctx context.Context, id uuid.UUID, params gqlcloudnative.UpdateAWSApplicationParams) error {
+func (a API) UpdateAWSApplication(ctx context.Context, id uuid.UUID, params gqlcloudapp.UpdateAWSApplicationParams) error {
 	a.log.Print(log.Trace)
 
 	if params.TargetCloudAccountID == uuid.Nil {
 		return errors.New("the target cloud account is required")
 	}
 
-	if err := gqlcloudnative.UpdateAWSApplication(ctx, a.client, id, params); err != nil {
+	if err := gqlcloudapp.UpdateAWSApplication(ctx, a.client, id, params); err != nil {
 		return fmt.Errorf("failed to update cloud native application %q: %s", id, err)
 	}
 
@@ -154,10 +154,10 @@ func (a API) UpdateAWSApplication(ctx context.Context, id uuid.UUID, params gqlc
 
 // ValidateApplicationName returns the validation status of the specified
 // application name.
-func (a API) ValidateApplicationName(ctx context.Context, name string) (gqlcloudnative.NameValidationStatus, error) {
+func (a API) ValidateApplicationName(ctx context.Context, name string) (gqlcloudapp.NameValidationStatus, error) {
 	a.log.Print(log.Trace)
 
-	status, err := gqlcloudnative.ValidateApplicationName(ctx, a.client, name)
+	status, err := gqlcloudapp.ValidateApplicationName(ctx, a.client, name)
 	if err != nil {
 		return "", fmt.Errorf("failed to validate cloud native application name %q: %s", name, err)
 	}
@@ -182,7 +182,7 @@ func (a API) RemoveApplication(ctx context.Context, id uuid.UUID, deleteSnapshot
 		}
 	}
 
-	if err := gqlcloudnative.DeleteApplication(ctx, a.client, id); err != nil {
+	if err := gqlcloudapp.DeleteApplication(ctx, a.client, id); err != nil {
 		return fmt.Errorf("failed to remove cloud native application %q: %s", id, err)
 	}
 
@@ -197,13 +197,13 @@ func (a API) deleteApplicationSnapshots(ctx context.Context, id uuid.UUID) error
 	}); err != nil {
 		return err
 	}
-	if err := gqlcloudnative.DeleteSnapshotsOfUnmanagedObjects(ctx, a.client, []uuid.UUID{id}); err != nil {
+	if err := gqlcloudapp.DeleteSnapshotsOfUnmanagedObjects(ctx, a.client, []uuid.UUID{id}); err != nil {
 		return err
 	}
 
 	// RSC expires the snapshots asynchronously.
 	for {
-		hasSnapshot, err := gqlcloudnative.HasConfigSnapshot(ctx, a.client, id)
+		hasSnapshot, err := gqlcloudapp.HasConfigSnapshot(ctx, a.client, id)
 		if err != nil {
 			return err
 		}

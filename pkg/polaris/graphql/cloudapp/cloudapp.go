@@ -1,4 +1,4 @@
-//go:generate go run ../queries_gen.go cloudnative
+//go:generate go run ../queries_gen.go cloudapp
 
 // Copyright 2026 Rubrik, Inc.
 //
@@ -20,7 +20,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Package cloudnative provides a low level interface to the cloud native
+// Package cloudapp provides a low level interface to the cloud native
 // application GraphQL queries provided by the RSC platform.
 //
 // A cloud native application, shown as a Cloud Application in the RSC UI,
@@ -28,7 +28,7 @@
 // explicitly listed ARNs, so that their configuration can be protected by an
 // SLA Domain with the AWS_CONFIG_OBJECT_TYPE object type. The account must be
 // onboarded with the CLOUD_NATIVE_CONFIG_PROTECTION feature.
-package cloudnative
+package cloudapp
 
 // RefreshStatus represents the RSC GraphQL CloudNativeApplicationRefreshStatus
 // enum type.

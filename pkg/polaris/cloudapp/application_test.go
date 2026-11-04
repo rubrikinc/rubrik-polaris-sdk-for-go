@@ -18,7 +18,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package cloudnative
+package cloudapp
 
 import (
 	"context"
@@ -32,7 +32,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	gqlcloudnative "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudnative"
+	gqlcloudapp "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudapp"
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
 
@@ -45,12 +45,12 @@ func TestCreateAWSApplicationInvalidParams(t *testing.T) {
 	defer srv.Close()
 
 	accountID := uuid.MustParse("22bf439e-9922-486e-a32c-ae9009987924")
-	valid := gqlcloudnative.CreateAWSApplicationParams{
+	valid := gqlcloudapp.CreateAWSApplicationParams{
 		CloudAccountID:       accountID,
 		TargetCloudAccountID: uuid.MustParse("ce09d0e4-d0a5-4201-9db2-97f0b6644514"),
 		Name:                 "app",
 		Region:               gqlaws.RegionUsEast1,
-		MatchingTags:         []gqlcloudnative.Tag{{Key: "Version", Value: "1.0"}},
+		MatchingTags:         []gqlcloudapp.Tag{{Key: "Version", Value: "1.0"}},
 	}
 
 	unknownRegion := valid
@@ -60,7 +60,7 @@ func TestCreateAWSApplicationInvalidParams(t *testing.T) {
 	noSelection := valid
 	noSelection.MatchingTags = nil
 
-	for name, params := range map[string]gqlcloudnative.CreateAWSApplicationParams{
+	for name, params := range map[string]gqlcloudapp.CreateAWSApplicationParams{
 		"UnknownRegion": unknownRegion,
 		"SameAccount":   sameAccount,
 		"NoSelection":   noSelection,
@@ -181,12 +181,12 @@ func TestCreateAWSApplicationAccountNotConnected(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			_, err := WrapGQL(graphql.NewTestClient(srv)).CreateAWSApplication(ctx, gqlcloudnative.CreateAWSApplicationParams{
+			_, err := WrapGQL(graphql.NewTestClient(srv)).CreateAWSApplication(ctx, gqlcloudapp.CreateAWSApplicationParams{
 				CloudAccountID:       accountID,
 				TargetCloudAccountID: uuid.MustParse("ce09d0e4-d0a5-4201-9db2-97f0b6644514"),
 				Name:                 "app",
 				Region:               gqlaws.RegionUsEast1,
-				MatchingTags:         []gqlcloudnative.Tag{{Key: "Version", Value: "1.0"}},
+				MatchingTags:         []gqlcloudapp.Tag{{Key: "Version", Value: "1.0"}},
 			})
 			if err == nil {
 				t.Fatal("expected CreateAWSApplication to fail")
