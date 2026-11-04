@@ -1,0 +1,26 @@
+mutation RubrikPolarisSDKRequest(
+    $cloudNativeAccountId:       UUID!,
+    $targetCloudNativeAccountId: UUID!,
+    $name:                       String!,
+    $awsRegion:                  AwsCommonRegion!,
+    $matchingTags:               [CreateApplicationMatchingTagInputEntry!]!,
+    $resourceInclusionList:      [String!]!,
+    $resourceExclusionList:      [String!]!,
+    $serviceConfigured:          ApplicationServiceConfigurationInput!,
+) {
+    result: createCloudNativeApplication(input: {
+        cloudType:                  AWS,
+        cloudNativeAccountId:       $cloudNativeAccountId,
+        targetCloudNativeAccountId: $targetCloudNativeAccountId,
+        name:                       $name,
+        region:                     {region: {awsRegion: $awsRegion}},
+        matchingTags:               {matchingTagsList: $matchingTags},
+        resourceInclusionList:      $resourceInclusionList,
+        resourceExclusionList:      $resourceExclusionList,
+        serviceConfigured:          $serviceConfigured,
+    }) {
+        application {
+            id
+        }
+    }
+}

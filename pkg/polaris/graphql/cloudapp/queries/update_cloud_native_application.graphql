@@ -1,0 +1,23 @@
+mutation RubrikPolarisSDKRequest(
+    $id:                         UUID!,
+    $name:                       String!,
+    $targetCloudNativeAccountId: UUID!,
+    $matchingTags:               [UpdateApplicationMatchingTagInputEntry!]!,
+    $resourceInclusionList:      [String!]!,
+    $resourceExclusionList:      [String!]!,
+    $serviceConfigured:          ApplicationServiceConfigurationInput!,
+) {
+    result: updateCloudNativeApplication(input: {
+        id:                         $id,
+        name:                       $name,
+        targetCloudNativeAccountId: $targetCloudNativeAccountId,
+        matchingTags:               {matchingTagsList: $matchingTags},
+        resourceInclusionList:      {uris: $resourceInclusionList},
+        resourceExclusionList:      {uris: $resourceExclusionList},
+        serviceConfigured:          $serviceConfigured,
+    }) {
+        application {
+            id
+        }
+    }
+}

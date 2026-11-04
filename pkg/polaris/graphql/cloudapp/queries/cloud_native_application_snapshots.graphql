@@ -1,0 +1,10 @@
+query RubrikPolarisSDKRequest($applicationId: UUID!, $beforeTime: DateTime!) {
+    result: cloudNativeApplicationSnapshots(applicationId: $applicationId, timeFilter: {
+        beforeTime: $beforeTime,
+    }) {
+        configSnapshot {
+            snapshotFid
+            snapshotDate
+        }
+    }
+}

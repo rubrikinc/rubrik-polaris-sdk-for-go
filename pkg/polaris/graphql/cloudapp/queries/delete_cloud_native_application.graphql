@@ -1,0 +1,5 @@
+mutation RubrikPolarisSDKRequest($id: UUID!) {
+    result: deleteCloudNativeApplication(input: {
+        id: $id,
+    })
+}
