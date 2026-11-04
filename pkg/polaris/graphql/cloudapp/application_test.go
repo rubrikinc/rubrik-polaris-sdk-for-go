@@ -34,6 +34,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
 
@@ -83,9 +84,9 @@ func TestCreateAWSApplicationRequest(t *testing.T) {
 		CloudAccountID:       uuid.MustParse("22bf439e-9922-486e-a32c-ae9009987924"),
 		TargetCloudAccountID: uuid.MustParse("ce09d0e4-d0a5-4201-9db2-97f0b6644514"),
 		Name:                 "app",
-		Region:               aws.RegionUsEast1,
-		MatchingTags:         []Tag{{Key: "Version", Value: "1.0"}},
-		Services:             AWSServices{EC2: true, Lambda: true},
+		Region:               aws.RegionUsEast1.ToRegionEnum(),
+		MatchingTags:         []core.Tag{{Key: "Version", Value: "1.0"}},
+		ServiceConfig:        NewServiceConfig(AWSServices{EC2: true, Lambda: true}),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -149,17 +150,17 @@ func TestApplicationByID(t *testing.T) {
 			if app.ID != appID || app.Name != "my-application" {
 				t.Errorf("invalid application: %s %q", app.ID, app.Name)
 			}
-			if app.Region != aws.RegionUsEast1 {
-				t.Errorf("invalid region: %s", app.Region.Name())
+			if app.Region.Region.AWSRegion.Region != aws.RegionUsEast1 {
+				t.Errorf("invalid region: %s", app.Region.Region.AWSRegion.Region.Name())
 			}
-			if !slices.Equal(app.MatchingTags, []Tag{{Key: "Application", Value: "web"}}) {
-				t.Errorf("invalid matching tags: %v", app.MatchingTags)
+			if !slices.Equal(app.MatchingTags.Tags, []core.Tag{{Key: "Application", Value: "web"}}) {
+				t.Errorf("invalid matching tags: %v", app.MatchingTags.Tags)
 			}
 			if !slices.Equal(app.ResourceARNs, []string{"arn:aws:lambda:us-east-1:123456789012:function:my-function"}) {
 				t.Errorf("invalid resource ARNs: %v", app.ResourceARNs)
 			}
-			if !app.Services.Lambda || !app.Services.ECS || !app.Services.Secrets {
-				t.Errorf("invalid services: %+v", app.Services)
+			if services := app.ServiceConfig.CloudConfig.AWS; !services.Lambda || !services.ECS || !services.Secrets {
+				t.Errorf("invalid services: %+v", services)
 			}
 			if app.RefreshStatus != RefreshStatusSuccess || app.LastRefreshAt == nil {
 				t.Errorf("invalid refresh status: %s %v", app.RefreshStatus, app.LastRefreshAt)
@@ -168,10 +169,10 @@ func TestApplicationByID(t *testing.T) {
 	}
 }
 
-// TestHasConfigSnapshot verifies that the error RSC returns for an application
+// TestHasApplicationSnapshot verifies that the error RSC returns for an application
 // without config snapshots is reported as no snapshot, and that other errors
 // are returned.
-func TestHasConfigSnapshot(t *testing.T) {
+func TestHasApplicationSnapshot(t *testing.T) {
 	tests := []struct {
 		name     string
 		response string
@@ -197,7 +198,7 @@ func TestHasConfigSnapshot(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			got, err := HasConfigSnapshot(ctx, graphql.NewTestClient(srv), uuid.New())
+			got, err := HasApplicationSnapshot(ctx, graphql.NewTestClient(srv), uuid.New())
 			if test.wantErr {
 				if err == nil {
 					t.Fatal("expected an error")
@@ -208,58 +209,8 @@ func TestHasConfigSnapshot(t *testing.T) {
 				t.Fatal(err)
 			}
 			if got != test.want {
-				t.Errorf("HasConfigSnapshot() = %t, want %t", got, test.want)
+				t.Errorf("HasApplicationSnapshot() = %t, want %t", got, test.want)
 			}
 		})
-	}
-}
-
-// TestListAWSApplications verifies that the list follows the page cursor
-// until the last page and passes the name filter through.
-func TestListAWSApplications(t *testing.T) {
-	ctx, cancel := context.WithCancelCause(context.Background())
-	defer assert.Context(t, ctx, cancel)
-
-	pages := []string{
-		`{"data":{"result":{"nodes":[{"id":"9a8a7c63-0ae4-4be8-b0a2-1ab8b28a4f45","name":"app-1"}],` +
-			`"pageInfo":{"endCursor":"cursor-1","hasNextPage":true}}}}`,
-		`{"data":{"result":{"nodes":[{"id":"5d1e1f0e-7d0c-4a9e-9a52-4ac3a3d5f0e2","name":"app-2"}],` +
-			`"pageInfo":{"endCursor":"cursor-2","hasNextPage":false}}}}`,
-	}
-	var requests int
-	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
-		var body struct {
-			Variables struct {
-				After           string `json:"after"`
-				ApplicationName string `json:"applicationName"`
-			} `json:"variables"`
-		}
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			cancel(err)
-			return
-		}
-		if body.Variables.ApplicationName != "app" {
-			t.Errorf("invalid name filter: %q", body.Variables.ApplicationName)
-		}
-		if wantAfter := []string{"", "cursor-1"}[min(requests, 1)]; body.Variables.After != wantAfter {
-			t.Errorf("request %d: invalid cursor: %q", requests, body.Variables.After)
-		}
-		if requests >= len(pages) {
-			t.Errorf("unexpected request %d", requests)
-			return
-		}
-		if _, err := w.Write([]byte(pages[requests])); err != nil {
-			cancel(err)
-		}
-		requests++
-	}))
-	defer srv.Close()
-
-	refs, err := ListAWSApplications(ctx, graphql.NewTestClient(srv), "app")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(refs) != 2 || refs[0].Name != "app-1" || refs[1].Name != "app-2" {
-		t.Errorf("invalid applications: %v", refs)
 	}
 }

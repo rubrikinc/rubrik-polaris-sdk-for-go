@@ -30,16 +30,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
-
-// Tag is a tag which matches AWS resources to an application. A resource
-// carrying any one of the application's tags is included in the application.
-type Tag struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
 
 // AWSServices holds the AWS services whose resources are protected as part of
 // an application. VPCs, IAM roles and Route 53 hosted zones are always
@@ -58,75 +52,50 @@ type AWSServices struct {
 	Secrets     bool `json:"secretsEnabled"`
 }
 
-// serviceConfig is the RSC GraphQL ApplicationServiceConfiguration shape. RSC
-// replaces the whole service configuration on update, so every flag is always
-// sent.
-type serviceConfig struct {
-	ApplicationCloudConfig struct {
-		AWSConfig AWSServices `json:"awsConfig"`
+// ServiceConfig represents the RSC GraphQL ApplicationServiceConfiguration
+// type. RSC replaces the whole service configuration on update, so every flag
+// is always sent.
+type ServiceConfig struct {
+	CloudConfig struct {
+		AWS AWSServices `json:"awsConfig"`
 	} `json:"applicationCloudConfig"`
 }
 
-func toServiceConfig(services AWSServices) serviceConfig {
-	var config serviceConfig
-	config.ApplicationCloudConfig.AWSConfig = services
+// NewServiceConfig returns the service configuration for the specified AWS
+// services.
+func NewServiceConfig(services AWSServices) ServiceConfig {
+	var config ServiceConfig
+	config.CloudConfig.AWS = services
 	return config
 }
 
-// Application is an RSC cloud native application.
-type Application struct {
-	ID                   uuid.UUID
-	Name                 string
-	CloudAccountID       uuid.UUID
-	TargetCloudAccountID uuid.UUID
-	Region               aws.Region
-	MatchingTags         []Tag
-	ResourceARNs         []string
-	ExcludedResourceARNs []string
-	Services             AWSServices
-	RefreshStatus        RefreshStatus
-	LastRefreshAt        *time.Time
-	ProtectionStatus     ProtectionStatus
+// MatchingTags represents the RSC GraphQL MatchingTags type. A resource
+// carrying any one of the tags is included in the application.
+type MatchingTags struct {
+	Tags []core.Tag `json:"matchingTagsList"`
 }
 
-// application is the RSC GraphQL CloudNativeApplication shape selected by the
-// CloudNativeApplicationFragment.
-type application struct {
-	ID                   uuid.UUID `json:"id"`
-	Name                 string    `json:"name"`
-	CloudAccountID       uuid.UUID `json:"cloudNativeAccountId"`
-	TargetCloudAccountID uuid.UUID `json:"targetCloudNativeAccountId"`
-	Region               struct {
-		Region struct {
-			AWSRegion aws.RegionEnum `json:"awsRegion"`
-		} `json:"region"`
+// CloudRegion represents the RSC GraphQL CloudRegion type for an AWS region.
+type CloudRegion struct {
+	Region struct {
+		AWSRegion aws.RegionEnum `json:"awsRegion"`
 	} `json:"region"`
-	MatchingTags struct {
-		List []Tag `json:"matchingTagsList"`
-	} `json:"matchingTags"`
-	ResourceInclusionList []string         `json:"resourceInclusionList"`
-	ResourceExclusionList []string         `json:"resourceExclusionList"`
-	ServiceConfig         serviceConfig    `json:"serviceConfigured"`
-	RefreshStatus         RefreshStatus    `json:"refreshStatus"`
-	LastRefreshAt         *time.Time       `json:"lastRefreshAt"`
-	ProtectionStatus      ProtectionStatus `json:"protectionStatus"`
 }
 
-func (app application) toApplication() Application {
-	return Application{
-		ID:                   app.ID,
-		Name:                 app.Name,
-		CloudAccountID:       app.CloudAccountID,
-		TargetCloudAccountID: app.TargetCloudAccountID,
-		Region:               app.Region.Region.AWSRegion.Region,
-		MatchingTags:         app.MatchingTags.List,
-		ResourceARNs:         app.ResourceInclusionList,
-		ExcludedResourceARNs: app.ResourceExclusionList,
-		Services:             app.ServiceConfig.ApplicationCloudConfig.AWSConfig,
-		RefreshStatus:        app.RefreshStatus,
-		LastRefreshAt:        app.LastRefreshAt,
-		ProtectionStatus:     app.ProtectionStatus,
-	}
+// Application represents the RSC GraphQL CloudNativeApplication type.
+type Application struct {
+	ID                   uuid.UUID        `json:"id"`
+	Name                 string           `json:"name"`
+	CloudAccountID       uuid.UUID        `json:"cloudNativeAccountId"`
+	TargetCloudAccountID uuid.UUID        `json:"targetCloudNativeAccountId"`
+	Region               CloudRegion      `json:"region"`
+	MatchingTags         MatchingTags     `json:"matchingTags"`
+	ResourceARNs         []string         `json:"resourceInclusionList"`
+	ExcludedResourceARNs []string         `json:"resourceExclusionList"`
+	ServiceConfig        ServiceConfig    `json:"serviceConfigured"`
+	RefreshStatus        RefreshStatus    `json:"refreshStatus"`
+	LastRefreshAt        *time.Time       `json:"lastRefreshAt"`
+	ProtectionStatus     ProtectionStatus `json:"protectionStatus"`
 }
 
 // ApplicationByID returns the application with the specified ID. If the
@@ -153,7 +122,7 @@ func ApplicationByID(ctx context.Context, gql *graphql.Client, id uuid.UUID) (Ap
 
 	var payload struct {
 		Data struct {
-			Result    *application `json:"result"`
+			Result    *Application `json:"result"`
 			Hierarchy *struct {
 				IsRelic bool `json:"isRelic"`
 			} `json:"hierarchy"`
@@ -166,7 +135,7 @@ func ApplicationByID(ctx context.Context, gql *graphql.Client, id uuid.UUID) (Ap
 		return Application{}, fmt.Errorf("cloud native application %q %w", id, graphql.ErrNotFound)
 	}
 
-	return payload.Data.Result.toApplication(), nil
+	return *payload.Data.Result, nil
 }
 
 // ApplicationRef identifies an application by ID and name.
@@ -226,34 +195,35 @@ type CreateAWSApplicationParams struct {
 	// CloudAccountID is the RSC cloud account ID of the AWS account the
 	// application lives in. The account must be onboarded with the
 	// CLOUD_NATIVE_CONFIG_PROTECTION feature.
-	CloudAccountID uuid.UUID
+	CloudAccountID uuid.UUID `json:"cloudNativeAccountId"`
 
 	// TargetCloudAccountID is the RSC cloud account ID of the AWS account the
 	// application is recovered to. RSC doesn't validate it.
-	TargetCloudAccountID uuid.UUID
+	TargetCloudAccountID uuid.UUID `json:"targetCloudNativeAccountId"`
 
 	// Name is the name of the application. RSC doesn't enforce the format or
 	// uniqueness of the name on create, see ValidateApplicationName.
-	Name string
+	Name string `json:"name"`
 
 	// Region is the AWS region of the application.
-	Region aws.Region
+	Region aws.RegionEnum `json:"awsRegion"`
 
 	// MatchingTags are the tags matching resources to the application.
-	MatchingTags []Tag
+	MatchingTags []core.Tag `json:"matchingTags"`
 
 	// ResourceARNs are the ARNs of resources explicitly included in the
 	// application. Tagged resources, and resources related to the listed
 	// ones, are included by RSC and shouldn't be listed. Each ARN must have
 	// been discovered by RSC in the account and region.
-	ResourceARNs []string
+	ResourceARNs []string `json:"resourceInclusionList"`
 
 	// ExcludedResourceARNs are the ARNs of resources excluded from the
 	// application, even when tagged or related to an included resource.
-	ExcludedResourceARNs []string
+	ExcludedResourceARNs []string `json:"resourceExclusionList"`
 
-	// Services are the AWS services whose resources are protected.
-	Services AWSServices
+	// ServiceConfig holds the AWS services whose resources are protected,
+	// see NewServiceConfig.
+	ServiceConfig ServiceConfig `json:"serviceConfigured"`
 }
 
 // CreateAWSApplication creates an AWS cloud native application and returns
@@ -261,26 +231,19 @@ type CreateAWSApplicationParams struct {
 func CreateAWSApplication(ctx context.Context, gql *graphql.Client, params CreateAWSApplicationParams) (uuid.UUID, error) {
 	gql.Log().Print(log.Trace)
 
+	// RSC rejects null for the non-null list inputs.
+	if params.MatchingTags == nil {
+		params.MatchingTags = []core.Tag{}
+	}
+	if params.ResourceARNs == nil {
+		params.ResourceARNs = []string{}
+	}
+	if params.ExcludedResourceARNs == nil {
+		params.ExcludedResourceARNs = []string{}
+	}
+
 	query := createCloudNativeApplicationQuery
-	buf, err := gql.Request(ctx, query, struct {
-		CloudAccountID       uuid.UUID      `json:"cloudNativeAccountId"`
-		TargetCloudAccountID uuid.UUID      `json:"targetCloudNativeAccountId"`
-		Name                 string         `json:"name"`
-		Region               aws.RegionEnum `json:"awsRegion"`
-		MatchingTags         []Tag          `json:"matchingTags"`
-		ResourceARNs         []string       `json:"resourceInclusionList"`
-		ExcludedResourceARNs []string       `json:"resourceExclusionList"`
-		ServiceConfig        serviceConfig  `json:"serviceConfigured"`
-	}{
-		CloudAccountID:       params.CloudAccountID,
-		TargetCloudAccountID: params.TargetCloudAccountID,
-		Name:                 params.Name,
-		Region:               params.Region.ToRegionEnum(),
-		MatchingTags:         nonNil(params.MatchingTags),
-		ResourceARNs:         nonNil(params.ResourceARNs),
-		ExcludedResourceARNs: nonNil(params.ExcludedResourceARNs),
-		ServiceConfig:        toServiceConfig(params.Services),
-	})
+	buf, err := gql.Request(ctx, query, params)
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
@@ -310,12 +273,12 @@ func CreateAWSApplication(ctx context.Context, gql *graphql.Client, params Creat
 // clears the list. The tags can't be cleared, RSC ignores an empty list. The
 // cloud account and the region can't be changed.
 type UpdateAWSApplicationParams struct {
-	Name                 string
-	TargetCloudAccountID uuid.UUID
-	MatchingTags         []Tag
-	ResourceARNs         []string
-	ExcludedResourceARNs []string
-	Services             AWSServices
+	Name                 string        `json:"name"`
+	TargetCloudAccountID uuid.UUID     `json:"targetCloudNativeAccountId"`
+	MatchingTags         []core.Tag    `json:"matchingTags"`
+	ResourceARNs         []string      `json:"resourceInclusionList"`
+	ExcludedResourceARNs []string      `json:"resourceExclusionList"`
+	ServiceConfig        ServiceConfig `json:"serviceConfigured"`
 }
 
 // UpdateAWSApplication updates the AWS cloud native application with the
@@ -323,24 +286,23 @@ type UpdateAWSApplicationParams struct {
 func UpdateAWSApplication(ctx context.Context, gql *graphql.Client, id uuid.UUID, params UpdateAWSApplicationParams) error {
 	gql.Log().Print(log.Trace)
 
+	// RSC rejects null for the non-null list inputs, and an empty selection
+	// list is how a list is cleared.
+	if params.MatchingTags == nil {
+		params.MatchingTags = []core.Tag{}
+	}
+	if params.ResourceARNs == nil {
+		params.ResourceARNs = []string{}
+	}
+	if params.ExcludedResourceARNs == nil {
+		params.ExcludedResourceARNs = []string{}
+	}
+
 	query := updateCloudNativeApplicationQuery
 	if _, err := gql.Request(ctx, query, struct {
-		ID                   uuid.UUID     `json:"id"`
-		Name                 string        `json:"name"`
-		TargetCloudAccountID uuid.UUID     `json:"targetCloudNativeAccountId"`
-		MatchingTags         []Tag         `json:"matchingTags"`
-		ResourceARNs         []string      `json:"resourceInclusionList"`
-		ExcludedResourceARNs []string      `json:"resourceExclusionList"`
-		ServiceConfig        serviceConfig `json:"serviceConfigured"`
-	}{
-		ID:                   id,
-		Name:                 params.Name,
-		TargetCloudAccountID: params.TargetCloudAccountID,
-		MatchingTags:         nonNil(params.MatchingTags),
-		ResourceARNs:         nonNil(params.ResourceARNs),
-		ExcludedResourceARNs: nonNil(params.ExcludedResourceARNs),
-		ServiceConfig:        toServiceConfig(params.Services),
-	}); err != nil {
+		ID uuid.UUID `json:"id"`
+		UpdateAWSApplicationParams
+	}{ID: id, UpdateAWSApplicationParams: params}); err != nil {
 		return graphql.RequestError(query, err)
 	}
 
@@ -392,9 +354,9 @@ func ValidateApplicationName(ctx context.Context, gql *graphql.Client, name stri
 	return payload.Data.Result.Status, nil
 }
 
-// HasConfigSnapshot returns true if the application with the specified ID has
-// at least one unexpired config snapshot taken before now.
-func HasConfigSnapshot(ctx context.Context, gql *graphql.Client, id uuid.UUID) (bool, error) {
+// HasApplicationSnapshot returns true if the application with the specified
+// ID has at least one unexpired config snapshot taken before now.
+func HasApplicationSnapshot(ctx context.Context, gql *graphql.Client, id uuid.UUID) (bool, error) {
 	gql.Log().Print(log.Trace)
 
 	query := cloudNativeApplicationSnapshotsQuery
@@ -458,13 +420,4 @@ func DeleteSnapshotsOfUnmanagedObjects(ctx context.Context, gql *graphql.Client,
 	}
 
 	return nil
-}
-
-// nonNil returns s, or an empty slice if s is nil, since RSC rejects null for
-// the non-null list inputs.
-func nonNil[T any](s []T) []T {
-	if s == nil {
-		return []T{}
-	}
-	return s
 }

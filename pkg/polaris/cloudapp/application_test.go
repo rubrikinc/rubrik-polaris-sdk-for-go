@@ -33,6 +33,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlcloudapp "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudapp"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 	gqlaws "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 )
 
@@ -49,12 +50,12 @@ func TestCreateAWSApplicationInvalidParams(t *testing.T) {
 		CloudAccountID:       accountID,
 		TargetCloudAccountID: uuid.MustParse("ce09d0e4-d0a5-4201-9db2-97f0b6644514"),
 		Name:                 "app",
-		Region:               gqlaws.RegionUsEast1,
-		MatchingTags:         []gqlcloudapp.Tag{{Key: "Version", Value: "1.0"}},
+		Region:               gqlaws.RegionUsEast1.ToRegionEnum(),
+		MatchingTags:         []core.Tag{{Key: "Version", Value: "1.0"}},
 	}
 
 	unknownRegion := valid
-	unknownRegion.Region = gqlaws.RegionUnknown
+	unknownRegion.Region = gqlaws.RegionUnknown.ToRegionEnum()
 	sameAccount := valid
 	sameAccount.TargetCloudAccountID = accountID
 	noSelection := valid
@@ -139,19 +140,22 @@ func TestRemoveApplicationDeleteSnapshots(t *testing.T) {
 	}
 }
 
-// TestCreateAWSApplicationAccountNotConnected verifies that an application
-// isn't created in a cloud account whose CLOUD_NATIVE_CONFIG_PROTECTION
-// feature isn't connected, or doesn't cover the application region. RSC
-// persists such an application without returning its ID.
-func TestCreateAWSApplicationAccountNotConnected(t *testing.T) {
+// TestCreateAWSApplicationChecks verifies that an application isn't created
+// when RSC reports the name as taken, since RSC's create accepts duplicate
+// names, or when the cloud account's CLOUD_NATIVE_CONFIG_PROTECTION feature
+// isn't connected or doesn't cover the application region, since RSC then
+// persists the application without returning its ID.
+func TestCreateAWSApplicationChecks(t *testing.T) {
 	accountID := uuid.MustParse("22bf439e-9922-486e-a32c-ae9009987924")
 	tests := []struct {
-		name    string
-		status  string
-		regions string
+		name       string
+		nameStatus string
+		status     string
+		regions    string
 	}{
-		{name: "NotConnected", status: "CONNECTING", regions: `["US_EAST_1"]`},
-		{name: "OtherRegion", status: "CONNECTED", regions: `["EU_WEST_1"]`},
+		{name: "NameTaken", nameStatus: "APP_NAME_NON_UNIQUE", status: "CONNECTED", regions: `["US_EAST_1"]`},
+		{name: "NotConnected", nameStatus: "APP_NAME_VALID", status: "CONNECTING", regions: `["US_EAST_1"]`},
+		{name: "OtherRegion", nameStatus: "APP_NAME_VALID", status: "CONNECTED", regions: `["EU_WEST_1"]`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -166,16 +170,21 @@ func TestCreateAWSApplicationAccountNotConnected(t *testing.T) {
 					cancel(err)
 					return
 				}
-				if graphql.QueryName(body.Query) != "allAwsCloudAccountsWithFeatures" {
-					t.Errorf("unexpected operation: %s", graphql.QueryName(body.Query))
+				var response string
+				switch name := graphql.QueryName(body.Query); name {
+				case "isValidCloudNativeApplicationName":
+					response = `{"data":{"result":{"status":"` + tc.nameStatus + `"}}}`
+				case "allAwsCloudAccountsWithFeatures":
+					response = `{"data":{"result":[{"awsCloudAccount":{"cloudType":"STANDARD",` +
+						`"id":"` + accountID.String() + `","nativeId":"123456789012","accountName":"source","message":""},` +
+						`"featureDetails":[{"feature":"CLOUD_NATIVE_CONFIG_PROTECTION","permissionsGroups":[],` +
+						`"awsRegions":` + tc.regions + `,"roleArn":"","stackArn":"","status":"` + tc.status + `",` +
+						`"mappedAccounts":[],"roleChainingDetails":null}],"roleChainingAccount":null}]}}`
+				default:
+					t.Errorf("unexpected operation: %s", name)
 					return
 				}
-				_, err := w.Write([]byte(`{"data":{"result":[{"awsCloudAccount":{"cloudType":"STANDARD",` +
-					`"id":"` + accountID.String() + `","nativeId":"123456789012","accountName":"source","message":""},` +
-					`"featureDetails":[{"feature":"CLOUD_NATIVE_CONFIG_PROTECTION","permissionsGroups":[],` +
-					`"awsRegions":` + tc.regions + `,"roleArn":"","stackArn":"","status":"` + tc.status + `",` +
-					`"mappedAccounts":[],"roleChainingDetails":null}],"roleChainingAccount":null}]}}`))
-				if err != nil {
+				if _, err := w.Write([]byte(response)); err != nil {
 					cancel(err)
 				}
 			}))
@@ -185,8 +194,8 @@ func TestCreateAWSApplicationAccountNotConnected(t *testing.T) {
 				CloudAccountID:       accountID,
 				TargetCloudAccountID: uuid.MustParse("ce09d0e4-d0a5-4201-9db2-97f0b6644514"),
 				Name:                 "app",
-				Region:               gqlaws.RegionUsEast1,
-				MatchingTags:         []gqlcloudapp.Tag{{Key: "Version", Value: "1.0"}},
+				Region:               gqlaws.RegionUsEast1.ToRegionEnum(),
+				MatchingTags:         []core.Tag{{Key: "Version", Value: "1.0"}},
 			})
 			if err == nil {
 				t.Fatal("expected CreateAWSApplication to fail")

@@ -92,14 +92,14 @@ func (a API) ListAWSApplications(ctx context.Context, nameFilter string) ([]gqlc
 // CreateAWSApplication creates an AWS cloud native application and returns
 // its ID.
 //
-// RSC doesn't validate the application name or the target cloud account on
-// create. The target cloud account must differ from the cloud account, as the
-// RSC UI requires, which is checked here. Use ValidateApplicationName to check
-// the name before creating the application.
+// RSC validates neither the application name nor the target cloud account on
+// create, so both are checked here: the name must be valid and unused, as
+// ValidateApplicationName reports, and the target cloud account must differ
+// from the cloud account, as the RSC UI requires.
 func (a API) CreateAWSApplication(ctx context.Context, params gqlcloudapp.CreateAWSApplicationParams) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	if params.Region == gqlaws.RegionUnknown {
+	if params.Region.Region == gqlaws.RegionUnknown {
 		return uuid.Nil, errors.New("invalid AWS region")
 	}
 	if params.TargetCloudAccountID == params.CloudAccountID {
@@ -107,6 +107,14 @@ func (a API) CreateAWSApplication(ctx context.Context, params gqlcloudapp.Create
 	}
 	if len(params.MatchingTags) == 0 && len(params.ResourceARNs) == 0 {
 		return uuid.Nil, errors.New("at least one matching tag or resource ARN is required")
+	}
+
+	status, err := gqlcloudapp.ValidateApplicationName(ctx, a.client, params.Name)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to validate cloud native application name %q: %s", params.Name, err)
+	}
+	if status != gqlcloudapp.NameValid {
+		return uuid.Nil, fmt.Errorf("invalid cloud native application name %q: %s", params.Name, status)
 	}
 
 	// RSC persists the application before it checks the cloud account, so an
@@ -122,9 +130,9 @@ func (a API) CreateAWSApplication(ctx context.Context, params gqlcloudapp.Create
 		return uuid.Nil, fmt.Errorf("the %s feature of cloud account %q is not connected",
 			core.FeatureCloudNativeConfigProtection.Name, params.CloudAccountID)
 	}
-	if !feature.HasRegion(params.Region.Name()) {
+	if !feature.HasRegion(params.Region.Region.Name()) {
 		return uuid.Nil, fmt.Errorf("the %s feature of cloud account %q is not enabled in region %s",
-			core.FeatureCloudNativeConfigProtection.Name, params.CloudAccountID, params.Region.Name())
+			core.FeatureCloudNativeConfigProtection.Name, params.CloudAccountID, params.Region.Region.Name())
 	}
 
 	id, err := gqlcloudapp.CreateAWSApplication(ctx, a.client, params)
@@ -203,7 +211,7 @@ func (a API) deleteApplicationSnapshots(ctx context.Context, id uuid.UUID) error
 
 	// RSC expires the snapshots asynchronously.
 	for {
-		hasSnapshot, err := gqlcloudapp.HasConfigSnapshot(ctx, a.client, id)
+		hasSnapshot, err := gqlcloudapp.HasApplicationSnapshot(ctx, a.client, id)
 		if err != nil {
 			return err
 		}
