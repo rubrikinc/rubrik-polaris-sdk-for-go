@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -56,10 +57,11 @@ type HealthCheckStatus struct {
 
 // TriggerHealthCheck starts an on-demand health check of the exocompute
 // cluster serving the exocompute configuration with the specified ID. Returns
-// the ID of the health check job. The health check runs asynchronously, its
-// result is reported in the HealthCheckStatus of the configuration once the
-// TaskchainID matches the returned job ID.
-func TriggerHealthCheck(ctx context.Context, gql *graphql.Client, cloudVendor core.CloudVendor, configID uuid.UUID) (string, error) {
+// the ID of the health check job, which is the ID of the job's RSC task chain.
+// The health check runs asynchronously, its result is reported in the
+// HealthCheckStatus of the configuration once the TaskchainID matches the
+// returned job ID.
+func TriggerHealthCheck(ctx context.Context, gql *graphql.Client, cloudVendor core.CloudVendor, configID uuid.UUID) (uuid.UUID, error) {
 	gql.Log().Print(log.Trace)
 
 	query := triggerExocomputeHealthCheckQuery
@@ -68,7 +70,7 @@ func TriggerHealthCheck(ctx context.Context, gql *graphql.Client, cloudVendor co
 		ConfigID    uuid.UUID        `json:"exocomputeConfigId"`
 	}{CloudVendor: cloudVendor, ConfigID: configID})
 	if err != nil {
-		return "", graphql.RequestError(query, err)
+		return uuid.Nil, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
@@ -79,11 +81,15 @@ func TriggerHealthCheck(ctx context.Context, gql *graphql.Client, cloudVendor co
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return "", graphql.UnmarshalError(query, err)
+		return uuid.Nil, graphql.UnmarshalError(query, err)
 	}
 	if payload.Data.Result.JobID == "" {
-		return "", graphql.ResponseError(query, errors.New("no health check job id returned"))
+		return uuid.Nil, graphql.ResponseError(query, errors.New("no health check job id returned"))
+	}
+	jobID, err := uuid.Parse(payload.Data.Result.JobID)
+	if err != nil {
+		return uuid.Nil, graphql.ResponseError(query, fmt.Errorf("invalid health check job id %q: %s", payload.Data.Result.JobID, err))
 	}
 
-	return payload.Data.Result.JobID, nil
+	return jobID, nil
 }

@@ -175,3 +175,68 @@ func (a API) WaitForFeatureDisableTaskChain(ctx context.Context, taskChainID uui
 		}
 	}
 }
+
+// WaitForTaskChainWithStatus blocks until the status function reports that
+// the thing produced by the RSC task chain with the specified task chain ID is
+// done. The status function is called, followed by a check of the task chain
+// state, every wait interval.
+//
+// When the task chain has ended, i.e. it has succeeded, failed or been
+// canceled, the status function is called one final time, since the task
+// chain can report its result just before it ends. If the status function
+// still isn't done, an error is returned. If the task chain state can't be
+// read because RSC rejects the request with a 403 or a 500 error, for example
+// because the RBAC of the task chain isn't ready yet, the wait continues using
+// only the status function.
+//
+// Returns the error from the status function if it fails, and ctx.Err() if the
+// context is done before the status function reports done.
+func (a API) WaitForTaskChainWithStatus(ctx context.Context, taskChainID uuid.UUID, wait time.Duration, status func(ctx context.Context) (bool, error)) error {
+	a.log.Print(log.Trace)
+
+	for {
+		if done, err := status(ctx); done || err != nil {
+			return err
+		}
+
+		taskChain, err := a.KorgTaskChainStatus(ctx, taskChainID)
+		switch {
+		case err != nil && ctx.Err() != nil:
+			return ctx.Err()
+		case err != nil && isTaskChainStatusUnavailable(err):
+			a.log.Printf(log.Debug, "Task chain %s status not available: %s", taskChainID, err)
+		case err != nil:
+			return fmt.Errorf("failed to get task chain status for %s: %w", taskChainID, err)
+		case taskChain.State == TaskChainSucceeded || taskChain.State == TaskChainFailed || taskChain.State == TaskChainCanceled:
+			if done, err := status(ctx); done || err != nil {
+				return err
+			}
+			return fmt.Errorf("task chain %s ended with state %s before the status was done", taskChainID, taskChain.State)
+		}
+
+		a.log.Printf(log.Debug, "Waiting for task chain %s (state: %q)", taskChainID, taskChain.State)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(wait):
+		}
+	}
+}
+
+// isTaskChainStatusUnavailable returns true if the error is a GraphQL error
+// where every error has the code 403 or 500. RSC returns these when the RBAC of
+// a task chain isn't ready yet, or when the task chain's event series can't be
+// found.
+func isTaskChainStatusUnavailable(err error) bool {
+	var gqlErr graphql.GQLError
+	if !errors.As(err, &gqlErr) || len(gqlErr.Errors) == 0 {
+		return false
+	}
+	for _, e := range gqlErr.Errors {
+		if e.Extensions.Code != 403 && e.Extensions.Code != 500 {
+			return false
+		}
+	}
+
+	return true
+}
