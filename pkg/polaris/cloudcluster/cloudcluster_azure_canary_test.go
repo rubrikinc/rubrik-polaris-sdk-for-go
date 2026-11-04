@@ -94,7 +94,7 @@ func TestAzureCdmVersionsRegionCanary(t *testing.T) {
 		t.Skipf("skipping due to env TEST_INTEGRATION not set")
 	}
 
-	flag, err := core.Wrap(client.GQL).FeatureFlag(ctx, "CLOUD_CLUSTER_ES_ENABLED")
+	flag, err := core.Wrap(client.GQL).FeatureFlag(ctx, core.FeatureFlagCloudClusterES)
 	if err != nil {
 		t.Fatal(err)
 	}
