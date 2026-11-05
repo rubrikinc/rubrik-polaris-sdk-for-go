@@ -63,6 +63,7 @@ const (
 	Exocompute                                  = "EXOCOMPUTE"
 	GCPBigQueryProtection                       = "GCP_BIGQUERY_PROTECTION"
 	GCPBigQueryReservation                      = "GCP_BIGQUERY_RESERVATION"
+	GCPGCSProtection                            = "GCP_GCS_PROTECTION"
 	GCPSharedVPCHost                            = "GCP_SHARED_VPC_HOST"
 	GitHubActionsProtection                     = "GITHUB_ACTIONS_PROTECTION"
 	GitHubDeveloperCollaborationProtection      = "GITHUB_DEVELOPER_COLLABORATION_PROTECTION"
@@ -815,6 +816,11 @@ var featureInfoMap = map[string]struct {
 			},
 		},
 		public: true,
+	},
+	// Behind an RSC feature flag. Known to the SDK but not public yet. RSC
+	// doesn't define any permission groups for the feature yet.
+	GCPGCSProtection: {
+		protection: true,
 	},
 	GCPSharedVPCHost: {
 		permissionGroups: cloudAccountPermissionGroups{
