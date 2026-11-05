@@ -43,11 +43,39 @@ type PermissionPolicyArtifact struct {
 }
 
 // AllPermissionPolicies returns all permission policies for the specified cloud
-// and feature set.
+// and feature set. The policies are rendered for a single-role account, use
+// AllPermissionPoliciesWithParams with a native ID to render them for an
+// onboarded account.
 func (a API) AllPermissionPolicies(ctx context.Context, cloud Cloud, features []core.Feature, ec2RecoveryRolePath string) ([]PermissionPolicyArtifact, error) {
+	return a.AllPermissionPoliciesWithParams(ctx, AllPermissionPoliciesParams{
+		Cloud:               cloud,
+		Features:            features,
+		EC2RecoveryRolePath: ec2RecoveryRolePath,
+	})
+}
+
+// AllPermissionPoliciesParams holds the parameters for an
+// AllPermissionPoliciesWithParams operation. EC2RecoveryRolePath and NativeID
+// are optional.
+//
+// NativeID is the AWS account ID of an account onboarded to RSC. When given,
+// RSC renders the policies for the role mode of that account, e.g. one
+// artifact per feature for a multi-role account. When empty, RSC renders the
+// policies for a single-role account. RSC returns an error if no account with
+// the native ID has been onboarded.
+type AllPermissionPoliciesParams struct {
+	Cloud               Cloud
+	Features            []core.Feature
+	EC2RecoveryRolePath string
+	NativeID            string
+}
+
+// AllPermissionPoliciesWithParams returns all permission policies for the
+// specified parameters.
+func (a API) AllPermissionPoliciesWithParams(ctx context.Context, params AllPermissionPoliciesParams) ([]PermissionPolicyArtifact, error) {
 	a.log.Print(log.Trace)
 
-	featuresWithoutPG, featuresWithPG, err := core.FilterFeaturesOnPermissionGroups(features)
+	featuresWithoutPG, featuresWithPG, err := core.FilterFeaturesOnPermissionGroups(params.Features)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +98,8 @@ func (a API) AllPermissionPolicies(ctx context.Context, cloud Cloud, features []
 		Features       []string       `json:"features,omitempty"`
 		FeaturesWithPG []core.Feature `json:"featuresWithPG,omitempty"`
 		RolePath       string         `json:"ec2RecoveryRolePath,omitempty"`
-	}{Cloud: cloud, Features: featuresWithoutPG, FeaturesWithPG: featuresWithPG, RolePath: ec2RecoveryRolePath})
+		NativeID       string         `json:"awsNativeId,omitempty"`
+	}{Cloud: params.Cloud, Features: featuresWithoutPG, FeaturesWithPG: featuresWithPG, RolePath: params.EC2RecoveryRolePath, NativeID: params.NativeID})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
