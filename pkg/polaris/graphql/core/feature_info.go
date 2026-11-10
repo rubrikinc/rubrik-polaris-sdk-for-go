@@ -65,6 +65,7 @@ const (
 	GCPBigQueryReservation                      = "GCP_BIGQUERY_RESERVATION"
 	GCPGCSProtection                            = "GCP_GCS_PROTECTION"
 	GCPSharedVPCHost                            = "GCP_SHARED_VPC_HOST"
+	GCPSpannerProtection                        = "GCP_SPANNER_PROTECTION"
 	GitHubActionsProtection                     = "GITHUB_ACTIONS_PROTECTION"
 	GitHubDeveloperCollaborationProtection      = "GITHUB_DEVELOPER_COLLABORATION_PROTECTION"
 	GitHubPackagesProtection                    = "GITHUB_PACKAGES_PROTECTION"
@@ -817,9 +818,15 @@ var featureInfoMap = map[string]struct {
 		},
 		public: true,
 	},
-	// Behind an RSC feature flag. Known to the SDK but not public yet. RSC
-	// doesn't define any permission groups for the feature yet.
+	// Behind an RSC feature flag. Known to the SDK but not public yet.
 	GCPGCSProtection: {
+		permissionGroups: cloudAccountPermissionGroups{
+			gcpProject: {
+				PermissionGroupBasic,
+				PermissionGroupRestore,
+				PermissionGroupExport,
+			},
+		},
 		protection: true,
 	},
 	GCPSharedVPCHost: {
@@ -830,6 +837,15 @@ var featureInfoMap = map[string]struct {
 			},
 		},
 		public: true,
+	},
+	// Behind an RSC feature flag. Known to the SDK but not public yet.
+	GCPSpannerProtection: {
+		permissionGroups: cloudAccountPermissionGroups{
+			gcpProject: {
+				PermissionGroupBasic,
+			},
+		},
+		protection: true,
 	},
 	GitHubActionsProtection: {
 		permissionGroups: cloudAccountPermissionGroups{
