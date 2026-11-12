@@ -1,0 +1,9 @@
+query RubrikPolarisSDKRequest($clusterUuid: String!, $jobType: String!) {
+  result: ccProvisionMetadata(input: { clusterUuid: $clusterUuid, jobType: $jobType }) {
+    clusterUuid
+    jobType
+    status
+    vendor
+    marshaledConfig
+  }
+}
