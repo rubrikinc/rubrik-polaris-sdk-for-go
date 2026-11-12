@@ -114,6 +114,11 @@ func TestCloudAccountRegionEnumCanary(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// UNRECOGNIZED is a sentinel RSC returns for values it doesn't recognize.
+	// It is not a region and RSC rejects it as input. It is only skipped for
+	// this enum, so the canary flags it if other region enums gain it.
+	delete(rscValues, "UNRECOGNIZED")
+
 	assertEnumValues(t, "AzureCloudAccountRegion", sdkValues, rscValues)
 }
 
