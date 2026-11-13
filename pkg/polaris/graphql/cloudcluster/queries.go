@@ -193,6 +193,17 @@ var azureCcSubnetQuery = `query SdkGolangAzureCcSubnet(
   }
 }`
 
+// ccProvisionMetadata GraphQL query
+var ccProvisionMetadataQuery = `query SdkGolangCcProvisionMetadata($clusterUuid: String!, $jobType: String!) {
+  result: ccProvisionMetadata(input: { clusterUuid: $clusterUuid, jobType: $jobType }) {
+    clusterUuid
+    jobType
+    status
+    vendor
+    marshaledConfig
+  }
+}`
+
 // cloudClusterInstanceProperties GraphQL query
 var cloudClusterInstancePropertiesQuery = `query SdkGolangCloudClusterInstanceProperties($input: InstancePropertiesReq!) {
   result: cloudClusterInstanceProperties(input: $input) {
