@@ -106,3 +106,67 @@ func TestAllPermissionPoliciesSendsBothFeatureLists(t *testing.T) {
 		})
 	}
 }
+
+// TestAllPermissionPoliciesSendsNativeID verifies that the native ID is sent
+// as awsNativeId when given, and left out of the request when empty, so that
+// RSC renders the policies for a single-role account.
+func TestAllPermissionPoliciesSendsNativeID(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer assert.Context(t, ctx, cancel)
+
+	var got map[string]json.RawMessage
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
+		buf, err := io.ReadAll(req.Body)
+		if err != nil {
+			cancel(err)
+			return
+		}
+		var payload struct {
+			Variables map[string]json.RawMessage `json:"variables"`
+		}
+		if err := json.Unmarshal(buf, &payload); err != nil {
+			cancel(err)
+			return
+		}
+		got = payload.Variables
+		if _, err := w.Write([]byte(`{"data":{"result":[]}}`)); err != nil {
+			cancel(err)
+		}
+	}))
+	defer srv.Close()
+
+	tests := []struct {
+		name     string
+		nativeID string
+		want     string
+	}{{
+		name:     "native ID is sent",
+		nativeID: "123456789012",
+		want:     `"123456789012"`,
+	}, {
+		name: "empty native ID is not sent",
+	}}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got = nil
+			_, err := Wrap(graphql.NewTestClient(srv)).AllPermissionPoliciesWithParams(ctx, AllPermissionPoliciesParams{
+				Cloud:    CloudStandard,
+				Features: []core.Feature{core.FeatureCloudNativeProtection},
+				NativeID: tc.nativeID,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			nativeID, ok := got["awsNativeId"]
+			if tc.want == "" {
+				if ok {
+					t.Errorf("expected no awsNativeId, got %s", nativeID)
+				}
+				return
+			}
+			if string(nativeID) != tc.want {
+				t.Errorf("expected awsNativeId %s, got %s", tc.want, nativeID)
+			}
+		})
+	}
+}
