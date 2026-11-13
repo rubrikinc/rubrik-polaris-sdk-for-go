@@ -266,6 +266,88 @@ func TestProvisionConfigAws(t *testing.T) {
 	}
 }
 
+// TestProvisionConfigInstanceTypes verifies that every instance type RSC can
+// record in the configuration of a cluster create job is decoded to the
+// instance type the RSC API uses for it. The numbers are the values of the
+// AwsInstanceType and AzureInstanceType enums in the cluster-mgmt protobuf
+// definition.
+func TestProvisionConfigInstanceTypes(t *testing.T) {
+	awsTypes := map[int]AwsCCInstanceType{
+		1: "M5_4XLARGE", 2: "M6I_2XLARGE", 3: "M6I_4XLARGE", 4: "M6I_8XLARGE", 5: "R6I_4XLARGE",
+		6: "M6A_2XLARGE", 7: "M6A_4XLARGE", 8: "M6A_8XLARGE", 9: "R6A_4XLARGE",
+		10: "M7I_2XLARGE", 11: "M7I_4XLARGE", 12: "M7I_8XLARGE",
+		13: "M7A_2XLARGE", 14: "M7A_4XLARGE", 15: "M7A_8XLARGE",
+		16: "R7I_4XLARGE", 17: "R7A_4XLARGE",
+	}
+	for number, want := range awsTypes {
+		if got := provisionAwsInstanceTypes[number]; got != want {
+			t.Errorf("AWS instance type %d: got %q, want %q", number, got, want)
+		}
+	}
+	if len(provisionAwsInstanceTypes) != len(awsTypes)+1 { // + AWS_TYPE_UNSPECIFIED
+		t.Errorf("AWS: got %d instance types, want %d", len(provisionAwsInstanceTypes), len(awsTypes)+1)
+	}
+
+	azureTypes := map[int]AzureCCESSupportedInstanceType{
+		1: "STANDARD_DS5_V2", 2: "STANDARD_D16S_V5", 3: "STANDARD_D8S_V5", 4: "STANDARD_D32S_V5",
+		5: "STANDARD_E16S_V5", 6: "STANDARD_D8AS_V5", 7: "STANDARD_D16AS_V5", 8: "STANDARD_D32AS_V5",
+		9: "STANDARD_E16AS_V5", 10: "STANDARD_D8S_V6", 11: "STANDARD_D16S_V6", 12: "STANDARD_E16S_V6",
+		13: "STANDARD_D8AS_V6", 14: "STANDARD_D16AS_V6", 15: "STANDARD_E16AS_V6",
+	}
+	for number, want := range azureTypes {
+		if got := provisionAzureInstanceTypes[number]; got != want {
+			t.Errorf("Azure instance type %d: got %q, want %q", number, got, want)
+		}
+	}
+	if len(provisionAzureInstanceTypes) != len(azureTypes)+1 { // + TYPE_UNSPECIFIED
+		t.Errorf("Azure: got %d instance types, want %d", len(provisionAzureInstanceTypes), len(azureTypes)+1)
+	}
+}
+
+// TestProvisionConfigInstanceTypesAreComplete verifies that every AWS and Azure
+// instance type constant has a number in the maps used to decode the recorded
+// configuration of a cluster create job. A constant without a number means
+// that a cluster created with the instance type can't be decoded. The lists of
+// constants must be kept in sync with TestInstanceTypeEnumCanary in the parent
+// package, which verifies them against RSC.
+func TestProvisionConfigInstanceTypesAreComplete(t *testing.T) {
+	awsTypes := []AwsCCInstanceType{
+		AwsInstanceTypeUnspecified, AwsInstanceTypeM5_4XLarge, AwsInstanceTypeM6I_2XLarge,
+		AwsInstanceTypeM6I_4XLarge, AwsInstanceTypeM6I_8XLarge, AwsInstanceTypeR6I_4XLarge,
+		AwsInstanceTypeM6A_2XLarge, AwsInstanceTypeM6A_4XLarge, AwsInstanceTypeM6A_8XLarge,
+		AwsInstanceTypeR6A_4XLarge, AwsInstanceTypeM7I_2XLarge, AwsInstanceTypeM7I_4XLarge,
+		AwsInstanceTypeM7I_8XLarge, AwsInstanceTypeR7I_4XLarge, AwsInstanceTypeM7A_2XLarge,
+		AwsInstanceTypeM7A_4XLarge, AwsInstanceTypeM7A_8XLarge, AwsInstanceTypeR7A_4XLarge,
+	}
+	decodable := make(map[AwsCCInstanceType]struct{}, len(provisionAwsInstanceTypes))
+	for _, instanceType := range provisionAwsInstanceTypes {
+		decodable[instanceType] = struct{}{}
+	}
+	for _, instanceType := range awsTypes {
+		if _, ok := decodable[instanceType]; !ok {
+			t.Errorf("AWS instance type %q has no number in provisionAwsInstanceTypes", instanceType)
+		}
+	}
+
+	azureTypes := []AzureCCESSupportedInstanceType{
+		AzureInstanceTypeUnspecified, AzureInstanceTypeStandardDS5V2, AzureInstanceTypeStandardD16SV5,
+		AzureInstanceTypeStandardD8SV5, AzureInstanceTypeStandardD32SV5, AzureInstanceTypeStandardE16SV5,
+		AzureInstanceTypeStandardD8ASV5, AzureInstanceTypeStandardD16ASV5, AzureInstanceTypeStandardD32ASV5,
+		AzureInstanceTypeStandardE16ASV5, AzureInstanceTypeStandardD8SV6, AzureInstanceTypeStandardD16SV6,
+		AzureInstanceTypeStandardE16SV6, AzureInstanceTypeStandardD8ASV6, AzureInstanceTypeStandardD16ASV6,
+		AzureInstanceTypeStandardE16ASV6,
+	}
+	azureDecodable := make(map[AzureCCESSupportedInstanceType]struct{}, len(provisionAzureInstanceTypes))
+	for _, instanceType := range provisionAzureInstanceTypes {
+		azureDecodable[instanceType] = struct{}{}
+	}
+	for _, instanceType := range azureTypes {
+		if _, ok := azureDecodable[instanceType]; !ok {
+			t.Errorf("Azure instance type %q has no number in provisionAzureInstanceTypes", instanceType)
+		}
+	}
+}
+
 // TestProvisionConfigErrors covers the responses which don't hold the
 // configuration of a cluster create job.
 func TestProvisionConfigErrors(t *testing.T) {

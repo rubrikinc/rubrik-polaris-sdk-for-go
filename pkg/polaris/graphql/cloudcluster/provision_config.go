@@ -251,14 +251,14 @@ var provisionAwsInstanceTypes = map[int]AwsCCInstanceType{
 	7:  AwsInstanceTypeM6A_4XLarge,
 	8:  AwsInstanceTypeM6A_8XLarge,
 	9:  AwsInstanceTypeR6A_4XLarge,
-	10: "M7I_2XLARGE",
-	11: "M7I_4XLARGE",
-	12: "M7I_8XLARGE",
-	13: "M7A_2XLARGE",
-	14: "M7A_4XLARGE",
-	15: "M7A_8XLARGE",
-	16: "R7I_4XLARGE",
-	17: "R7A_4XLARGE",
+	10: AwsInstanceTypeM7I_2XLarge,
+	11: AwsInstanceTypeM7I_4XLarge,
+	12: AwsInstanceTypeM7I_8XLarge,
+	13: AwsInstanceTypeM7A_2XLarge,
+	14: AwsInstanceTypeM7A_4XLarge,
+	15: AwsInstanceTypeM7A_8XLarge,
+	16: AwsInstanceTypeR7I_4XLarge,
+	17: AwsInstanceTypeR7A_4XLarge,
 }
 
 // provisionAzureInstanceTypes maps the protobuf AzureInstanceType enum to the
@@ -274,12 +274,12 @@ var provisionAzureInstanceTypes = map[int]AzureCCESSupportedInstanceType{
 	7:  AzureInstanceTypeStandardD16ASV5,
 	8:  AzureInstanceTypeStandardD32ASV5,
 	9:  AzureInstanceTypeStandardE16ASV5,
-	10: "STANDARD_D8S_V6",
-	11: "STANDARD_D16S_V6",
-	12: "STANDARD_E16S_V6",
-	13: "STANDARD_D8AS_V6",
-	14: "STANDARD_D16AS_V6",
-	15: "STANDARD_E16AS_V6",
+	10: AzureInstanceTypeStandardD8SV6,
+	11: AzureInstanceTypeStandardD16SV6,
+	12: AzureInstanceTypeStandardE16SV6,
+	13: AzureInstanceTypeStandardD8ASV6,
+	14: AzureInstanceTypeStandardD16ASV6,
+	15: AzureInstanceTypeStandardE16ASV6,
 }
 
 // decodeProvisionConfig decodes the marshaled configuration into config. RSC
