@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core"
 )
 
@@ -94,6 +95,9 @@ func TestAwsAccountAddAndRemoveWithCFT(t *testing.T) {
 	}
 	if mode := cnp.OnboardingMode(); mode != OnboardingModeCFT {
 		t.Fatalf("invalid feature onboarding mode: %v", mode)
+	}
+	if account.ServiceType != aws.ServiceTypeNonBaaS {
+		t.Fatalf("invalid service type: %v", account.ServiceType)
 	}
 
 	// Update and verify regions for AWS account.

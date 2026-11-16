@@ -35,6 +35,10 @@ type CloudAccount struct {
 	Name                  string
 	Features              []Feature
 	RoleChainingAccountID uuid.UUID // uuid.Nil when no role chaining account exists.
+
+	// ServiceType tells a Backup as a Service (BaaS), RSC-managed, account
+	// apart from a standard one.
+	ServiceType aws.CloudAccountServiceType
 }
 
 // Feature returns the specified feature from the CloudAccount's features.
@@ -401,5 +405,6 @@ func toCloudAccount(accountWithFeatures aws.CloudAccountWithFeatures) CloudAccou
 		Name:                  accountWithFeatures.Account.Name,
 		Features:              features,
 		RoleChainingAccountID: roleChainingAccountID,
+		ServiceType:           accountWithFeatures.Account.ServiceType,
 	}
 }
