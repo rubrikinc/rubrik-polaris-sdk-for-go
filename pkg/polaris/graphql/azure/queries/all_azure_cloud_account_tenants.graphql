@@ -20,6 +20,11 @@ query RubrikPolarisSDKRequest(
             id
             name
             nativeId
+            managementGroup {
+                nativeId
+                name
+                customerManagementGroupId
+            }
             featureDetail {
                 feature
                 permissionsGroups

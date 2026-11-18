@@ -1,0 +1,42 @@
+query RubrikPolarisSDKRequest(
+    $cloudType:                AzureCloudType!,
+    $tenantDomainName:         String!,
+    $sessionId:                UUID!,
+    $managementGroupId:        String!,
+    $scopedManagementGroupIds: [String!],
+    $shouldRecurse:            Boolean,
+    $features:                 [CloudAccountFeature!],
+    $operationType:            CloudAccountOperation,
+    $authType:                 AzureAuthType
+) {
+    result: azureListManagementGroupHierarchy(input: {
+        cloudType:                $cloudType,
+        tenantDomainName:         $tenantDomainName,
+        sessionId:                $sessionId,
+        managementGroupId:        $managementGroupId,
+        scopedManagementGroupIds: $scopedManagementGroupIds,
+        shouldRecurse:            $shouldRecurse,
+        features:                 $features,
+        operationType:            $operationType,
+        authType:                 $authType
+    }) {
+        entities {
+            isEligible
+            ineligibilityReason
+            entity {
+                __typename
+                ... on AzureManagementGroup {
+                    nativeId
+                    name
+                    customerManagementGroupId
+                    isAuthorized
+                }
+                ... on CloudAccountsAzureSubscription {
+                    nativeId
+                    name
+                    isAuthorized
+                }
+            }
+        }
+    }
+}

@@ -1123,3 +1123,36 @@ func TestSupportedFeaturesIncludesUEMKeyManagement(t *testing.T) {
 		t.Error("CLOUD_NATIVE_UEM_KEY_MANAGEMENT missing from SupportedFeatures")
 	}
 }
+
+// TestToSubscriptionsManagementGroup verifies that the management group of a
+// subscription is mapped, and that it's nil for subscriptions not onboarded
+// through a management group.
+func TestToSubscriptionsManagementGroup(t *testing.T) {
+	tenantID := uuid.New()
+	mgSub, plainSub := uuid.New(), uuid.New()
+	customerID := uuid.New()
+	rawTenants := []azure.CloudAccountTenant{{
+		ID:         tenantID,
+		DomainName: "example.onmicrosoft.com",
+		Accounts: []azure.CloudAccount{{
+			ID: mgSub, NativeID: uuid.New(), Name: "a",
+			ManagementGroup: &azure.ManagementGroup{NativeID: "mg", Name: "MG", CustomerManagementGroupID: customerID},
+			Feature:         azure.Feature{Feature: "CLOUD_NATIVE_PROTECTION"},
+		}, {
+			ID: plainSub, NativeID: uuid.New(), Name: "b",
+			Feature: azure.Feature{Feature: "CLOUD_NATIVE_PROTECTION"},
+		}},
+	}}
+
+	subs := toSubscriptions(rawTenants)
+	if len(subs) != 2 {
+		t.Fatalf("invalid number of subscriptions: %d", len(subs))
+	}
+	want := &ManagementGroup{NativeID: "mg", Name: "MG", CustomerID: customerID}
+	if !reflect.DeepEqual(subs[0].ManagementGroup, want) {
+		t.Errorf("invalid management group: got %+v, want %+v", subs[0].ManagementGroup, want)
+	}
+	if subs[1].ManagementGroup != nil {
+		t.Errorf("invalid management group: got %+v, want nil", subs[1].ManagementGroup)
+	}
+}

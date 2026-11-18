@@ -49,10 +49,11 @@ type CloudAccountTenant struct {
 
 // CloudAccount represents an RSC Azure cloud account.
 type CloudAccount struct {
-	ID       uuid.UUID `json:"id"`
-	NativeID uuid.UUID `json:"nativeId"`
-	Name     string    `json:"name"`
-	Feature  Feature   `json:"featureDetail"`
+	ID              uuid.UUID        `json:"id"`
+	NativeID        uuid.UUID        `json:"nativeId"`
+	Name            string           `json:"name"`
+	ManagementGroup *ManagementGroup `json:"managementGroup"`
+	Feature         Feature          `json:"featureDetail"`
 }
 
 // Feature represents an RSC Cloud Account feature for Azure, e.g., Cloud Native

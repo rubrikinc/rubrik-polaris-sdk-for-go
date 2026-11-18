@@ -1,0 +1,14 @@
+query RubrikPolarisSDKRequest($cloudType: AzureCloudType!, $tenantDomainName: String!, $sessionId: UUID!) {
+    result: azureListManagementGroups(input: {
+        cloudType:        $cloudType,
+        tenantDomainName: $tenantDomainName,
+        sessionId:        $sessionId
+    }) {
+        managementGroups {
+            nativeId
+            name
+            customerManagementGroupId
+            isAuthorized
+        }
+    }
+}

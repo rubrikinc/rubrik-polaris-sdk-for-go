@@ -60,6 +60,9 @@ type CloudAccount struct {
 	// share the same value.
 	EntraGroupID string
 	Features     []Feature
+	// ManagementGroup is the management group the subscription was onboarded
+	// through, or nil if it was not onboarded through a management group.
+	ManagementGroup *ManagementGroup
 }
 
 // Feature returns the specified feature from the CloudAccount's features.
@@ -671,6 +674,14 @@ func toSubscriptions(rawTenants []gqlazure.CloudAccountTenant) []CloudAccount {
 					TenantID:     rawTenant.ID,
 					TenantDomain: rawTenant.DomainName,
 					EntraGroupID: rawTenant.EntraGroupID,
+				}
+				if mg := rawAccount.ManagementGroup; mg != nil {
+					tenant.accounts[rawAccount.ID].ManagementGroup = &ManagementGroup{
+						NativeID:     mg.NativeID,
+						Name:         mg.Name,
+						CustomerID:   mg.CustomerManagementGroupID,
+						IsAuthorized: mg.IsAuthorized,
+					}
 				}
 				account = tenant.accounts[rawAccount.ID]
 			}
