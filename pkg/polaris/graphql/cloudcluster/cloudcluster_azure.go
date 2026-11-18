@@ -45,6 +45,12 @@ const (
 	AzureInstanceTypeStandardD16ASV5 AzureCCESSupportedInstanceType = "STANDARD_D16AS_V5"
 	AzureInstanceTypeStandardD32ASV5 AzureCCESSupportedInstanceType = "STANDARD_D32AS_V5"
 	AzureInstanceTypeStandardE16ASV5 AzureCCESSupportedInstanceType = "STANDARD_E16AS_V5"
+	AzureInstanceTypeStandardD8SV6   AzureCCESSupportedInstanceType = "STANDARD_D8S_V6"
+	AzureInstanceTypeStandardD16SV6  AzureCCESSupportedInstanceType = "STANDARD_D16S_V6"
+	AzureInstanceTypeStandardE16SV6  AzureCCESSupportedInstanceType = "STANDARD_E16S_V6"
+	AzureInstanceTypeStandardD8ASV6  AzureCCESSupportedInstanceType = "STANDARD_D8AS_V6"
+	AzureInstanceTypeStandardD16ASV6 AzureCCESSupportedInstanceType = "STANDARD_D16AS_V6"
+	AzureInstanceTypeStandardE16ASV6 AzureCCESSupportedInstanceType = "STANDARD_E16AS_V6"
 )
 
 // AzureCDMVersionTag represents a tag for a CDM version.

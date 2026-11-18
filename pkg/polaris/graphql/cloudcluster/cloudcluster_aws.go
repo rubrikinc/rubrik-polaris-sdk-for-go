@@ -47,6 +47,14 @@ const (
 	AwsInstanceTypeM6A_4XLarge AwsCCInstanceType = "M6A_4XLARGE"
 	AwsInstanceTypeM6A_8XLarge AwsCCInstanceType = "M6A_8XLARGE"
 	AwsInstanceTypeR6A_4XLarge AwsCCInstanceType = "R6A_4XLARGE"
+	AwsInstanceTypeM7I_2XLarge AwsCCInstanceType = "M7I_2XLARGE"
+	AwsInstanceTypeM7I_4XLarge AwsCCInstanceType = "M7I_4XLARGE"
+	AwsInstanceTypeM7I_8XLarge AwsCCInstanceType = "M7I_8XLARGE"
+	AwsInstanceTypeR7I_4XLarge AwsCCInstanceType = "R7I_4XLARGE"
+	AwsInstanceTypeM7A_2XLarge AwsCCInstanceType = "M7A_2XLARGE"
+	AwsInstanceTypeM7A_4XLarge AwsCCInstanceType = "M7A_4XLARGE"
+	AwsInstanceTypeM7A_8XLarge AwsCCInstanceType = "M7A_8XLARGE"
+	AwsInstanceTypeR7A_4XLarge AwsCCInstanceType = "R7A_4XLARGE"
 )
 
 // AwsCdmVersion represents the CDM version for AWS Cloud Cluster.

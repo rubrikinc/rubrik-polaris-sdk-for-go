@@ -42,6 +42,12 @@ const (
 	GcpInstanceTypeN2DStandard8  GcpCCInstanceType = "N2D_STANDARD_8"
 	GcpInstanceTypeN2DStandard16 GcpCCInstanceType = "N2D_STANDARD_16"
 	GcpInstanceTypeN2DHighmem16  GcpCCInstanceType = "N2D_HIGHMEM_16"
+	GcpInstanceTypeN4Standard8   GcpCCInstanceType = "N4_STANDARD_8"
+	GcpInstanceTypeN4Standard16  GcpCCInstanceType = "N4_STANDARD_16"
+	GcpInstanceTypeN4Highmem16   GcpCCInstanceType = "N4_HIGHMEM_16"
+	GcpInstanceTypeN4DStandard8  GcpCCInstanceType = "N4D_STANDARD_8"
+	GcpInstanceTypeN4DStandard16 GcpCCInstanceType = "N4D_STANDARD_16"
+	GcpInstanceTypeN4DHighmem16  GcpCCInstanceType = "N4D_HIGHMEM_16"
 )
 
 // GcpCdmVersion represents the CDM version for GCP Cloud Cluster.
