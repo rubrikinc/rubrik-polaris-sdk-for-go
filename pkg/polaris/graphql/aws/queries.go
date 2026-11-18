@@ -43,6 +43,7 @@ var allAwsCloudAccountsWithFeaturesQuery = `query SdkGolangAllAwsCloudAccountsWi
       nativeId
       message
       accountName
+      serviceType
     }
     featureDetails {
       feature
@@ -123,6 +124,7 @@ var awsCloudAccountWithFeaturesQuery = `query SdkGolangAwsCloudAccountWithFeatur
             nativeId
             message
             accountName
+            serviceType
         }
         featureDetails {
             feature

@@ -6,6 +6,7 @@ query RubrikPolarisSDKRequest($cloudAccountId: UUID!, $features: [CloudAccountFe
             nativeId
             message
             accountName
+            serviceType
         }
         featureDetails {
             feature
