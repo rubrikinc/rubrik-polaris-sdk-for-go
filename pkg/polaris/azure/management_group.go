@@ -52,7 +52,7 @@ type ManagementGroup struct {
 // onboarded through a management group.
 type ManagementGroupResourceGroup struct {
 	Name   string
-	Region string
+	Region azure.Region
 	Tags   map[string]string
 }
 
@@ -186,7 +186,7 @@ type ManagementGroupSubscription struct {
 // blocks until RSC has onboarded all the features, and returns an error if the
 // onboarding fails or only partially succeeds.
 func (a API) AddManagementGroupSubscriptions(ctx context.Context, tenantDomain string, appID uuid.UUID, managementGroupID string,
-	regions []string, subscriptions []ManagementGroupSubscription) error {
+	regions []azure.Region, subscriptions []ManagementGroupSubscription) error {
 	a.log.Print(log.Trace)
 
 	if len(subscriptions) == 0 {
@@ -258,7 +258,7 @@ func (a API) AddManagementGroupSubscriptions(ctx context.Context, tenantDomain s
 				resourceGroup = &gqlazure.ResourceGroup{
 					Name:    rg.Name,
 					TagList: gqlazure.TagList{Tags: tags},
-					Region:  azure.RegionFromName(rg.Region).ToCloudAccountRegionEnum(),
+					Region:  rg.Region.ToCloudAccountRegionEnum(),
 				}
 			}
 			inputFeatures = append(inputFeatures, gqlazure.ManagementGroupFeature{
@@ -273,11 +273,7 @@ func (a API) AddManagementGroupSubscriptions(ctx context.Context, tenantDomain s
 		})
 	}
 
-	azureRegions := make([]azure.Region, 0, len(regions))
-	for _, region := range regions {
-		azureRegions = append(azureRegions, azure.RegionFromName(region))
-	}
-	taskChainID, err := gql.AddCloudAccountThroughManagementGroup(ctx, sessionID, tenantDomain, azureRegions,
+	taskChainID, err := gql.AddCloudAccountThroughManagementGroup(ctx, sessionID, tenantDomain, regions,
 		gqlazure.ManagementGroupInput{NativeID: group.NativeID, Name: group.Name}, input)
 	if err != nil {
 		return fmt.Errorf("failed to add subscriptions: %w", err)
