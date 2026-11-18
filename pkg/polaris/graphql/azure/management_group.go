@@ -96,7 +96,11 @@ const (
 // AuthType is the Azure authentication method of a cloud account.
 type AuthType string
 
-const AuthTypeNonOAuth AuthType = "AZURE_AUTH_TYPE_NON_OAUTH"
+const (
+	AuthTypeNonOAuth         AuthType = "AZURE_AUTH_TYPE_NON_OAUTH"
+	AuthTypeOAuthRubrikApp   AuthType = "AZURE_AUTH_TYPE_OAUTH_RUBRIK_APP"
+	AuthTypeOAuthCustomerApp AuthType = "AZURE_AUTH_TYPE_OAUTH_CUSTOMER_APP"
+)
 
 // HierarchySubscription is a subscription found in a management group
 // hierarchy.
@@ -174,6 +178,9 @@ func (a API) InitiateCloudAccountAddWithCustomerApp(ctx context.Context, cloud C
 		return uuid.Nil, graphql.ResponseError(query, fmt.Errorf("invalid session id: %s", err))
 	}
 
+	if sessionID == uuid.Nil {
+		return uuid.Nil, graphql.ResponseError(query, errors.New("empty session id"))
+	}
 	return sessionID, nil
 }
 
@@ -322,7 +329,16 @@ func (a API) AddCloudAccountThroughManagementGroup(ctx context.Context, sessionI
 		return uuid.Nil, graphql.ResponseError(query, fmt.Errorf("invalid task chain id: %s", err))
 	}
 
+	if taskChainID == uuid.Nil {
+		return uuid.Nil, graphql.ResponseError(query, errors.New("empty task chain id"))
+	}
 	return taskChainID, nil
+}
+
+// ManagementGroupDisableJob identifies an accepted deletion job and its target.
+type ManagementGroupDisableJob struct {
+	ID             uuid.UUID `json:"jobId"`
+	CloudAccountID uuid.UUID `json:"rubrikObjectId"`
 }
 
 // StartDisableCloudAccountsJobWithSession starts task chains to disable the
@@ -330,7 +346,7 @@ func (a API) AddCloudAccountThroughManagementGroup(ctx context.Context, sessionI
 // the session from InitiateCloudAccountAddWithCustomerApp. With a session, RSC
 // also removes the Azure role assignments. Returns the RSC task chain IDs, one
 // for each cloud account.
-func (a API) StartDisableCloudAccountsJobWithSession(ctx context.Context, ids []uuid.UUID, feature core.Feature, sessionID uuid.UUID, deleteSnapshots bool) ([]uuid.UUID, error) {
+func (a API) StartDisableCloudAccountsJobWithSession(ctx context.Context, ids []uuid.UUID, feature core.Feature, sessionID uuid.UUID, deleteSnapshots bool) ([]ManagementGroupDisableJob, error) {
 	a.log.Print(log.Trace)
 
 	query := startDisableAzureCloudAccountJobWithSessionQuery
@@ -347,11 +363,10 @@ func (a API) StartDisableCloudAccountsJobWithSession(ctx context.Context, ids []
 	var payload struct {
 		Data struct {
 			Result struct {
-				JobIDs []struct {
-					JobID uuid.UUID `json:"jobId"`
-				} `json:"jobIds"`
+				JobIDs []ManagementGroupDisableJob `json:"jobIds"`
 				Errors []struct {
-					Error string `json:"error"`
+					CloudAccountID uuid.UUID `json:"rubrikObjectId"`
+					Error          string    `json:"error"`
 				} `json:"errors"`
 			} `json:"result"`
 		} `json:"data"`
@@ -359,14 +374,26 @@ func (a API) StartDisableCloudAccountsJobWithSession(ctx context.Context, ids []
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return nil, graphql.UnmarshalError(query, err)
 	}
-	if len(payload.Data.Result.Errors) != 0 {
-		return nil, graphql.ResponseError(query, errors.New(payload.Data.Result.Errors[0].Error))
+	var failures []error
+	seen := make(map[uuid.UUID]bool, len(ids))
+	for _, failure := range payload.Data.Result.Errors {
+		seen[failure.CloudAccountID] = true
+		failures = append(failures, fmt.Errorf("subscription %s: %s", failure.CloudAccountID, failure.Error))
 	}
-
-	jobIDs := make([]uuid.UUID, 0, len(payload.Data.Result.JobIDs))
-	for _, job := range payload.Data.Result.JobIDs {
-		jobIDs = append(jobIDs, job.JobID)
+	jobs := payload.Data.Result.JobIDs
+	for _, job := range jobs {
+		if job.ID == uuid.Nil || job.CloudAccountID == uuid.Nil || seen[job.CloudAccountID] {
+			failures = append(failures, fmt.Errorf("invalid or duplicate job for subscription %s", job.CloudAccountID))
+		}
+		seen[job.CloudAccountID] = true
 	}
-
-	return jobIDs, nil
+	for _, id := range ids {
+		if !seen[id] {
+			failures = append(failures, fmt.Errorf("no job or error returned for subscription %s", id))
+		}
+	}
+	if err := errors.Join(failures...); err != nil {
+		return jobs, graphql.ResponseError(query, err)
+	}
+	return jobs, nil
 }

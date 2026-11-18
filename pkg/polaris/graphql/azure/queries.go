@@ -101,6 +101,10 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
         cloudType
         azureCloudAccountTenantRubrikId
         clientId
+        apps {
+            clientId
+            authType
+        }
         appName
         domainName
         entraIdGroupId
@@ -109,6 +113,9 @@ var allAzureCloudAccountTenantsQuery = `query SdkGolangAllAzureCloudAccountTenan
             id
             name
             nativeId
+            app {
+                authType
+            }
             managementGroup {
                 nativeId
                 name
@@ -549,9 +556,11 @@ var startDisableAzureCloudAccountJobWithSessionQuery = `mutation SdkGolangStartD
   }) {
     jobIds {
       jobId
+      rubrikObjectId
     }
     errors {
       error
+      rubrikObjectId
     }
   }
 }`

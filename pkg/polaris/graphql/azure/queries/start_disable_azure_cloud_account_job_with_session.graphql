@@ -7,9 +7,11 @@ mutation RubrikPolarisSDKRequest($cloudAccountIds: [UUID!]!, $feature: CloudAcco
   }) {
     jobIds {
       jobId
+      rubrikObjectId
     }
     errors {
       error
+      rubrikObjectId
     }
   }
 }

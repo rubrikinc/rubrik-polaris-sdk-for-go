@@ -33,6 +33,7 @@ import (
 type FeatureFlagName string
 
 const (
+	FeatureFlagAzureDisableDeleteCombined        FeatureFlagName = "CNP_AZURE_DISABLE_DELETE_COMBINED"
 	FeatureFlagAWSManualRoleChaining             FeatureFlagName = "REL_ENABLE_AWS_MANUAL_ROLE_CHAINING"
 	FeatureFlagAzureCloudAccountsManagementGroup FeatureFlagName = "AZURE_CLOUDACCOUNTS_MANAGEMENT_GROUP_ENABLED"
 	FeatureFlagCloudClusterES                    FeatureFlagName = "CLOUD_CLUSTER_ES_ENABLED"
