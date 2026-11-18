@@ -33,11 +33,12 @@ import (
 type FeatureFlagName string
 
 const (
-	FeatureFlagAWSManualRoleChaining           FeatureFlagName = "REL_ENABLE_AWS_MANUAL_ROLE_CHAINING"
-	FeatureFlagCloudClusterES                  FeatureFlagName = "CLOUD_CLUSTER_ES_ENABLED"
-	FeatureFlagGCPCloudDiscovery               FeatureFlagName = "REL_ENABLE_CNP_GCP_CLOUD_DISCOVERY_MODE"
-	FeatureFlagMultipleKeyValuePairsInTagRules FeatureFlagName = "CNP_MULTIPLE_KEY_VALUE_PAIRS_IN_TAG_RULES_ENABLED"
-	FeatureFlagPolicyEngineEnabled             FeatureFlagName = "POLICY_ENGINE_ENABLED"
+	FeatureFlagAWSManualRoleChaining             FeatureFlagName = "REL_ENABLE_AWS_MANUAL_ROLE_CHAINING"
+	FeatureFlagAzureCloudAccountsManagementGroup FeatureFlagName = "AZURE_CLOUDACCOUNTS_MANAGEMENT_GROUP_ENABLED"
+	FeatureFlagCloudClusterES                    FeatureFlagName = "CLOUD_CLUSTER_ES_ENABLED"
+	FeatureFlagGCPCloudDiscovery                 FeatureFlagName = "REL_ENABLE_CNP_GCP_CLOUD_DISCOVERY_MODE"
+	FeatureFlagMultipleKeyValuePairsInTagRules   FeatureFlagName = "CNP_MULTIPLE_KEY_VALUE_PAIRS_IN_TAG_RULES_ENABLED"
+	FeatureFlagPolicyEngineEnabled               FeatureFlagName = "POLICY_ENGINE_ENABLED"
 
 	// Deprecated: not used by the Go SDK.
 	FeatureFlagAzureDevOpsProtection FeatureFlagName = "AZURE_DEVOPS_PROTECTION_ENABLED"
