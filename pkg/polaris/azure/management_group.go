@@ -348,7 +348,7 @@ func (a API) WaitForManagementGroupTask(ctx context.Context, taskChainID uuid.UU
 	return nil
 }
 
-// RemoveManagementGroupSubscriptionFeature disables the feature on the
+// RemoveManagementGroupSubscriptionFeature removes the feature on the
 // subscriptions with the specified RSC cloud account IDs, using the customer
 // app so that RSC also removes the Azure role assignments. The app's service
 // principal must still have the Contributor and User Access Administrator
@@ -370,6 +370,27 @@ func (a API) RemoveManagementGroupSubscriptionFeature(ctx context.Context, tenan
 	sessionID, err := gql.InitiateCloudAccountAddWithCustomerApp(ctx, gqlazure.PublicCloud, tenantDomain, appID, "")
 	if err != nil {
 		return fmt.Errorf("failed to initiate session: %w", err)
+	}
+
+	// The archival handlers do not implement BeforeDisable. As in the UI,
+	// use session-based deletion directly so RSC cleans up Azure roles.
+	if feature.Equal(core.FeatureCloudNativeArchival) || feature.Equal(core.FeatureCloudNativeArchivalEncryption) {
+		if err := gql.DeleteCloudAccountsWithSession(ctx, cloudAccountIDs, feature, sessionID); err != nil {
+			return fmt.Errorf("failed to remove %s: %w", feature, err)
+		}
+		accounts, err := a.Subscriptions(ctx, "")
+		if err != nil {
+			return fmt.Errorf("verify deletion of %s: %w", feature, err)
+		}
+		for _, account := range accounts {
+			if !slices.Contains(cloudAccountIDs, account.ID) {
+				continue
+			}
+			if _, exists := account.Feature(feature); exists {
+				return fmt.Errorf("feature %s remains on subscription %s after deletion", feature, account.ID)
+			}
+		}
+		return nil
 	}
 
 	jobs, submitErr := gql.StartDisableCloudAccountsJobWithSession(ctx, cloudAccountIDs, feature, sessionID, deleteSnapshots)

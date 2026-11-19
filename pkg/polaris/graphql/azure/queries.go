@@ -177,12 +177,13 @@ var allAzureLatestPermissionsByPermissionsGroupQuery = `query SdkGolangAllAzureL
 }`
 
 // azureCloudAccountAddWithCustomerAppInitiate GraphQL query
-var azureCloudAccountAddWithCustomerAppInitiateQuery = `mutation SdkGolangAzureCloudAccountAddWithCustomerAppInitiate($cloudType: AzureCloudType!, $tenantDomainName: String!, $appId: String, $appSecretKey: String) {
+var azureCloudAccountAddWithCustomerAppInitiateQuery = `mutation SdkGolangAzureCloudAccountAddWithCustomerAppInitiate($cloudType: AzureCloudType!, $tenantDomainName: String!, $appId: String, $appSecretKey: String, $redirectUrl: String!) {
     result: azureCloudAccountAddWithCustomerAppInitiate(input: {
         cloudType:        $cloudType,
         tenantDomainName: $tenantDomainName,
         appId:            $appId,
-        appSecretKey:     $appSecretKey
+        appSecretKey:     $appSecretKey,
+        redirectUrl:      $redirectUrl
     }) {
         sessionId
         success
@@ -243,7 +244,6 @@ var azureListManagementGroupHierarchyQuery = `query SdkGolangAzureListManagement
                 ... on AzureManagementGroup {
                     nativeId
                     name
-                    customerManagementGroupId
                     isAuthorized
                 }
                 ... on CloudAccountsAzureSubscription {
@@ -266,7 +266,6 @@ var azureListManagementGroupsQuery = `query SdkGolangAzureListManagementGroups($
         managementGroups {
             nativeId
             name
-            customerManagementGroupId
             isAuthorized
         }
     }
@@ -450,6 +449,21 @@ var clearCloudNativeSqlServerBackupCredentialsQuery = `mutation SdkGolangClearCl
     }) {
         successObjectIds
         failedObjectIds
+    }
+}`
+
+// deleteAzureCloudAccount GraphQL query
+var deleteAzureCloudAccountQuery = `mutation SdkGolangDeleteAzureCloudAccount($subscriptionIds: [UUID!]!, $features: [CloudAccountFeature!]!, $sessionId: String!) {
+    result: deleteAzureCloudAccount(input: {
+        azureSubscriptionRubrikIds: $subscriptionIds,
+        features:                   $features,
+        sessionId:                  $sessionId,
+    }) {
+        status {
+            azureSubscriptionNativeId
+            isSuccess
+            error
+        }
     }
 }`
 

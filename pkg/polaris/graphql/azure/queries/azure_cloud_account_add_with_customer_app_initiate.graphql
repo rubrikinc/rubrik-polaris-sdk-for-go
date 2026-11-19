@@ -1,9 +1,10 @@
-mutation RubrikPolarisSDKRequest($cloudType: AzureCloudType!, $tenantDomainName: String!, $appId: String, $appSecretKey: String) {
+mutation RubrikPolarisSDKRequest($cloudType: AzureCloudType!, $tenantDomainName: String!, $appId: String, $appSecretKey: String, $redirectUrl: String!) {
     result: azureCloudAccountAddWithCustomerAppInitiate(input: {
         cloudType:        $cloudType,
         tenantDomainName: $tenantDomainName,
         appId:            $appId,
-        appSecretKey:     $appSecretKey
+        appSecretKey:     $appSecretKey,
+        redirectUrl:      $redirectUrl
     }) {
         sessionId
         success

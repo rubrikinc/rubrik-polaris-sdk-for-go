@@ -28,7 +28,6 @@ query RubrikPolarisSDKRequest(
                 ... on AzureManagementGroup {
                     nativeId
                     name
-                    customerManagementGroupId
                     isAuthorized
                 }
                 ... on CloudAccountsAzureSubscription {

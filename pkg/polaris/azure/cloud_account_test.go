@@ -1124,20 +1124,26 @@ func TestSupportedFeaturesIncludesUEMKeyManagement(t *testing.T) {
 	}
 }
 
-// TestToSubscriptionsManagementGroup verifies that the management group of a
-// subscription is mapped, and that it's nil for subscriptions not onboarded
-// through a management group.
+// TestToSubscriptionsManagementGroup verifies group membership is mapped and
+// that a backend-created Azure Cost Reporting row is not read as a managed
+// feature, including when it appears before the requested protection feature.
 func TestToSubscriptionsManagementGroup(t *testing.T) {
 	tenantID := uuid.New()
 	mgSub, plainSub := uuid.New(), uuid.New()
+	mgNativeID := uuid.New()
 	customerID := uuid.New()
+	mg := &azure.ManagementGroup{NativeID: "mg", Name: "MG", CustomerManagementGroupID: customerID}
 	rawTenants := []azure.CloudAccountTenant{{
 		ID:         tenantID,
 		DomainName: "example.onmicrosoft.com",
 		Accounts: []azure.CloudAccount{{
-			ID: mgSub, NativeID: uuid.New(), Name: "a",
-			ManagementGroup: &azure.ManagementGroup{NativeID: "mg", Name: "MG", CustomerManagementGroupID: customerID},
-			Feature:         azure.Feature{Feature: "CLOUD_NATIVE_PROTECTION"},
+			ID: mgSub, NativeID: mgNativeID, Name: "a",
+			ManagementGroup: mg,
+			Feature:         azure.Feature{Feature: core.CloudCostReport, Status: core.StatusMissingPermissions},
+		}, {
+			ID: mgSub, NativeID: mgNativeID, Name: "a",
+			ManagementGroup: mg,
+			Feature:         azure.Feature{Feature: core.CloudNativeProtection, Status: core.StatusConnected},
 		}, {
 			ID: plainSub, NativeID: uuid.New(), Name: "b",
 			Feature: azure.Feature{Feature: "CLOUD_NATIVE_PROTECTION"},
@@ -1154,5 +1160,8 @@ func TestToSubscriptionsManagementGroup(t *testing.T) {
 	}
 	if subs[1].ManagementGroup != nil {
 		t.Errorf("invalid management group: got %+v, want nil", subs[1].ManagementGroup)
+	}
+	if len(subs[0].Features) != 1 || subs[0].Features[0].Name != core.CloudNativeProtection || subs[0].Features[0].Status != core.StatusConnected {
+		t.Errorf("got features %+v, want only connected Cloud Native Protection", subs[0].Features)
 	}
 }

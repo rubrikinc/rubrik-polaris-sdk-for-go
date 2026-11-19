@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
@@ -38,7 +39,7 @@ import (
 type ManagementGroup struct {
 	NativeID                  string    `json:"nativeId"`
 	Name                      string    `json:"name"`
-	CustomerManagementGroupID uuid.UUID `json:"customerManagementGroupId"`
+	CustomerManagementGroupID uuid.UUID `json:"customerManagementGroupId"` // Only populated for onboarded groups.
 	IsAuthorized              bool      `json:"isAuthorized"`
 }
 
@@ -148,13 +149,21 @@ type ManagementGroupHierarchyRequest struct {
 func (a API) InitiateCloudAccountAddWithCustomerApp(ctx context.Context, cloud Cloud, tenantDomain string, appID uuid.UUID, appSecret secret.String) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
+	// The shared session validator requires the UI callback URL even
+	// when customer app authentication does not open a browser.
+	endpoint, err := url.Parse(a.GQL.Endpoint())
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("invalid RSC GraphQL URL: %w", err)
+	}
+	redirectURL := endpoint.ResolveReference(&url.URL{Path: "/setup_azure"}).String()
 	query := azureCloudAccountAddWithCustomerAppInitiateQuery
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
 		Cloud        Cloud         `json:"cloudType"`
 		TenantDomain string        `json:"tenantDomainName"`
 		AppID        uuid.UUID     `json:"appId"`
 		AppSecret    secret.String `json:"appSecretKey,omitempty"`
-	}{Cloud: cloud, TenantDomain: tenantDomain, AppID: appID, AppSecret: appSecret})
+		RedirectURL  string        `json:"redirectUrl"`
+	}{Cloud: cloud, TenantDomain: tenantDomain, AppID: appID, AppSecret: appSecret, RedirectURL: redirectURL})
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
@@ -189,7 +198,7 @@ func (a API) ListManagementGroups(ctx context.Context, cloud Cloud, tenantDomain
 	a.log.Print(log.Trace)
 
 	query := azureListManagementGroupsQuery
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
 		Cloud        Cloud     `json:"cloudType"`
 		TenantDomain string    `json:"tenantDomainName"`
 		SessionID    uuid.UUID `json:"sessionId"`
@@ -218,7 +227,7 @@ func (a API) ListManagementGroupHierarchy(ctx context.Context, req ManagementGro
 	a.log.Print(log.Trace)
 
 	query := azureListManagementGroupHierarchyQuery
-	buf, err := a.GQL.Request(ctx, query, req)
+	buf, err := a.GQL.RequestWithoutLogging(ctx, query, req)
 	if err != nil {
 		return ManagementGroupHierarchy{}, graphql.RequestError(query, err)
 	}
@@ -230,11 +239,10 @@ func (a API) ListManagementGroupHierarchy(ctx context.Context, req ManagementGro
 					IsEligible          bool                `json:"isEligible"`
 					IneligibilityReason IneligibilityReason `json:"ineligibilityReason"`
 					Entity              struct {
-						Typename     string    `json:"__typename"`
-						NativeID     string    `json:"nativeId"`
-						Name         string    `json:"name"`
-						IsAuthorized bool      `json:"isAuthorized"`
-						CustomerID   uuid.UUID `json:"customerManagementGroupId"`
+						Typename     string `json:"__typename"`
+						NativeID     string `json:"nativeId"`
+						Name         string `json:"name"`
+						IsAuthorized bool   `json:"isAuthorized"`
 					} `json:"entity"`
 				} `json:"entities"`
 			} `json:"result"`
@@ -250,10 +258,9 @@ func (a API) ListManagementGroupHierarchy(ctx context.Context, req ManagementGro
 		case "AzureManagementGroup":
 			hierarchy.ManagementGroups = append(hierarchy.ManagementGroups, HierarchyManagementGroup{
 				ManagementGroup: ManagementGroup{
-					NativeID:                  e.Entity.NativeID,
-					Name:                      e.Entity.Name,
-					CustomerManagementGroupID: e.Entity.CustomerID,
-					IsAuthorized:              e.Entity.IsAuthorized,
+					NativeID:     e.Entity.NativeID,
+					Name:         e.Entity.Name,
+					IsAuthorized: e.Entity.IsAuthorized,
 				},
 				IsEligible:          e.IsEligible,
 				IneligibilityReason: e.IneligibilityReason,
@@ -288,7 +295,7 @@ func (a API) AddCloudAccountThroughManagementGroup(ctx context.Context, sessionI
 	a.log.Print(log.Trace)
 
 	query := addAzureCloudAccountQuery
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
 		SessionID       uuid.UUID                      `json:"sessionId"`
 		TenantDomain    string                         `json:"tenantDomainName"`
 		Regions         []azure.CloudAccountRegionEnum `json:"regions"`
@@ -335,6 +342,51 @@ func (a API) AddCloudAccountThroughManagementGroup(ctx context.Context, sessionI
 	return taskChainID, nil
 }
 
+// DeleteCloudAccountsWithSession removes the specified feature and its Azure
+// role assignments using the customer app session. Use this for features that
+// do not support the asynchronous disable step.
+func (a API) DeleteCloudAccountsWithSession(ctx context.Context, ids []uuid.UUID, feature core.Feature, sessionID uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	query := deleteAzureCloudAccountQuery
+	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
+		IDs       []uuid.UUID `json:"subscriptionIds"`
+		Features  []string    `json:"features"`
+		SessionID uuid.UUID   `json:"sessionId"`
+	}{IDs: ids, Features: []string{feature.Name}, SessionID: sessionID})
+	if err != nil {
+		return graphql.RequestError(query, err)
+	}
+
+	var payload struct {
+		Data struct {
+			Result struct {
+				Status []struct {
+					NativeID string `json:"azureSubscriptionNativeId"`
+					Success  bool   `json:"isSuccess"`
+					Error    string `json:"error"`
+				} `json:"status"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(buf, &payload); err != nil {
+		return graphql.UnmarshalError(query, err)
+	}
+	var failures []error
+	for _, status := range payload.Data.Result.Status {
+		if !status.Success || status.Error != "" {
+			failures = append(failures, fmt.Errorf("delete failed for Azure subscription %s: %s", status.NativeID, status.Error))
+		}
+	}
+	if len(payload.Data.Result.Status) != len(ids) {
+		failures = append(failures, fmt.Errorf("expected %d deletion results, got %d", len(ids), len(payload.Data.Result.Status)))
+	}
+	if err := errors.Join(failures...); err != nil {
+		return graphql.ResponseError(query, err)
+	}
+	return nil
+}
+
 // ManagementGroupDisableJob identifies an accepted deletion job and its target.
 type ManagementGroupDisableJob struct {
 	ID             uuid.UUID `json:"jobId"`
@@ -350,7 +402,7 @@ func (a API) StartDisableCloudAccountsJobWithSession(ctx context.Context, ids []
 	a.log.Print(log.Trace)
 
 	query := startDisableAzureCloudAccountJobWithSessionQuery
-	buf, err := a.GQL.Request(ctx, query, struct {
+	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
 		IDs             []uuid.UUID `json:"cloudAccountIds"`
 		Feature         string      `json:"feature"`
 		SessionID       uuid.UUID   `json:"sessionId"`

@@ -30,7 +30,6 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 )
 
 // TestListManagementGroupHierarchy verifies that the management groups and
@@ -41,7 +40,6 @@ func TestListManagementGroupHierarchy(t *testing.T) {
 	defer assert.Context(t, ctx, cancel)
 
 	subID := uuid.New()
-	mgID := uuid.New()
 	var vars map[string]any
 	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
 		var body struct {
@@ -59,7 +57,7 @@ func TestListManagementGroupHierarchy(t *testing.T) {
 				"ineligibilityReason": string(IneligibleUnspecified),
 				"entity": map[string]any{
 					"__typename": "AzureManagementGroup", "nativeId": "child", "name": "Child",
-					"customerManagementGroupId": mgID, "isAuthorized": true,
+					"isAuthorized": true,
 				},
 			},
 			map[string]any{
@@ -93,68 +91,12 @@ func TestListManagementGroupHierarchy(t *testing.T) {
 		t.Errorf("invalid request variables: %v", vars)
 	}
 	if len(hierarchy.ManagementGroups) != 1 || hierarchy.ManagementGroups[0].NativeID != "child" ||
-		hierarchy.ManagementGroups[0].CustomerManagementGroupID != mgID {
+		hierarchy.ManagementGroups[0].CustomerManagementGroupID != uuid.Nil {
 		t.Errorf("invalid management groups: %+v", hierarchy.ManagementGroups)
 	}
 	if len(hierarchy.Subscriptions) != 1 || hierarchy.Subscriptions[0].NativeID != subID ||
 		hierarchy.Subscriptions[0].IsEligible ||
 		hierarchy.Subscriptions[0].IneligibilityReason != IneligibleAlreadyOnboarded {
 		t.Errorf("invalid subscriptions: %+v", hierarchy.Subscriptions)
-	}
-}
-
-// TestAddCloudAccountThroughManagementGroup verifies that the management group
-// is sent to RSC and that only the task chain id is needed in the response,
-// since RSC doesn't return a status for management group onboarding.
-func TestAddCloudAccountThroughManagementGroup(t *testing.T) {
-	ctx, cancel := context.WithCancelCause(context.Background())
-	defer assert.Context(t, ctx, cancel)
-
-	taskChainID := uuid.New()
-	var vars struct {
-		ManagementGroup ManagementGroupInput          `json:"managementGroup"`
-		Subscriptions   []ManagementGroupSubscription `json:"subscriptions"`
-		Regions         []string                      `json:"regions"`
-	}
-	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, req *http.Request) {
-		var body struct {
-			Variables json.RawMessage `json:"variables"`
-		}
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			cancel(err)
-			return
-		}
-		if err := json.Unmarshal(body.Variables, &vars); err != nil {
-			cancel(err)
-			return
-		}
-
-		response := map[string]any{"data": map[string]any{"result": map[string]any{
-			"taskchainUuid": taskChainID, "tenantId": "", "status": []any{},
-		}}}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			cancel(err)
-		}
-	}))
-	defer srv.Close()
-
-	subID := uuid.New()
-	got, err := Wrap(graphql.NewTestClient(srv)).AddCloudAccountThroughManagementGroup(ctx, uuid.New(),
-		"example.onmicrosoft.com", []azure.Region{azure.RegionFromName("eastus2")},
-		ManagementGroupInput{NativeID: "mg", Name: "MG"}, []ManagementGroupSubscription{{
-			Subscription: SubscriptionInput{NativeID: subID, Name: "Sub"},
-			Features:     []ManagementGroupFeature{{FeatureType: "CLOUD_NATIVE_PROTECTION", PermissionGroups: []string{"BASIC"}}},
-		}})
-	if err != nil {
-		t.Fatalf("AddCloudAccountThroughManagementGroup failed: %v", err)
-	}
-
-	if got != taskChainID {
-		t.Errorf("got task chain %s, want %s", got, taskChainID)
-	}
-	if vars.ManagementGroup.NativeID != "mg" || len(vars.Subscriptions) != 1 ||
-		vars.Subscriptions[0].Subscription.NativeID != subID ||
-		len(vars.Regions) != 1 || vars.Regions[0] != "EASTUS2" {
-		t.Errorf("invalid request variables: %+v", vars)
 	}
 }

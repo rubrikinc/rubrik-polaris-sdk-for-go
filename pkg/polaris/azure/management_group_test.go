@@ -27,7 +27,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/google/uuid"
@@ -41,7 +43,8 @@ func TestRemoveManagementGroupSubscriptionFeatureWaitsForDeletion(t *testing.T) 
 	var waited bool
 	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
-			Query string `json:"query"`
+			Query     string         `json:"query"`
+			Variables map[string]any `json:"variables"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			t.Error(err)
@@ -50,6 +53,9 @@ func TestRemoveManagementGroupSubscriptionFeatureWaitsForDeletion(t *testing.T) 
 		}
 		switch {
 		case strings.Contains(request.Query, "azureCloudAccountAddWithCustomerAppInitiate"):
+			if got, want := request.Variables["redirectUrl"], "http://"+r.Host+"/setup_azure"; got != want {
+				t.Errorf("redirectUrl = %v, want %s", got, want)
+			}
 			fmt.Fprintf(w, `{"data":{"result":{"success":true,"sessionId":%q}}}`, sessionID)
 		case strings.Contains(request.Query, "startDisableAzureCloudAccountJob"):
 			fmt.Fprintf(w, `{"data":{"result":{"jobIds":[{"jobId":%q,"rubrikObjectId":%q}],"errors":[{"error":"rejected","rubrikObjectId":%q}]}}}`, jobID, target, rejected)
@@ -72,5 +78,56 @@ func TestRemoveManagementGroupSubscriptionFeatureWaitsForDeletion(t *testing.T) 
 	}
 	if err == nil || !strings.Contains(err.Error(), "rejected") || !strings.Contains(err.Error(), "remains on subscription") {
 		t.Fatalf("expected both the submission error and the incomplete deletion, got %v", err)
+	}
+}
+
+// Archival features must use the synchronous, session-based delete mutation
+// because they do not support the disable step or produce its job events.
+func TestRemoveManagementGroupArchivalFeatureUsesSessionDelete(t *testing.T) {
+	for _, feature := range []core.Feature{core.FeatureCloudNativeArchival, core.FeatureCloudNativeArchivalEncryption} {
+		t.Run(feature.Name, func(t *testing.T) {
+			sessionID, target := uuid.New(), uuid.New()
+			var deleted atomic.Bool
+			srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, r *http.Request) {
+				var request struct {
+					Query     string `json:"query"`
+					Variables struct {
+						SessionID       uuid.UUID   `json:"sessionId"`
+						SubscriptionIDs []uuid.UUID `json:"subscriptionIds"`
+						Features        []string    `json:"features"`
+					} `json:"variables"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+					t.Error(err)
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				switch {
+				case strings.Contains(request.Query, "azureCloudAccountAddWithCustomerAppInitiate"):
+					fmt.Fprintf(w, `{"data":{"result":{"success":true,"sessionId":%q}}}`, sessionID)
+				case strings.Contains(request.Query, "deleteAzureCloudAccount(input:"):
+					deleted.Store(true)
+					vars := request.Variables
+					if vars.SessionID != sessionID || !slices.Equal(vars.SubscriptionIDs, []uuid.UUID{target}) || !slices.Equal(vars.Features, []string{feature.Name}) {
+						t.Errorf("unexpected delete variables: %+v", vars)
+					}
+					fmt.Fprintf(w, `{"data":{"result":{"status":[{"azureSubscriptionNativeId":%q,"isSuccess":true,"error":""}]}}}`, uuid.New())
+				case strings.Contains(request.Query, "allAzureCloudAccountTenants"):
+					fmt.Fprint(w, `{"data":{"result":[]}}`)
+				default:
+					t.Errorf("unexpected request (must not disable or poll a job): %s", request.Query)
+					w.WriteHeader(http.StatusBadRequest)
+				}
+			}))
+			defer srv.Close()
+
+			if err := WrapGQL(graphql.NewTestClient(srv)).RemoveManagementGroupSubscriptionFeature(t.Context(), "example.onmicrosoft.com", uuid.New(),
+				[]uuid.UUID{target}, feature, false); err != nil {
+				t.Fatal(err)
+			}
+			if !deleted.Load() {
+				t.Fatal("did not delete the archival feature")
+			}
+		})
 	}
 }

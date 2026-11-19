@@ -7,7 +7,6 @@ query RubrikPolarisSDKRequest($cloudType: AzureCloudType!, $tenantDomainName: St
         managementGroups {
             nativeId
             name
-            customerManagementGroupId
             isAuthorized
         }
     }
