@@ -157,13 +157,23 @@ func (a API) InitiateCloudAccountAddWithCustomerApp(ctx context.Context, cloud C
 	}
 	redirectURL := endpoint.ResolveReference(&url.URL{Path: "/setup_azure"}).String()
 	query := azureCloudAccountAddWithCustomerAppInitiateQuery
-	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
+	vars := struct {
 		Cloud        Cloud         `json:"cloudType"`
 		TenantDomain string        `json:"tenantDomainName"`
 		AppID        uuid.UUID     `json:"appId"`
 		AppSecret    secret.String `json:"appSecretKey,omitempty"`
 		RedirectURL  string        `json:"redirectUrl"`
-	}{Cloud: cloud, TenantDomain: tenantDomain, AppID: appID, AppSecret: appSecret, RedirectURL: redirectURL})
+	}{Cloud: cloud, TenantDomain: tenantDomain, AppID: appID, AppSecret: appSecret, RedirectURL: redirectURL}
+
+	// Request logs the raw response data. Decode it before logging so the
+	// returned session ID can be redacted along with the request secret.
+	requestLog, err := json.MarshalIndent(secret.Redact(vars), "", "    ")
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to marshal query variables: %w", err)
+	}
+	a.log.Printf(log.Debug, "%s request:\n%s\n%s", graphql.QueryName(query), query, requestLog)
+
+	buf, err := a.GQL.RequestWithoutLogging(ctx, query, vars)
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
 	}
@@ -171,20 +181,23 @@ func (a API) InitiateCloudAccountAddWithCustomerApp(ctx context.Context, cloud C
 	var payload struct {
 		Data struct {
 			Result struct {
-				SessionID string `json:"sessionId"`
-				Success   bool   `json:"success"`
+				SessionID secret.String `json:"sessionId"`
+				Success   bool          `json:"success"`
 			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return uuid.Nil, graphql.UnmarshalError(query, err)
 	}
+	if responseLog, err := json.MarshalIndent(secret.Redact(payload), "", "    "); err == nil {
+		a.log.Printf(log.Debug, "%s response:\n%s", graphql.QueryName(query), responseLog)
+	}
 	if !payload.Data.Result.Success {
 		return uuid.Nil, graphql.ResponseError(query, errors.New("initiate add cloud account failed"))
 	}
-	sessionID, err := uuid.Parse(payload.Data.Result.SessionID)
+	sessionID, err := uuid.Parse(string(payload.Data.Result.SessionID))
 	if err != nil {
-		return uuid.Nil, graphql.ResponseError(query, fmt.Errorf("invalid session id: %s", err))
+		return uuid.Nil, graphql.ResponseError(query, errors.New("invalid session id"))
 	}
 
 	if sessionID == uuid.Nil {
@@ -198,11 +211,11 @@ func (a API) ListManagementGroups(ctx context.Context, cloud Cloud, tenantDomain
 	a.log.Print(log.Trace)
 
 	query := azureListManagementGroupsQuery
-	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
-		Cloud        Cloud     `json:"cloudType"`
-		TenantDomain string    `json:"tenantDomainName"`
-		SessionID    uuid.UUID `json:"sessionId"`
-	}{Cloud: cloud, TenantDomain: tenantDomain, SessionID: sessionID})
+	buf, err := a.GQL.Request(ctx, query, struct {
+		Cloud        Cloud         `json:"cloudType"`
+		TenantDomain string        `json:"tenantDomainName"`
+		SessionID    secret.String `json:"sessionId"`
+	}{Cloud: cloud, TenantDomain: tenantDomain, SessionID: secret.String(sessionID.String())})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
@@ -227,7 +240,10 @@ func (a API) ListManagementGroupHierarchy(ctx context.Context, req ManagementGro
 	a.log.Print(log.Trace)
 
 	query := azureListManagementGroupHierarchyQuery
-	buf, err := a.GQL.RequestWithoutLogging(ctx, query, req)
+	buf, err := a.GQL.Request(ctx, query, struct {
+		ManagementGroupHierarchyRequest
+		SessionID secret.String `json:"sessionId"`
+	}{ManagementGroupHierarchyRequest: req, SessionID: secret.String(req.SessionID.String())})
 	if err != nil {
 		return ManagementGroupHierarchy{}, graphql.RequestError(query, err)
 	}
@@ -295,14 +311,14 @@ func (a API) AddCloudAccountThroughManagementGroup(ctx context.Context, sessionI
 	a.log.Print(log.Trace)
 
 	query := addAzureCloudAccountQuery
-	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
-		SessionID       uuid.UUID                      `json:"sessionId"`
+	buf, err := a.GQL.Request(ctx, query, struct {
+		SessionID       secret.String                  `json:"sessionId"`
 		TenantDomain    string                         `json:"tenantDomainName"`
 		Regions         []azure.CloudAccountRegionEnum `json:"regions"`
 		ManagementGroup ManagementGroupInput           `json:"managementGroup"`
 		Subscriptions   []ManagementGroupSubscription  `json:"subscriptions"`
 	}{
-		SessionID:       sessionID,
+		SessionID:       secret.String(sessionID.String()),
 		TenantDomain:    tenantDomain,
 		Regions:         RegionsToCloudAccountRegionEnum(regions),
 		ManagementGroup: managementGroup,
@@ -349,11 +365,11 @@ func (a API) DeleteCloudAccountsWithSession(ctx context.Context, ids []uuid.UUID
 	a.log.Print(log.Trace)
 
 	query := deleteAzureCloudAccountQuery
-	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
-		IDs       []uuid.UUID `json:"subscriptionIds"`
-		Features  []string    `json:"features"`
-		SessionID uuid.UUID   `json:"sessionId"`
-	}{IDs: ids, Features: []string{feature.Name}, SessionID: sessionID})
+	buf, err := a.GQL.Request(ctx, query, struct {
+		IDs       []uuid.UUID   `json:"subscriptionIds"`
+		Features  []string      `json:"features"`
+		SessionID secret.String `json:"sessionId"`
+	}{IDs: ids, Features: []string{feature.Name}, SessionID: secret.String(sessionID.String())})
 	if err != nil {
 		return graphql.RequestError(query, err)
 	}
@@ -402,12 +418,12 @@ func (a API) StartDisableCloudAccountsJobWithSession(ctx context.Context, ids []
 	a.log.Print(log.Trace)
 
 	query := startDisableAzureCloudAccountJobWithSessionQuery
-	buf, err := a.GQL.RequestWithoutLogging(ctx, query, struct {
-		IDs             []uuid.UUID `json:"cloudAccountIds"`
-		Feature         string      `json:"feature"`
-		SessionID       uuid.UUID   `json:"sessionId"`
-		DeleteSnapshots bool        `json:"deleteSnapshots"`
-	}{IDs: ids, Feature: feature.Name, SessionID: sessionID, DeleteSnapshots: deleteSnapshots})
+	buf, err := a.GQL.Request(ctx, query, struct {
+		IDs             []uuid.UUID   `json:"cloudAccountIds"`
+		Feature         string        `json:"feature"`
+		SessionID       secret.String `json:"sessionId"`
+		DeleteSnapshots bool          `json:"deleteSnapshots"`
+	}{IDs: ids, Feature: feature.Name, SessionID: secret.String(sessionID.String()), DeleteSnapshots: deleteSnapshots})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
