@@ -1123,3 +1123,45 @@ func TestSupportedFeaturesIncludesUEMKeyManagement(t *testing.T) {
 		t.Error("CLOUD_NATIVE_UEM_KEY_MANAGEMENT missing from SupportedFeatures")
 	}
 }
+
+// TestToSubscriptionsManagementGroup verifies group membership is mapped and
+// that a backend-created Azure Cost Reporting row is not read as a managed
+// feature, including when it appears before the requested protection feature.
+func TestToSubscriptionsManagementGroup(t *testing.T) {
+	tenantID := uuid.New()
+	mgSub, plainSub := uuid.New(), uuid.New()
+	mgNativeID := uuid.New()
+	customerID := uuid.New()
+	mg := &azure.ManagementGroup{NativeID: "mg", Name: "MG", CustomerManagementGroupID: customerID}
+	rawTenants := []azure.CloudAccountTenant{{
+		ID:         tenantID,
+		DomainName: "example.onmicrosoft.com",
+		Accounts: []azure.CloudAccount{{
+			ID: mgSub, NativeID: mgNativeID, Name: "a",
+			ManagementGroup: mg,
+			Feature:         azure.Feature{Feature: core.CloudCostReport, Status: core.StatusMissingPermissions},
+		}, {
+			ID: mgSub, NativeID: mgNativeID, Name: "a",
+			ManagementGroup: mg,
+			Feature:         azure.Feature{Feature: core.CloudNativeProtection, Status: core.StatusConnected},
+		}, {
+			ID: plainSub, NativeID: uuid.New(), Name: "b",
+			Feature: azure.Feature{Feature: "CLOUD_NATIVE_PROTECTION"},
+		}},
+	}}
+
+	subs := toSubscriptions(rawTenants)
+	if len(subs) != 2 {
+		t.Fatalf("invalid number of subscriptions: %d", len(subs))
+	}
+	want := &ManagementGroup{NativeID: "mg", Name: "MG", CustomerID: customerID}
+	if !reflect.DeepEqual(subs[0].ManagementGroup, want) {
+		t.Errorf("invalid management group: got %+v, want %+v", subs[0].ManagementGroup, want)
+	}
+	if subs[1].ManagementGroup != nil {
+		t.Errorf("invalid management group: got %+v, want nil", subs[1].ManagementGroup)
+	}
+	if len(subs[0].Features) != 1 || subs[0].Features[0].Name != core.CloudNativeProtection || subs[0].Features[0].Status != core.StatusConnected {
+		t.Errorf("got features %+v, want only connected Cloud Native Protection", subs[0].Features)
+	}
+}

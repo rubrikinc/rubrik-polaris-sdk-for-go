@@ -1,0 +1,17 @@
+mutation RubrikPolarisSDKRequest($cloudAccountIds: [UUID!]!, $feature: CloudAccountFeature!, $sessionId: UUID!, $deleteSnapshots: Boolean) {
+  result: startDisableAzureCloudAccountJob(input: {
+    feature:         $feature,
+    cloudAccountIds: $cloudAccountIds,
+    sessionId:       $sessionId,
+    deleteSnapshots: $deleteSnapshots
+  }) {
+    jobIds {
+      jobId
+      rubrikObjectId
+    }
+    errors {
+      error
+      rubrikObjectId
+    }
+  }
+}

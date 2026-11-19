@@ -60,6 +60,11 @@ type CloudAccount struct {
 	// share the same value.
 	EntraGroupID string
 	Features     []Feature
+	// ManagementGroup is the management group the subscription was onboarded
+	// through, or nil if it was not onboarded through a management group.
+	ManagementGroup *ManagementGroup
+	// AuthType identifies the subscription app's authentication method when reported by RSC.
+	AuthType gqlazure.AuthType
 }
 
 // Feature returns the specified feature from the CloudAccount's features.
@@ -672,7 +677,18 @@ func toSubscriptions(rawTenants []gqlazure.CloudAccountTenant) []CloudAccount {
 					TenantDomain: rawTenant.DomainName,
 					EntraGroupID: rawTenant.EntraGroupID,
 				}
+				if mg := rawAccount.ManagementGroup; mg != nil {
+					tenant.accounts[rawAccount.ID].ManagementGroup = &ManagementGroup{
+						NativeID:     mg.NativeID,
+						Name:         mg.Name,
+						CustomerID:   mg.CustomerManagementGroupID,
+						IsAuthorized: mg.IsAuthorized,
+					}
+				}
 				account = tenant.accounts[rawAccount.ID]
+			}
+			if rawAccount.App != nil {
+				account.AuthType = rawAccount.App.AuthType
 			}
 			if !slices.Contains(supportedFeatures, rawAccount.Feature.Feature) {
 				continue

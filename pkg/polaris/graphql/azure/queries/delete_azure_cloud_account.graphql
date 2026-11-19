@@ -1,0 +1,13 @@
+mutation RubrikPolarisSDKRequest($subscriptionIds: [UUID!]!, $features: [CloudAccountFeature!]!, $sessionId: String!) {
+    result: deleteAzureCloudAccount(input: {
+        azureSubscriptionRubrikIds: $subscriptionIds,
+        features:                   $features,
+        sessionId:                  $sessionId,
+    }) {
+        status {
+            azureSubscriptionNativeId
+            isSuccess
+            error
+        }
+    }
+}

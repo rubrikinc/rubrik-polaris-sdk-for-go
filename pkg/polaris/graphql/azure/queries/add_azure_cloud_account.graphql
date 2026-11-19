@@ -1,0 +1,23 @@
+mutation RubrikPolarisSDKRequest(
+    $sessionId:        String!,
+    $tenantDomainName: String!,
+    $regions:          [AzureCloudAccountRegion!]!,
+    $managementGroup:  AzureManagementGroupInput,
+    $subscriptions:    [AddAzureCloudAccountSubscriptionInput!]!
+) {
+    result: addAzureCloudAccount(input: {
+        sessionId:        $sessionId,
+        tenantDomainName: $tenantDomainName,
+        regions:          $regions,
+        managementGroup:  $managementGroup,
+        subscriptions:    $subscriptions
+    }) {
+        tenantId
+        taskchainUuid
+        status {
+            azureSubscriptionNativeId
+            azureSubscriptionRubrikId
+            error
+        }
+    }
+}
