@@ -658,6 +658,7 @@ var regionInfoMap = map[Region]struct {
 	RegionAU: {
 		name:            "au",
 		displayName:     "All regions in Australia",
+		regionEnum:      "AU",
 		kmsLocationEnum: "AU",
 	},
 	RegionAustraliaSouthEast1: {
@@ -679,11 +680,13 @@ var regionInfoMap = map[Region]struct {
 	RegionCA: {
 		name:            "ca",
 		displayName:     "All regions in Canada",
+		regionEnum:      "CA",
 		kmsLocationEnum: "CA",
 	},
 	RegionDE: {
 		name:            "de",
 		displayName:     "All regions in Germany",
+		regionEnum:      "DE",
 		kmsLocationEnum: "DE",
 	},
 	RegionEU: {
@@ -841,11 +844,13 @@ var regionInfoMap = map[Region]struct {
 	RegionIN: {
 		name:            "in",
 		displayName:     "All regions in India",
+		regionEnum:      "IN",
 		kmsLocationEnum: "IN",
 	},
 	RegionIT: {
 		name:            "it",
 		displayName:     "All regions in Italy",
+		regionEnum:      "IT",
 		kmsLocationEnum: "IT",
 	},
 	RegionJP: {
