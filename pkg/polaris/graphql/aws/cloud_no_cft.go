@@ -43,7 +43,7 @@ type PermissionPolicyArtifact struct {
 }
 
 // AllPermissionPolicies returns all permission policies for the specified cloud
-// and feature set. The policies are rendered for a single-role account, use
+// and feature set. The policies are rendered for RSC's default role mode, use
 // AllPermissionPoliciesWithParams with a native ID to render them for an
 // onboarded account.
 func (a API) AllPermissionPolicies(ctx context.Context, cloud Cloud, features []core.Feature, ec2RecoveryRolePath string) ([]PermissionPolicyArtifact, error) {
@@ -61,7 +61,7 @@ func (a API) AllPermissionPolicies(ctx context.Context, cloud Cloud, features []
 // NativeID is the AWS account ID of an account onboarded to RSC. When given,
 // RSC renders the policies for the role mode of that account, e.g. one
 // artifact per feature for a multi-role account. When empty, RSC renders the
-// policies for a single-role account. RSC returns an error if no account with
+// policies for its default role mode. RSC returns an error if no account with
 // the native ID has been onboarded.
 type AllPermissionPoliciesParams struct {
 	Cloud               Cloud

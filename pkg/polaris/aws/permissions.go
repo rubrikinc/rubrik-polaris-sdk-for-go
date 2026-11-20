@@ -57,8 +57,9 @@ func (policy ManagedPolicy) lessThan(other ManagedPolicy) bool {
 }
 
 // Permissions returns the policies required by RSC for the specified features.
-// The policies are those of a single-role account, use PermissionsWithParams
-// with a native ID to get the policies of an onboarded account.
+// The policies are those of RSC's default role mode, use
+// PermissionsWithParams with a native ID to get the policies of an onboarded
+// account.
 func (a API) Permissions(ctx context.Context, cloud string, features []core.Feature, ec2RecoveryRolePath string) ([]CustomerManagedPolicy, []ManagedPolicy, error) {
 	return a.PermissionsWithParams(ctx, PermissionsParams{
 		Cloud:               cloud,
@@ -73,8 +74,8 @@ func (a API) Permissions(ctx context.Context, cloud string, features []core.Feat
 // NativeID is the AWS account ID of an account onboarded to RSC. When given,
 // the policies are those required by the role mode of that account, e.g. the
 // policies of each feature are returned under the role of that feature for a
-// multi-role account. When empty, the policies are those of a single-role
-// account. RSC returns an error if no account with the native ID has been
+// multi-role account. When empty, the policies are those of RSC's default
+// role mode. RSC returns an error if no account with the native ID has been
 // onboarded.
 type PermissionsParams struct {
 	Cloud               string

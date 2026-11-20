@@ -109,7 +109,7 @@ func TestAllPermissionPoliciesSendsBothFeatureLists(t *testing.T) {
 
 // TestAllPermissionPoliciesSendsNativeID verifies that the native ID is sent
 // as awsNativeId when given, and left out of the request when empty, so that
-// RSC renders the policies for a single-role account.
+// RSC uses its default role mode.
 func TestAllPermissionPoliciesSendsNativeID(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(context.Background())
 	defer assert.Context(t, ctx, cancel)

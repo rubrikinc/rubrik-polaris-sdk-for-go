@@ -182,9 +182,9 @@ const (
 )
 
 // Artifacts returns the artifacts, instance profiles and roles, required by RSC
-// for the specified features. The artifacts are those of a single-role
-// account, use ArtifactsWithParams with a native ID to get the artifacts of an
-// onboarded account.
+// for the specified features. The artifacts are those of RSC's default
+// role mode, use ArtifactsWithParams with a native ID to get the artifacts of
+// an onboarded account.
 func (a API) Artifacts(ctx context.Context, cloud string, features []core.Feature) ([]string, []string, error) {
 	return a.ArtifactsWithParams(ctx, ArtifactsParams{Cloud: cloud, Features: features})
 }
@@ -195,8 +195,8 @@ func (a API) Artifacts(ctx context.Context, cloud string, features []core.Featur
 // NativeID is the AWS account ID of an account onboarded to RSC. When given,
 // the artifacts are those required by the role mode of that account, e.g. one
 // role per feature for a multi-role account. When empty, the artifacts are
-// those of a single-role account. RSC returns an error if no account with the
-// native ID has been onboarded.
+// those of RSC's default role mode. RSC returns an error if no account with
+// the native ID has been onboarded.
 type ArtifactsParams struct {
 	Cloud    string
 	Features []core.Feature
