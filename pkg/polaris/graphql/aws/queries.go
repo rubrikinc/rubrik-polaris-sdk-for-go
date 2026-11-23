@@ -82,8 +82,9 @@ var allAwsLatestPermissionsByPermissionsGroupQuery = `query SdkGolangAllAwsLates
 }`
 
 // allAwsPermissionPolicies GraphQL query
-var allAwsPermissionPoliciesQuery = `query SdkGolangAllAwsPermissionPolicies($cloudType: AwsCloudType!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!], $ec2RecoveryRolePath: String) {
+var allAwsPermissionPoliciesQuery = `query SdkGolangAllAwsPermissionPolicies($cloudType: AwsCloudType!, $features: [CloudAccountFeature!], $featuresWithPG: [FeatureWithPermissionsGroups!], $ec2RecoveryRolePath: String, $awsNativeId: String) {
     result: allAwsPermissionPolicies(input: {
+        awsNativeId: $awsNativeId,
         cloudType: $cloudType,
         features: $features,
         featuresWithPermissionsGroups: $featuresWithPG,
