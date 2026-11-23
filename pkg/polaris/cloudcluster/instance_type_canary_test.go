@@ -53,7 +53,8 @@ func enumNames[T ~string](values []T) []string {
 //
 // When the test reports a value in RSC which is missing from the SDK:
 //  1. Add a constant for it to the instance type constants of the cloud vendor
-//     in the graphql/cloudcluster package, and to the list in this test.
+//     in the graphql/cloudcluster package, and to its AwsInstanceTypes,
+//     AzureInstanceTypes or GcpInstanceTypes function.
 //  2. For AWS and Azure, add the number of the value in the AwsInstanceType or
 //     AzureInstanceType enum of the cluster-mgmt protobuf definition to
 //     provisionAwsInstanceTypes or provisionAzureInstanceTypes in the
@@ -71,69 +72,11 @@ func TestInstanceTypeEnumCanary(t *testing.T) {
 		name   string
 		enum   string
 		values []string
-	}{{
-		name: "AWS",
-		enum: "AwsInstanceType",
-		values: enumNames([]gqlcloudcluster.AwsCCInstanceType{
-			gqlcloudcluster.AwsInstanceTypeUnspecified,
-			gqlcloudcluster.AwsInstanceTypeM5_4XLarge,
-			gqlcloudcluster.AwsInstanceTypeM6I_2XLarge,
-			gqlcloudcluster.AwsInstanceTypeM6I_4XLarge,
-			gqlcloudcluster.AwsInstanceTypeM6I_8XLarge,
-			gqlcloudcluster.AwsInstanceTypeR6I_4XLarge,
-			gqlcloudcluster.AwsInstanceTypeM6A_2XLarge,
-			gqlcloudcluster.AwsInstanceTypeM6A_4XLarge,
-			gqlcloudcluster.AwsInstanceTypeM6A_8XLarge,
-			gqlcloudcluster.AwsInstanceTypeR6A_4XLarge,
-			gqlcloudcluster.AwsInstanceTypeM7I_2XLarge,
-			gqlcloudcluster.AwsInstanceTypeM7I_4XLarge,
-			gqlcloudcluster.AwsInstanceTypeM7I_8XLarge,
-			gqlcloudcluster.AwsInstanceTypeR7I_4XLarge,
-			gqlcloudcluster.AwsInstanceTypeM7A_2XLarge,
-			gqlcloudcluster.AwsInstanceTypeM7A_4XLarge,
-			gqlcloudcluster.AwsInstanceTypeM7A_8XLarge,
-			gqlcloudcluster.AwsInstanceTypeR7A_4XLarge,
-		}),
-	}, {
-		name: "Azure",
-		enum: "AzureInstanceType",
-		values: enumNames([]gqlcloudcluster.AzureCCESSupportedInstanceType{
-			gqlcloudcluster.AzureInstanceTypeUnspecified,
-			gqlcloudcluster.AzureInstanceTypeStandardDS5V2,
-			gqlcloudcluster.AzureInstanceTypeStandardD16SV5,
-			gqlcloudcluster.AzureInstanceTypeStandardD8SV5,
-			gqlcloudcluster.AzureInstanceTypeStandardD32SV5,
-			gqlcloudcluster.AzureInstanceTypeStandardE16SV5,
-			gqlcloudcluster.AzureInstanceTypeStandardD8ASV5,
-			gqlcloudcluster.AzureInstanceTypeStandardD16ASV5,
-			gqlcloudcluster.AzureInstanceTypeStandardD32ASV5,
-			gqlcloudcluster.AzureInstanceTypeStandardE16ASV5,
-			gqlcloudcluster.AzureInstanceTypeStandardD8SV6,
-			gqlcloudcluster.AzureInstanceTypeStandardD16SV6,
-			gqlcloudcluster.AzureInstanceTypeStandardE16SV6,
-			gqlcloudcluster.AzureInstanceTypeStandardD8ASV6,
-			gqlcloudcluster.AzureInstanceTypeStandardD16ASV6,
-			gqlcloudcluster.AzureInstanceTypeStandardE16ASV6,
-		}),
-	}, {
-		name: "GCP",
-		enum: "GcpInstanceType",
-		values: enumNames([]gqlcloudcluster.GcpCCInstanceType{
-			gqlcloudcluster.GcpInstanceTypeUnspecified,
-			gqlcloudcluster.GcpInstanceTypeN2Standard8,
-			gqlcloudcluster.GcpInstanceTypeN2Standard16,
-			gqlcloudcluster.GcpInstanceTypeN2Highmem16,
-			gqlcloudcluster.GcpInstanceTypeN2DStandard8,
-			gqlcloudcluster.GcpInstanceTypeN2DStandard16,
-			gqlcloudcluster.GcpInstanceTypeN2DHighmem16,
-			gqlcloudcluster.GcpInstanceTypeN4Standard8,
-			gqlcloudcluster.GcpInstanceTypeN4Standard16,
-			gqlcloudcluster.GcpInstanceTypeN4Highmem16,
-			gqlcloudcluster.GcpInstanceTypeN4DStandard8,
-			gqlcloudcluster.GcpInstanceTypeN4DStandard16,
-			gqlcloudcluster.GcpInstanceTypeN4DHighmem16,
-		}),
-	}}
+	}{
+		{name: "AWS", enum: "AwsInstanceType", values: enumNames(gqlcloudcluster.AwsInstanceTypes())},
+		{name: "Azure", enum: "AzureInstanceType", values: enumNames(gqlcloudcluster.AzureInstanceTypes())},
+		{name: "GCP", enum: "GcpInstanceType", values: enumNames(gqlcloudcluster.GcpInstanceTypes())},
+	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			rscValues, err := graphql.EnumValuesAsSet(t.Context(), client.GQL, test.enum)

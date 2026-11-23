@@ -50,6 +50,27 @@ const (
 	GcpInstanceTypeN4DHighmem16  GcpCCInstanceType = "N4D_HIGHMEM_16"
 )
 
+// GcpInstanceTypes returns all the GCP Cloud Cluster instance types known to the SDK, including the
+// unspecified value. An instance type can be in the list without being offered
+// by RSC for any CDM version yet.
+func GcpInstanceTypes() []GcpCCInstanceType {
+	return []GcpCCInstanceType{
+		GcpInstanceTypeUnspecified,
+		GcpInstanceTypeN2Standard8,
+		GcpInstanceTypeN2Standard16,
+		GcpInstanceTypeN2Highmem16,
+		GcpInstanceTypeN2DStandard8,
+		GcpInstanceTypeN2DStandard16,
+		GcpInstanceTypeN2DHighmem16,
+		GcpInstanceTypeN4Standard8,
+		GcpInstanceTypeN4Standard16,
+		GcpInstanceTypeN4Highmem16,
+		GcpInstanceTypeN4DStandard8,
+		GcpInstanceTypeN4DStandard16,
+		GcpInstanceTypeN4DHighmem16,
+	}
+}
+
 // GcpCdmVersion represents the CDM version for GCP Cloud Cluster.
 type GcpCdmVersion struct {
 	CdmVersion             string              `json:"cdmVersion"`
