@@ -31,6 +31,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/gcp"
 )
 
 // Values of the jobType and status fields of the ccProvisionMetadata query.
@@ -40,8 +41,8 @@ const (
 )
 
 // ProvisionConfig holds the configuration a cloud cluster was created with, as
-// recorded by RSC when the cluster create job was started. Exactly one of AWS
-// and Azure is set, depending on the cloud vendor of the cluster.
+// recorded by RSC when the cluster create job was started. Exactly one of AWS,
+// Azure and GCP is set, depending on the cloud vendor of the cluster.
 //
 // The configuration is what was requested, it's not refreshed when the cluster
 // changes after it has been created. Credentials, such as the admin password,
@@ -52,6 +53,7 @@ type ProvisionConfig struct {
 	Status    string // The status of the cluster create job, e.g. COMPLETED.
 	AWS       *AwsProvisionConfig
 	Azure     *AzureProvisionConfig
+	GCP       *GcpProvisionConfig
 }
 
 // ProvisionClusterConfig holds the cluster configuration shared by all cloud
@@ -136,10 +138,31 @@ type AzureProvisionConfig struct {
 	VMTypeKnown bool
 }
 
+// GcpProvisionConfig holds the configuration a GCP cloud cluster was created
+// with. NetworkConfig contains the subnet assigned to each node; it is
+// separate from SubnetAzConfigs, which defines the Multi-AZ layout.
+type GcpProvisionConfig struct {
+	CloudAccountID       uuid.UUID
+	Region               gcp.Region
+	Zone                 string
+	IsAzResilient        bool
+	KeepClusterOnFailure bool
+	ClusterConfig        ProvisionClusterConfig
+	BucketName           string
+
+	CDMVersion       string
+	CDMProduct       string
+	InstanceType     GcpCCInstanceType
+	DeleteProtection bool
+	NetworkConfig    []GcpSubnetInput
+	SubnetAzConfigs  []SubnetAzConfig
+	ServiceAccounts  []string // Service account email addresses.
+}
+
 // ProvisionConfig returns the configuration the cloud cluster with the
 // specified ID was created with. If RSC has no record of the cluster create
 // job, e.g. because the cluster wasn't created by RSC, graphql.ErrNotFound is
-// returned. Only AWS and Azure cloud clusters are supported.
+// returned. AWS, Azure and GCP cloud clusters are supported.
 func (a API) ProvisionConfig(ctx context.Context, clusterID uuid.UUID) (ProvisionConfig, error) {
 	query := ccProvisionMetadataQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
@@ -190,6 +213,12 @@ func (a API) ProvisionConfig(ctx context.Context, clusterID uuid.UUID) (Provisio
 			return ProvisionConfig{}, graphql.UnmarshalError(query, err)
 		}
 		config.Azure = &azureConfig
+	case "GCP":
+		gcpConfig, err := parseGcpProvisionConfig([]byte(result.MarshaledConfig))
+		if err != nil {
+			return ProvisionConfig{}, graphql.UnmarshalError(query, err)
+		}
+		config.GCP = &gcpConfig
 	default:
 		return ProvisionConfig{}, graphql.ResponseError(query, fmt.Errorf("unsupported cloud vendor %q for cloud cluster %q", result.Vendor, clusterID))
 	}
@@ -197,8 +226,8 @@ func (a API) ProvisionConfig(ctx context.Context, clusterID uuid.UUID) (Provisio
 	return config, nil
 }
 
-// The marshaled configuration is the cluster create request, AwsClusterCreateReq
-// or AzureClusterCreateReq, encoded with encoding/json from its Go protobuf
+// The marshaled configuration is the cluster create request, AwsClusterCreateReq,
+// AzureClusterCreateReq or GcpClusterCreateReq, encoded with encoding/json from its Go protobuf
 // type. Field names are the protobuf names, enums are encoded as numbers and
 // fields holding the zero value of their type are left out.
 
@@ -280,6 +309,24 @@ var provisionAzureInstanceTypes = map[int]AzureCCESSupportedInstanceType{
 	13: AzureInstanceTypeStandardD8ASV6,
 	14: AzureInstanceTypeStandardD16ASV6,
 	15: AzureInstanceTypeStandardE16ASV6,
+}
+
+// provisionGcpInstanceTypes maps the protobuf GcpInstanceType enum to the GCP
+// instance type.
+var provisionGcpInstanceTypes = map[int]GcpCCInstanceType{
+	0:  GcpInstanceTypeUnspecified,
+	1:  GcpInstanceTypeN2Standard8,
+	2:  GcpInstanceTypeN2Standard16,
+	3:  GcpInstanceTypeN2Highmem16,
+	4:  GcpInstanceTypeN2DStandard8,
+	5:  GcpInstanceTypeN2DStandard16,
+	6:  GcpInstanceTypeN2DHighmem16,
+	7:  GcpInstanceTypeN4Standard8,
+	8:  GcpInstanceTypeN4Standard16,
+	9:  GcpInstanceTypeN4Highmem16,
+	10: GcpInstanceTypeN4DStandard8,
+	11: GcpInstanceTypeN4DStandard16,
+	12: GcpInstanceTypeN4DHighmem16,
 }
 
 // decodeProvisionConfig decodes the marshaled configuration into config. RSC
@@ -459,5 +506,81 @@ func parseAzureProvisionConfig(data []byte) (AzureProvisionConfig, error) {
 		ManagedIdentityResourceGroup: es.ManagedIdentity.ResourceGroup,
 		VMType:                       vmType,
 		VMTypeKnown:                  vmTypeKnown,
+	}, nil
+}
+
+func parseGcpProvisionConfig(data []byte) (GcpProvisionConfig, error) {
+	var config struct {
+		CloudAccountID       string `json:"cloud_account_id"`
+		Region               string `json:"region"`
+		Zone                 string `json:"zone"`
+		IsAzResilient        bool   `json:"is_az_resilient"`
+		KeepClusterOnFailure bool   `json:"keep_cluster_on_failure"`
+		ClusterConfig        struct {
+			provisionClusterConfigJSON
+			GcpEsConfig struct {
+				BucketName string `json:"bucket_name"`
+			} `json:"gcp_es_config"`
+		} `json:"cluster_config"`
+		VMConfig struct {
+			CDMVersion       string `json:"cdm_version"`
+			CDMProduct       string `json:"cdm_product"`
+			InstanceType     int    `json:"instance_type"`
+			DeleteProtection bool   `json:"delete_protection"`
+			NetworkConfig    []struct {
+				Network     string `json:"network"`
+				HostProject string `json:"host_project"`
+				Region      string `json:"region"`
+				Name        string `json:"name"`
+			} `json:"network_config"`
+			SubnetAzConfigs []provisionSubnetAzConfigJSON `json:"subnet_az_configs"`
+			ServiceAccounts []struct {
+				Email string `json:"email"`
+			} `json:"service_accounts"`
+		} `json:"vm_config"`
+	}
+	if err := decodeProvisionConfig(data, &config); err != nil {
+		return GcpProvisionConfig{}, err
+	}
+
+	accountID, err := uuid.Parse(config.CloudAccountID)
+	if err != nil {
+		return GcpProvisionConfig{}, fmt.Errorf("invalid cloud account ID %q: %s", config.CloudAccountID, err)
+	}
+	region := gcp.RegionFromName(config.Region)
+	if region == gcp.RegionUnknown {
+		return GcpProvisionConfig{}, fmt.Errorf("unknown GCP region %q", config.Region)
+	}
+	instanceType, ok := provisionGcpInstanceTypes[config.VMConfig.InstanceType]
+	if !ok {
+		return GcpProvisionConfig{}, fmt.Errorf("unknown GCP instance type %d", config.VMConfig.InstanceType)
+	}
+
+	var networks []GcpSubnetInput
+	for _, subnet := range config.VMConfig.NetworkConfig {
+		networks = append(networks, GcpSubnetInput{
+			Network: subnet.Network, HostProject: subnet.HostProject, Region: subnet.Region, Name: subnet.Name,
+		})
+	}
+	var serviceAccounts []string
+	for _, account := range config.VMConfig.ServiceAccounts {
+		serviceAccounts = append(serviceAccounts, account.Email)
+	}
+
+	return GcpProvisionConfig{
+		CloudAccountID:       accountID,
+		Region:               region,
+		Zone:                 config.Zone,
+		IsAzResilient:        config.IsAzResilient,
+		KeepClusterOnFailure: config.KeepClusterOnFailure,
+		ClusterConfig:        ProvisionClusterConfig(config.ClusterConfig.provisionClusterConfigJSON),
+		BucketName:           config.ClusterConfig.GcpEsConfig.BucketName,
+		CDMVersion:           config.VMConfig.CDMVersion,
+		CDMProduct:           config.VMConfig.CDMProduct,
+		InstanceType:         instanceType,
+		DeleteProtection:     config.VMConfig.DeleteProtection,
+		NetworkConfig:        networks,
+		SubnetAzConfigs:      toSubnetAzConfigs(config.VMConfig.SubnetAzConfigs),
+		ServiceAccounts:      serviceAccounts,
 	}, nil
 }

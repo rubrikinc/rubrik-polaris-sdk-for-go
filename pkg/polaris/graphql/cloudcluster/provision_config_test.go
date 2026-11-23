@@ -36,6 +36,7 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/gcp"
 )
 
 const (
@@ -114,6 +115,41 @@ const testAwsProvisionConfig = `{
     "vpc": "vpc-0123456789abcdef0",
     "subnet": "subnet-0123456789abcdef0",
     "security_groups": ["sg-0123456789abcdef0", "sg-0fedcba9876543210"]
+  }
+}`
+
+// Shaped like the masked GcpClusterCreateReq RSC records for a Multi-AZ cluster.
+const testGcpProvisionConfig = `{
+  "cloud_account_id": "` + testProvisionAccountID + `",
+  "region": "us-west1",
+  "zone": "us-west1-a",
+  "is_es_type": true,
+  "is_az_resilient": true,
+  "keep_cluster_on_failure": true,
+  "cluster_config": {
+    "cluster_name": "my-cluster",
+    "num_nodes": 3,
+    "dns_name_servers": ["169.254.169.254"],
+    "dns_search_domains": ["example.com"],
+    "ntp_servers": ["time.google.com"],
+    "gcp_es_config": {"bucket_name": "my-bucket", "region": "us-west1"}
+  },
+  "vm_config": {
+    "instance_type": 6,
+    "cdm_version": "9.4.0-p2-30507",
+    "cdm_product": "rubrik-cdm",
+    "delete_protection": true,
+    "network_config": [
+      {"network": "my-vpc", "host_project": "shared-vpc", "region": "us-west1", "name": "subnet-a"},
+      {"network": "my-vpc", "host_project": "shared-vpc", "region": "us-west1", "name": "subnet-b"},
+      {"network": "my-vpc", "host_project": "shared-vpc", "region": "us-west1", "name": "subnet-c"}
+    ],
+    "subnet_az_configs": [
+      {"subnet": "subnet-a", "availability_zone": "us-west1-a"},
+      {"subnet": "subnet-b", "availability_zone": "us-west1-b"},
+      {"subnet": "subnet-c", "availability_zone": "us-west1-c"}
+    ],
+    "service_accounts": [{"email": "node@example.iam.gserviceaccount.com", "scopes": ["https://www.googleapis.com/auth/cloud-platform"]}]
   }
 }`
 
@@ -266,6 +302,60 @@ func TestProvisionConfigAws(t *testing.T) {
 	}
 }
 
+func TestProvisionConfigGcp(t *testing.T) {
+	ctx, cancel := context.WithCancelCause(t.Context())
+	defer assert.Context(t, ctx, cancel)
+
+	var vars map[string]string
+	srv := provisionServer(cancel, provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "GCP", testGcpProvisionConfig), &vars)
+	defer srv.Close()
+
+	config, err := Wrap(graphql.NewTestClient(srv)).ProvisionConfig(ctx, uuid.MustParse(testProvisionClusterID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.GCP == nil || config.AWS != nil || config.Azure != nil {
+		t.Fatalf("expected only the GCP configuration, got %+v", config)
+	}
+	if vars["clusterUuid"] != testProvisionClusterID || vars["jobType"] != "CLUSTER_CREATE" {
+		t.Errorf("unexpected request variables: %v", vars)
+	}
+
+	expected := GcpProvisionConfig{
+		CloudAccountID:       uuid.MustParse(testProvisionAccountID),
+		Region:               gcp.RegionFromName("us-west1"),
+		Zone:                 "us-west1-a",
+		IsAzResilient:        true,
+		KeepClusterOnFailure: true,
+		ClusterConfig: ProvisionClusterConfig{
+			ClusterName:      "my-cluster",
+			NumNodes:         3,
+			DNSNameServers:   []string{"169.254.169.254"},
+			DNSSearchDomains: []string{"example.com"},
+			NTPServers:       []string{"time.google.com"},
+		},
+		BucketName:       "my-bucket",
+		CDMVersion:       "9.4.0-p2-30507",
+		CDMProduct:       "rubrik-cdm",
+		InstanceType:     GcpInstanceTypeN2DHighmem16,
+		DeleteProtection: true,
+		NetworkConfig: []GcpSubnetInput{
+			{Network: "my-vpc", HostProject: "shared-vpc", Region: "us-west1", Name: "subnet-a"},
+			{Network: "my-vpc", HostProject: "shared-vpc", Region: "us-west1", Name: "subnet-b"},
+			{Network: "my-vpc", HostProject: "shared-vpc", Region: "us-west1", Name: "subnet-c"},
+		},
+		SubnetAzConfigs: []SubnetAzConfig{
+			{Subnet: "subnet-a", AvailabilityZone: "us-west1-a"},
+			{Subnet: "subnet-b", AvailabilityZone: "us-west1-b"},
+			{Subnet: "subnet-c", AvailabilityZone: "us-west1-c"},
+		},
+		ServiceAccounts: []string{"node@example.iam.gserviceaccount.com"},
+	}
+	if !reflect.DeepEqual(*config.GCP, expected) {
+		t.Errorf("GCP config = %+v, want %+v", *config.GCP, expected)
+	}
+}
+
 // TestProvisionConfigInstanceTypes verifies that every instance type RSC can
 // record in the configuration of a cluster create job is decoded to the
 // instance type the RSC API uses for it. The numbers are the values of the
@@ -346,6 +436,16 @@ func TestProvisionConfigInstanceTypesAreComplete(t *testing.T) {
 			t.Errorf("Azure instance type %q has no number in provisionAzureInstanceTypes", instanceType)
 		}
 	}
+
+	gcpDecodable := make(map[GcpCCInstanceType]struct{}, len(provisionGcpInstanceTypes))
+	for _, instanceType := range provisionGcpInstanceTypes {
+		gcpDecodable[instanceType] = struct{}{}
+	}
+	for _, instanceType := range GcpInstanceTypes() {
+		if _, ok := gcpDecodable[instanceType]; !ok {
+			t.Errorf("GCP instance type %q has no number in provisionGcpInstanceTypes", instanceType)
+		}
+	}
 }
 
 // TestProvisionConfigErrors covers the responses which don't hold the
@@ -386,13 +486,19 @@ func TestProvisionConfigErrors(t *testing.T) {
 	}, {
 		name: "UnsupportedVendor",
 		response: func(t *testing.T) []byte {
-			return provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "GCP", "{}")
+			return provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "OCI", "{}")
 		},
 	}, {
 		name: "UnknownInstanceType",
 		response: func(t *testing.T) []byte {
 			return provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "AZURE",
 				`{"cloud_account_id": "`+testProvisionAccountID+`", "vm_config": {"location": "centralus", "instance_type": 99}}`)
+		},
+	}, {
+		name: "UnknownGcpInstanceType",
+		response: func(t *testing.T) []byte {
+			return provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "GCP",
+				`{"cloud_account_id": "`+testProvisionAccountID+`", "region": "us-west1", "vm_config": {"instance_type": 99}}`)
 		},
 	}, {
 		name: "UnknownRegion",
