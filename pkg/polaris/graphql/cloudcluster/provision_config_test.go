@@ -34,9 +34,6 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/aws"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
-	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/gcp"
 )
 
 const (
@@ -198,58 +195,76 @@ func provisionServer(cancel context.CancelCauseFunc, response []byte, vars *map[
 	}))
 }
 
-func TestProvisionConfigAzure(t *testing.T) {
-	ctx, cancel := context.WithCancelCause(context.Background())
+func requestProvisionConfig(t *testing.T, vendor, config string) ProvisionConfig {
+	t.Helper()
+
+	ctx, cancel := context.WithCancelCause(t.Context())
 	defer assert.Context(t, ctx, cancel)
 
 	var vars map[string]string
-	srv := provisionServer(cancel, provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "AZURE", testAzureProvisionConfig), &vars)
+	srv := provisionServer(cancel, provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", vendor, config), &vars)
 	defer srv.Close()
 
-	config, err := Wrap(graphql.NewTestClient(srv)).ProvisionConfig(ctx, uuid.MustParse(testProvisionClusterID))
+	result, err := Wrap(graphql.NewTestClient(srv)).ProvisionConfig(ctx, uuid.MustParse(testProvisionClusterID))
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	if vars["clusterUuid"] != testProvisionClusterID || vars["jobType"] != "CLUSTER_CREATE" {
 		t.Errorf("invalid request variables: %v", vars)
 	}
-	if config.AWS != nil || config.Azure == nil {
-		t.Fatalf("expected only the Azure configuration, got AWS: %v, Azure: %v", config.AWS, config.Azure)
+	if result.ClusterUUID != testProvisionClusterID || result.JobType != "CLUSTER_CREATE" ||
+		result.Status != "COMPLETED" || result.Vendor != vendor || result.MarshaledConfig != config {
+		t.Errorf("invalid response fields: %+v", result)
 	}
+	return result
+}
+
+// The API layer returns the configuration as RSC recorded it, with enums as
+// numbers and without any conversion.
+func TestProvisionConfigAzure(t *testing.T) {
+	config := requestProvisionConfig(t, "AZURE", testAzureProvisionConfig)
+	if config.AWS != nil || config.Azure == nil || config.GCP != nil {
+		t.Fatalf("expected only the Azure configuration, got %+v", config)
+	}
+
+	vmType := 2
 	expected := AzureProvisionConfig{
-		CloudAccountID:       uuid.MustParse(testProvisionAccountID),
+		CloudAccountID:       testProvisionAccountID,
 		IsAzResilient:        true,
 		KeepClusterOnFailure: false,
-		ClusterConfig: ProvisionClusterConfig{
-			ClusterName:      "my-cluster",
-			NumNodes:         3,
-			DNSNameServers:   []string{"10.0.0.2"},
-			DNSSearchDomains: []string{"example.com"},
-			NTPServers:       []string{"pool.ntp.org"},
+		ClusterConfig: AzureProvisionClusterConfig{
+			ProvisionClusterConfig: ProvisionClusterConfig{
+				ClusterName:      "my-cluster",
+				NumNodes:         3,
+				DNSNameServers:   []string{"10.0.0.2"},
+				DNSSearchDomains: []string{"example.com"},
+				NTPServers:       []string{"pool.ntp.org"},
+			},
+			AzureEsConfig: AzureProvisionEsConfig{
+				StorageAccount:     "mystorage",
+				ResourceGroup:      "my-storage-rg",
+				ContainerName:      "my-container",
+				EnableImmutability: true,
+				ManagedIdentity:    AzureProvisionManagedIdentity{Name: "my-identity", ResourceGroup: "my-identity-rg"},
+			},
 		},
-		ImageVersion:                 "3.7.31669",
-		SKU:                          "rubrik-cdm-94",
-		Region:                       azure.RegionCentralUS,
-		InstanceType:                 AzureInstanceTypeStandardD8SV5,
-		ResourceGroup:                "my-rg",
-		NetworkResourceGroup:         "my-net-rg",
-		VnetResourceGroup:            "my-vnet-rg",
-		Vnet:                         "my-vnet",
-		NetworkSecurityGroup:         "my-nsg",
-		NetworkSecurityResourceGroup: "my-nsg-rg",
-		SubnetAzConfigs: []SubnetAzConfig{
-			{Subnet: "subnet-1", AvailabilityZone: "1"},
-			{Subnet: "subnet-2", AvailabilityZone: "2"},
+		VMConfig: AzureProvisionVMConfig{
+			CDMVersion:                   "3.7.31669",
+			CDMProduct:                   "rubrik-cdm-94",
+			VMType:                       &vmType,
+			Location:                     "centralus",
+			InstanceType:                 3,
+			ResourceGroup:                "my-rg",
+			NetworkResourceGroup:         "my-net-rg",
+			VnetResourceGroup:            "my-vnet-rg",
+			Vnet:                         "my-vnet",
+			NetworkSecurityGroup:         "my-nsg",
+			NetworkSecurityResourceGroup: "my-nsg-rg",
+			SubnetAzConfigs: []ProvisionSubnetAzConfig{
+				{Subnet: "subnet-1", AvailabilityZone: "1"},
+				{Subnet: "subnet-2", AvailabilityZone: "2"},
+			},
 		},
-		StorageAccount:               "mystorage",
-		StorageResourceGroup:         "my-storage-rg",
-		ContainerName:                "my-container",
-		EnableImmutability:           true,
-		ManagedIdentityName:          "my-identity",
-		ManagedIdentityResourceGroup: "my-identity-rg",
-		VMType:                       CCVmConfigExtraDense,
-		VMTypeKnown:                  true,
 	}
 	if !reflect.DeepEqual(*config.Azure, expected) {
 		t.Errorf("invalid Azure configuration:\n got: %+v\nwant: %+v", *config.Azure, expected)
@@ -257,45 +272,35 @@ func TestProvisionConfigAzure(t *testing.T) {
 }
 
 func TestProvisionConfigAws(t *testing.T) {
-	ctx, cancel := context.WithCancelCause(context.Background())
-	defer assert.Context(t, ctx, cancel)
-
-	var vars map[string]string
-	srv := provisionServer(cancel, provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "AWS", testAwsProvisionConfig), &vars)
-	defer srv.Close()
-
-	config, err := Wrap(graphql.NewTestClient(srv)).ProvisionConfig(ctx, uuid.MustParse(testProvisionClusterID))
-	if err != nil {
-		t.Fatal(err)
+	config := requestProvisionConfig(t, "AWS", testAwsProvisionConfig)
+	if config.AWS == nil || config.Azure != nil || config.GCP != nil {
+		t.Fatalf("expected only the AWS configuration, got %+v", config)
 	}
 
-	if config.AWS == nil || config.Azure != nil {
-		t.Fatalf("expected only the AWS configuration, got AWS: %v, Azure: %v", config.AWS, config.Azure)
-	}
 	expected := AwsProvisionConfig{
-		CloudAccountID:       uuid.MustParse(testProvisionAccountID),
-		Region:               aws.RegionUsEast2,
+		CloudAccountID:       testProvisionAccountID,
+		Region:               "us-east-2",
 		KeepClusterOnFailure: true,
 		UsePlacementGroups:   true,
-		ClusterConfig: ProvisionClusterConfig{
-			ClusterName:           "my-cluster",
-			NumNodes:              1,
-			DNSNameServers:        []string{"169.254.169.253"},
-			NTPServers:            []string{"169.254.169.123"},
-			DynamicScalingEnabled: true,
+		ClusterConfig: AwsProvisionClusterConfig{
+			ProvisionClusterConfig: ProvisionClusterConfig{
+				ClusterName:           "my-cluster",
+				NumNodes:              1,
+				DNSNameServers:        []string{"169.254.169.253"},
+				NTPServers:            []string{"169.254.169.123"},
+				DynamicScalingEnabled: true,
+			},
+			AwsEsConfig: AwsProvisionEsConfig{BucketName: "my-bucket", EnableImmutability: true, EnableObjectLock: true},
 		},
-		BucketName:          "my-bucket",
-		EnableImmutability:  true,
-		EnableObjectLock:    true,
-		CDMVersion:          "9.4.0-p2-30507",
-		CDMProduct:          "rubrik-cdm-product-code",
-		InstanceType:        "M7I_2XLARGE",
-		InstanceProfileName: "my-profile",
-		VPC:                 "vpc-0123456789abcdef0",
-		Subnet:              "subnet-0123456789abcdef0",
-		SecurityGroups:      []string{"sg-0123456789abcdef0", "sg-0fedcba9876543210"},
-		VMType:              CCVmConfigStandard,
-		VMTypeKnown:         false,
+		VMConfig: AwsProvisionVMConfig{
+			CDMVersion:          "9.4.0-p2-30507",
+			CDMProduct:          "rubrik-cdm-product-code",
+			InstanceType:        10,
+			InstanceProfileName: "my-profile",
+			VPC:                 "vpc-0123456789abcdef0",
+			Subnet:              "subnet-0123456789abcdef0",
+			SecurityGroups:      []string{"sg-0123456789abcdef0", "sg-0fedcba9876543210"},
+		},
 	}
 	if !reflect.DeepEqual(*config.AWS, expected) {
 		t.Errorf("invalid AWS configuration:\n got: %+v\nwant: %+v", *config.AWS, expected)
@@ -303,148 +308,56 @@ func TestProvisionConfigAws(t *testing.T) {
 }
 
 func TestProvisionConfigGcp(t *testing.T) {
-	ctx, cancel := context.WithCancelCause(t.Context())
-	defer assert.Context(t, ctx, cancel)
-
-	var vars map[string]string
-	srv := provisionServer(cancel, provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "GCP", testGcpProvisionConfig), &vars)
-	defer srv.Close()
-
-	config, err := Wrap(graphql.NewTestClient(srv)).ProvisionConfig(ctx, uuid.MustParse(testProvisionClusterID))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if config.GCP == nil || config.AWS != nil || config.Azure != nil {
+	config := requestProvisionConfig(t, "GCP", testGcpProvisionConfig)
+	if config.AWS != nil || config.Azure != nil || config.GCP == nil {
 		t.Fatalf("expected only the GCP configuration, got %+v", config)
-	}
-	if vars["clusterUuid"] != testProvisionClusterID || vars["jobType"] != "CLUSTER_CREATE" {
-		t.Errorf("unexpected request variables: %v", vars)
 	}
 
 	expected := GcpProvisionConfig{
-		CloudAccountID:       uuid.MustParse(testProvisionAccountID),
-		Region:               gcp.RegionFromName("us-west1"),
+		CloudAccountID:       testProvisionAccountID,
+		Region:               "us-west1",
 		Zone:                 "us-west1-a",
 		IsAzResilient:        true,
 		KeepClusterOnFailure: true,
-		ClusterConfig: ProvisionClusterConfig{
-			ClusterName:      "my-cluster",
-			NumNodes:         3,
-			DNSNameServers:   []string{"169.254.169.254"},
-			DNSSearchDomains: []string{"example.com"},
-			NTPServers:       []string{"time.google.com"},
+		ClusterConfig: GcpProvisionClusterConfig{
+			ProvisionClusterConfig: ProvisionClusterConfig{
+				ClusterName:      "my-cluster",
+				NumNodes:         3,
+				DNSNameServers:   []string{"169.254.169.254"},
+				DNSSearchDomains: []string{"example.com"},
+				NTPServers:       []string{"time.google.com"},
+			},
+			GcpEsConfig: GcpProvisionEsConfig{BucketName: "my-bucket"},
 		},
-		BucketName:       "my-bucket",
-		CDMVersion:       "9.4.0-p2-30507",
-		CDMProduct:       "rubrik-cdm",
-		InstanceType:     GcpInstanceTypeN2DHighmem16,
-		DeleteProtection: true,
-		NetworkConfig: []GcpSubnetInput{
-			{Network: "my-vpc", HostProject: "shared-vpc", Region: "us-west1", Name: "subnet-a"},
-			{Network: "my-vpc", HostProject: "shared-vpc", Region: "us-west1", Name: "subnet-b"},
-			{Network: "my-vpc", HostProject: "shared-vpc", Region: "us-west1", Name: "subnet-c"},
+		VMConfig: GcpProvisionVMConfig{
+			CDMVersion:       "9.4.0-p2-30507",
+			CDMProduct:       "rubrik-cdm",
+			InstanceType:     6,
+			DeleteProtection: true,
+			NetworkConfig: []GcpProvisionNetworkConfig{
+				{Network: "my-vpc", HostProject: "shared-vpc", Region: "us-west1", Name: "subnet-a"},
+				{Network: "my-vpc", HostProject: "shared-vpc", Region: "us-west1", Name: "subnet-b"},
+				{Network: "my-vpc", HostProject: "shared-vpc", Region: "us-west1", Name: "subnet-c"},
+			},
+			SubnetAzConfigs: []ProvisionSubnetAzConfig{
+				{Subnet: "subnet-a", AvailabilityZone: "us-west1-a"},
+				{Subnet: "subnet-b", AvailabilityZone: "us-west1-b"},
+				{Subnet: "subnet-c", AvailabilityZone: "us-west1-c"},
+			},
+			ServiceAccounts: []GcpProvisionServiceAccount{{Email: "node@example.iam.gserviceaccount.com"}},
 		},
-		SubnetAzConfigs: []SubnetAzConfig{
-			{Subnet: "subnet-a", AvailabilityZone: "us-west1-a"},
-			{Subnet: "subnet-b", AvailabilityZone: "us-west1-b"},
-			{Subnet: "subnet-c", AvailabilityZone: "us-west1-c"},
-		},
-		ServiceAccounts: []string{"node@example.iam.gserviceaccount.com"},
 	}
 	if !reflect.DeepEqual(*config.GCP, expected) {
-		t.Errorf("GCP config = %+v, want %+v", *config.GCP, expected)
+		t.Errorf("invalid GCP configuration:\n got: %+v\nwant: %+v", *config.GCP, expected)
 	}
 }
 
-// TestProvisionConfigInstanceTypes verifies that every instance type RSC can
-// record in the configuration of a cluster create job is decoded to the
-// instance type the RSC API uses for it. The numbers are the values of the
-// AwsInstanceType and AzureInstanceType enums in the cluster-mgmt protobuf
-// definition.
-func TestProvisionConfigInstanceTypes(t *testing.T) {
-	awsTypes := map[int]AwsCCInstanceType{
-		1: "M5_4XLARGE", 2: "M6I_2XLARGE", 3: "M6I_4XLARGE", 4: "M6I_8XLARGE", 5: "R6I_4XLARGE",
-		6: "M6A_2XLARGE", 7: "M6A_4XLARGE", 8: "M6A_8XLARGE", 9: "R6A_4XLARGE",
-		10: "M7I_2XLARGE", 11: "M7I_4XLARGE", 12: "M7I_8XLARGE",
-		13: "M7A_2XLARGE", 14: "M7A_4XLARGE", 15: "M7A_8XLARGE",
-		16: "R7I_4XLARGE", 17: "R7A_4XLARGE",
-	}
-	for number, want := range awsTypes {
-		if got := provisionAwsInstanceTypes[number]; got != want {
-			t.Errorf("AWS instance type %d: got %q, want %q", number, got, want)
-		}
-	}
-	if len(provisionAwsInstanceTypes) != len(awsTypes)+1 { // + AWS_TYPE_UNSPECIFIED
-		t.Errorf("AWS: got %d instance types, want %d", len(provisionAwsInstanceTypes), len(awsTypes)+1)
-	}
-
-	azureTypes := map[int]AzureCCESSupportedInstanceType{
-		1: "STANDARD_DS5_V2", 2: "STANDARD_D16S_V5", 3: "STANDARD_D8S_V5", 4: "STANDARD_D32S_V5",
-		5: "STANDARD_E16S_V5", 6: "STANDARD_D8AS_V5", 7: "STANDARD_D16AS_V5", 8: "STANDARD_D32AS_V5",
-		9: "STANDARD_E16AS_V5", 10: "STANDARD_D8S_V6", 11: "STANDARD_D16S_V6", 12: "STANDARD_E16S_V6",
-		13: "STANDARD_D8AS_V6", 14: "STANDARD_D16AS_V6", 15: "STANDARD_E16AS_V6",
-	}
-	for number, want := range azureTypes {
-		if got := provisionAzureInstanceTypes[number]; got != want {
-			t.Errorf("Azure instance type %d: got %q, want %q", number, got, want)
-		}
-	}
-	if len(provisionAzureInstanceTypes) != len(azureTypes)+1 { // + TYPE_UNSPECIFIED
-		t.Errorf("Azure: got %d instance types, want %d", len(provisionAzureInstanceTypes), len(azureTypes)+1)
-	}
-}
-
-// TestProvisionConfigInstanceTypesAreComplete verifies that every AWS and Azure
-// instance type constant has a number in the maps used to decode the recorded
-// configuration of a cluster create job. A constant without a number means
-// that a cluster created with the instance type can't be decoded. The lists of
-// constants must be kept in sync with TestInstanceTypeEnumCanary in the parent
-// package, which verifies them against RSC.
-func TestProvisionConfigInstanceTypesAreComplete(t *testing.T) {
-	awsTypes := []AwsCCInstanceType{
-		AwsInstanceTypeUnspecified, AwsInstanceTypeM5_4XLarge, AwsInstanceTypeM6I_2XLarge,
-		AwsInstanceTypeM6I_4XLarge, AwsInstanceTypeM6I_8XLarge, AwsInstanceTypeR6I_4XLarge,
-		AwsInstanceTypeM6A_2XLarge, AwsInstanceTypeM6A_4XLarge, AwsInstanceTypeM6A_8XLarge,
-		AwsInstanceTypeR6A_4XLarge, AwsInstanceTypeM7I_2XLarge, AwsInstanceTypeM7I_4XLarge,
-		AwsInstanceTypeM7I_8XLarge, AwsInstanceTypeR7I_4XLarge, AwsInstanceTypeM7A_2XLarge,
-		AwsInstanceTypeM7A_4XLarge, AwsInstanceTypeM7A_8XLarge, AwsInstanceTypeR7A_4XLarge,
-	}
-	decodable := make(map[AwsCCInstanceType]struct{}, len(provisionAwsInstanceTypes))
-	for _, instanceType := range provisionAwsInstanceTypes {
-		decodable[instanceType] = struct{}{}
-	}
-	for _, instanceType := range awsTypes {
-		if _, ok := decodable[instanceType]; !ok {
-			t.Errorf("AWS instance type %q has no number in provisionAwsInstanceTypes", instanceType)
-		}
-	}
-
-	azureTypes := []AzureCCESSupportedInstanceType{
-		AzureInstanceTypeUnspecified, AzureInstanceTypeStandardDS5V2, AzureInstanceTypeStandardD16SV5,
-		AzureInstanceTypeStandardD8SV5, AzureInstanceTypeStandardD32SV5, AzureInstanceTypeStandardE16SV5,
-		AzureInstanceTypeStandardD8ASV5, AzureInstanceTypeStandardD16ASV5, AzureInstanceTypeStandardD32ASV5,
-		AzureInstanceTypeStandardE16ASV5, AzureInstanceTypeStandardD8SV6, AzureInstanceTypeStandardD16SV6,
-		AzureInstanceTypeStandardE16SV6, AzureInstanceTypeStandardD8ASV6, AzureInstanceTypeStandardD16ASV6,
-		AzureInstanceTypeStandardE16ASV6,
-	}
-	azureDecodable := make(map[AzureCCESSupportedInstanceType]struct{}, len(provisionAzureInstanceTypes))
-	for _, instanceType := range provisionAzureInstanceTypes {
-		azureDecodable[instanceType] = struct{}{}
-	}
-	for _, instanceType := range azureTypes {
-		if _, ok := azureDecodable[instanceType]; !ok {
-			t.Errorf("Azure instance type %q has no number in provisionAzureInstanceTypes", instanceType)
-		}
-	}
-
-	gcpDecodable := make(map[GcpCCInstanceType]struct{}, len(provisionGcpInstanceTypes))
-	for _, instanceType := range provisionGcpInstanceTypes {
-		gcpDecodable[instanceType] = struct{}{}
-	}
-	for _, instanceType := range GcpInstanceTypes() {
-		if _, ok := gcpDecodable[instanceType]; !ok {
-			t.Errorf("GCP instance type %q has no number in provisionGcpInstanceTypes", instanceType)
-		}
+// A cloud vendor unknown to the SDK isn't an error, the marshaled
+// configuration is returned as is.
+func TestProvisionConfigUnknownVendor(t *testing.T) {
+	config := requestProvisionConfig(t, "OCI", "{}")
+	if config.AWS != nil || config.Azure != nil || config.GCP != nil {
+		t.Errorf("expected no vendor configuration, got %+v", config)
 	}
 }
 
@@ -484,27 +397,14 @@ func TestProvisionConfigErrors(t *testing.T) {
 			return provisionResponse(t, otherClusterID, "CLUSTER_CREATE", "COMPLETED", "AZURE", testAzureProvisionConfig)
 		},
 	}, {
-		name: "UnsupportedVendor",
+		name: "EmptyConfig",
 		response: func(t *testing.T) []byte {
-			return provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "OCI", "{}")
+			return provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "AWS", "[]")
 		},
 	}, {
-		name: "UnknownInstanceType",
+		name: "InvalidConfig",
 		response: func(t *testing.T) []byte {
-			return provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "AZURE",
-				`{"cloud_account_id": "`+testProvisionAccountID+`", "vm_config": {"location": "centralus", "instance_type": 99}}`)
-		},
-	}, {
-		name: "UnknownGcpInstanceType",
-		response: func(t *testing.T) []byte {
-			return provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "GCP",
-				`{"cloud_account_id": "`+testProvisionAccountID+`", "region": "us-west1", "vm_config": {"instance_type": 99}}`)
-		},
-	}, {
-		name: "UnknownRegion",
-		response: func(t *testing.T) []byte {
-			return provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "AWS",
-				`{"cloud_account_id": "`+testProvisionAccountID+`", "region": "mars-north-1"}`)
+			return provisionResponse(t, testProvisionClusterID, "CLUSTER_CREATE", "COMPLETED", "AWS", "{")
 		},
 	}}
 	for _, test := range tests {

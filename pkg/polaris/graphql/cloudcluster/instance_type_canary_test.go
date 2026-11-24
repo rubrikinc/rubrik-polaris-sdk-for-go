@@ -18,15 +18,49 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-package cloudcluster
+package cloudcluster_test
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/testsetup"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
 	gqlcloudcluster "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/cloudcluster"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
+
+// client is the RSC client used by the integration tests in this package.
+var client *polaris.Client
+
+func TestMain(m *testing.M) {
+	if testsetup.BoolEnvSet("TEST_INTEGRATION") {
+		// Load configuration and create client. Usually resolved using the
+		// environment variable RUBRIK_POLARIS_SERVICEACCOUNT_FILE.
+		account, err := polaris.DefaultServiceAccount(true)
+		if err != nil {
+			fmt.Printf("failed to get default service account: %v\n", err)
+			os.Exit(1)
+		}
+
+		logger := log.NewStandardLogger()
+		logger.SetLogLevel(log.Info)
+		if err := polaris.SetLogLevelFromEnv(logger); err != nil {
+			fmt.Printf("failed to get log level from env: %v\n", err)
+			os.Exit(1)
+		}
+
+		client, err = polaris.NewClientWithLogger(account, logger)
+		if err != nil {
+			fmt.Printf("failed to create polaris client: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	os.Exit(m.Run())
+}
 
 // enumNames returns the values as a slice of strings. The instance types of the
 // cloud vendors are distinct types.
@@ -53,12 +87,12 @@ func enumNames[T ~string](values []T) []string {
 //
 // When the test reports a value in RSC which is missing from the SDK:
 //  1. Add a constant for it to the instance type constants of the cloud vendor
-//     in the graphql/cloudcluster package, and to its AwsInstanceTypes,
-//     AzureInstanceTypes or GcpInstanceTypes function.
+//     in this package, and to its AwsInstanceTypes, AzureInstanceTypes or
+//     GcpInstanceTypes function.
 //  2. For AWS and Azure, add the number of the value in the AwsInstanceType or
 //     AzureInstanceType enum of the cluster-mgmt protobuf definition to
 //     provisionAwsInstanceTypes or provisionAzureInstanceTypes in the
-//     graphql/cloudcluster package, and to the matching test of its numbers.
+//     cloudcluster package, and to the matching test of its numbers.
 //     Without it, the recorded configuration of a cluster created with the
 //     instance type can't be decoded.
 //  3. Add it to the instance types accepted by terraform-provider-rubrik, if
