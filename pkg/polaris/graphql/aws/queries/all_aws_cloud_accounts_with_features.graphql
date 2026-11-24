@@ -16,6 +16,7 @@ query RubrikPolarisSDKRequest(
       nativeId
       message
       accountName
+      serviceType
     }
     featureDetails {
       feature
