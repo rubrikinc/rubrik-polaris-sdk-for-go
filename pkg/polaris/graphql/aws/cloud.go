@@ -38,12 +38,13 @@ import (
 
 // CloudAccount represents an RSC Cloud Account for AWS.
 type CloudAccount struct {
-	Cloud               Cloud     `json:"cloudType"`
-	ID                  uuid.UUID `json:"id"`
-	NativeID            string    `json:"nativeId"`
-	Name                string    `json:"accountName"`
-	Message             string    `json:"message"`
-	SeamlessFlowEnabled bool      `json:"seamlessFlowEnabled"`
+	Cloud               Cloud                   `json:"cloudType"`
+	ID                  uuid.UUID               `json:"id"`
+	NativeID            string                  `json:"nativeId"`
+	Name                string                  `json:"accountName"`
+	Message             string                  `json:"message"`
+	SeamlessFlowEnabled bool                    `json:"seamlessFlowEnabled"`
+	ServiceType         CloudAccountServiceType `json:"serviceType"`
 }
 
 type MappedAccount struct {
