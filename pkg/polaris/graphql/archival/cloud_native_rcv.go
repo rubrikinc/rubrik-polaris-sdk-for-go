@@ -119,32 +119,6 @@ func LocTemplateTypeValues() []LocTemplateType {
 	}
 }
 
-// TargetEncryptionType represents the RSC GraphQL TargetEncryptionTypeEnum enum
-// type. It is read back from an archival location and reports which encryption
-// mode RSC applied. It covers every archival target type, so most of the values
-// never appear on an RCV archival location.
-type TargetEncryptionType string
-
-const (
-	TargetEncryptionUnknown           TargetEncryptionType = "UNKNOWN_ENCRYPTION_TYPE"
-	TargetEncryptionRSAKeyBased       TargetEncryptionType = "RSA_KEY_BASED"
-	TargetEncryptionKMSMasterKeyBased TargetEncryptionType = "KMS_MASTER_KEY_BASED"
-	TargetEncryptionPasswordBased     TargetEncryptionType = "ENCRYPTION_PASSWORD_BASED"
-
-	// TargetEncryptionUEKMBased has been deprecated by RSC in favour of the
-	// two UEKM values below, but it's still read back from archival locations
-	// created before the split.
-	TargetEncryptionUEKMBased TargetEncryptionType = "UNIFIED_ENCRYPTION_KEY_MGMT_BASED"
-
-	TargetEncryptionUEKMRSABased       TargetEncryptionType = "UEKM_RSA_BASED"
-	TargetEncryptionUEKMAWSKMSBased    TargetEncryptionType = "UEKM_AWS_KMS_BASED"
-	TargetEncryptionUEKMAKVBased       TargetEncryptionType = "UEKM_AKV_BASED"
-	TargetEncryptionUEKMGCPKMSBased    TargetEncryptionType = "UEKM_GCP_KMS_BASED"
-	TargetEncryptionSSEDefaultPMK      TargetEncryptionType = "SSE_DEFAULT_PMK"
-	TargetEncryptionSSECustomerManaged TargetEncryptionType = "SSE_CMK"
-	TargetEncryptionSSECustomerKey     TargetEncryptionType = "SSE_CPK"
-)
-
 // RCVTargetEncryptionTypeValues returns the encryption types an RCV archival
 // location hosted by the specified cloud vendor can report. Returns nil for
 // cloud vendors without RCV support.

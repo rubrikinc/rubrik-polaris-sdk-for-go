@@ -41,8 +41,9 @@ type AzureTargetMapping struct {
 		CloudAccount struct {
 			ID uuid.UUID `json:"cloudAccountId"`
 		} `json:"cloudAccount"`
-		ContainerNamePrefix  string `json:"containerNamePrefix"`
-		StorageAccountName   string `json:"storageAccountName"`
+		ContainerNamePrefix  string               `json:"containerNamePrefix"`
+		EncryptionType       TargetEncryptionType `json:"encryptionType"`
+		StorageAccountName   string               `json:"storageAccountName"`
 		CloudNativeCompanion struct {
 			LocTemplate          string             `json:"cloudNativeLocTemplateType"`
 			NetworkAccessType    string             `json:"networkAccessType"`
