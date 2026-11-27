@@ -1,0 +1,23 @@
+mutation RubrikPolarisSDKRequest(
+    $applicationCloudAccountId: UUID!,
+    $exocomputeCloudAccountId:  UUID!
+) {
+    result: mapCloudAccountExocomputeAccount(input: {
+        exocomputeCloudAccountId: $exocomputeCloudAccountId,
+        cloudAccountIds:          [$applicationCloudAccountId],
+        cloudVendor:              AWS,
+        cloudSpecificParams: {
+            awsParams: { shouldEnableAutomatedKeySharing: true }
+        }
+    }) {
+        isSuccess
+        results {
+            applicationCloudAccountId
+            cloudFormationUrl
+            errorMessage
+            isPendingApproval
+            manualRolePolicyJson
+            templateUrl
+        }
+    }
+}

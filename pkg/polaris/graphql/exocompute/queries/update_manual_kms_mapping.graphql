@@ -1,0 +1,10 @@
+mutation RubrikPolarisSDKRequest($applicationCloudAccountId: UUID!) {
+    result: updateManualKmsMapping(input: {
+        accounts: [{ applicationCloudAccountId: $applicationCloudAccountId }]
+    }) {
+        results {
+            applicationCloudAccountId
+            errorMessage
+        }
+    }
+}

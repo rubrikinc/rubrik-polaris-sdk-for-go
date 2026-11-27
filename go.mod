@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.1.2
 	github.com/aws/aws-sdk-go-v2/service/organizations v1.1.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.2.0
+	github.com/aws/smithy-go v1.2.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
@@ -34,7 +35,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.0.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.0.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.1.3 // indirect
-	github.com/aws/smithy-go v1.2.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
