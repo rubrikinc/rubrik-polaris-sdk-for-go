@@ -72,21 +72,24 @@ type ManagementGroupHierarchySubscription struct {
 	IneligibilityReason string
 }
 
-// ManagementGroupHierarchy is the flattened hierarchy under a management group.
+// ManagementGroupHierarchy is a flat listing. If the query recurses,
+// Subscriptions includes descendant subscriptions, without parent IDs.
 type ManagementGroupHierarchy struct {
 	ManagementGroups []ManagementGroup
 	Subscriptions    []ManagementGroupHierarchySubscription
 }
 
-// ManagementGroupHierarchyOptions are the options for listing a management
-// group hierarchy.
-type ManagementGroupHierarchyOptions struct {
-	// ScopedManagementGroupIDs limits the hierarchy to the specified child
-	// management groups.
+// ManagementGroupHierarchyParams contains the inputs for listing a hierarchy.
+type ManagementGroupHierarchyParams struct {
+	TenantDomain      string
+	AppID             uuid.UUID
+	ManagementGroupID string
+	// ScopedManagementGroupIDs contains Azure-native descendant management group
+	// IDs, not display names or ARM resource paths. An empty list uses ManagementGroupID.
 	ScopedManagementGroupIDs []string
-	// NoRecurse limits the hierarchy to the immediate children.
+	// NoRecurse limits the listing to immediate children of each requested scope.
 	NoRecurse bool
-	// Features are the features to check subscription eligibility for.
+	// Features controls the eligibility check only. An empty list checks Cloud Discovery.
 	Features []core.Feature
 }
 
@@ -95,9 +98,10 @@ type ManagementGroupHierarchyOptions struct {
 func (a API) ManagementGroupCustomerAppID(ctx context.Context, tenantDomain string) (uuid.UUID, error) {
 	tenants, err := gqlazure.Wrap(a.client).CloudAccountTenants(ctx, core.FeatureAll, false)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("failed to list Azure tenants: %s", err)
 	}
 	for _, tenant := range tenants {
+		// DNS tenant domains are case-insensitive.
 		if !strings.EqualFold(tenant.DomainName, tenantDomain) {
 			continue
 		}
@@ -120,76 +124,89 @@ func (a API) ManagementGroupCustomerAppID(ctx context.Context, tenantDomain stri
 func (a API) ManagementGroups(ctx context.Context, tenantDomain string, appID uuid.UUID) ([]ManagementGroup, error) {
 	a.log.Print(log.Trace)
 
-	gql := gqlazure.Wrap(a.client)
-	sessionID, err := gql.InitiateCloudAccountAddWithCustomerApp(ctx, gqlazure.PublicCloud, tenantDomain, appID, "")
+	sessionID, err := a.managementGroupSession(ctx, tenantDomain, appID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initiate session: %w", err)
+		return nil, err
 	}
 
-	groups, err := gql.ListManagementGroups(ctx, gqlazure.PublicCloud, tenantDomain, sessionID)
+	groups, err := gqlazure.Wrap(a.client).ListManagementGroups(ctx, gqlazure.PublicCloud, tenantDomain, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list management groups: %w", err)
+		return nil, fmt.Errorf("failed to list management groups: %s", err)
 	}
 
 	return toManagementGroups(groups), nil
 }
 
-// ManagementGroupHierarchy returns the flattened hierarchy of management groups
-// and subscriptions under the management group with the specified native ID.
-// The secret stored in RSC for the app is used.
-func (a API) ManagementGroupHierarchy(ctx context.Context, tenantDomain string, appID uuid.UUID, managementGroupID string,
-	opts ManagementGroupHierarchyOptions) (ManagementGroupHierarchy, error) {
+// ManagementGroupHierarchy lists management groups and subscriptions under the
+// requested scope. The secret stored in RSC for the app is used.
+func (a API) ManagementGroupHierarchy(ctx context.Context, params ManagementGroupHierarchyParams) (ManagementGroupHierarchy, error) {
 	a.log.Print(log.Trace)
 
-	gql := gqlazure.Wrap(a.client)
-	sessionID, err := gql.InitiateCloudAccountAddWithCustomerApp(ctx, gqlazure.PublicCloud, tenantDomain, appID, "")
+	sessionID, err := a.managementGroupSession(ctx, params.TenantDomain, params.AppID)
 	if err != nil {
-		return ManagementGroupHierarchy{}, fmt.Errorf("failed to initiate session: %w", err)
+		return ManagementGroupHierarchy{}, err
 	}
 
-	return a.managementGroupHierarchy(ctx, sessionID, tenantDomain, managementGroupID, opts)
+	return a.managementGroupHierarchy(ctx, sessionID, params)
 }
 
-func (a API) managementGroupHierarchy(ctx context.Context, sessionID uuid.UUID, tenantDomain, managementGroupID string,
-	opts ManagementGroupHierarchyOptions) (ManagementGroupHierarchy, error) {
-	features := make([]string, 0, len(opts.Features))
-	for _, feature := range opts.Features {
-		features = append(features, feature.Name)
+func (a API) managementGroupSession(ctx context.Context, tenantDomain string, appID uuid.UUID) (uuid.UUID, error) {
+	sessionID, err := gqlazure.Wrap(a.client).InitiateCloudAccountAddWithCustomerApp(ctx, gqlazure.InitiateCloudAccountAddWithCustomerAppParams{
+		Cloud:        gqlazure.PublicCloud,
+		TenantDomain: tenantDomain,
+		AppID:        appID,
+	})
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to initiate session: %s", err)
+	}
+	return sessionID, nil
+}
+
+func (a API) managementGroupHierarchy(ctx context.Context, sessionID uuid.UUID, params ManagementGroupHierarchyParams) (ManagementGroupHierarchy, error) {
+	features := core.FeatureNames(params.Features)
+	if len(features) == 0 {
+		features = []string{core.CloudDiscovery}
 	}
 
-	hierarchy, err := gqlazure.Wrap(a.client).ListManagementGroupHierarchy(ctx, gqlazure.ManagementGroupHierarchyRequest{
+	entities, err := gqlazure.Wrap(a.client).ListManagementGroupHierarchy(ctx, gqlazure.ListManagementGroupHierarchyParams{
 		Cloud:                    gqlazure.PublicCloud,
-		TenantDomain:             tenantDomain,
+		TenantDomain:             params.TenantDomain,
 		SessionID:                sessionID,
-		ManagementGroupID:        managementGroupID,
-		ScopedManagementGroupIDs: opts.ScopedManagementGroupIDs,
-		ShouldRecurse:            !opts.NoRecurse,
+		ManagementGroupID:        params.ManagementGroupID,
+		ScopedManagementGroupIDs: params.ScopedManagementGroupIDs,
+		ShouldRecurse:            !params.NoRecurse,
 		Features:                 features,
 		Operation:                gqlazure.OperationAdd,
 		AuthType:                 gqlazure.AuthTypeNonOAuth,
 	})
 	if err != nil {
-		return ManagementGroupHierarchy{}, fmt.Errorf("failed to list management group hierarchy: %w", err)
+		return ManagementGroupHierarchy{}, fmt.Errorf("failed to list management group hierarchy: %s", err)
 	}
 
-	result := ManagementGroupHierarchy{
-		Subscriptions: make([]ManagementGroupHierarchySubscription, 0, len(hierarchy.Subscriptions)),
-	}
-	for _, group := range hierarchy.ManagementGroups {
-		result.ManagementGroups = append(result.ManagementGroups, ManagementGroup{
-			NativeID:     group.NativeID,
-			Name:         group.Name,
-			CustomerID:   group.CustomerManagementGroupID,
-			IsAuthorized: group.IsAuthorized,
-		})
-	}
-	for _, sub := range hierarchy.Subscriptions {
-		result.Subscriptions = append(result.Subscriptions, ManagementGroupHierarchySubscription{
-			NativeID:            sub.NativeID,
-			Name:                sub.Name,
-			IsEligible:          sub.IsEligible,
-			IneligibilityReason: string(sub.IneligibilityReason),
-		})
+	result := ManagementGroupHierarchy{Subscriptions: []ManagementGroupHierarchySubscription{}}
+	for _, entry := range entities {
+		entity := entry.Entity
+		switch entity.Type {
+		case gqlazure.ManagementGroupEntityType:
+			result.ManagementGroups = append(result.ManagementGroups, ManagementGroup{
+				NativeID:     entity.NativeID,
+				Name:         entity.Name,
+				IsAuthorized: entity.IsAuthorized,
+			})
+		case gqlazure.SubscriptionEntityType:
+			nativeID, err := uuid.Parse(entity.NativeID)
+			if err != nil {
+				return ManagementGroupHierarchy{}, fmt.Errorf("invalid subscription ID %q in management group hierarchy: %s", entity.NativeID, err)
+			}
+			result.Subscriptions = append(result.Subscriptions, ManagementGroupHierarchySubscription{
+				NativeID:            nativeID,
+				Name:                entity.Name,
+				IsEligible:          entry.IsEligible,
+				IneligibilityReason: string(entry.IneligibilityReason),
+			})
+		default:
+			return ManagementGroupHierarchy{}, fmt.Errorf("unexpected management group hierarchy entity type %q", entity.Type)
+		}
 	}
 
 	return result, nil
@@ -202,61 +219,75 @@ type ManagementGroupSubscription struct {
 	Features []ManagementGroupFeature
 }
 
+// StartManagementGroupOnboardingParams describes the subscriptions and features
+// to add through a management group.
+type StartManagementGroupOnboardingParams struct {
+	TenantDomain      string
+	AppID             uuid.UUID
+	ManagementGroupID string
+	Regions           []azure.Region
+	Subscriptions     []ManagementGroupSubscription
+}
+
 // StartManagementGroupOnboarding submits non-OAuth onboarding and returns the
 // accepted task ID without waiting. The customer app must already have the
 // Contributor and User Access Administrator grants at management group scope.
-func (a API) StartManagementGroupOnboarding(ctx context.Context, tenantDomain string, appID uuid.UUID, managementGroupID string,
-	regions []azure.Region, subscriptions []ManagementGroupSubscription) (uuid.UUID, error) {
+func (a API) StartManagementGroupOnboarding(ctx context.Context, params StartManagementGroupOnboardingParams) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
-	if len(subscriptions) == 0 {
+	if len(params.Subscriptions) == 0 {
 		return uuid.Nil, errors.New("at least one subscription is required")
 	}
-
-	gql := gqlazure.Wrap(a.client)
-	sessionID, err := gql.InitiateCloudAccountAddWithCustomerApp(ctx, gqlazure.PublicCloud, tenantDomain, appID, "")
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to initiate session: %w", err)
-	}
-
-	// The management group name is required by RSC. An empty list means the
-	// elevated permissions have not been granted to the app.
-	groups, err := gql.ListManagementGroups(ctx, gqlazure.PublicCloud, tenantDomain, sessionID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to list management groups: %w", err)
-	}
-	groupIdx := slices.IndexFunc(groups, func(g gqlazure.ManagementGroup) bool {
-		return strings.EqualFold(g.NativeID, managementGroupID)
-	})
-	if groupIdx < 0 {
-		return uuid.Nil, fmt.Errorf("management group %q not visible to the app, grant the Contributor and User Access "+
-			"Administrator roles to the app's service principal at the management group scope: %w",
-			managementGroupID, graphql.ErrNotFound)
-	}
-	group := groups[groupIdx]
-
-	// The hierarchy gives the subscription names and the eligibility.
 	var features []core.Feature
-	for _, sub := range subscriptions {
+	for _, sub := range params.Subscriptions {
+		if len(sub.Features) == 0 {
+			return uuid.Nil, fmt.Errorf("subscription %s requires at least one feature", sub.NativeID)
+		}
 		for _, feature := range sub.Features {
 			if !slices.ContainsFunc(features, feature.Feature.Equal) {
 				features = append(features, feature.Feature)
 			}
 		}
 	}
-	hierarchy, err := a.managementGroupHierarchy(ctx, sessionID, tenantDomain, managementGroupID,
-		ManagementGroupHierarchyOptions{Features: features})
+
+	gql := gqlazure.Wrap(a.client)
+	sessionID, err := a.managementGroupSession(ctx, params.TenantDomain, params.AppID)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	input := make([]gqlazure.ManagementGroupSubscription, 0, len(subscriptions))
-	for _, sub := range subscriptions {
+	// RSC requires both the group ID and display name for onboarding.
+	groups, err := gql.ListManagementGroups(ctx, gqlazure.PublicCloud, params.TenantDomain, sessionID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to list management groups: %s", err)
+	}
+	// Azure management group lookups accept case variants; use the returned native ID on subsequent requests.
+	groupIdx := slices.IndexFunc(groups, func(g gqlazure.ManagementGroup) bool {
+		return strings.EqualFold(g.NativeID, params.ManagementGroupID)
+	})
+	if groupIdx < 0 {
+		return uuid.Nil, fmt.Errorf("management group %q not visible to the app; check the ID and the Contributor and User Access "+
+			"Administrator grants at management group scope: %w", params.ManagementGroupID, graphql.ErrNotFound)
+	}
+	group := groups[groupIdx]
+
+	// The hierarchy gives the subscription names and eligibility.
+	hierarchy, err := a.managementGroupHierarchy(ctx, sessionID, ManagementGroupHierarchyParams{
+		TenantDomain:      params.TenantDomain,
+		ManagementGroupID: group.NativeID,
+		Features:          features,
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	input := make([]gqlazure.ManagementGroupSubscription, 0, len(params.Subscriptions))
+	for _, sub := range params.Subscriptions {
 		idx := slices.IndexFunc(hierarchy.Subscriptions, func(s ManagementGroupHierarchySubscription) bool {
 			return s.NativeID == sub.NativeID
 		})
 		if idx < 0 {
-			return uuid.Nil, fmt.Errorf("subscription %s not found in management group %q: %w", sub.NativeID, managementGroupID, graphql.ErrNotFound)
+			return uuid.Nil, fmt.Errorf("subscription %s not found in management group %q: %w", sub.NativeID, group.NativeID, graphql.ErrNotFound)
 		}
 		if found := hierarchy.Subscriptions[idx]; !found.IsEligible {
 			return uuid.Nil, fmt.Errorf("subscription %s is not eligible for onboarding: %s", sub.NativeID, found.IneligibilityReason)
@@ -293,32 +324,45 @@ func (a API) StartManagementGroupOnboarding(ctx context.Context, tenantDomain st
 		})
 	}
 
-	taskChainID, err := gql.AddCloudAccountThroughManagementGroup(ctx, sessionID, tenantDomain, regions,
-		gqlazure.ManagementGroupInput{NativeID: group.NativeID, Name: group.Name}, input)
+	taskChainID, err := gql.AddCloudAccountThroughManagementGroup(ctx, gqlazure.AddCloudAccountThroughManagementGroupParams{
+		SessionID:       sessionID,
+		TenantDomain:    params.TenantDomain,
+		Regions:         params.Regions,
+		ManagementGroup: gqlazure.ManagementGroupInput{NativeID: group.NativeID, Name: group.Name},
+		Subscriptions:   input,
+	})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to add subscriptions: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to add subscriptions: %s", err)
 	}
 
 	return taskChainID, nil
 }
 
+// WaitForManagementGroupOnboardingParams specifies the accepted task and the
+// subscriptions and features it should connect.
+type WaitForManagementGroupOnboardingParams struct {
+	TaskChainID       uuid.UUID
+	TenantDomain      string
+	ManagementGroupID string
+	Subscriptions     []ManagementGroupSubscription
+}
+
 // WaitForManagementGroupOnboarding waits for the accepted task to finish and
 // verifies that each requested feature is connected through the expected group.
-func (a API) WaitForManagementGroupOnboarding(ctx context.Context, taskChainID uuid.UUID, tenantDomain, managementGroupID string,
-	subscriptions []ManagementGroupSubscription) error {
+func (a API) WaitForManagementGroupOnboarding(ctx context.Context, params WaitForManagementGroupOnboardingParams) error {
 	a.log.Print(log.Trace)
-	if err := a.WaitForManagementGroupTask(ctx, taskChainID); err != nil {
+	if err := a.WaitForManagementGroupTask(ctx, params.TaskChainID); err != nil {
 		return err
 	}
 	accounts, err := a.Subscriptions(ctx, "")
 	if err != nil {
-		return fmt.Errorf("failed to verify onboarding task %s: %w", taskChainID, err)
+		return fmt.Errorf("failed to verify onboarding task %s: %s", params.TaskChainID, err)
 	}
 	var failures []error
-	for _, sub := range subscriptions {
+	for _, sub := range params.Subscriptions {
 		idx := slices.IndexFunc(accounts, func(c CloudAccount) bool {
-			return c.NativeID == sub.NativeID && strings.EqualFold(c.TenantDomain, tenantDomain) &&
-				c.ManagementGroup != nil && strings.EqualFold(c.ManagementGroup.NativeID, managementGroupID) &&
+			return c.NativeID == sub.NativeID && strings.EqualFold(c.TenantDomain, params.TenantDomain) &&
+				c.ManagementGroup != nil && strings.EqualFold(c.ManagementGroup.NativeID, params.ManagementGroupID) &&
 				c.AuthType != gqlazure.AuthTypeOAuthRubrikApp && c.AuthType != gqlazure.AuthTypeOAuthCustomerApp
 		})
 		for _, feature := range sub.Features {
@@ -340,7 +384,10 @@ func (a API) WaitForManagementGroupOnboarding(ctx context.Context, taskChainID u
 func (a API) WaitForManagementGroupTask(ctx context.Context, taskChainID uuid.UUID) error {
 	state, err := core.Wrap(a.client).WaitForTaskChain(ctx, taskChainID, managementGroupPollInterval)
 	if err != nil {
-		return fmt.Errorf("waiting for management group task %s: %w", taskChainID, err)
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return err
+		}
+		return fmt.Errorf("waiting for management group task %s: %s", taskChainID, err)
 	}
 	if state != core.TaskChainSucceeded {
 		return fmt.Errorf("management group task %s ended with state %s", taskChainID, state)
@@ -348,72 +395,152 @@ func (a API) WaitForManagementGroupTask(ctx context.Context, taskChainID uuid.UU
 	return nil
 }
 
-// RemoveManagementGroupSubscriptionFeature removes the feature on the
-// subscriptions with the specified RSC cloud account IDs, using the customer
-// app so that RSC also removes the Azure role assignments. The app's service
-// principal must still have the Contributor and User Access Administrator
-// roles at the management group scope. The secret stored in RSC for the app is
-// used.
-//
-// If deleteSnapshots is true, the snapshots of a protection feature are
-// deleted, otherwise they are kept. The function blocks until the feature has
-// been deleted on all the subscriptions.
-func (a API) RemoveManagementGroupSubscriptionFeature(ctx context.Context, tenantDomain string, appID uuid.UUID,
-	cloudAccountIDs []uuid.UUID, feature core.Feature, deleteSnapshots bool) error {
-	a.log.Print(log.Trace)
+// RemoveManagementGroupSubscriptionFeatureParams describes a feature to remove
+// using a customer app and the RSC cloud account IDs of its subscriptions.
+type RemoveManagementGroupSubscriptionFeatureParams struct {
+	TenantDomain    string
+	AppID           uuid.UUID
+	CloudAccountIDs []uuid.UUID
+	Feature         core.Feature
+	DeleteSnapshots bool
+}
 
-	if len(cloudAccountIDs) == 0 {
+// RemoveManagementGroupSubscriptionFeature removes the feature and its Azure
+// role assignments using the customer app's secret stored in RSC. Keep the
+// app's Contributor and User Access Administrator grants until removal finishes.
+//
+// If DeleteSnapshots is true, the disable job deletes the protection snapshots
+// rather than retaining them. The function blocks until removal is verified.
+func (a API) RemoveManagementGroupSubscriptionFeature(ctx context.Context, params RemoveManagementGroupSubscriptionFeatureParams) error {
+	a.log.Print(log.Trace)
+	if len(params.CloudAccountIDs) == 0 {
 		return nil
 	}
 
-	gql := gqlazure.Wrap(a.client)
-	sessionID, err := gql.InitiateCloudAccountAddWithCustomerApp(ctx, gqlazure.PublicCloud, tenantDomain, appID, "")
-	if err != nil {
-		return fmt.Errorf("failed to initiate session: %w", err)
+	// Only features supported by RSC's Azure disable-job workflow need a job.
+	// This includes Discovery and Exocompute, not just workload protection.
+	feature := params.Feature
+	disable := false
+	switch feature.Name {
+	case core.CloudNativeProtection, core.AzureSQLDBProtection, core.AzureSQLMIProtection,
+		core.CloudNativeBlobProtection, core.AzurePostgresFlexibleServerProtection, core.AzureCosmosNoSQLProtection,
+		core.Exocompute, core.CloudDiscovery, core.Archival, core.CloudCostReport:
+		disable = true
+	}
+	combined := false
+	if disable {
+		flag, err := core.Wrap(a.client).FeatureFlag(ctx, core.FeatureFlagAzureDisableDeleteCombined)
+		if err != nil {
+			return fmt.Errorf("failed to check Azure combined disable and delete flag: %s", err)
+		}
+		if flag.Name == "" {
+			return errors.New("RSC did not return the Azure combined disable and delete flag")
+		}
+		combined = flag.Enabled
 	}
 
-	// The archival handlers do not implement BeforeDisable. As in the UI,
-	// use session-based deletion directly so RSC cleans up Azure roles.
-	if feature.Equal(core.FeatureCloudNativeArchival) || feature.Equal(core.FeatureCloudNativeArchivalEncryption) {
-		if err := gql.DeleteCloudAccountsWithSession(ctx, cloudAccountIDs, feature, sessionID); err != nil {
-			return fmt.Errorf("failed to remove %s: %w", feature, err)
-		}
+	sessionStarted := time.Now()
+	sessionID, err := a.managementGroupSession(ctx, params.TenantDomain, params.AppID)
+	if err != nil {
+		return err
+	}
+	gql := gqlazure.Wrap(a.client)
+	verifyAbsent := func(ctx context.Context, ids []uuid.UUID) error {
 		accounts, err := a.Subscriptions(ctx, "")
 		if err != nil {
-			return fmt.Errorf("verify deletion of %s: %w", feature, err)
+			return fmt.Errorf("failed to verify removal of %s: %s", feature, err)
 		}
+		requested := make(map[uuid.UUID]bool, len(ids))
+		for _, id := range ids {
+			requested[id] = true
+		}
+		var failures []error
 		for _, account := range accounts {
-			if !slices.Contains(cloudAccountIDs, account.ID) {
+			if !requested[account.ID] {
 				continue
 			}
-			if _, exists := account.Feature(feature); exists {
-				return fmt.Errorf("feature %s remains on subscription %s after deletion", feature, account.ID)
+			if _, present := account.Feature(feature); present {
+				failures = append(failures, fmt.Errorf("feature %s remains on subscription %s after removal", feature, account.ID))
 			}
 		}
-		return nil
+		return errors.Join(failures...)
+	}
+	deleteFeature := func(ctx context.Context, ids []uuid.UUID, sessionID uuid.UUID) error {
+		err := gql.DeleteCloudAccountsWithSession(ctx, ids, feature, sessionID)
+		if err != nil {
+			err = fmt.Errorf("failed to delete %s: %s", feature, err)
+		}
+		return errors.Join(err, verifyAbsent(ctx, ids))
+	}
+	if !disable {
+		return deleteFeature(ctx, params.CloudAccountIDs, sessionID)
 	}
 
-	jobs, submitErr := gql.StartDisableCloudAccountsJobWithSession(ctx, cloudAccountIDs, feature, sessionID, deleteSnapshots)
+	jobs, submitErr := gql.StartDisableCloudAccountsJobWithSession(ctx, gqlazure.StartDisableCloudAccountsJobWithSessionParams{
+		CloudAccountIDs: params.CloudAccountIDs,
+		Feature:         feature,
+		SessionID:       sessionID,
+		DeleteSnapshots: params.DeleteSnapshots,
+	})
 	var failures []error
 	if submitErr != nil {
-		failures = append(failures, fmt.Errorf("failed to schedule removal of %s: %w", feature, submitErr))
+		failures = append(failures, fmt.Errorf("failed to schedule removal of %s: %s", feature, submitErr))
 	}
+	var toDelete []uuid.UUID
 	for _, job := range jobs {
-		if err := a.WaitForManagementGroupTask(ctx, job.ID); err != nil {
+		if err := core.Wrap(a.client).WaitForFeatureDisableTaskChain(ctx, job.ID, func(ctx context.Context) (bool, error) {
+			status, present, err := a.managementGroupFeatureStatus(ctx, job.CloudAccountID, feature)
+			// On RBAC errors, DISABLED is enough only when the client will run the delete step.
+			return !present || (!combined && status == core.StatusDisabled), err
+		}); err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				failures = append(failures, err)
+			} else {
+				failures = append(failures, fmt.Errorf("failed to wait for disable task %s for subscription %s: %s", job.ID, job.CloudAccountID, err))
+			}
+			continue
+		}
+
+		status, present, err := a.managementGroupFeatureStatus(ctx, job.CloudAccountID, feature)
+		switch {
+		case err != nil:
 			failures = append(failures, err)
-			continue
-		}
-		account, err := a.SubscriptionByID(ctx, job.CloudAccountID)
-		if errors.Is(err, graphql.ErrNotFound) {
-			continue
-		}
-		if err != nil {
-			failures = append(failures, fmt.Errorf("verify deletion for subscription %s: %w", job.CloudAccountID, err))
-		} else if _, exists := account.Feature(feature); exists {
+		case !present:
+			// The combined job or another removal already deleted the feature.
+		case combined:
 			failures = append(failures, fmt.Errorf("task %s finished but feature %s remains on subscription %s", job.ID, feature, job.CloudAccountID))
+		case status != core.StatusDisabled:
+			failures = append(failures, fmt.Errorf("task %s finished but feature %s has status %q on subscription %s, expected DISABLED", job.ID, feature, status, job.CloudAccountID))
+		default:
+			toDelete = append(toDelete, job.CloudAccountID)
 		}
+	}
+	if len(toDelete) != 0 {
+		// A long disable job can outlive the 60-minute session. Get a fresh
+		// one if the original is close to expiring before the delete call.
+		if time.Since(sessionStarted) >= 55*time.Minute {
+			sessionID, err = a.managementGroupSession(ctx, params.TenantDomain, params.AppID)
+			if err != nil {
+				return errors.Join(append(failures, err)...)
+			}
+		}
+		failures = append(failures, deleteFeature(ctx, toDelete, sessionID))
 	}
 	return errors.Join(failures...)
+}
+
+// managementGroupFeatureStatus treats a missing cloud account or feature as
+// absent. Any other read error must not be mistaken for a successful removal.
+func (a API) managementGroupFeatureStatus(ctx context.Context, id uuid.UUID, feature core.Feature) (core.Status, bool, error) {
+	account, err := a.SubscriptionByID(ctx, id)
+	if errors.Is(err, graphql.ErrNotFound) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("failed to verify %s on subscription %s: %s", feature, id, err)
+	}
+	f, present := account.Feature(feature)
+	return f.Status, present, nil
 }
 
 func toManagementGroups(groups []gqlazure.ManagementGroup) []ManagementGroup {

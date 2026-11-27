@@ -63,7 +63,8 @@ type CloudAccount struct {
 	// ManagementGroup is the management group the subscription was onboarded
 	// through, or nil if it was not onboarded through a management group.
 	ManagementGroup *ManagementGroup
-	// AuthType identifies the subscription app's authentication method when reported by RSC.
+	// AuthType identifies the subscription app's authentication method. It is
+	// empty when RSC does not resolve a backing app for the subscription.
 	AuthType gqlazure.AuthType
 }
 

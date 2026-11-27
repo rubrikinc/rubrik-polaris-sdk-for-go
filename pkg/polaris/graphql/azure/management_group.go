@@ -103,38 +103,39 @@ const (
 	AuthTypeOAuthCustomerApp AuthType = "AZURE_AUTH_TYPE_OAUTH_CUSTOMER_APP"
 )
 
-// HierarchySubscription is a subscription found in a management group
-// hierarchy.
-type HierarchySubscription struct {
-	NativeID            uuid.UUID
-	Name                string
-	IsAuthorized        bool
-	IsEligible          bool
-	IneligibilityReason IneligibilityReason
+// ManagementGroupHierarchyEntityType identifies a member of the hierarchy entity union.
+type ManagementGroupHierarchyEntityType string
+
+const (
+	ManagementGroupEntityType ManagementGroupHierarchyEntityType = "AzureManagementGroup"
+	SubscriptionEntityType    ManagementGroupHierarchyEntityType = "CloudAccountsAzureSubscription"
+)
+
+// ManagementGroupHierarchyEntity is an entry in the flat hierarchy response.
+type ManagementGroupHierarchyEntity struct {
+	IsEligible          bool                           `json:"isEligible"`
+	IneligibilityReason IneligibilityReason            `json:"ineligibilityReason"`
+	Entity              ManagementGroupHierarchyMember `json:"entity"`
 }
 
-// HierarchyManagementGroup is a management group found in a management group
-// hierarchy.
-type HierarchyManagementGroup struct {
-	ManagementGroup
-	IsEligible          bool
-	IneligibilityReason IneligibilityReason
+// ManagementGroupHierarchyMember is the projection shared by both union members.
+// NativeID is a string because only subscription IDs are always UUIDs.
+type ManagementGroupHierarchyMember struct {
+	Type         ManagementGroupHierarchyEntityType `json:"__typename"`
+	NativeID     string                             `json:"nativeId"`
+	Name         string                             `json:"name"`
+	IsAuthorized bool                               `json:"isAuthorized"`
 }
 
-// ManagementGroupHierarchy holds the flattened hierarchy under a management
-// group.
-type ManagementGroupHierarchy struct {
-	ManagementGroups []HierarchyManagementGroup
-	Subscriptions    []HierarchySubscription
-}
-
-// ManagementGroupHierarchyRequest holds the parameters for listing the
+// ListManagementGroupHierarchyParams holds the parameters for listing the
 // hierarchy under a management group.
-type ManagementGroupHierarchyRequest struct {
-	Cloud                    Cloud         `json:"cloudType"`
-	TenantDomain             string        `json:"tenantDomainName"`
-	SessionID                uuid.UUID     `json:"sessionId"`
-	ManagementGroupID        string        `json:"managementGroupId"`
+type ListManagementGroupHierarchyParams struct {
+	Cloud             Cloud     `json:"cloudType"`
+	TenantDomain      string    `json:"tenantDomainName"`
+	SessionID         uuid.UUID `json:"sessionId"`
+	ManagementGroupID string    `json:"managementGroupId"`
+	// ScopedManagementGroupIDs contains the Azure-native IDs of descendant
+	// management groups. An empty list starts the lookup at ManagementGroupID.
 	ScopedManagementGroupIDs []string      `json:"scopedManagementGroupIds,omitempty"`
 	ShouldRecurse            bool          `json:"shouldRecurse"`
 	Features                 []string      `json:"features,omitempty"`
@@ -142,37 +143,36 @@ type ManagementGroupHierarchyRequest struct {
 	AuthType                 AuthType      `json:"authType"`
 }
 
+// InitiateCloudAccountAddWithCustomerAppParams contains the credentials used to
+// start an add cloud account session. If AppSecret is empty, RSC uses its stored secret.
+type InitiateCloudAccountAddWithCustomerAppParams struct {
+	Cloud        Cloud         `json:"cloudType"`
+	TenantDomain string        `json:"tenantDomainName"`
+	AppID        uuid.UUID     `json:"appId"`
+	AppSecret    secret.String `json:"appSecretKey,omitempty"`
+}
+
 // InitiateCloudAccountAddWithCustomerApp starts an add cloud account session
-// using the customer app credentials. If the app secret is empty, the secret
-// stored in RSC for the app is used. Returns the session ID, which expires
-// after 60 minutes.
-func (a API) InitiateCloudAccountAddWithCustomerApp(ctx context.Context, cloud Cloud, tenantDomain string, appID uuid.UUID, appSecret secret.String) (uuid.UUID, error) {
+// using the customer app credentials. The session expires after 60 minutes;
+// callers do not need to close it.
+func (a API) InitiateCloudAccountAddWithCustomerApp(ctx context.Context, params InitiateCloudAccountAddWithCustomerAppParams) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
 	// The shared session validator requires the UI callback URL even
 	// when customer app authentication does not open a browser.
 	endpoint, err := url.Parse(a.GQL.Endpoint())
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("invalid RSC GraphQL URL: %w", err)
+		return uuid.Nil, fmt.Errorf("invalid RSC GraphQL URL: %s", err)
 	}
-	redirectURL := endpoint.ResolveReference(&url.URL{Path: "/setup_azure"}).String()
 	query := azureCloudAccountAddWithCustomerAppInitiateQuery
 	vars := struct {
-		Cloud        Cloud         `json:"cloudType"`
-		TenantDomain string        `json:"tenantDomainName"`
-		AppID        uuid.UUID     `json:"appId"`
-		AppSecret    secret.String `json:"appSecretKey,omitempty"`
-		RedirectURL  string        `json:"redirectUrl"`
-	}{Cloud: cloud, TenantDomain: tenantDomain, AppID: appID, AppSecret: appSecret, RedirectURL: redirectURL}
-
-	// Request logs the raw response data. Decode it before logging so the
-	// returned session ID can be redacted along with the request secret.
-	requestLog, err := json.MarshalIndent(secret.Redact(vars), "", "    ")
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to marshal query variables: %w", err)
+		InitiateCloudAccountAddWithCustomerAppParams
+		RedirectURL string `json:"redirectUrl"`
+	}{
+		InitiateCloudAccountAddWithCustomerAppParams: params,
+		RedirectURL: endpoint.ResolveReference(&url.URL{Path: "/setup_azure"}).String(),
 	}
-	a.log.Printf(log.Debug, "%s request:\n%s\n%s", graphql.QueryName(query), query, requestLog)
-
+	// The response contains a session ID; don't log the raw payload.
 	buf, err := a.GQL.RequestWithoutLogging(ctx, query, vars)
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
@@ -188,9 +188,6 @@ func (a API) InitiateCloudAccountAddWithCustomerApp(ctx context.Context, cloud C
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
 		return uuid.Nil, graphql.UnmarshalError(query, err)
-	}
-	if responseLog, err := json.MarshalIndent(secret.Redact(payload), "", "    "); err == nil {
-		a.log.Printf(log.Debug, "%s response:\n%s", graphql.QueryName(query), responseLog)
 	}
 	if !payload.Data.Result.Success {
 		return uuid.Nil, graphql.ResponseError(query, errors.New("initiate add cloud account failed"))
@@ -234,71 +231,42 @@ func (a API) ListManagementGroups(ctx context.Context, cloud Cloud, tenantDomain
 	return payload.Data.Result.ManagementGroups, nil
 }
 
-// ListManagementGroupHierarchy lists the flattened hierarchy of management
-// groups and subscriptions under a management group.
-func (a API) ListManagementGroupHierarchy(ctx context.Context, req ManagementGroupHierarchyRequest) (ManagementGroupHierarchy, error) {
+// ListManagementGroupHierarchy returns the flat list of RSC hierarchy entities
+// under the requested management group or scopes.
+func (a API) ListManagementGroupHierarchy(ctx context.Context, params ListManagementGroupHierarchyParams) ([]ManagementGroupHierarchyEntity, error) {
 	a.log.Print(log.Trace)
 
 	query := azureListManagementGroupHierarchyQuery
 	buf, err := a.GQL.Request(ctx, query, struct {
-		ManagementGroupHierarchyRequest
+		ListManagementGroupHierarchyParams
 		SessionID secret.String `json:"sessionId"`
-	}{ManagementGroupHierarchyRequest: req, SessionID: secret.String(req.SessionID.String())})
+	}{ListManagementGroupHierarchyParams: params, SessionID: secret.String(params.SessionID.String())})
 	if err != nil {
-		return ManagementGroupHierarchy{}, graphql.RequestError(query, err)
+		return nil, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
 		Data struct {
 			Result struct {
-				Entities []struct {
-					IsEligible          bool                `json:"isEligible"`
-					IneligibilityReason IneligibilityReason `json:"ineligibilityReason"`
-					Entity              struct {
-						Typename     string `json:"__typename"`
-						NativeID     string `json:"nativeId"`
-						Name         string `json:"name"`
-						IsAuthorized bool   `json:"isAuthorized"`
-					} `json:"entity"`
-				} `json:"entities"`
+				Entities []ManagementGroupHierarchyEntity `json:"entities"`
 			} `json:"result"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return ManagementGroupHierarchy{}, graphql.UnmarshalError(query, err)
+		return nil, graphql.UnmarshalError(query, err)
 	}
 
-	var hierarchy ManagementGroupHierarchy
-	for _, e := range payload.Data.Result.Entities {
-		switch e.Entity.Typename {
-		case "AzureManagementGroup":
-			hierarchy.ManagementGroups = append(hierarchy.ManagementGroups, HierarchyManagementGroup{
-				ManagementGroup: ManagementGroup{
-					NativeID:     e.Entity.NativeID,
-					Name:         e.Entity.Name,
-					IsAuthorized: e.Entity.IsAuthorized,
-				},
-				IsEligible:          e.IsEligible,
-				IneligibilityReason: e.IneligibilityReason,
-			})
-		case "CloudAccountsAzureSubscription":
-			nativeID, err := uuid.Parse(e.Entity.NativeID)
-			if err != nil {
-				return ManagementGroupHierarchy{}, graphql.ResponseError(query, fmt.Errorf("invalid subscription id %q: %s", e.Entity.NativeID, err))
-			}
-			hierarchy.Subscriptions = append(hierarchy.Subscriptions, HierarchySubscription{
-				NativeID:            nativeID,
-				Name:                e.Entity.Name,
-				IsAuthorized:        e.Entity.IsAuthorized,
-				IsEligible:          e.IsEligible,
-				IneligibilityReason: e.IneligibilityReason,
-			})
-		default:
-			return ManagementGroupHierarchy{}, graphql.ResponseError(query, fmt.Errorf("unexpected entity type %q", e.Entity.Typename))
-		}
-	}
+	return payload.Data.Result.Entities, nil
+}
 
-	return hierarchy, nil
+// AddCloudAccountThroughManagementGroupParams contains the subscriptions to add
+// through a management group and the customer app session used to add them.
+type AddCloudAccountThroughManagementGroupParams struct {
+	SessionID       uuid.UUID
+	TenantDomain    string
+	Regions         []azure.Region
+	ManagementGroup ManagementGroupInput
+	Subscriptions   []ManagementGroupSubscription
 }
 
 // AddCloudAccountThroughManagementGroup adds the subscriptions to RSC through
@@ -306,8 +274,7 @@ func (a API) ListManagementGroupHierarchy(ctx context.Context, req ManagementGro
 // InitiateCloudAccountAddWithCustomerApp. RSC onboards the subscriptions
 // asynchronously, the returned task chain ID can be used to wait for the
 // onboarding to complete.
-func (a API) AddCloudAccountThroughManagementGroup(ctx context.Context, sessionID uuid.UUID, tenantDomain string,
-	regions []azure.Region, managementGroup ManagementGroupInput, subscriptions []ManagementGroupSubscription) (uuid.UUID, error) {
+func (a API) AddCloudAccountThroughManagementGroup(ctx context.Context, params AddCloudAccountThroughManagementGroupParams) (uuid.UUID, error) {
 	a.log.Print(log.Trace)
 
 	query := addAzureCloudAccountQuery
@@ -318,11 +285,11 @@ func (a API) AddCloudAccountThroughManagementGroup(ctx context.Context, sessionI
 		ManagementGroup ManagementGroupInput           `json:"managementGroup"`
 		Subscriptions   []ManagementGroupSubscription  `json:"subscriptions"`
 	}{
-		SessionID:       secret.String(sessionID.String()),
-		TenantDomain:    tenantDomain,
-		Regions:         RegionsToCloudAccountRegionEnum(regions),
-		ManagementGroup: managementGroup,
-		Subscriptions:   subscriptions,
+		SessionID:       secret.String(params.SessionID.String()),
+		TenantDomain:    params.TenantDomain,
+		Regions:         RegionsToCloudAccountRegionEnum(params.Regions),
+		ManagementGroup: params.ManagementGroup,
+		Subscriptions:   params.Subscriptions,
 	})
 	if err != nil {
 		return uuid.Nil, graphql.RequestError(query, err)
@@ -360,7 +327,7 @@ func (a API) AddCloudAccountThroughManagementGroup(ctx context.Context, sessionI
 
 // DeleteCloudAccountsWithSession removes the specified feature and its Azure
 // role assignments using the customer app session. Use this for features that
-// do not support the asynchronous disable step.
+// do not need a disable job or after a disable-only job has completed.
 func (a API) DeleteCloudAccountsWithSession(ctx context.Context, ids []uuid.UUID, feature core.Feature, sessionID uuid.UUID) error {
 	a.log.Print(log.Trace)
 
@@ -403,18 +370,26 @@ func (a API) DeleteCloudAccountsWithSession(ctx context.Context, ids []uuid.UUID
 	return nil
 }
 
-// ManagementGroupDisableJob identifies an accepted deletion job and its target.
+// ManagementGroupDisableJob identifies an accepted disable job and its target.
 type ManagementGroupDisableJob struct {
 	ID             uuid.UUID `json:"jobId"`
 	CloudAccountID uuid.UUID `json:"rubrikObjectId"`
 }
 
-// StartDisableCloudAccountsJobWithSession starts task chains to disable the
-// feature in the cloud accounts with the specified RSC cloud account IDs, using
-// the session from InitiateCloudAccountAddWithCustomerApp. With a session, RSC
-// also removes the Azure role assignments. Returns the RSC task chain IDs, one
-// for each cloud account.
-func (a API) StartDisableCloudAccountsJobWithSession(ctx context.Context, ids []uuid.UUID, feature core.Feature, sessionID uuid.UUID, deleteSnapshots bool) ([]ManagementGroupDisableJob, error) {
+// StartDisableCloudAccountsJobWithSessionParams contains the feature, targets,
+// and customer app session for a disable job.
+type StartDisableCloudAccountsJobWithSessionParams struct {
+	CloudAccountIDs []uuid.UUID
+	Feature         core.Feature
+	SessionID       uuid.UUID
+	DeleteSnapshots bool
+}
+
+// StartDisableCloudAccountsJobWithSession starts one disable task chain per
+// cloud account. If combined disable and delete is enabled, the task also
+// deletes the feature and uses the session to remove Azure role assignments.
+// Accepted jobs are returned even if other targets fail submission.
+func (a API) StartDisableCloudAccountsJobWithSession(ctx context.Context, params StartDisableCloudAccountsJobWithSessionParams) ([]ManagementGroupDisableJob, error) {
 	a.log.Print(log.Trace)
 
 	query := startDisableAzureCloudAccountJobWithSessionQuery
@@ -423,7 +398,7 @@ func (a API) StartDisableCloudAccountsJobWithSession(ctx context.Context, ids []
 		Feature         string        `json:"feature"`
 		SessionID       secret.String `json:"sessionId"`
 		DeleteSnapshots bool          `json:"deleteSnapshots"`
-	}{IDs: ids, Feature: feature.Name, SessionID: secret.String(sessionID.String()), DeleteSnapshots: deleteSnapshots})
+	}{IDs: params.CloudAccountIDs, Feature: params.Feature.Name, SessionID: secret.String(params.SessionID.String()), DeleteSnapshots: params.DeleteSnapshots})
 	if err != nil {
 		return nil, graphql.RequestError(query, err)
 	}
@@ -443,19 +418,25 @@ func (a API) StartDisableCloudAccountsJobWithSession(ctx context.Context, ids []
 		return nil, graphql.UnmarshalError(query, err)
 	}
 	var failures []error
-	seen := make(map[uuid.UUID]bool, len(ids))
+	requested := make(map[uuid.UUID]bool, len(params.CloudAccountIDs))
+	for _, id := range params.CloudAccountIDs {
+		requested[id] = true
+	}
+	seen := make(map[uuid.UUID]bool, len(requested))
 	for _, failure := range payload.Data.Result.Errors {
 		seen[failure.CloudAccountID] = true
 		failures = append(failures, fmt.Errorf("subscription %s: %s", failure.CloudAccountID, failure.Error))
 	}
-	jobs := payload.Data.Result.JobIDs
-	for _, job := range jobs {
-		if job.ID == uuid.Nil || job.CloudAccountID == uuid.Nil || seen[job.CloudAccountID] {
+	var jobs []ManagementGroupDisableJob
+	for _, job := range payload.Data.Result.JobIDs {
+		if job.ID == uuid.Nil || job.CloudAccountID == uuid.Nil || !requested[job.CloudAccountID] || seen[job.CloudAccountID] {
 			failures = append(failures, fmt.Errorf("invalid or duplicate job for subscription %s", job.CloudAccountID))
+			continue
 		}
 		seen[job.CloudAccountID] = true
+		jobs = append(jobs, job)
 	}
-	for _, id := range ids {
+	for _, id := range params.CloudAccountIDs {
 		if !seen[id] {
 			failures = append(failures, fmt.Errorf("no job or error returned for subscription %s", id))
 		}

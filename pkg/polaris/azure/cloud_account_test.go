@@ -1144,6 +1144,7 @@ func TestToSubscriptionsManagementGroup(t *testing.T) {
 			ID: mgSub, NativeID: mgNativeID, Name: "a",
 			ManagementGroup: mg,
 			Feature:         azure.Feature{Feature: core.CloudNativeProtection, Status: core.StatusConnected},
+			App:             &azure.CloudAccountTenantApp{AuthType: azure.AuthTypeNonOAuth},
 		}, {
 			ID: plainSub, NativeID: uuid.New(), Name: "b",
 			Feature: azure.Feature{Feature: "CLOUD_NATIVE_PROTECTION"},
@@ -1160,6 +1161,9 @@ func TestToSubscriptionsManagementGroup(t *testing.T) {
 	}
 	if subs[1].ManagementGroup != nil {
 		t.Errorf("invalid management group: got %+v, want nil", subs[1].ManagementGroup)
+	}
+	if subs[0].AuthType != azure.AuthTypeNonOAuth || subs[1].AuthType != "" {
+		t.Errorf("unexpected subscription auth types: %q, %q", subs[0].AuthType, subs[1].AuthType)
 	}
 	if len(subs[0].Features) != 1 || subs[0].Features[0].Name != core.CloudNativeProtection || subs[0].Features[0].Status != core.StatusConnected {
 		t.Errorf("got features %+v, want only connected Cloud Native Protection", subs[0].Features)

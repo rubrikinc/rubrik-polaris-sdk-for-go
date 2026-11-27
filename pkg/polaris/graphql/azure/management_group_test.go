@@ -20,21 +20,25 @@
 package azure
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/assert"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/internal/handler"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/core/secret"
+	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
-// TestListManagementGroupHierarchy verifies that the management groups and
-// subscriptions of the EntityType union are separated, and that the request
-// is sent with the non-OAuth auth type.
+// TestListManagementGroupHierarchy verifies the wire order and types of the
+// flat union entities, and that the scopes and non-OAuth auth type are sent.
 func TestListManagementGroupHierarchy(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(context.Background())
 	defer assert.Context(t, ctx, cancel)
@@ -74,14 +78,16 @@ func TestListManagementGroupHierarchy(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	hierarchy, err := Wrap(graphql.NewTestClient(srv)).ListManagementGroupHierarchy(ctx, ManagementGroupHierarchyRequest{
-		Cloud:             PublicCloud,
-		TenantDomain:      "example.onmicrosoft.com",
-		SessionID:         uuid.New(),
-		ManagementGroupID: "root",
-		ShouldRecurse:     true,
-		Operation:         OperationAdd,
-		AuthType:          AuthTypeNonOAuth,
+	uuidNamedGroup := uuid.NewString()
+	entities, err := Wrap(graphql.NewTestClient(srv)).ListManagementGroupHierarchy(ctx, ListManagementGroupHierarchyParams{
+		Cloud:                    PublicCloud,
+		TenantDomain:             "example.onmicrosoft.com",
+		SessionID:                uuid.New(),
+		ManagementGroupID:        "root",
+		ScopedManagementGroupIDs: []string{"child", uuidNamedGroup},
+		ShouldRecurse:            true,
+		Operation:                OperationAdd,
+		AuthType:                 AuthTypeNonOAuth,
 	})
 	if err != nil {
 		t.Fatalf("ListManagementGroupHierarchy failed: %v", err)
@@ -90,13 +96,56 @@ func TestListManagementGroupHierarchy(t *testing.T) {
 	if vars["authType"] != string(AuthTypeNonOAuth) || vars["operationType"] != string(OperationAdd) {
 		t.Errorf("invalid request variables: %v", vars)
 	}
-	if len(hierarchy.ManagementGroups) != 1 || hierarchy.ManagementGroups[0].NativeID != "child" ||
-		hierarchy.ManagementGroups[0].CustomerManagementGroupID != uuid.Nil {
-		t.Errorf("invalid management groups: %+v", hierarchy.ManagementGroups)
+	if scopes, ok := vars["scopedManagementGroupIds"].([]any); !ok || len(scopes) != 2 || scopes[0] != "child" || scopes[1] != uuidNamedGroup {
+		t.Errorf("invalid scoped IDs: %v", vars["scopedManagementGroupIds"])
 	}
-	if len(hierarchy.Subscriptions) != 1 || hierarchy.Subscriptions[0].NativeID != subID ||
-		hierarchy.Subscriptions[0].IsEligible ||
-		hierarchy.Subscriptions[0].IneligibilityReason != IneligibleAlreadyOnboarded {
-		t.Errorf("invalid subscriptions: %+v", hierarchy.Subscriptions)
+	if len(entities) != 2 {
+		t.Fatalf("invalid hierarchy entities: %+v", entities)
+	}
+	if group := entities[0]; group.Entity.Type != ManagementGroupEntityType || group.Entity.NativeID != "child" || !group.Entity.IsAuthorized || !group.IsEligible {
+		t.Errorf("invalid group entity: %+v", group)
+	}
+	if sub := entities[1]; sub.Entity.Type != SubscriptionEntityType || sub.Entity.NativeID != subID.String() ||
+		sub.IsEligible || sub.IneligibilityReason != IneligibleAlreadyOnboarded {
+		t.Errorf("invalid subscription entity: %+v", sub)
+	}
+}
+
+func TestInitiateCloudAccountAddWithCustomerAppDoesNotLogCredentials(t *testing.T) {
+	appID, sessionID := uuid.New(), uuid.New()
+	const appSecret = secret.String("customer-secret-used-only-by-test")
+	srv := httptest.NewServer(handler.GraphQL(func(w http.ResponseWriter, r *http.Request) {
+		var request struct {
+			Variables struct {
+				AppID     uuid.UUID     `json:"appId"`
+				AppSecret secret.String `json:"appSecretKey"`
+			} `json:"variables"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Error(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if request.Variables.AppID != appID || request.Variables.AppSecret != appSecret {
+			t.Error("expected the customer app credentials on the wire")
+		}
+		fmt.Fprintf(w, `{"data":{"result":{"success":true,"sessionId":%q}}}`, sessionID)
+	}))
+	defer srv.Close()
+
+	var logs bytes.Buffer
+	logger := log.NewStandardLogger()
+	logger.SetOutput(&logs)
+	logger.SetLogLevel(log.Trace)
+	client := graphql.NewTestClient(srv)
+	client.SetLogger(logger)
+	actual, err := Wrap(client).InitiateCloudAccountAddWithCustomerApp(t.Context(), InitiateCloudAccountAddWithCustomerAppParams{
+		Cloud: PublicCloud, TenantDomain: "example.onmicrosoft.com", AppID: appID, AppSecret: appSecret,
+	})
+	if err != nil || actual != sessionID {
+		t.Fatal("did not receive the expected customer app session")
+	}
+	if strings.Contains(logs.String(), sessionID.String()) || strings.Contains(logs.String(), string(appSecret)) {
+		t.Error("customer app session or secret leaked into SDK logging")
 	}
 }
