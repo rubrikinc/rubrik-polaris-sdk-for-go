@@ -89,6 +89,7 @@ var allTargetMappingsQuery = `query SdkGolangAllTargetMappings($filter: [TargetM
                     subscriptionNativeId
                 }
                 containerNamePrefix
+                encryptionType
                 storageAccountName
             }
             ... on GcpTargetTemplate {

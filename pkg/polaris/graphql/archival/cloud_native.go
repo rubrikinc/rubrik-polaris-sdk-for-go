@@ -29,6 +29,47 @@ import (
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
+// TargetEncryptionType represents the RSC GraphQL TargetEncryptionTypeEnum enum
+// type. It is read back from an archival location and reports which encryption
+// mode RSC applied. It covers every archival target type, so most values never
+// appear on a given archival location.
+type TargetEncryptionType string
+
+const (
+	TargetEncryptionUnknown           TargetEncryptionType = "UNKNOWN_ENCRYPTION_TYPE"
+	TargetEncryptionRSAKeyBased       TargetEncryptionType = "RSA_KEY_BASED"
+	TargetEncryptionKMSMasterKeyBased TargetEncryptionType = "KMS_MASTER_KEY_BASED"
+	TargetEncryptionPasswordBased     TargetEncryptionType = "ENCRYPTION_PASSWORD_BASED"
+
+	// TargetEncryptionUEKMBased has been deprecated by RSC in favour of the
+	// two UEKM values below, but it's still read back from archival locations
+	// created before the split.
+	TargetEncryptionUEKMBased TargetEncryptionType = "UNIFIED_ENCRYPTION_KEY_MGMT_BASED"
+
+	TargetEncryptionUEKMRSABased       TargetEncryptionType = "UEKM_RSA_BASED"
+	TargetEncryptionUEKMAWSKMSBased    TargetEncryptionType = "UEKM_AWS_KMS_BASED"
+	TargetEncryptionUEKMAKVBased       TargetEncryptionType = "UEKM_AKV_BASED"
+	TargetEncryptionUEKMGCPKMSBased    TargetEncryptionType = "UEKM_GCP_KMS_BASED"
+	TargetEncryptionSSEDefaultPMK      TargetEncryptionType = "SSE_DEFAULT_PMK"
+	TargetEncryptionSSECustomerManaged TargetEncryptionType = "SSE_CMK"
+	TargetEncryptionSSECustomerKey     TargetEncryptionType = "SSE_CPK"
+)
+
+// MayUseKeyManagerKey reports whether an archival location with the
+// encryption type may be encrypted with a key from a key manager. It returns
+// false only for the encryption types known not to use one, so an unknown or
+// new encryption type returns true.
+func (t TargetEncryptionType) MayUseKeyManagerKey() bool {
+	switch t {
+	case TargetEncryptionKMSMasterKeyBased, TargetEncryptionPasswordBased, TargetEncryptionRSAKeyBased,
+		TargetEncryptionSSECustomerKey, TargetEncryptionSSECustomerManaged, TargetEncryptionSSEDefaultPMK,
+		TargetEncryptionUEKMRSABased:
+		return false
+	default:
+		return true
+	}
+}
+
 // ListTargetMappingFilter is used to filter cloud native archival target
 // mappings. Common field values are:
 //
