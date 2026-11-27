@@ -12,6 +12,10 @@ query RubrikPolarisSDKRequest(
         cloudType
         azureCloudAccountTenantRubrikId
         clientId
+        apps {
+            clientId
+            authType
+        }
         appName
         domainName
         entraIdGroupId
@@ -20,6 +24,14 @@ query RubrikPolarisSDKRequest(
             id
             name
             nativeId
+            app {
+                authType
+            }
+            managementGroup {
+                nativeId
+                name
+                customerManagementGroupId
+            }
             featureDetail {
                 feature
                 permissionsGroups

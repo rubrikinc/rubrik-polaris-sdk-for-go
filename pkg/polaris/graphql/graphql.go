@@ -124,6 +124,11 @@ func NewTestClientWithTokenSource(testServer *httptest.Server, tokenSource token
 	}
 }
 
+// Endpoint returns the URL used for GraphQL requests.
+func (c *Client) Endpoint() string {
+	return c.gqlURL
+}
+
 // DeploymentVersion returns the deployed version of RSC.
 func (c *Client) DeploymentVersion(ctx context.Context) (Version, error) {
 	c.log.Print(log.Trace)

@@ -37,22 +37,31 @@ import (
 // CloudAccountTenant hold details about an Azure tenant and the cloud accounts
 // associated with the tenant.
 type CloudAccountTenant struct {
-	Cloud             Cloud          `json:"cloudType"`
-	ID                uuid.UUID      `json:"azureCloudAccountTenantRubrikId"`
-	ClientID          uuid.UUID      `json:"clientId"`
-	AppName           string         `json:"appName"`
-	DomainName        string         `json:"domainName"`
-	EntraGroupID      string         `json:"entraIdGroupId"`
-	SubscriptionCount int            `json:"subscriptionCount"`
-	Accounts          []CloudAccount `json:"subscriptions"`
+	Cloud             Cloud                   `json:"cloudType"`
+	ID                uuid.UUID               `json:"azureCloudAccountTenantRubrikId"`
+	ClientID          uuid.UUID               `json:"clientId"`
+	Apps              []CloudAccountTenantApp `json:"apps"`
+	AppName           string                  `json:"appName"`
+	DomainName        string                  `json:"domainName"`
+	EntraGroupID      string                  `json:"entraIdGroupId"`
+	SubscriptionCount int                     `json:"subscriptionCount"`
+	Accounts          []CloudAccount          `json:"subscriptions"`
+}
+
+// CloudAccountTenantApp is an app configured for a tenant's authentication method.
+type CloudAccountTenantApp struct {
+	ClientID uuid.UUID `json:"clientId"`
+	AuthType AuthType  `json:"authType"`
 }
 
 // CloudAccount represents an RSC Azure cloud account.
 type CloudAccount struct {
-	ID       uuid.UUID `json:"id"`
-	NativeID uuid.UUID `json:"nativeId"`
-	Name     string    `json:"name"`
-	Feature  Feature   `json:"featureDetail"`
+	ID              uuid.UUID              `json:"id"`
+	NativeID        uuid.UUID              `json:"nativeId"`
+	Name            string                 `json:"name"`
+	ManagementGroup *ManagementGroup       `json:"managementGroup"`
+	App             *CloudAccountTenantApp `json:"app"`
+	Feature         Feature                `json:"featureDetail"`
 }
 
 // Feature represents an RSC Cloud Account feature for Azure, e.g., Cloud Native
