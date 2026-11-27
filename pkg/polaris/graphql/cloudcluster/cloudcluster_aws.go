@@ -47,7 +47,41 @@ const (
 	AwsInstanceTypeM6A_4XLarge AwsCCInstanceType = "M6A_4XLARGE"
 	AwsInstanceTypeM6A_8XLarge AwsCCInstanceType = "M6A_8XLARGE"
 	AwsInstanceTypeR6A_4XLarge AwsCCInstanceType = "R6A_4XLARGE"
+	AwsInstanceTypeM7I_2XLarge AwsCCInstanceType = "M7I_2XLARGE"
+	AwsInstanceTypeM7I_4XLarge AwsCCInstanceType = "M7I_4XLARGE"
+	AwsInstanceTypeM7I_8XLarge AwsCCInstanceType = "M7I_8XLARGE"
+	AwsInstanceTypeR7I_4XLarge AwsCCInstanceType = "R7I_4XLARGE"
+	AwsInstanceTypeM7A_2XLarge AwsCCInstanceType = "M7A_2XLARGE"
+	AwsInstanceTypeM7A_4XLarge AwsCCInstanceType = "M7A_4XLARGE"
+	AwsInstanceTypeM7A_8XLarge AwsCCInstanceType = "M7A_8XLARGE"
+	AwsInstanceTypeR7A_4XLarge AwsCCInstanceType = "R7A_4XLARGE"
 )
+
+// AwsInstanceTypes returns all the AWS Cloud Cluster instance types known to the SDK, including the
+// unspecified value. An instance type can be in the list without being offered
+// by RSC for any CDM version yet.
+func AwsInstanceTypes() []AwsCCInstanceType {
+	return []AwsCCInstanceType{
+		AwsInstanceTypeUnspecified,
+		AwsInstanceTypeM5_4XLarge,
+		AwsInstanceTypeM6I_2XLarge,
+		AwsInstanceTypeM6I_4XLarge,
+		AwsInstanceTypeM6I_8XLarge,
+		AwsInstanceTypeR6I_4XLarge,
+		AwsInstanceTypeM6A_2XLarge,
+		AwsInstanceTypeM6A_4XLarge,
+		AwsInstanceTypeM6A_8XLarge,
+		AwsInstanceTypeR6A_4XLarge,
+		AwsInstanceTypeM7I_2XLarge,
+		AwsInstanceTypeM7I_4XLarge,
+		AwsInstanceTypeM7I_8XLarge,
+		AwsInstanceTypeR7I_4XLarge,
+		AwsInstanceTypeM7A_2XLarge,
+		AwsInstanceTypeM7A_4XLarge,
+		AwsInstanceTypeM7A_8XLarge,
+		AwsInstanceTypeR7A_4XLarge,
+	}
+}
 
 // AwsCdmVersion represents the CDM version for AWS Cloud Cluster.
 type AwsCdmVersion struct {

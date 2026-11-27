@@ -45,7 +45,37 @@ const (
 	AzureInstanceTypeStandardD16ASV5 AzureCCESSupportedInstanceType = "STANDARD_D16AS_V5"
 	AzureInstanceTypeStandardD32ASV5 AzureCCESSupportedInstanceType = "STANDARD_D32AS_V5"
 	AzureInstanceTypeStandardE16ASV5 AzureCCESSupportedInstanceType = "STANDARD_E16AS_V5"
+	AzureInstanceTypeStandardD8SV6   AzureCCESSupportedInstanceType = "STANDARD_D8S_V6"
+	AzureInstanceTypeStandardD16SV6  AzureCCESSupportedInstanceType = "STANDARD_D16S_V6"
+	AzureInstanceTypeStandardE16SV6  AzureCCESSupportedInstanceType = "STANDARD_E16S_V6"
+	AzureInstanceTypeStandardD8ASV6  AzureCCESSupportedInstanceType = "STANDARD_D8AS_V6"
+	AzureInstanceTypeStandardD16ASV6 AzureCCESSupportedInstanceType = "STANDARD_D16AS_V6"
+	AzureInstanceTypeStandardE16ASV6 AzureCCESSupportedInstanceType = "STANDARD_E16AS_V6"
 )
+
+// AzureInstanceTypes returns all the Azure Cloud Cluster instance types known to the SDK, including the
+// unspecified value. An instance type can be in the list without being offered
+// by RSC for any CDM version yet.
+func AzureInstanceTypes() []AzureCCESSupportedInstanceType {
+	return []AzureCCESSupportedInstanceType{
+		AzureInstanceTypeUnspecified,
+		AzureInstanceTypeStandardDS5V2,
+		AzureInstanceTypeStandardD16SV5,
+		AzureInstanceTypeStandardD8SV5,
+		AzureInstanceTypeStandardD32SV5,
+		AzureInstanceTypeStandardE16SV5,
+		AzureInstanceTypeStandardD8ASV5,
+		AzureInstanceTypeStandardD16ASV5,
+		AzureInstanceTypeStandardD32ASV5,
+		AzureInstanceTypeStandardE16ASV5,
+		AzureInstanceTypeStandardD8SV6,
+		AzureInstanceTypeStandardD16SV6,
+		AzureInstanceTypeStandardE16SV6,
+		AzureInstanceTypeStandardD8ASV6,
+		AzureInstanceTypeStandardD16ASV6,
+		AzureInstanceTypeStandardE16ASV6,
+	}
+}
 
 // AzureCDMVersionTag represents a tag for a CDM version.
 type AzureCDMVersionTag struct {
