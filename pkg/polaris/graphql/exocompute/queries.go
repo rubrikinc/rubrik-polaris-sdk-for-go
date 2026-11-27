@@ -217,6 +217,19 @@ var awsExocomputeGetClusterConnectionInfoQuery = `query SdkGolangAwsExocomputeGe
     }
 }`
 
+// awsExocomputeKmsMappingStatus GraphQL query
+var awsExocomputeKmsMappingStatusQuery = `query SdkGolangAwsExocomputeKmsMappingStatus($applicationCloudAccountId: UUID!) {
+    result: awsExocomputeKmsMappingStatus(applicationCloudAccountIds: [$applicationCloudAccountId]) {
+        results {
+            applicationCloudAccountId
+            gatewayKmsKeyArn
+            kmsSharingMode
+            provisioningStatus
+            stackArn
+        }
+    }
+}`
+
 // createAwsExocomputeConfigs GraphQL query
 var createAwsExocomputeConfigsQuery = `mutation SdkGolangCreateAwsExocomputeConfigs(
     $cloudAccountId:     UUID!,
@@ -335,6 +348,31 @@ var gcpExocomputeConfigsQuery = `query SdkGolangGcpExocomputeConfigs(
     }
 }`
 
+// mapAwsCloudAccountsWithKmsSharing GraphQL query
+var mapAwsCloudAccountsWithKmsSharingQuery = `mutation SdkGolangMapAwsCloudAccountsWithKmsSharing(
+    $applicationCloudAccountId: UUID!,
+    $exocomputeCloudAccountId:  UUID!
+) {
+    result: mapCloudAccountExocomputeAccount(input: {
+        exocomputeCloudAccountId: $exocomputeCloudAccountId,
+        cloudAccountIds:          [$applicationCloudAccountId],
+        cloudVendor:              AWS,
+        cloudSpecificParams: {
+            awsParams: { shouldEnableAutomatedKeySharing: true }
+        }
+    }) {
+        isSuccess
+        results {
+            applicationCloudAccountId
+            cloudFormationUrl
+            errorMessage
+            isPendingApproval
+            manualRolePolicyJson
+            templateUrl
+        }
+    }
+}`
+
 // mapAzureCloudAccountExocomputeSubscription GraphQL query
 var mapAzureCloudAccountExocomputeSubscriptionQuery = `mutation SdkGolangMapAzureCloudAccountExocomputeSubscription(
     $exocomputeCloudAccountId: UUID!,
@@ -389,6 +427,24 @@ var triggerExocomputeHealthCheckQuery = `mutation SdkGolangTriggerExocomputeHeal
     }
 }`
 
+// unmapAwsCloudAccountsWithKmsSharing GraphQL query
+var unmapAwsCloudAccountsWithKmsSharingQuery = `mutation SdkGolangUnmapAwsCloudAccountsWithKmsSharing($applicationCloudAccountId: UUID!) {
+    result: unmapCloudAccountExocomputeAccount(input: {
+        cloudAccountIds: [$applicationCloudAccountId],
+        cloudVendor:     AWS,
+    }) {
+        isSuccess
+        results {
+            applicationCloudAccountId
+            cloudFormationUrl
+            errorMessage
+            isPendingApproval
+            manualRolePolicyJson
+            templateUrl
+        }
+    }
+}`
+
 // unmapAzureCloudAccountExocomputeSubscription GraphQL query
 var unmapAzureCloudAccountExocomputeSubscriptionQuery = `mutation SdkGolangUnmapAzureCloudAccountExocomputeSubscription($cloudAccountIds: [UUID!]!) {
     result: unmapAzureCloudAccountExocomputeSubscription(input: {
@@ -408,6 +464,18 @@ var unmapCloudAccountExocomputeAccountQuery = `mutation SdkGolangUnmapCloudAccou
         cloudVendor:     $cloudVendor,
     }) {
         isSuccess
+    }
+}`
+
+// updateManualKmsMapping GraphQL query
+var updateManualKmsMappingQuery = `mutation SdkGolangUpdateManualKmsMapping($applicationCloudAccountId: UUID!) {
+    result: updateManualKmsMapping(input: {
+        accounts: [{ applicationCloudAccountId: $applicationCloudAccountId }]
+    }) {
+        results {
+            applicationCloudAccountId
+            errorMessage
+        }
     }
 }`
 

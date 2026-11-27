@@ -1,0 +1,11 @@
+query RubrikPolarisSDKRequest($applicationCloudAccountId: UUID!) {
+    result: awsExocomputeKmsMappingStatus(applicationCloudAccountIds: [$applicationCloudAccountId]) {
+        results {
+            applicationCloudAccountId
+            gatewayKmsKeyArn
+            kmsSharingMode
+            provisioningStatus
+            stackArn
+        }
+    }
+}

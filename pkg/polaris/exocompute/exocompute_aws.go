@@ -370,6 +370,58 @@ func (a API) UnmapAWSCloudAccount(ctx context.Context, appCloudAccountID uuid.UU
 	return nil
 }
 
+// MapAWSCloudAccountWithKMSSharing maps an AWS application account to a host
+// and returns the CloudFormation or IAM action needed to enable KMS sharing.
+func (a API) MapAWSCloudAccountWithKMSSharing(ctx context.Context, appCloudAccountID, hostCloudAccountID uuid.UUID) (exocompute.AWSKMSMappingAction, error) {
+	a.log.Print(log.Trace)
+
+	action, err := exocompute.MapAWSCloudAccountWithKMSSharing(ctx, a.client, appCloudAccountID, hostCloudAccountID)
+	if err != nil {
+		return exocompute.AWSKMSMappingAction{}, fmt.Errorf("failed to map application cloud account %s to host cloud account %s with KMS sharing: %w", appCloudAccountID, hostCloudAccountID, err)
+	}
+
+	return action, nil
+}
+
+// UnmapAWSCloudAccountWithKMSSharing unmaps an AWS application account and
+// returns the CloudFormation or IAM action needed to finish revoking KMS sharing.
+func (a API) UnmapAWSCloudAccountWithKMSSharing(ctx context.Context, appCloudAccountID uuid.UUID) (exocompute.AWSKMSMappingAction, error) {
+	a.log.Print(log.Trace)
+
+	action, err := exocompute.UnmapAWSCloudAccountWithKMSSharing(ctx, a.client, appCloudAccountID)
+	if err != nil {
+		return exocompute.AWSKMSMappingAction{}, fmt.Errorf("failed to unmap application cloud account %s with KMS sharing: %w", appCloudAccountID, err)
+	}
+
+	return action, nil
+}
+
+// AWSKMSMappingStatus returns the KMS sharing mode and provisioning status
+// for the specified AWS application account.
+func (a API) AWSKMSMappingStatus(ctx context.Context, appCloudAccountID uuid.UUID) (exocompute.AWSKMSMappingStatus, error) {
+	a.log.Print(log.Trace)
+
+	status, err := exocompute.GetAWSKMSMappingStatus(ctx, a.client, appCloudAccountID)
+	if err != nil {
+		return exocompute.AWSKMSMappingStatus{}, fmt.Errorf("failed to get KMS mapping status for application cloud account %s: %w", appCloudAccountID, err)
+	}
+
+	return status, nil
+}
+
+// ConfirmAWSManualKMSMapping finalizes a sharing-only mapping or revoke for a
+// manually onboarded application account. Call it only after applying the
+// corresponding IAM policy addition or removal.
+func (a API) ConfirmAWSManualKMSMapping(ctx context.Context, appCloudAccountID uuid.UUID) error {
+	a.log.Print(log.Trace)
+
+	if err := exocompute.UpdateManualKMSMapping(ctx, a.client, appCloudAccountID); err != nil {
+		return fmt.Errorf("failed to confirm manual KMS mapping for application cloud account %s: %w", appCloudAccountID, err)
+	}
+
+	return nil
+}
+
 // AWSClusterConnection returns the connection command and cluster setup YAML
 // manifest for an AWS exocompute cluster connection.
 func (a API) AWSClusterConnection(ctx context.Context, clusterName string, configID uuid.UUID) (exocompute.AWSClusterConnectionResult, error) {
